@@ -1,0 +1,25 @@
+# Sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editores
+.idea/
+.vscode/
+*.swp
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Dependencias y compilados
+node_modules/
+vendor/
+dist/
+
+# Logs
+*.log
+
+# Configuración local de Claude Code
+.claude/settings.local.json
