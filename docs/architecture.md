@@ -2,7 +2,7 @@
 
 `barberhub-api` combina arquitectura hexagonal (puertos y adaptadores) con diseño guiado por el dominio. El objetivo es que las reglas del negocio se puedan leer, probar y cambiar sin depender de Laravel.
 
-> **Estado:** documento inicial (issue #21). El mapa de contextos se incorpora en #23.
+> **Estado:** documento inicial (issue #21). El mapa de contextos se incorpora en los issues #21 y #23. El mapa de contextos está en context-map.md.
 
 ## Estructura
 
@@ -38,7 +38,7 @@ Hoy existen cuatro contextos, cada uno con sus módulos y las tres capas (las su
 | Availability | `Slots` |
 | Reservations | `Reservations` |
 
-`Payments`, `Vouchers`, `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` y los `Shared` de cada contexto (previsto, #22) aún no existen.
+`Payments`, `Vouchers`, `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` ya existe; los `Shared` de cada contexto (previsto, #22) aún no existen.
 
 Un módulo corresponde a un agregado, no a una tabla.
 
@@ -107,7 +107,7 @@ Cuando un hecho debe provocar efectos en otros contextos, el emisor publica un e
 
 ### El tiempo es un parámetro
 
-El dominio nunca pregunta la hora. El momento actual se obtiene en el borde (HTTP o la tarea en cola) a través del contrato de reloj de `Src\Shared\Domain\Contracts` (previsto, #22), en la zona horaria de la aplicación (`America/Costa_Rica`), y viaja como `DateTimeImmutable` hasta el caso de uso y el dominio. En las pruebas el reloj se sustituye por uno fijo. Así las reglas que dependen del reloj (plazo de cancelación, expiración de la reserva temporal, mínimo para ofrecer un espacio) se prueban con momentos fijos, sin arrancar el framework.
+El dominio nunca pregunta la hora. El momento actual se obtiene en el borde (HTTP o la tarea en cola) a través del contrato de reloj de `Src\Shared\Domain\Contracts`, en la zona horaria de la aplicación (`America/Costa_Rica`), y viaja como `DateTimeImmutable` hasta el caso de uso y el dominio. En las pruebas el reloj se sustituye por uno fijo. Así las reglas que dependen del reloj (plazo de cancelación, expiración de la reserva temporal, mínimo para ofrecer un espacio) se prueban con momentos fijos, sin arrancar el framework.
 
 ### Cuentas y autenticación
 
@@ -152,7 +152,7 @@ La suite `tests/Feature/Tenancy` (previsto, #38 y #123) lo comprueba con dos bar
 
 ## Errores
 
-El dominio lanza excepciones que extienden `Src\Shared\Domain\Exceptions\DomainException` (previsto, #22). Cada excepción lleva una clave de traducción, no un texto: el mensaje en español se resuelve en la infraestructura desde `lang/es` (ver [ADR 0008](adr/0008-user-messages-from-translation-files.md)).
+El dominio lanza excepciones que extienden `Src\Shared\Domain\Exceptions\DomainException`. Cada excepción lleva una clave de traducción, no un texto: el mensaje en español se resuelve en la infraestructura desde `lang/es` (ver [ADR 0008](adr/0008-user-messages-from-translation-files.md)).
 
 Toda respuesta de error sigue RFC 9457 (`application/problem+json`). `ProblemDetailsRenderer` (previsto, #34) convierte cada excepción en un documento con `type`, `title`, `status`, `detail` e `instance`:
 
