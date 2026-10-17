@@ -15,7 +15,7 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 - **Issue de GitHub:** `gh issue view <N>`. Trae la historia, los criterios de aceptación, la línea "Base:" hacia la referencia y los requisitos y reglas que aplica.
 - `context/requirements.md`: busca la ficha del RF-xx, RNF-xx o RD-xx que cite el issue.
 - `context/business-rules.md`: busca las reglas citadas (por ejemplo RE-04, PA-03, MT-03).
-- `docs/`: cómo está construido el sistema (arquitectura, base de datos, modelo de datos, lenguaje ubicuo y registros de decisión). Se crea durante M02 (issues #21 a #26); hasta entonces rige este archivo.
+- `docs/`: cómo está construido el sistema (arquitectura, base de datos, modelo de datos, lenguaje ubicuo y registros de decisión).
 - **Referencia del docente (solo lectura):** `../SodaYa-Hexagonal`; la API está en `sodaya-api-hexagonal/`. Cuando un issue diga "Base: X", lee X allí y adáptalo a barbería. No copies contenido del dominio de sodas (platos, categorías, menú). Nunca edites ese repositorio.
 - `context/` solo cambia cuando el dueño del proyecto lo pide. Si encuentras una contradicción, repórtala.
 
@@ -42,7 +42,7 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 
 - **Inglés:** clases, métodos, variables, comentarios, tablas, columnas y commits.
 - **Español:** rutas de la API, atributos JSON, mensajes al usuario y tipos de error.
-- Ningún mensaje al usuario va en el código: las excepciones llevan una clave de traducción y el texto vive en `lang/es` (ADR 0006).
+- Ningún mensaje al usuario va en el código: las excepciones llevan una clave de traducción y el texto vive en `lang/es` (ADR 0008).
 - Términos del negocio: barbería = `Barbershop`. Consulta `docs/ubiquitous-language.md` antes de nombrar algo nuevo.
 
 ## Arquitectura (api)
