@@ -11,9 +11,11 @@ use Src\Catalog\Services\Infrastructure\ServicesServiceProvider;
 use Src\Identity\Memberships\Infrastructure\MembershipsServiceProvider;
 use Src\Identity\Users\Infrastructure\UsersServiceProvider;
 use Src\Reservations\Reservations\Infrastructure\ReservationsServiceProvider;
+use Src\Shared\Infrastructure\SharedServiceProvider;
 
 return [
     AppServiceProvider::class,
+    SharedServiceProvider::class,
     UsersServiceProvider::class,
     MembershipsServiceProvider::class,
     BarbershopsServiceProvider::class,
