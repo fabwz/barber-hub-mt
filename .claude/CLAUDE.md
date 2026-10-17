@@ -35,7 +35,7 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 - Trabajas en la rama del issue, que crea y activa el dueño. Si `git branch --show-current` muestra `main`, detente y avísale.
 - Edita los archivos y, al terminar, entrega los commits **propuestos**, uno por cada cambio atómico: los archivos que incluye (el `git add` que debe ejecutar el dueño) y el mensaje completo.
 - Mensajes de commit: en inglés, Conventional Commits con alcance, `<type>(<scope>): <description>`, con el pie obligatorio `Refs: #<N>`. Tipos: `feat`, `fix`, `docs`, `test`, `chore`, `build`, `ci`, `style`, `refactor`. Ejemplo: `feat(availability): compute free slots from business and staff hours` con el pie `Refs: #53`.
-- Para el pull request, entrega el título (igual al del issue) y la descripción con `Closes #<N>`, la lista de verificación de la plantilla y la declaración de uso de IA, listos para pegar. Se integra con merge commit y con la CI en verde.
+- Para el pull request, entrega el título (igual al del issue) y la descripción con `Closes #<N>`, y la lista de verificación de la plantilla, listos para pegar. Se integra con merge commit y con la CI en verde.
 - Nunca propongas force push, `--no-verify` ni commits con secretos.
 
 ## Idioma (RD-07)
