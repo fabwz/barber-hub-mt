@@ -21,4 +21,12 @@ final class ApiRoutingTest extends TestCase
     {
         $this->get('/api')->assertNotFound();
     }
+
+    /** Unknown routes answer a problem document even without an Accept header. */
+    public function test_unknown_routes_respond_with_a_problem_document(): void
+    {
+        $this->get('/api/v1/desconocido')
+            ->assertNotFound()
+            ->assertHeader('Content-Type', 'application/problem+json');
+    }
 }
