@@ -155,7 +155,7 @@ La suite `tests/Feature/Tenancy` (previsto, #38 y #123) lo comprueba con dos bar
 
 El dominio lanza excepciones que extienden `Src\Shared\Domain\Exceptions\DomainException`. Cada excepción lleva una clave de traducción, no un texto: el mensaje en español se resuelve en la infraestructura desde `lang/es` (ver [ADR 0008](adr/0008-user-messages-from-translation-files.md)).
 
-Toda respuesta de error sigue RFC 9457 (`application/problem+json`). `ProblemDetailsRenderer` (previsto, #34) convierte cada excepción en un documento con `type`, `title`, `status`, `detail` e `instance`:
+Toda respuesta de error sigue RFC 9457 (`application/problem+json`). `ProblemDetailsRenderer` convierte cada excepción en un documento con `type`, `title`, `status`, `detail` e `instance`:
 
 | Excepción | Tipo de problema | HTTP |
 | --- | --- | --- |
@@ -172,7 +172,7 @@ Toda respuesta de error sigue RFC 9457 (`application/problem+json`). `ProblemDet
 | Oferta vencida | `oferta-vencida` | 409 |
 | Cualquier otra | `error-interno`, sin detalles técnicos | 500 |
 
-Los códigos HTTP de los cinco tipos de negocio (RNF-17) son una propuesta: se confirman al implementar #34. El campo `instance` repite el identificador de la solicitud, que también viaja en el encabezado `X-Request-Id` (previsto, #34) y en cada línea de log.
+Los cinco tipos de negocio (RNF-17) responden 409. Un 403 de dominio es una `BusinessRuleException` cuya regla es `prohibido`. El campo `instance` repite el identificador de la solicitud, que también viaja en el encabezado `X-Request-Id` y en cada línea de log.
 
 ## Contrato de la API
 
