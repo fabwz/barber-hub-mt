@@ -12,6 +12,7 @@ Todo el código del producto vive en `barberhub-api/src/`, bajo el namespace `Sr
 src/
 ├── Shared/                      Núcleo compartido entre contextos
 │   ├── Domain/
+│   ├── Application/
 │   └── Infrastructure/
 └── <Contexto>/                  Un contexto del dominio (ver abajo)
     ├── Shared/                  Lo común a los módulos del contexto
@@ -121,7 +122,7 @@ La membresía de cliente se crea al primer uso de una operación de cliente en l
 
 En BarberHub una persona puede tener roles en varias barberías, así que la barbería no se deduce de la persona, como en el proyecto de referencia, sino de la ruta y se verifica contra sus membresías (RD-18). Ver [ADR 0005](adr/0005-tenancy-through-a-port-and-row-level-security.md).
 
-1. En las rutas, `{barberia}` es el UUID v7 de la barbería. La barbería nunca se toma del cuerpo, de la consulta ni de un encabezado. El enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}` (previsto, #33).
+1. En las rutas, `{barberia}` es el UUID v7 de la barbería. La barbería nunca se toma del cuerpo, de la consulta ni de un encabezado. El enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}` (previsto, #37).
 2. El middleware `barbershop` (previsto, #38) comprueba que la sesión tenga un rol en esa barbería y recién entonces fija el contexto, a través del puerto `BarbershopContext` de `Shared` (previsto, #38).
 3. Si la persona no tiene rol en la barbería, o el recurso pertenece a otra, la respuesta es 404 `no-encontrado`, con el mismo cuerpo que un recurso inexistente (UP-06). Si tiene rol pero insuficiente, 403 `prohibido`.
 4. Cada método de un repositorio recibe el `BarbershopId` y filtra por `barbershop_id`: buscar, listar y borrar. Las reglas `exists` y `unique` de los Form Requests también filtran por la barbería.
@@ -179,7 +180,11 @@ Scramble (previsto, #35) genera el contrato OpenAPI desde el código. La documen
 
 ## Rutas
 
-`routes/api.php` incluye el archivo de rutas de cada módulo. Todas se sirven bajo `/api/v1`, prefijo que se configura una sola vez en `bootstrap/app.php` (previsto, #33). Un cambio incompatible se publica como `/api/v2`. Las rutas llevan nombres en español, por ejemplo `/barberias/{barberia}/...`.
+`routes/api.php` incluye el archivo de rutas de cada módulo. Todas se sirven bajo `/api/v1`, prefijo que se configura una sola vez en `bootstrap/app.php`. Un cambio incompatible se publica como `/api/v2`. Las rutas llevan nombres en español, por ejemplo `/barberias/{barberia}/...`.
+
+Cada ruta con `{barberia}` restringe el parámetro con `whereUuid('barberia')`. Las únicas rutas públicas de una barbería son la resolución del enlace, la lista de servicios activos y la consulta de disponibilidad (RD-18).
+
+La ruta de salud `GET /salud` es pública, no pasa por ningún middleware y está fuera de `/api/v1`, porque no es una ruta de negocio. Responde 200 si la base de datos y la cola funcionan y 503 en caso contrario, sin detalles (RNF-14). `bootstrap/app.php` la carga con `then:` desde `src/Shared/Infrastructure/Http/health.php`; el caso de uso `CheckHealth` consulta los puertos `DatabaseHealth` y `QueueHealth`.
 
 ## Pruebas
 
