@@ -58,7 +58,7 @@ Infrastructure  ──▶  Application  ──▶  Domain
 | Application | Domain | Infrastructure, Laravel |
 | Infrastructure | Application, Domain, Laravel | — |
 
-La prueba `tests/Architecture/LayerDependencyTest.php` (previsto, #30) revisa cada archivo de `Domain` y `Application` y falla si alguno rompe la regla.
+La prueba `tests/Architecture/LayerDependencyTest.php` revisa cada archivo de `Domain` y `Application` y falla si alguno rompe la regla.
 
 ## Qué va en cada capa
 
@@ -185,9 +185,9 @@ Scramble (previsto, #35) genera el contrato OpenAPI desde el código. La documen
 
 | Carpeta | Alcance |
 | --- | --- |
-| `tests/Unit` (previsto, #30) | Dominio y casos de uso, sin arrancar el framework. |
+| `tests/Unit` | Dominio y casos de uso, sin arrancar el framework. |
 | `tests/Feature` | Endpoints y adaptadores contra PostgreSQL, con el rol de la aplicación y solo sobre `barberhub_testing`. `tests/Feature/Tenancy` (previsto, #38 y #123) reúne las pruebas de aislamiento entre barberías. |
-| `tests/Architecture` (previsto, #30) | Regla de dependencias entre capas y entre módulos. |
+| `tests/Architecture` | Regla de dependencias entre capas y entre módulos. |
 
 La concurrencia se prueba con conexiones paralelas reales (RNF-05). Las pasarelas, el proveedor de IA y el correo se simulan.
 
