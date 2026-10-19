@@ -13,9 +13,56 @@
     "tags": [
         {
             "name": "General"
+        },
+        {
+            "name": "Cuentas",
+            "description": "Registro de cuentas de personas que usan BarberHub."
         }
     ],
     "paths": {
+        "/cuentas": {
+            "post": {
+                "operationId": "identity.users.store",
+                "description": "Crea una cuenta con nombre, correo, tel\u00e9fono y contrase\u00f1a, y guarda la fecha de cada aceptaci\u00f3n (t\u00e9rminos y privacidad), que se exigen por separado. No crea ninguna membres\u00eda: el rol de cliente nace al primer uso en una barber\u00eda. Responde 422 `datos-invalidos` si falta un dato, una aceptaci\u00f3n o un requisito de la contrase\u00f1a (`errores.contrasena` lista todos los que faltan), o si el correo ya tiene una cuenta.",
+                "summary": "Registrar una cuenta",
+                "tags": [
+                    "Cuentas"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistroDeCuenta"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Cuenta`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Cuenta"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
         "/": {
             "get": {
                 "operationId": "index",
@@ -52,6 +99,99 @@
         }
     },
     "components": {
+        "schemas": {
+            "Cuenta": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "correo": {
+                        "type": "string"
+                    },
+                    "telefono": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "acepta_terminos": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "acepta_privacidad": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "correo",
+                    "telefono",
+                    "acepta_terminos",
+                    "acepta_privacidad"
+                ],
+                "title": "Cuenta"
+            },
+            "RegistroDeCuenta": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "correo": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    },
+                    "telefono": {
+                        "type": "string",
+                        "maxLength": 30
+                    },
+                    "contrasena": {
+                        "type": "string"
+                    },
+                    "acepta_terminos": {
+                        "enum": [
+                            "yes",
+                            "on",
+                            "1",
+                            1,
+                            "true",
+                            true
+                        ]
+                    },
+                    "acepta_privacidad": {
+                        "enum": [
+                            "yes",
+                            "on",
+                            "1",
+                            1,
+                            "true",
+                            true
+                        ]
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "correo",
+                    "telefono",
+                    "contrasena",
+                    "acepta_terminos",
+                    "acepta_privacidad"
+                ],
+                "title": "RegistroDeCuenta"
+            }
+        },
         "responses": {
             "Unauthenticated": {
                 "description": "No autenticado",
