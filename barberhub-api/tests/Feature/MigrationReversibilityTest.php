@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\Support\RefreshDatabaseAsOwner;
@@ -23,12 +24,12 @@ final class MigrationReversibilityTest extends TestCase
         // Guards the leftover check below: the migrations do create default privileges.
         $this->assertGreaterThan(0, $defaultPrivileges);
 
-        $this->artisan('migrate:reset', ['--database' => 'pgsql_admin'])->assertSuccessful();
+        $this->assertSame(0, Artisan::call('migrate:reset', ['--database' => 'pgsql_admin']));
 
         $this->assertSame(['migrations'], $schema->getTableListing(schemaQualified: false));
         $this->assertSame(0, $this->defaultPrivilegeCount());
 
-        $this->artisan('migrate', ['--database' => 'pgsql_admin'])->assertSuccessful();
+        $this->assertSame(0, Artisan::call('migrate', ['--database' => 'pgsql_admin']));
 
         $this->assertSame($migrated, $schema->getTableListing(schemaQualified: false));
         $this->assertSame($defaultPrivileges, $this->defaultPrivilegeCount());

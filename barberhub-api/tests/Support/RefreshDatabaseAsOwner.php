@@ -16,6 +16,7 @@ trait RefreshDatabaseAsOwner
         migrateFreshUsing as private frameworkMigrateFreshUsing;
     }
 
+    /** @return array<string, mixed> */
     protected function migrateFreshUsing(): array
     {
         return [...$this->frameworkMigrateFreshUsing(), '--database' => 'pgsql_admin'];
