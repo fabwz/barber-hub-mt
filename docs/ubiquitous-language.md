@@ -158,18 +158,22 @@ Un **tipo de error estable** es un tipo fijo de error RFC 9457 que el cliente we
 
 | Tipo | Cuándo |
 | --- | --- |
+| `solicitud-invalida` | La solicitud no se puede procesar tal como viene |
 | `datos-invalidos` | Un dato no cumple su regla de forma |
 | `no-encontrado` | El recurso no existe o es de otra barbería |
 | `credenciales-invalidas` | Correo o contraseña incorrectos |
 | `no-autenticado` | Falta un token válido |
 | `prohibido` | La persona autenticada no tiene permiso suficiente |
+| `metodo-no-permitido` | La ruta no acepta el método HTTP usado |
 | `conflicto` | Una regla del dominio sin tipo propio impide la operación |
 | `espacio-no-disponible` | El espacio ya no está libre (RE-02), con hasta 3 alternativas |
 | `saldo-insuficiente` | El bono ya no tiene sesiones (BO-03) |
 | `plazo-vencido` | La cancelación o reprogramación llegó fuera de plazo |
 | `bono-vencido` | El bono ya no está vigente (BO-06) |
 | `oferta-vencida` | La oferta caducó antes de la respuesta (LE-05) |
+| `demasiadas-solicitudes` | Se superó el límite de solicitudes |
 | `error-interno` | Cualquier otro fallo, sin detalles técnicos |
+| `servicio-no-disponible` | El servicio no está disponible en este momento |
 
 ## Dinero y fechas
 
