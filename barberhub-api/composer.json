@@ -12,6 +12,7 @@
   "license": "proprietary",
   "require": {
     "php": "^8.4",
+    "dedoc/scramble": "^0.13.45",
     "laravel/framework": "^13.17",
     "laravel/sanctum": "^4.3",
     "laravel/tinker": "^3.0"
@@ -50,6 +51,9 @@
     "test": [
       "@php artisan config:clear --ansi @no_additional_args",
       "@php artisan test"
+    ],
+    "openapi": [
+      "@php artisan scramble:export"
     ],
     "post-autoload-dump": [
       "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
