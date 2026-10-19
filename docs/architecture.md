@@ -176,7 +176,7 @@ Los cinco tipos de negocio (RNF-17) responden 409. Un 403 de dominio es una `Bus
 
 ## Contrato de la API
 
-Scramble (previsto, #35) genera el contrato OpenAPI desde el código. La documentación interactiva está en `/docs/api` y el contrato se versiona en `barberhub-api/openapi/v1.json` (previsto, #35). Tras cambiar un endpoint hay que regenerarlo con `composer openapi` (previsto, #35): una prueba falla si el archivo versionado difiere del código. Los tipos del cliente web se generan desde ese contrato.
+Scramble genera el contrato OpenAPI desde el código. La documentación interactiva está en `/docs/api` y el contrato se versiona en `barberhub-api/openapi/v1.json`. Tras cambiar un endpoint hay que regenerarlo con `composer openapi`: una prueba falla si el archivo versionado difiere del código. Los tipos del cliente web se generan desde ese contrato.
 
 ## Rutas
 
