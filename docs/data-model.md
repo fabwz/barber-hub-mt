@@ -4,7 +4,7 @@ El esquema está en tercera forma normal. Este documento describe las entidades 
 
 Las convenciones de nombres, llaves, fechas y dinero están en [database.md](database.md). Toda tabla con `barbershop_id` tiene seguridad a nivel de fila forzada, con las excepciones que lista la sección de ese documento.
 
-> **Estado:** modelo inicial (issue #26), derivado de las reglas de negocio y de los requisitos. Ninguna de estas tablas existe todavía: cada una la crea el issue de su módulo (#36, #40, #45, #47, #48 y #56, entre otros) y en ese pull request se actualiza este archivo. Es una propuesta para revisar; las decisiones que no están en los requisitos están marcadas en "Por confirmar".
+> **Estado:** modelo inicial (issue #26), derivado de las reglas de negocio y de los requisitos. La tabla `users` ya existe (#40); las demás todavía no: cada una la crea el issue de su módulo (#36, #45, #47, #48 y #56, entre otros) y en ese pull request se actualiza este archivo. Es una propuesta para revisar; las decisiones que no están en los requisitos están marcadas en "Por confirmar".
 
 ## Diagrama
 
@@ -81,7 +81,7 @@ El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` y `a
 
 ### users
 
-Cada fila es una cuenta global: una persona puede tener un rol distinto en cada barbería.
+Cada fila es una cuenta global: una persona puede tener un rol distinto en cada barbería. La tabla existe desde el issue #40 con las columnas marcadas como creadas; las demás son previstas y las agrega el issue que se indica, con una migración posterior.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -89,13 +89,13 @@ Cada fila es una cuenta global: una persona puede tener un rol distinto en cada 
 | `name` | `varchar(120)` | Obligatoria |
 | `email` | `varchar(255)` | Única en todo el sistema; se guarda recortada y en minúsculas (CL-01) |
 | `password` | `varchar(255)` | Hash de la contraseña, nunca la contraseña (SE-01) |
-| `phone` | `varchar(30)` | Obligatoria al registrarse (RF-38) |
-| `locale` | `varchar(5)` | `CHECK` entre `es` y `en`, por defecto `es` (AC-08) |
-| `reminders_enabled` | `boolean` | Por defecto `true`; solo tiene efecto para el cliente (NO-10) |
-| `must_change_password` | `boolean` | Por defecto `false`; `true` con una contraseña temporal (UP-04, RF-40) |
+| `phone` | `varchar(30)` | Admite nulos en la base; el registro la exige (RF-38) |
+| `locale` | `varchar(5)` | Prevista, #47. `CHECK` entre `es` y `en`, por defecto `es` (AC-08) |
+| `reminders_enabled` | `boolean` | Prevista, #47. Por defecto `true`; solo tiene efecto para el cliente (NO-10) |
+| `must_change_password` | `boolean` | Prevista, #48. Por defecto `false`; `true` con una contraseña temporal (UP-04, RF-40) |
 | `is_active` | `boolean` | Por defecto `true`; una cuenta inactiva no puede ingresar |
-| `terms_accepted_at`, `privacy_accepted_at` | `timestamptz` | Fecha de cada aceptación, separadas (CL-02) |
-| `created_at`, `updated_at` | `timestamptz` | |
+| `terms_accepted_at`, `privacy_accepted_at` | `timestamptz` | Fecha de cada aceptación, separadas (CL-02). Admiten nulos en la base: la cuenta de un colaborador la crea el dueño y su caso se decide en el #48; el registro de clientes las exige y las guarda |
+| `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
 El correo es único en todo el sistema y no dentro de cada barbería: la persona ingresa con su correo antes de saber a qué barbería va. Por eso `users` no tiene política de fila. Los intentos fallidos de ingreso (SE-05) se limitan con el limitador de Laravel, no con columnas.
 

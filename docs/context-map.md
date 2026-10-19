@@ -10,7 +10,7 @@ Los objetos de valor `Money`, `Duration`, `Percentage`, `TimeInterval` e `Identi
 
 | Contexto | Módulos | Agregados | Objetos de valor | Eventos que publica | Carpeta |
 | --- | --- | --- | --- | --- | --- |
-| Identity (identidad y acceso) | `Users`, `Memberships` | — | `Email`, `PlainPassword`, `Role` (previstos, #40) | — | Creada (#21) |
+| Identity (identidad y acceso) | `Users`, `Memberships` | — | `Email`, `PlainPassword`, `UserName`, `Phone`; `Role` (previsto, #36) | — | Creada (#21) |
 | Catalog (catálogo y horarios) | `Barbershops`, `Services`, `OpeningHours`, `Collaborators` | — | `Money`, `Duration`, `Percentage` (en Shared); `TimeRange`, `PublicLink` (previstos) | — | Creada (#21) |
 | Availability (disponibilidad) | `Slots` | — | `Slot` (previsto); `TimeInterval` (en Shared) | — | Creada (#21) |
 | Reservations (reservas) | `Reservations` y, más adelante, `AssistedClients` | `Reservation` | `ReservationStatus` (previsto); `TimeInterval` y `Money` (en Shared) | `ReservationConfirmed`, `ReservationCancelled`, `ReservationRescheduled`, `ReservationExpired`, `ReservationAttended`, `ReservationMissed`, `SpaceReleased` (previstos) | Creada (#21) |

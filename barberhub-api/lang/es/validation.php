@@ -168,7 +168,10 @@ return [
 
     // Each issue adds the accented attributes it introduces.
     'attributes' => [
+        'acepta_privacidad' => 'aceptación de la política de privacidad',
+        'acepta_terminos' => 'aceptación de los términos y condiciones',
         'contrasena' => 'contraseña',
+        'telefono' => 'teléfono',
     ],
 
 ];

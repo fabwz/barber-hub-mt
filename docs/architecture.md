@@ -112,9 +112,9 @@ El dominio nunca pregunta la hora. El momento actual se obtiene en el borde (HTT
 
 ### Cuentas y autenticación
 
-El contexto `Identity` guarda las cuentas en `Identity/Users` y los roles en `Identity/Memberships` (previsto, #40). Una cuenta es global: un correo, una contraseña, y puede tener un rol distinto en cada barbería (UP-07). La membresía une a la persona con una barbería y su rol: `owner`, `collaborator` o `customer`.
+El contexto `Identity` guarda las cuentas en `Identity/Users` y los roles en `Identity/Memberships` (previsto, #36). Una cuenta es global: un correo, una contraseña, y puede tener un rol distinto en cada barbería (UP-07). La membresía une a la persona con una barbería y su rol: `owner`, `collaborator` o `customer`.
 
-El agregado de la cuenta es PHP puro. Dos puertos lo separan del framework: `UserRepository` (previsto, #40), con su adaptador Eloquent, y `PasswordHasher` (previsto, #40), cuyo adaptador usa la fachada `Hash` de Laravel. `UserModel` (previsto, #40) vive en la infraestructura, extiende el usuario autenticable de Laravel y usa `HasApiTokens` de Sanctum (previsto, #41); `config/auth.php` lo declara como proveedor del guard `sanctum` (previsto, #41).
+El agregado de la cuenta es PHP puro. Dos puertos lo separan del framework: `UserRepository`, con su adaptador Eloquent, y `PasswordHasher`, cuyo adaptador usa la fachada `Hash` de Laravel. `UserModel` vive en la infraestructura, extiende el usuario autenticable de Laravel y usa `HasApiTokens` de Sanctum (previsto, #41); `config/auth.php` lo declara como proveedor del guard `sanctum` (previsto, #41).
 
 La membresía de cliente se crea al primer uso de una operación de cliente en la barbería, en la misma transacción que la operación (UP-09). Ver [ADR 0010](adr/0010-customer-membership-created-on-first-use.md).
 
