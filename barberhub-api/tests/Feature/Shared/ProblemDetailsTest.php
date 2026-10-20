@@ -11,6 +11,7 @@ use RuntimeException;
 use Src\Shared\Domain\Exceptions\AuthenticationFailedException;
 use Src\Shared\Domain\Exceptions\BusinessRuleException;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
+use Src\Shared\Domain\Exceptions\TooManyRequestsException;
 use Tests\TestCase;
 
 final class ProblemDetailsTest extends TestCase
@@ -44,6 +45,8 @@ final class ProblemDetailsTest extends TestCase
                 'credenciales',
                 fn () => throw new class('problems.credenciales-invalidas.detail') extends AuthenticationFailedException {},
             );
+
+            Route::get('espera/{seconds}', fn (int $seconds) => throw new WaitViolation('pruebas.espera', ['seconds' => $seconds, 'minutes' => (int) ceil($seconds / 60)]));
 
             Route::get('regla/{rule}', fn (string $rule) => throw new RuleViolation('problems.conflicto.detail', ['rule' => $rule]));
         });
@@ -153,6 +156,35 @@ final class ProblemDetailsTest extends TestCase
             ->assertJsonPath('type', self::BASE.'conflicto');
     }
 
+    /** A rule that asks to wait sends Retry-After in seconds and a message with the minutes, singular or plural. */
+    #[DataProvider('waits')]
+    public function test_retryable_rule_sends_retry_after_and_pluralises_the_minutes(int $seconds, string $detail): void
+    {
+        app('translator')->addLines(['pruebas.espera' => 'Espere :minutes minuto.|Espere :minutes minutos.'], 'es');
+
+        $this->getJson("/api/v1/pruebas/espera/{$seconds}")
+            ->assertStatus(429)
+            ->assertHeader('Retry-After', (string) $seconds)
+            ->assertHeader('Content-Type', self::CONTENT_TYPE)
+            ->assertJsonPath('type', self::BASE.'demasiadas-solicitudes')
+            ->assertJsonPath('detail', $detail);
+    }
+
+    /**
+     * Seconds to wait and the message each one produces.
+     *
+     * @return array<string, array{int, string}>
+     */
+    public static function waits(): array
+    {
+        return [
+            'less than a minute' => [20, 'Espere 1 minuto.'],
+            'exactly one minute' => [60, 'Espere 1 minuto.'],
+            'a few seconds over one minute' => [61, 'Espere 2 minutos.'],
+            'fourteen minutes' => [840, 'Espere 14 minutos.'],
+        ];
+    }
+
     /** An unexpected failure never leaks technical details, not even in debug mode (SE-03). */
     public function test_unexpected_failure_hides_technical_details(): void
     {
@@ -173,6 +205,15 @@ final class ProblemDetailsTest extends TestCase
         foreach (['SQLSTATE', 'db.internal.example', 'password', 'hunter2', 'secret.php', 'RuntimeException', 'trace'] as $leak) {
             $this->assertStringNotContainsStringIgnoringCase($leak, $exposed);
         }
+    }
+}
+
+/** Rate limit whose wait comes from the request, to exercise Retry-After and the plural message. */
+final class WaitViolation extends TooManyRequestsException
+{
+    public function retryAfterSeconds(): int
+    {
+        return (int) $this->parameters()['seconds'];
     }
 }
 
