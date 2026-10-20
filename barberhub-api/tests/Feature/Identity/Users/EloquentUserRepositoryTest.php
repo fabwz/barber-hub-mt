@@ -91,6 +91,29 @@ final class EloquentUserRepositoryTest extends TestCase
         }
     }
 
+    /** The flag of the temporary password survives the round trip, and the staff account has no phone nor acceptances. */
+    public function test_staff_account_is_read_back_with_its_password_flag(): void
+    {
+        $user = User::createStaff($this->repository->nextId(), new UserName('Kevin Solano'), new Email('kevin@barberhub.test'), 'hash');
+
+        $this->repository->save($user);
+
+        $this->assertEquals($user, $this->repository->findByEmail(new Email('kevin@barberhub.test')));
+        $this->assertDatabaseHas('users', ['email' => 'kevin@barberhub.test', 'must_change_password' => true]);
+    }
+
+    /** Finding many accounts returns the known ones and skips the rest. */
+    public function test_many_accounts_are_found_by_identifier(): void
+    {
+        $ana = $this->account('ana@barberhub.test');
+        $this->repository->save($ana);
+        $this->repository->save($this->account('luis@barberhub.test'));
+
+        $found = $this->repository->findMany([$ana->id, $this->repository->nextId()]);
+
+        $this->assertEquals([$ana], $found);
+    }
+
     /** Build an account with a fresh identity. */
     private function account(string $email): User
     {

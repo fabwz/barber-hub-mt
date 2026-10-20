@@ -38,6 +38,26 @@ final class UserTest extends TestCase
         $this->assertSame('hash', $user->passwordHash);
     }
 
+    /** An account created by the owner has no phone nor acceptances and must change its temporary password (UP-04). */
+    public function test_staff_account_must_change_its_password(): void
+    {
+        $user = User::createStaff(new UserId(self::USER_ID), new UserName('Kevin Solano'), new Email('kevin@barberhub.test'), 'hash');
+
+        $this->assertTrue($user->active);
+        $this->assertTrue($user->mustChangePassword);
+        $this->assertNull($user->phone);
+        $this->assertNull($user->termsAcceptedAt);
+    }
+
+    /** A customer registration does not ask for a password change. */
+    public function test_customer_account_does_not_have_to_change_its_password(): void
+    {
+        $now = new DateTimeImmutable('2026-10-19 10:00:00');
+        $user = User::create(new UserId(self::USER_ID), new UserName('Ana Mora'), new Email('ana@barberhub.test'), new Phone('8888-0000'), 'hash', $now, $now);
+
+        $this->assertFalse($user->mustChangePassword);
+    }
+
     /** A stored account keeps its state, even when it was deactivated or has no acceptances. */
     public function test_reconstitute_keeps_the_stored_state(): void
     {
@@ -50,6 +70,7 @@ final class UserTest extends TestCase
             false,
             null,
             null,
+            false,
         );
 
         $this->assertSame('stored-hash', $user->passwordHash);

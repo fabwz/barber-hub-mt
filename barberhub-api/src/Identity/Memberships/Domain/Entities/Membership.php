@@ -36,4 +36,16 @@ final readonly class Membership
     ): self {
         return new self($id, $userId, $barbershopId, $role, $active);
     }
+
+    /** The same role, active again. */
+    public function activate(): self
+    {
+        return new self($this->id, $this->userId, $this->barbershopId, $this->role, true);
+    }
+
+    /** The same role, switched off: the person no longer enters the barbershop with it. */
+    public function deactivate(): self
+    {
+        return new self($this->id, $this->userId, $this->barbershopId, $this->role, false);
+    }
 }

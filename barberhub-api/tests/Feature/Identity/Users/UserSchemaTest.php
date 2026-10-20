@@ -22,7 +22,7 @@ final class UserSchemaTest extends TestCase
         $columns = Schema::connection('pgsql_admin')->getColumnListing('users');
 
         $this->assertEqualsCanonicalizing([
-            'id', 'name', 'email', 'password', 'phone', 'is_active',
+            'id', 'name', 'email', 'password', 'phone', 'is_active', 'must_change_password',
             'terms_accepted_at', 'privacy_accepted_at', 'created_at', 'updated_at',
         ], $columns);
     }
@@ -50,6 +50,14 @@ final class UserSchemaTest extends TestCase
         $this->assertNull($user->phone);
         $this->assertNull($user->terms_accepted_at);
         $this->assertNull($user->privacy_accepted_at);
+    }
+
+    /** A new account does not have to change its password unless it is created with a temporary one. */
+    public function test_password_change_is_not_required_by_default(): void
+    {
+        $this->insertUser();
+
+        $this->assertFalse(DB::table('users')->sole()->must_change_password);
     }
 
     /** Two accounts cannot share an email address. */

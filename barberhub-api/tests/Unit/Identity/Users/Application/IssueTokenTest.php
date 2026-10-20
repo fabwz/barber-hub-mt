@@ -135,6 +135,7 @@ final class IssueTokenTest extends TestCase
             $active,
             null,
             null,
+            false,
         );
         $this->users->save($user);
 

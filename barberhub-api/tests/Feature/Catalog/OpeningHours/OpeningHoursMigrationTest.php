@@ -19,6 +19,9 @@ final class OpeningHoursMigrationTest extends TestCase
 
     private const string CLOSURES = '2026_10_20_120000_create_closures_table';
 
+    // The shifts and breaks of the collaborators use the range type, so they go first when rolling back.
+    private const string COLLABORATORS = '2026_10_20_140000_create_collaborators_tables';
+
     /** Rolling back drops both tables, the range type and the extension; applying again brings them back. */
     public function test_migrations_roll_back_and_apply_again_without_leftovers(): void
     {
@@ -26,6 +29,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         $this->asOwner(function (): void {
+            $this->apply(self::COLLABORATORS, 'down');
             $this->apply(self::CLOSURES, 'down');
             $this->apply(self::OPENING_HOURS, 'down');
         });
@@ -38,6 +42,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $this->asOwner(function (): void {
             $this->apply(self::OPENING_HOURS, 'up');
             $this->apply(self::CLOSURES, 'up');
+            $this->apply(self::COLLABORATORS, 'up');
         });
 
         $this->assertTrue($schema->hasTable('opening_hours'));
@@ -52,12 +57,14 @@ final class OpeningHoursMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
 
         $this->asOwner(function () use ($admin): void {
+            $this->apply(self::COLLABORATORS, 'down');
             $this->apply(self::CLOSURES, 'down');
             $this->apply(self::OPENING_HOURS, 'down');
             $admin->statement('CREATE TYPE timerange AS RANGE (subtype = time)');
 
             $this->apply(self::OPENING_HOURS, 'up');
             $this->apply(self::CLOSURES, 'up');
+            $this->apply(self::COLLABORATORS, 'up');
         });
 
         $this->assertSame(1, $admin->table('pg_type')->where('typname', 'timerange')->count());

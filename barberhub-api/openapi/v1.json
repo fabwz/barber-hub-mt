@@ -45,6 +45,10 @@
         {
             "name": "Cierres de la barber\u00eda",
             "description": "Fechas en las que la barber\u00eda no atiende aunque su horario semanal diga lo contrario (feriados y cierres especiales)."
+        },
+        {
+            "name": "Colaboradores",
+            "description": "Personal con agenda propia: sus servicios, su horario semanal y sus pausas. Solo el due\u00f1o de la barber\u00eda los administra."
         }
     ],
     "security": [
@@ -241,6 +245,422 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/colaboradores": {
+            "get": {
+                "operationId": "catalog.collaborators.index",
+                "description": "Trae a todos los colaboradores, activos o no, del m\u00e1s antiguo al m\u00e1s nuevo, con su nombre y correo. Solo el due\u00f1o: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Listar los colaboradores",
+                "tags": [
+                    "Colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `Colaborador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Colaborador"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "catalog.collaborators.store",
+                "description": "Crea en una sola operaci\u00f3n la cuenta (nombre, correo y contrase\u00f1a temporal), el rol de colaborador en la barber\u00eda y el perfil, activo y sin servicios ni horario. La contrase\u00f1a temporal debe tener al menos 8 caracteres con may\u00fascula, min\u00fascula, n\u00famero y signo especial, y nunca aparece en una respuesta. Un correo que ya tiene cuenta responde 422 `datos-invalidos` (el error de correo repetido de siempre); vincular una cuenta existente es la invitaci\u00f3n (RF-06). Solo el due\u00f1o.",
+                "summary": "Crear un colaborador con su cuenta",
+                "tags": [
+                    "Colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CrearColaborador"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Colaborador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Colaborador"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/colaboradores/mi-perfil": {
+            "post": {
+                "operationId": "catalog.collaborators.store-own",
+                "description": "Crea el perfil de colaborador de la persona autenticada, que debe ser due\u00f1a de la barber\u00eda, sin cuenta nueva: conserva el rol de due\u00f1o y no recibe otra membres\u00eda. Responde 409 `conflicto` si ya tiene perfil. Un colaborador recibe 403 `prohibido`.",
+                "summary": "Crear mi propio perfil de colaborador",
+                "tags": [
+                    "Colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "`Colaborador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Colaborador"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/colaboradores/{colaborador}": {
+            "get": {
+                "operationId": "catalog.collaborators.show",
+                "description": "Trae el perfil con sus servicios, turnos y pausas. Responde 404 `no-encontrado` si el colaborador no existe en la barber\u00eda. Solo el due\u00f1o.",
+                "summary": "Consultar un colaborador",
+                "tags": [
+                    "Colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "colaborador",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`Colaborador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Colaborador"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "catalog.collaborators.update",
+                "description": "Un colaborador inactivo no recibe reservas y, si es colaborador com\u00fan, su cuenta deja de entrar a la barber\u00eda; el due\u00f1o con perfil de colaborador conserva siempre su rol. A\u00fan no se comprueban las reservas futuras confirmadas (CO-03), que llegan con las reservas. Solo el due\u00f1o.",
+                "summary": "Activar o desactivar un colaborador",
+                "tags": [
+                    "Colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "colaborador",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CambiarEstadoDeColaborador"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Colaborador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Colaborador"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/colaboradores/{colaborador}/servicios": {
+            "put": {
+                "operationId": "catalog.collaborators.update-services",
+                "description": "Reemplaza la lista completa. Un colaborador solo se reserva para los servicios que tiene habilitados (CO-01). Un servicio que no existe en la barber\u00eda responde 422 `datos-invalidos` con `errores` en `servicios.N`. Solo el due\u00f1o.",
+                "summary": "Cambiar los servicios que ofrece un colaborador",
+                "tags": [
+                    "Colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "colaborador",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CambiarServiciosDeColaborador"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Colaborador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Colaborador"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/colaboradores/{colaborador}/horario": {
+            "put": {
+                "operationId": "catalog.collaborators.update-schedule",
+                "description": "Reemplaza los turnos y las pausas completos. Cada turno debe caer dentro de las franjas del horario de la barber\u00eda de ese d\u00eda (se unen las franjas contiguas), cada pausa dentro de un turno del mismo d\u00eda, y ni los turnos ni las pausas del mismo d\u00eda se traslapan (HO-02). Lo que no cumple responde 422 `datos-invalidos` con `errores` en `turnos.N` o `pausas.N`, la posici\u00f3n del elemento rechazado. Solo el due\u00f1o.",
+                "summary": "Definir el horario semanal de un colaborador",
+                "tags": [
+                    "Colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "colaborador",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CambiarHorarioDeColaborador"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Colaborador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Colaborador"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
@@ -913,6 +1333,102 @@
                 ],
                 "title": "BarberiaPublica"
             },
+            "CambiarEstadoDeColaborador": {
+                "type": "object",
+                "properties": {
+                    "activo": {
+                        "type": "boolean",
+                        "description": "`true` para que reciba reservas; `false` para dejar de asignarle."
+                    }
+                },
+                "required": [
+                    "activo"
+                ],
+                "title": "CambiarEstadoDeColaborador"
+            },
+            "CambiarHorarioDeColaborador": {
+                "type": "object",
+                "properties": {
+                    "turnos": {
+                        "type": "array",
+                        "description": "Turnos de trabajo por d\u00eda; una lista vac\u00eda deja al colaborador sin horario. Cada turno cae dentro del horario de la barber\u00eda.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "dia": {
+                                    "type": "integer",
+                                    "description": "D\u00eda de la semana: 1 es lunes y 7 es domingo.",
+                                    "minimum": 1,
+                                    "maximum": 7
+                                },
+                                "inicia": {
+                                    "type": "string",
+                                    "description": "Hora de inicio, HH:MM en hora de Costa Rica; est\u00e1 incluida en el turno."
+                                },
+                                "termina": {
+                                    "type": "string",
+                                    "description": "Hora de fin, HH:MM; est\u00e1 excluida del turno y debe ser posterior a `inicia`."
+                                }
+                            },
+                            "required": [
+                                "dia",
+                                "inicia",
+                                "termina"
+                            ]
+                        }
+                    },
+                    "pausas": {
+                        "type": "array",
+                        "description": "Pausas por d\u00eda; cada una cae dentro de un turno del mismo d\u00eda.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "dia": {
+                                    "type": "integer",
+                                    "description": "D\u00eda de la semana: 1 es lunes y 7 es domingo.",
+                                    "minimum": 1,
+                                    "maximum": 7
+                                },
+                                "inicia": {
+                                    "type": "string",
+                                    "description": "Hora de inicio de la pausa, HH:MM."
+                                },
+                                "termina": {
+                                    "type": "string",
+                                    "description": "Hora de fin de la pausa, HH:MM; debe ser posterior a `inicia`."
+                                }
+                            },
+                            "required": [
+                                "dia",
+                                "inicia",
+                                "termina"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "turnos",
+                    "pausas"
+                ],
+                "title": "CambiarHorarioDeColaborador"
+            },
+            "CambiarServiciosDeColaborador": {
+                "type": "object",
+                "properties": {
+                    "servicios": {
+                        "type": "array",
+                        "description": "Identificadores de los servicios de la barber\u00eda que ofrece; una lista vac\u00eda le quita todos.",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "servicios"
+                ],
+                "title": "CambiarServiciosDeColaborador"
+            },
             "Cierre": {
                 "type": "object",
                 "properties": {
@@ -936,6 +1452,71 @@
                     "motivo"
                 ],
                 "title": "Cierre"
+            },
+            "Colaborador": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "correo": {
+                        "type": "string"
+                    },
+                    "activo": {
+                        "type": "boolean"
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "turnos": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "pausas": {
+                        "type": "array",
+                        "items": {}
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "correo",
+                    "activo",
+                    "servicios",
+                    "turnos",
+                    "pausas"
+                ],
+                "title": "Colaborador"
+            },
+            "CrearColaborador": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "description": "Nombre de la persona.",
+                        "maxLength": 120
+                    },
+                    "correo": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Correo de la cuenta; no puede tener ya una cuenta.",
+                        "maxLength": 255
+                    },
+                    "contrasena_temporal": {
+                        "type": "string",
+                        "description": "Contrase\u00f1a temporal: al menos 8 caracteres, con may\u00fascula, min\u00fascula, n\u00famero y signo especial. Nunca se devuelve."
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "correo",
+                    "contrasena_temporal"
+                ],
+                "title": "CrearColaborador"
             },
             "CrearFranja": {
                 "type": "object",

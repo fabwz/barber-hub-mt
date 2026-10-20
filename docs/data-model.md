@@ -15,7 +15,8 @@ erDiagram
     barbershops ||--o{ services : "ofrece"
     barbershops ||--o{ opening_hours : "abre en"
     barbershops ||--o{ closures : "cierra en"
-    memberships |o--o| collaborators : "atiende como"
+    users ||--o{ collaborators : "atiende como"
+    barbershops ||--o{ collaborators : "emplea"
     collaborators ||--o{ collaborator_services : "ofrece"
     services ||--o{ collaborator_services : "es ofrecido"
     collaborators ||--o{ collaborator_shifts : "trabaja en"
@@ -80,7 +81,7 @@ El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` y `a
 
 ### users
 
-Cada fila es una cuenta global: una persona puede tener un rol distinto en cada barbería. La tabla existe desde el issue #40 con las columnas marcadas como creadas; las demás son previstas y las agrega el issue que se indica, con una migración posterior.
+Cada fila es una cuenta global: una persona puede tener un rol distinto en cada barbería. La tabla existe desde el issue #40 con las columnas marcadas como creadas; las demás son previstas y las agrega el issue que se indica, con una migración posterior (`must_change_password` llegó con el #48).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -91,9 +92,9 @@ Cada fila es una cuenta global: una persona puede tener un rol distinto en cada 
 | `phone` | `varchar(30)` | Admite nulos en la base; el registro la exige (RF-38) |
 | `locale` | `varchar(5)` | Prevista, #47. `CHECK` entre `es` y `en`, por defecto `es` (AC-08) |
 | `reminders_enabled` | `boolean` | Prevista, #47. Por defecto `true`; solo tiene efecto para el cliente (NO-10) |
-| `must_change_password` | `boolean` | Prevista, #48. Por defecto `false`; `true` con una contraseña temporal (UP-04, RF-40) |
+| `must_change_password` | `boolean` | Creada en el #48. Por defecto `false`; `true` en la cuenta que el dueño crea a un colaborador con una contraseña temporal (UP-04, RF-40). Obligar el cambio en el primer ingreso es del #42 |
 | `is_active` | `boolean` | Por defecto `true`; una cuenta inactiva no puede ingresar |
-| `terms_accepted_at`, `privacy_accepted_at` | `timestamptz` | Fecha de cada aceptación, separadas (CL-02). Admiten nulos en la base: la cuenta de un colaborador la crea el dueño y su caso se decide en el #48; el registro de clientes las exige y las guarda |
+| `terms_accepted_at`, `privacy_accepted_at` | `timestamptz` | Fecha de cada aceptación, separadas (CL-02). Admiten nulos en la base: la cuenta de un colaborador la crea el dueño sin ellas (#48) y el registro de clientes las exige y las guarda |
 | `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
 El correo es único en todo el sistema y no dentro de cada barbería: la persona ingresa con su correo antes de saber a qué barbería va. Por eso `users` no tiene política de fila. Los intentos fallidos de ingreso (SE-05) se limitan con el limitador de Laravel, no con columnas.
@@ -189,24 +190,37 @@ Lo que todavía no existe: HO-04 (mostrar al dueño las reservas confirmadas que
 
 ### collaborators
 
-El perfil con agenda: la persona que atiende. Un dueño que corta (CO-02) tiene su membresía de `owner` y además un perfil aquí.
+El perfil con agenda: la persona que atiende. Existe desde el issue #48. Un dueño que corta (CO-02) conserva su membresía `owner` y además tiene un perfil aquí. Tiene la política de fila `collaborators_barbershop_isolation` (ver [database.md](database.md)).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id` | `uuid` | Llave primaria |
-| `barbershop_id` | `uuid` | Llave foránea a `barbershops` |
-| `membership_id` | `uuid` | Llave foránea compuesta `(membership_id, barbershop_id)` a `memberships`; única |
-| `is_active` | `boolean` | Por defecto `true`; no se desactiva con reservas futuras confirmadas (CO-03) |
+| `id` | `uuid` | Llave primaria, `DEFAULT uuidv7()` |
+| `barbershop_id` | `uuid` | Llave foránea a `barbershops`, borrado en cascada |
+| `user_id` | `uuid` | Llave foránea a `users`, borrado en cascada |
+| `is_active` | `boolean` | Por defecto `true`; no se desactiva con reservas futuras confirmadas (CO-03), comprobación que llega con las reservas (#126 y #56) |
 | `created_at`, `updated_at` | `timestamptz` | `created_at` es la antigüedad de alta que desempata «cualquiera disponible» (DI-04) |
 
-### collaborator_services, collaborator_shifts, collaborator_breaks y collaborator_absences
+Llaves candidatas: `id`, `(barbershop_id, user_id)` (un perfil por persona y barbería, CO-01) y `(id, barbershop_id)`, para que otras tablas referencien el perfil junto con su barbería.
+
+**Corrección de un borrador.** El borrador de este documento ligaba el perfil a la membresía con `membership_id`. Se corrigió a `user_id` en el #48: el rol vive en `memberships` (UP-07, un único rol por persona y barbería) y el perfil es lo que tiene agenda, servicios, horario y pausas, así que el perfil del dueño no depende de su membresía ni crea otra. Crear un colaborador común crea tres cosas en una sola transacción: la cuenta (con `must_change_password`), la membresía `collaborator` y el perfil. Desactivar a un colaborador común desactiva también su membresía; la del dueño con perfil no se toca nunca (UP-05).
+
+### collaborator_services, collaborator_shifts y collaborator_breaks
+
+Existen desde el issue #48 y cada una tiene su política de fila `<tabla>_barbershop_isolation`. Todas las llaves foráneas incluyen `barbershop_id`: un servicio y un colaborador de barberías distintas no se pueden relacionar. Se reemplazan completas cada vez que el dueño cambia los servicios o el horario.
 
 | Tabla | Columnas | Regla |
 | --- | --- | --- |
-| `collaborator_services` | `barbershop_id`, `collaborator_id`, `service_id` | Llave primaria `(collaborator_id, service_id)`; llaves foráneas compuestas con `barbershop_id`; define los servicios habilitados (CO-01) |
-| `collaborator_shifts` | `id`, `barbershop_id`, `collaborator_id`, `day_of_week`, `starts_at`, `ends_at` | Franjas de trabajo por día; sin traslape (`EXCLUDE`); deben caer dentro del horario de la barbería (HO-02), lo que verifica el caso de uso |
-| `collaborator_breaks` | `id`, `barbershop_id`, `collaborator_id`, `day_of_week`, `starts_at`, `ends_at` | Pausas por día; sin traslape |
-| `collaborator_absences` | `id`, `barbershop_id`, `collaborator_id`, `starts_at`, `ends_at`, `reason` | Instantes con `timestamptz`; `CHECK (starts_at < ends_at)`; complementaria (RF-07, CO-06) |
+| `collaborator_services` | `id`, `barbershop_id`, `collaborator_id`, `service_id` | Única `(collaborator_id, service_id)`. Llaves foráneas compuestas `(collaborator_id, barbershop_id)` a `collaborators` (en cascada) y `(service_id, barbershop_id)` a `services` (sin cascada: un servicio nunca se borra, SV-04). Define los servicios habilitados (CO-01) |
+| `collaborator_shifts` | `id`, `barbershop_id`, `collaborator_id`, `day_of_week` (`smallint`), `starts_at` y `ends_at` (`time` sin zona), `created_at`, `updated_at` | `CHECK` de día entre 1 (lunes) y 7 (domingo) y de `starts_at < ends_at`. `EXCLUDE collaborator_shifts_no_overlap_excl` sobre `(barbershop_id, collaborator_id, day_of_week, timerange(starts_at, ends_at))`: los turnos de un colaborador no se traslapan, los contiguos sí se permiten. Llaves candidatas: `id` y `(id, barbershop_id)` |
+| `collaborator_breaks` | las mismas que los turnos | Los mismos `CHECK` y una `EXCLUDE collaborator_breaks_no_overlap_excl` equivalente: las pausas de un colaborador no se traslapan |
+
+**Correcciones de un borrador.** El borrador daba a `collaborator_services` la llave primaria `(collaborator_id, service_id)`. La convención del esquema (RD-06, verificada por `SchemaConventionsTest`) pide un `id` uuid en toda tabla, así que ese par es una llave única y no la primaria. La tabla sigue sin `created_at`, porque nadie lo lee.
+
+Lo que la base no puede verificar lo verifica el caso de uso `ReplaceSchedule` (HO-02): cada turno cae dentro de las franjas del horario de la barbería de ese día (se unen las franjas contiguas, así que un turno de 10:00 a 14:00 cabe en 09:00–12:00 más 12:00–15:00) y cada pausa cae dentro de un turno del mismo día. El solape lo rechaza primero el dominio (`WorkSchedule`) y la restricción es la segunda barrera: el repositorio traduce el SQLSTATE `23P01` a `ShiftsOverlapException` o `BreaksOverlapException`.
+
+### collaborator_absences
+
+Complementaria (RF-07, CO-06) y todavía sin crear. Prevista con las columnas `id`, `barbershop_id`, `collaborator_id`, `starts_at`, `ends_at` y `reason`; los instantes llevan `timestamptz` y `CHECK (starts_at < ends_at)`.
 
 ## Reservas
 
@@ -441,7 +455,7 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 
 ## Por confirmar
 
-1. **Aceptaciones de los colaboradores.** CL-02 exige las dos aceptaciones para crear una cuenta. Una cuenta de colaborador que crea el dueño (UP-04) todavía no las tiene: ¿se piden en su primer ingreso?
+1. **Aceptaciones de los colaboradores.** CL-02 exige las dos aceptaciones para crear una cuenta. La cuenta de colaborador que crea el dueño (UP-04) se crea sin ellas (#48): ¿se piden en su primer ingreso, junto con el cambio de contraseña del #42?
 2. **Servicios cubiertos por un bono adquirido.** Se leen de la definición viva. Si el dueño edita los servicios de un bono ya vendido, cambia lo que cubre el que ya compraron los clientes. ¿Se congelan al comprar?
 3. **Nombre de servicio único por barbería.** Los requisitos no lo exigen, así que no hay restricción.
 4. **Búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
