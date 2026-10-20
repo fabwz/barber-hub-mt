@@ -112,7 +112,7 @@ El dominio nunca pregunta la hora. El momento actual se obtiene en el borde (HTT
 
 ### Cuentas y autenticación
 
-El contexto `Identity` guarda las cuentas en `Identity/Users` y los roles en `Identity/Memberships` (previsto, #36). Una cuenta es global: un correo, una contraseña, y puede tener un rol distinto en cada barbería (UP-07). La membresía une a la persona con una barbería y su rol: `owner`, `collaborator` o `customer`.
+El contexto `Identity` guarda las cuentas en `Identity/Users` y los roles en `Identity/Memberships`. Una cuenta es global: un correo, una contraseña, y puede tener un rol distinto en cada barbería (UP-07). La membresía une a la persona con una barbería y su rol: `owner`, `collaborator` o `customer`.
 
 El agregado de la cuenta es PHP puro. Puertos lo separan del framework: `UserRepository`, con su adaptador Eloquent; `PasswordHasher`, cuyo adaptador usa la fachada `Hash` de Laravel; `TokenIssuer` y `TokenRevoker`, con adaptadores sobre los tokens personales de Sanctum; y `LoginAttempts`, con un adaptador sobre el limitador de Laravel. `UserModel` vive en la infraestructura, extiende el usuario autenticable de Laravel y usa `HasApiTokens` de Sanctum; `config/auth.php` lo declara como proveedor del guard `sanctum`.
 
