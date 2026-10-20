@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Providers\AppServiceProvider;
 use Src\Availability\Slots\Infrastructure\SlotsServiceProvider;
 use Src\Catalog\Barbershops\Infrastructure\BarbershopsServiceProvider;
+use Src\Catalog\Closures\Infrastructure\ClosuresServiceProvider;
 use Src\Catalog\Collaborators\Infrastructure\CollaboratorsServiceProvider;
 use Src\Catalog\OpeningHours\Infrastructure\OpeningHoursServiceProvider;
 use Src\Catalog\Services\Infrastructure\ServicesServiceProvider;
@@ -21,6 +22,7 @@ return [
     BarbershopsServiceProvider::class,
     ServicesServiceProvider::class,
     OpeningHoursServiceProvider::class,
+    ClosuresServiceProvider::class,
     CollaboratorsServiceProvider::class,
     SlotsServiceProvider::class,
     ReservationsServiceProvider::class,

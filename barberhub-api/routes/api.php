@@ -6,3 +6,5 @@ require base_path('src/Shared/Infrastructure/Http/routes.php');
 require base_path('src/Identity/Users/Infrastructure/Http/routes.php');
 require base_path('src/Catalog/Barbershops/Infrastructure/Http/routes.php');
 require base_path('src/Catalog/Services/Infrastructure/Http/routes.php');
+require base_path('src/Catalog/OpeningHours/Infrastructure/Http/routes.php');
+require base_path('src/Catalog/Closures/Infrastructure/Http/routes.php');

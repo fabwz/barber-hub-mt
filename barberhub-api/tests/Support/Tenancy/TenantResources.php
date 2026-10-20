@@ -51,6 +51,43 @@ final class TenantResources
                 [TenantResource::LIST, TenantResource::UPDATE],
                 ['nombre' => 'Corte moderno'],
             ),
+            // The weekly schedule the owner administers (#47). Each row takes the next half hour of Monday, because two slots of a barbershop never overlap.
+            new TenantResource(
+                'opening_hours',
+                function (string $barbershopId): string {
+                    static $hour = 6;
+                    $id = (string) Str::uuid7();
+                    DB::table('opening_hours')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'day_of_week' => 1,
+                        'opens_at' => sprintf('%02d:00', $hour),
+                        'closes_at' => sprintf('%02d:30', $hour++),
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/administracion/horario',
+                [TenantResource::LIST, TenantResource::DELETE],
+            ),
+            // The closures the owner administers (#47). Each row takes the next day, because a barbershop closes a date once.
+            new TenantResource(
+                'closures',
+                function (string $barbershopId): string {
+                    static $day = 1;
+                    $id = (string) Str::uuid7();
+                    DB::table('closures')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'closed_on' => sprintf('2030-01-%02d', $day++),
+                        'reason' => 'Feriado',
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/administracion/cierres',
+                [TenantResource::LIST, TenantResource::DELETE],
+            ),
         ];
     }
 }

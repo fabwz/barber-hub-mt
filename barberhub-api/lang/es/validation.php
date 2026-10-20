@@ -168,9 +168,12 @@ return [
 
     // Each issue adds the accented attributes it introduces.
     'attributes' => [
+        'abre' => 'hora de apertura',
         'acepta_privacidad' => 'aceptación de la política de privacidad',
         'acepta_terminos' => 'aceptación de los términos y condiciones',
+        'cierra' => 'hora de cierre',
         'contrasena' => 'contraseña',
+        'dia' => 'día',
         'duracion_minutos' => 'duración en minutos',
         'telefono' => 'teléfono',
     ],
