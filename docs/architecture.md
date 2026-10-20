@@ -140,7 +140,7 @@ La regla tiene tres excepciones:
 
 Las rutas públicas son la resolución del enlace, la lista de servicios activos y la consulta de disponibilidad, y solo exponen datos públicos.
 
-La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada recurso, con el #123) lo comprueba con dos barberías. Un recurso nuevo agrega su caso a esa suite y a la matriz de permisos.
+La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada recurso, con el #123) lo comprueba con dos barberías. Un recurso nuevo se registra en `tests/Support/Tenancy/TenantResources.php`: la suite lo prueba contra una segunda barbería y falla si una tabla o una ruta de una barbería no figura allí. Además agrega su caso a la matriz de permisos.
 
 **Pendiente:** los webhooks, las tareas en cola y las tareas programadas no tienen persona autenticada. Cómo fijan la barbería, y si hace falta un tercer rol de base de datos de mantenimiento, se decide antes de M08. Ver "Pendientes" en [database.md](database.md).
 
