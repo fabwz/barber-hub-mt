@@ -106,7 +106,10 @@ final readonly class ProblemResponsesTransformer implements DocumentTransformer
         );
 
         foreach ($pathParameters as $parameter) {
-            $parameter->schema?->type->format('uuid');
+            // The public link is a readable slug, the only path identifier that is not a UUID.
+            if ($parameter->name !== 'enlace') {
+                $parameter->schema?->type->format('uuid');
+            }
         }
 
         return $pathParameters !== [];

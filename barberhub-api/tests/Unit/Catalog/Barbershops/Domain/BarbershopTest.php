@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Phone;
@@ -25,12 +26,14 @@ final class BarbershopTest extends TestCase
             new BarbershopName('Barbería Pura Navaja'),
             new City('San Carlos'),
             new Phone('2460-0000'),
+            new PublicLink('pura-navaja'),
         );
 
         $this->assertSame(self::BARBERSHOP_ID, $barbershop->id->value);
         $this->assertSame('Barbería Pura Navaja', $barbershop->name->value);
         $this->assertSame('San Carlos', $barbershop->city->value);
         $this->assertSame('2460-0000', $barbershop->phone->value);
+        $this->assertSame('pura-navaja', $barbershop->link->value);
     }
 
     /** A stored barbershop is rebuilt with the state it was saved with. */
@@ -41,9 +44,11 @@ final class BarbershopTest extends TestCase
             new BarbershopName('Barbería Pura Navaja'),
             new City('San Carlos'),
             new Phone('2460-0000'),
+            new PublicLink('pura-navaja'),
         );
 
         $this->assertSame('Barbería Pura Navaja', $barbershop->name->value);
+        $this->assertSame('pura-navaja', $barbershop->link->value);
     }
 
     /** The name and the city are trimmed and limited in length. */

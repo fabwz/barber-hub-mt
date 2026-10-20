@@ -25,6 +25,10 @@
         {
             "name": "Barber\u00edas",
             "description": "Alta de barber\u00edas y de su due\u00f1o."
+        },
+        {
+            "name": "Enlaces p\u00fablicos",
+            "description": "Consulta de una barber\u00eda por su enlace, sin iniciar sesi\u00f3n."
         }
     ],
     "security": [
@@ -36,7 +40,7 @@
         "/barberias": {
             "post": {
                 "operationId": "catalog.barbershops.store",
-                "description": "Crea una barber\u00eda con nombre, ciudad y tel\u00e9fono de contacto, sin servicios ni horario, y deja a la persona autenticada como su due\u00f1a activa (`rol: dueno`). Una persona puede registrar varias barber\u00edas. Responde 401 `no-autenticado` sin token y 422 `datos-invalidos` si falta un dato o supera su largo m\u00e1ximo (`errores` lista cada campo).",
+                "description": "Crea una barber\u00eda con nombre, ciudad y tel\u00e9fono de contacto, sin servicios ni horario, y deja a la persona autenticada como su due\u00f1a activa (`rol: dueno`). Una persona puede registrar varias barber\u00edas. La respuesta trae el `enlace` p\u00fablico, derivado del nombre (por ejemplo `pura-navaja`, o `pura-navaja-2` si ya existe), que se genera una sola vez y no cambia. Responde 401 `no-autenticado` sin token y 422 `datos-invalidos` si falta un dato o supera su largo m\u00e1ximo (`errores` lista cada campo).",
                 "summary": "Registrar una barber\u00eda",
                 "tags": [
                     "Barber\u00edas"
@@ -118,6 +122,50 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/InvalidData"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/enlaces/{enlace}": {
+            "get": {
+                "operationId": "catalog.barbershops.show-by-link",
+                "description": "Devuelve el `id` de la barber\u00eda, que es el que usan las dem\u00e1s rutas en `{barberia}`, y sus datos p\u00fablicos. El enlace son min\u00fasculas, d\u00edgitos y guiones. Responde 404 `no-encontrado` con el mensaje \"Esta barber\u00eda no existe\" si ninguna barber\u00eda tiene ese enlace o si el enlace no tiene ese formato.",
+                "summary": "Consultar una barber\u00eda por su enlace",
+                "tags": [
+                    "Enlaces p\u00fablicos"
+                ],
+                "parameters": [
+                    {
+                        "name": "enlace",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`BarberiaPublica`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/BarberiaPublica"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 },
                 "security": []
@@ -260,6 +308,9 @@
                     "telefono": {
                         "type": "string"
                     },
+                    "enlace": {
+                        "type": "string"
+                    },
                     "rol": {
                         "type": "string",
                         "const": "dueno"
@@ -270,9 +321,34 @@
                     "nombre",
                     "ciudad",
                     "telefono",
+                    "enlace",
                     "rol"
                 ],
                 "title": "Barberia"
+            },
+            "BarberiaPublica": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "ciudad": {
+                        "type": "string"
+                    },
+                    "telefono": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "ciudad",
+                    "telefono"
+                ],
+                "title": "BarberiaPublica"
             },
             "Credenciales": {
                 "type": "object",

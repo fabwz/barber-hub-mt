@@ -24,7 +24,7 @@ final class BarbershopResource extends JsonResource
     /**
      * Expose the barbershop and the role of the person who registered it, who is always its owner.
      *
-     * @return array{id: string, nombre: string, ciudad: string, telefono: string, rol: string}
+     * @return array{id: string, nombre: string, ciudad: string, telefono: string, enlace: string, rol: string}
      */
     public function toArray(Request $request): array
     {
@@ -33,6 +33,7 @@ final class BarbershopResource extends JsonResource
             'nombre' => $this->barbershop->name->value,
             'ciudad' => $this->barbershop->city->value,
             'telefono' => $this->barbershop->phone->value,
+            'enlace' => $this->barbershop->link->value,
             'rol' => 'dueno',
         ];
     }

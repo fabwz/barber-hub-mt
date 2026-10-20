@@ -14,9 +14,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property string $city
  * @property string $phone
+ * @property string $public_link
  */
 #[Table('barbershops')]
-#[Fillable(['id', 'name', 'city', 'phone'])]
+#[Fillable(['id', 'name', 'city', 'phone', 'public_link'])]
 final class BarbershopModel extends Model
 {
     use HasUuids;
