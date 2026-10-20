@@ -22,6 +22,20 @@ Plataforma web multi-inquilino de reservas y cobro para barberías. Proyecto int
 - **Pull requests:** uno por issue, con el título del issue y `Closes #n` en la descripción. Se integra con merge commit.
 - **`main`:** está protegida; no admite cambios directos y exige pull request.
 
+## Datos de demostración
+
+`php artisan db:seed` (en `barberhub-api`) carga tres barberías ficticias, cada una con su dueño (una cuenta y una membresía `owner` activa). Es idempotente: se puede ejecutar varias veces y actualiza las mismas filas sin duplicar nada. Todos los nombres, correos (dominio `.test`) y teléfonos son inventados (CL-08, RNF-23, RL-04).
+
+| Barbería | Enlace público | Pasarela | Dueño | Correo |
+| --- | --- | --- | --- | --- |
+| Barbería Pura Navaja | `pura-navaja` | ONVO Pay | Mauricio Solano | `mauricio@puranavaja.test` |
+| Fade Lab | `fade-lab` | PayPal | Sofía Araya | `sofia@fadelab.test` |
+| Barbería Don Chepe | `don-chepe` | Ninguna | José Alvarado | `chepe@donchepe.test` |
+
+Las tres cuentas usan la contraseña `Demo#Barber2026`, que cumple la política SE-07. Por ejemplo, `GET /api/v1/enlaces/pura-navaja` abre la primera barbería sin necesidad de ingresar.
+
+> **Advertencia:** los datos de demostración son solo para desarrollo local. El sembrador se niega a ejecutarse en producción, porque sus cuentas comparten una contraseña conocida. Nunca se siembra en producción.
+
 ## Estado
 
 En construcción. La instalación y la declaración de uso de IA se documentan a medida que avanza el proyecto.

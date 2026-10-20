@@ -16,12 +16,12 @@ final class BarbershopSchemaTest extends TestCase
 {
     use RefreshDatabaseAsOwner;
 
-    /** The table has the columns of the registration and the public link, and none that belong to later issues. */
+    /** The table has the columns of the registration, the public link and the gateway, and none that belong to later issues. */
     public function test_table_has_only_the_columns_of_this_issue(): void
     {
         $columns = Schema::connection('pgsql_admin')->getColumnListing('barbershops');
 
-        $this->assertEqualsCanonicalizing(['id', 'name', 'city', 'phone', 'public_link', 'created_at', 'updated_at'], $columns);
+        $this->assertEqualsCanonicalizing(['id', 'name', 'city', 'phone', 'public_link', 'payment_gateway', 'created_at', 'updated_at'], $columns);
     }
 
     /** The application role stores a barbershop with a version 7 identifier and timestamps. */

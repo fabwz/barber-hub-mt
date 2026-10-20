@@ -14,6 +14,8 @@ final class PublicLinkMigrationTest extends TestCase
 {
     use RefreshDatabaseAsOwner;
 
+    private const string MIGRATION = 'database/migrations/2026_10_19_140000_add_public_link_to_barbershops_table.php';
+
     /**
      * The barbershops that already exist when the migration runs get the link their name gives, the oldest first,
      * and the column ends up required and unique (RF-02, MT-07).
@@ -23,7 +25,7 @@ final class PublicLinkMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
         $schema = Schema::connection('pgsql_admin');
 
-        $this->assertSame(0, Artisan::call('migrate:rollback', ['--step' => 1, '--database' => 'pgsql_admin']));
+        $this->assertSame(0, Artisan::call('migrate:rollback', ['--path' => self::MIGRATION, '--database' => 'pgsql_admin']));
 
         try {
             $this->assertFalse($schema->hasColumn('barbershops', 'public_link'));
@@ -58,9 +60,9 @@ final class PublicLinkMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         try {
-            $this->assertSame(0, Artisan::call('migrate:rollback', ['--step' => 1, '--database' => 'pgsql_admin']));
+            $this->assertSame(0, Artisan::call('migrate:rollback', ['--path' => self::MIGRATION, '--database' => 'pgsql_admin']));
 
-            $this->assertSame(['id', 'name', 'city', 'phone', 'created_at', 'updated_at'], $schema->getColumnListing('barbershops'));
+            $this->assertSame(['id', 'name', 'city', 'phone', 'created_at', 'updated_at', 'payment_gateway'], $schema->getColumnListing('barbershops'));
         } finally {
             Artisan::call('migrate', ['--database' => 'pgsql_admin']);
         }
