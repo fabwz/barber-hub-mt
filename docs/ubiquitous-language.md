@@ -42,6 +42,8 @@ Las rutas y los atributos JSON son parte de lo que ve quien consume la API, por 
 | Cliente | `Role::Customer` | `customer` | `cliente` |
 | Membresía (rol de una persona en una barbería) | `Membership` | `memberships` | — |
 | Colaborador con agenda | `Collaborator` | `collaborators` | `colaboradores` |
+| Contraseña temporal (la fija el dueño y se cambia en el primer ingreso) | `RegisterStaffAccountCommand::$temporaryPassword` | `users.must_change_password` | `contrasena_temporal` |
+| Perfil propio del dueño | `CreateOwnCollaboratorProfile` | `collaborators` (sin membresía nueva) | `mi-perfil` |
 | Cliente asistido | `AssistedClient` | `assisted_clients` | `cliente_asistido` |
 | Invitación de colaborador | `Invitation` | `invitations` | `invitaciones` |
 | Aceptación de términos | `terms_accepted_at` | `terms_accepted_at` | `acepta_terminos` |
@@ -62,14 +64,15 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Base (precio sin IVA) | `base()` | — (se calcula) | `base` |
 | IVA (impuesto dentro del precio) | `tax()` | — (se calcula) | `iva` |
 | Servicio activo | `active` | `is_active` | `activo` |
-| Servicios que ofrece un colaborador | — | `collaborator_services` | `servicios` |
+| Servicios que ofrece un colaborador | `Collaborator::$services` (`OfferedServiceId`) | `collaborator_services` | `servicios` |
 | Horario de la barbería | `OpeningHours` (módulo) | `opening_hours` | `horario` |
 | Franja del horario (inicio incluido, fin excluido) | `TimeSlot` (entidad), `TimeRange` (rango de horas) | `opens_at`, `closes_at` | `franja`, `abre`, `cierra` |
 | Hora del día (`HH:MM`) | `TimeOfDay` | `time` sin zona | `HH:MM` |
 | Día de la semana (1 lunes a 7 domingo) | `DayOfWeek` | `day_of_week` | `dia` |
 | Cierre (fecha en que la barbería no atiende, por feriado o cierre especial) | `Closure`, `ClosureDate`, `ClosureReason` | `closures` (`closed_on`, `reason`) | `cierres`, `fecha`, `motivo` |
-| Turno de un colaborador | `Shift` | `collaborator_shifts` | `turnos` |
-| Pausa de un colaborador | `BreakPeriod` | `collaborator_breaks` | `pausas` |
+| Horario semanal de un colaborador | `WorkSchedule` | `collaborator_shifts` y `collaborator_breaks` | `horario` |
+| Turno de un colaborador | `Shift` | `collaborator_shifts` (`starts_at`, `ends_at`) | `turnos`, `inicia`, `termina` |
+| Pausa de un colaborador | `BreakPeriod` | `collaborator_breaks` (`starts_at`, `ends_at`) | `pausas`, `inicia`, `termina` |
 | Ausencia o bloqueo de agenda | `Absence` | `collaborator_absences` | `ausencias` |
 | Imagen y logo | `imagePath`, `logoPath` | `image_path`, `logo_path` | `imagen`, `logo` |
 

@@ -112,6 +112,23 @@ Los módulos de un mismo contexto tampoco se importan el dominio. `OpeningHours`
 
 Los objetos de valor `DayOfWeek`, `TimeOfDay` y `TimeRange` viven en `Src\Shared\Domain\ValueObjects` y no en `OpeningHours`, porque el horario de los colaboradores (#48) y la disponibilidad (#53) los usan y el dominio de un módulo no puede importar el de otro. Es una divergencia con la referencia (SodaYa), donde viven en su módulo de horario.
 
+### Colaboradores (#48)
+
+`Collaborators` es la composición más grande hasta ahora y habla con cuatro módulos por puertos de su `Application/Contracts`, cada uno con su adaptador en su infraestructura:
+
+| Puerto | Adaptador | Módulo que responde |
+| --- | --- | --- |
+| `StaffAccounts` | `IdentityStaffAccounts` | `Identity/Users`: `RegisterStaffAccount` crea la cuenta con una contraseña temporal que cumple SE-07 y `ListAccountSummaries` da el nombre y el correo para mostrar al colaborador |
+| `StaffMemberships` | `IdentityStaffMemberships` | `Identity/Memberships`: `GrantCollaboratorMembership`, `DeactivateCollaboratorMembership` y `ActivateCollaboratorMembership`; los dos últimos solo tocan membresías con rol `collaborator` |
+| `BarbershopSchedule` | `OpeningHoursBarbershopSchedule` | `OpeningHours`: `ListOpenRangesOnWeekday` devuelve las franjas abiertas de un día de la semana (HO-02) |
+| `BarbershopServices` | `ServicesBarbershopServices` | `Services`: `ListServices`, para comprobar que cada servicio habilitado existe en la barbería (CO-01) |
+
+El rol y el perfil son cosas distintas: el rol vive en `memberships` (UP-07) y el perfil `collaborators` es lo que tiene agenda. Crear un colaborador común (`CreateCollaboratorWithAccount`) crea la cuenta, la membresía `collaborator` y el perfil en una sola transacción, como `RegisterBarbershop`; si el perfil falla, no queda ni la cuenta ni el rol. Un correo que ya tiene cuenta se rechaza con el error de correo repetido de siempre, porque vincular una cuenta existente es el flujo de invitación (RF-06). El dueño que crea su propio perfil (`CreateOwnCollaboratorProfile`, CO-02) no recibe una membresía nueva y conserva la de `owner`; desactivar su perfil nunca desactiva su membresía (UP-05).
+
+El horario semanal se define completo (`ReplaceSchedule`): `WorkSchedule` es un objeto de valor que rechaza turnos solapados el mismo día, pausas solapadas y pausas fuera de un turno, y el caso de uso rechaza los turnos que no caen dentro de las franjas de la barbería de ese día (HO-02), uniendo las franjas contiguas. Cada rechazo lleva la lista y la posición del elemento (`ScheduleEntryException`), que el controlador traduce a `errores` en `turnos.N` o `pausas.N`. La consulta que leerá la disponibilidad (#53) es `ListCollaboratorsOfferingService`: los colaboradores activos que tienen habilitado un servicio, del más antiguo al más nuevo.
+
+Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas) porque las reservas no existen: queda anotada en `SetCollaboratorActive` y la cierran el #126 y el #56. Obligar el cambio de la contraseña temporal en el primer ingreso (`users.must_change_password`) es del #42.
+
 ### El tiempo es un parámetro
 
 El dominio nunca pregunta la hora. El momento actual se obtiene en el borde (HTTP o la tarea en cola) a través del contrato de reloj de `Src\Shared\Domain\Contracts`, en la zona horaria de la aplicación (`America/Costa_Rica`), y viaja como `DateTimeImmutable` hasta el caso de uso y el dominio. En las pruebas el reloj se sustituye por uno fijo. Así las reglas que dependen del reloj (plazo de cancelación, expiración de la reserva temporal, mínimo para ofrecer un espacio) se prueban con momentos fijos, sin arrancar el framework.

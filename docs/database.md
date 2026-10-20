@@ -71,18 +71,18 @@ El constructor de esquemas de Laravel no cubre funciones, procedimientos, trigge
 
 ## Extensiones y tipos (#47)
 
-Los crea la migración de `opening_hours` (#47); las reservas (#56) usan la misma extensión.
+Los crea la migración de `opening_hours` (#47); los turnos y las pausas de los colaboradores (#48) y las reservas (#56) usan la misma extensión y el mismo tipo.
 
 | Objeto | Para qué |
 | --- | --- |
 | Extensión `btree_gist` | Permite comparar con `=` columnas escalares (`uuid`, `smallint`) dentro de un índice GiST, necesario para las restricciones `EXCLUDE` |
 | Tipo `timerange` | Rango de `time` para los horarios semanales, creado con `CREATE TYPE timerange AS RANGE (subtype = time)`; PostgreSQL no lo trae incorporado |
 
-`btree_gist` es una extensión de confianza: el rol dueño de la base la instala sin ser superusuario. `php artisan migrate:fresh` borra las tablas pero no los tipos, por eso la migración elimina `timerange` antes de crearlo. Su `down()` elimina el tipo y la extensión, y una prueba (`OpeningHoursMigrationTest`) verifica que no quedan restos, también con un tipo huérfano.
+`btree_gist` es una extensión de confianza: el rol dueño de la base la instala sin ser superusuario. `php artisan migrate:fresh` borra las tablas pero no los tipos, por eso la migración elimina `timerange` antes de crearlo. Su `down()` elimina el tipo y la extensión, y una prueba (`OpeningHoursMigrationTest`) verifica que no quedan restos, también con un tipo huérfano. Como los turnos y las pausas dependen del tipo, esa prueba revierte primero la migración de los colaboradores.
 
 ## Restricciones de exclusión
 
-Una restricción `UNIQUE` solo compara por igualdad. Cuando la regla es «no se traslapan», se usa `EXCLUDE`, que acepta un operador por columna. Dos usos: el primero existe desde el #47 y el segundo está previsto (#56).
+Una restricción `UNIQUE` solo compara por igualdad. Cuando la regla es «no se traslapan», se usa `EXCLUDE`, que acepta un operador por columna. Tres usos: el primero existe desde el #47, el segundo desde el #48 (turnos y pausas, una restricción por tabla con la misma forma, más el colaborador) y el tercero está previsto (#56).
 
 ```sql
 -- Franjas del horario de una barbería (HO-01), creada en el #47: mismo día, sin minutos en común
