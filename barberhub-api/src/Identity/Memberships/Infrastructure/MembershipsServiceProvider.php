@@ -6,7 +6,9 @@ namespace Src\Identity\Memberships\Infrastructure;
 
 use Illuminate\Support\ServiceProvider;
 use Src\Identity\Memberships\Domain\Contracts\MembershipRepository;
+use Src\Identity\Memberships\Infrastructure\Persistence\Repositories\EloquentBarbershopRoles;
 use Src\Identity\Memberships\Infrastructure\Persistence\Repositories\EloquentMembershipRepository;
+use Src\Shared\Domain\Contracts\BarbershopRoles;
 
 final class MembershipsServiceProvider extends ServiceProvider
 {
@@ -17,5 +19,6 @@ final class MembershipsServiceProvider extends ServiceProvider
      */
     public array $bindings = [
         MembershipRepository::class => EloquentMembershipRepository::class,
+        BarbershopRoles::class => EloquentBarbershopRoles::class,
     ];
 }
