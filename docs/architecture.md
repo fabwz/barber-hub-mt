@@ -35,7 +35,7 @@ Hoy existen cuatro contextos, cada uno con sus módulos y las tres capas (las su
 | Contexto | Módulos |
 | --- | --- |
 | Identity | `Users`, `Memberships` |
-| Catalog | `Barbershops`, `Services`, `OpeningHours`, `Collaborators` |
+| Catalog | `Barbershops`, `Services`, `OpeningHours`, `Closures`, `Collaborators` |
 | Availability | `Slots` |
 | Reservations | `Reservations` |
 
@@ -105,6 +105,12 @@ Cuando un hecho debe provocar efectos en otros contextos, el emisor publica un e
 | `ReservationConfirmed`, `ReservationCancelled`, `ReservationRescheduled` | `Notifications` | Envía el correo y actualiza la agenda en vivo |
 | `SpaceReleased` | `Waitlist` | Ofrece el espacio a la primera persona compatible |
 | `OfferCreated` | `Notifications` | Envía el correo y el aviso emergente |
+
+### Colaboración entre módulos de un contexto
+
+Los módulos de un mismo contexto tampoco se importan el dominio. `OpeningHours` necesita saber si una fecha tiene un cierre, que es dato de `Closures` (#47): declara el puerto `ClosedDates` en su `Application/Contracts` y lo implementa `ClosuresClosedDates`, un adaptador de su infraestructura que invoca el caso de uso `IsClosedOn` de `Closures`. Con él, el caso de uso `ListOpenRangesOnDate` devuelve las franjas abiertas de una fecha (ninguna si hay un cierre); es lo que leerá la disponibilidad (#53).
+
+Los objetos de valor `DayOfWeek`, `TimeOfDay` y `TimeRange` viven en `Src\Shared\Domain\ValueObjects` y no en `OpeningHours`, porque el horario de los colaboradores (#48) y la disponibilidad (#53) los usan y el dominio de un módulo no puede importar el de otro. Es una divergencia con la referencia (SodaYa), donde viven en su módulo de horario.
 
 ### El tiempo es un parámetro
 

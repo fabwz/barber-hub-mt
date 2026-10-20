@@ -69,28 +69,30 @@ El constructor de esquemas de Laravel no cubre funciones, procedimientos, trigge
 | Vista materializada | `mv_` | Índice único para refrescar con `CONCURRENTLY`; se consulta a través de una vista |
 | Política | `<tabla>_barbershop_isolation` | Una por tabla de una barbería, con la misma expresión en `USING` y `WITH CHECK` |
 
-## Extensiones y tipos (previsto, #47 y #56)
+## Extensiones y tipos (#47)
+
+Los crea la migración de `opening_hours` (#47); las reservas (#56) usan la misma extensión.
 
 | Objeto | Para qué |
 | --- | --- |
 | Extensión `btree_gist` | Permite comparar con `=` columnas escalares (`uuid`, `smallint`) dentro de un índice GiST, necesario para las restricciones `EXCLUDE` |
 | Tipo `timerange` | Rango de `time` para los horarios semanales, creado con `CREATE TYPE timerange AS RANGE (subtype = time)`; PostgreSQL no lo trae incorporado |
 
-`btree_gist` es una extensión de confianza: el rol dueño de la base la instala sin ser superusuario. `php artisan migrate:fresh` borra las tablas pero no los tipos, por eso la migración elimina `timerange` antes de crearlo.
+`btree_gist` es una extensión de confianza: el rol dueño de la base la instala sin ser superusuario. `php artisan migrate:fresh` borra las tablas pero no los tipos, por eso la migración elimina `timerange` antes de crearlo. Su `down()` elimina el tipo y la extensión, y una prueba (`OpeningHoursMigrationTest`) verifica que no quedan restos, también con un tipo huérfano.
 
-## Restricciones de exclusión (previsto, #47 y #56)
+## Restricciones de exclusión
 
-Una restricción `UNIQUE` solo compara por igualdad. Cuando la regla es «no se traslapan», se usa `EXCLUDE`, que acepta un operador por columna. Dos usos previstos:
+Una restricción `UNIQUE` solo compara por igualdad. Cuando la regla es «no se traslapan», se usa `EXCLUDE`, que acepta un operador por columna. Dos usos: el primero existe desde el #47 y el segundo está previsto (#56).
 
 ```sql
--- Franjas del horario de una barbería (HO-01): mismo día, sin minutos en común
+-- Franjas del horario de una barbería (HO-01), creada en el #47: mismo día, sin minutos en común
 ALTER TABLE opening_hours ADD CONSTRAINT opening_hours_no_overlap_excl EXCLUDE USING gist (
     barbershop_id WITH =,
     day_of_week WITH =,
     timerange(opens_at, closes_at) WITH &&
 );
 
--- Reservas de un colaborador (RE-01): el intervalo incluye la limpieza de 5 minutos
+-- Previsto, #56. Reservas de un colaborador (RE-01): el intervalo incluye la limpieza de 5 minutos
 ALTER TABLE reservations ADD CONSTRAINT reservations_no_overlap_excl EXCLUDE USING gist (
     barbershop_id WITH =,
     collaborator_id WITH =,
@@ -98,7 +100,7 @@ ALTER TABLE reservations ADD CONSTRAINT reservations_no_overlap_excl EXCLUDE USI
 ) WHERE (status IN ('temporary', 'confirmed'));
 ```
 
-El rango se construye con los límites por defecto `[)`: el inicio está incluido y el fin excluido. La violación devuelve el SQLSTATE `23P01`, que el repositorio traduce a la excepción del dominio (`espacio-no-disponible` en el caso de las reservas).
+El rango se construye con los límites por defecto `[)`: el inicio está incluido y el fin excluido, así que 09:00–12:00 y 12:00–15:00 no se traslapan. La violación devuelve el SQLSTATE `23P01`, que el repositorio traduce a la excepción del dominio: `TimeSlotOverlapsException` (409 `conflicto`) en las franjas del horario y, previsto, `espacio-no-disponible` en las reservas. El caso de uso ya rechaza el solape antes de guardar; la restricción es la segunda barrera.
 
 La limpieza se guarda ya sumada en `blocked_until`, porque una expresión de índice debe ser inmutable y sumar un intervalo a un `timestamptz` no lo es. Ver la excepción deliberada en [data-model.md](data-model.md).
 

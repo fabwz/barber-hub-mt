@@ -12,5 +12,8 @@ return [
     'percentage_out_of_range' => 'El porcentaje debe estar entre 0 y 100.',
     'phone_invalid' => 'El teléfono es obligatorio y no puede superar los :max caracteres.',
     'interval_start_not_before_end' => 'El inicio del intervalo debe ser anterior a su fin.',
+    'day_of_week_out_of_range' => 'El día de la semana debe estar entre :min (lunes) y :max (domingo).',
+    'time_of_day_invalid' => 'La hora debe escribirse como HH:MM, de 00:00 a 23:59.',
+    'time_range_start_not_before_end' => 'La hora de apertura debe ser anterior a la de cierre.',
 
 ];

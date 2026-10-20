@@ -37,6 +37,14 @@
         {
             "name": "Servicios de la barber\u00eda",
             "description": "Administraci\u00f3n de los servicios por el due\u00f1o de la barber\u00eda."
+        },
+        {
+            "name": "Horario de la barber\u00eda",
+            "description": "Franjas de atenci\u00f3n por d\u00eda de la semana; el d\u00eda 1 es lunes y el 7 es domingo. Un d\u00eda sin franjas est\u00e1 cerrado."
+        },
+        {
+            "name": "Cierres de la barber\u00eda",
+            "description": "Fechas en las que la barber\u00eda no atiende aunque su horario semanal diga lo contrario (feriados y cierres especiales)."
         }
     ],
     "security": [
@@ -87,6 +95,155 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/cierres": {
+            "get": {
+                "operationId": "catalog.closures.index",
+                "description": "Trae los cierres con fecha de hoy en adelante (hora de Costa Rica), ordenados por fecha. Solo el due\u00f1o: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Listar los cierres desde hoy",
+                "tags": [
+                    "Cierres de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `Cierre`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Cierre"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "catalog.closures.store",
+                "description": "Cierra la barber\u00eda en la `fecha` (AAAA-MM-DD, hoy o posterior): ese d\u00eda no tiene espacios aunque el horario semanal los tenga. Una fecha pasada responde 422 `datos-invalidos` y una fecha que ya tiene cierre, 409 `conflicto`. Las reservas ya confirmadas ese d\u00eda no se modifican (HO-04); su lista para el due\u00f1o llega con las reservas. Solo el due\u00f1o.",
+                "summary": "Registrar un cierre por fecha",
+                "tags": [
+                    "Cierres de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistrarCierre"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Cierre`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Cierre"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/cierres/{cierre}": {
+            "delete": {
+                "operationId": "catalog.closures.destroy",
+                "description": "La fecha vuelve a regirse por el horario semanal. Responde 404 `no-encontrado` si el cierre no existe en la barber\u00eda. Solo el due\u00f1o.",
+                "summary": "Eliminar un cierre",
+                "tags": [
+                    "Cierres de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "cierre",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             }
@@ -212,6 +369,155 @@
                     }
                 },
                 "security": []
+            }
+        },
+        "/barberias/{barberia}/administracion/horario": {
+            "get": {
+                "operationId": "catalog.opening-hours.index",
+                "description": "Trae todas las franjas, ordenadas por d\u00eda y hora de apertura. Las horas son `HH:MM` en hora de Costa Rica. Solo el due\u00f1o: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Consultar el horario semanal",
+                "tags": [
+                    "Horario de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `Franja`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Franja"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "catalog.opening-hours.store",
+                "description": "La apertura est\u00e1 incluida en la franja y el cierre excluido, as\u00ed que 09:00\u201312:00 y 12:00\u201315:00 no se traslapan. Una franja que se traslapa con otra del mismo d\u00eda responde 409 `conflicto`; un cierre que no es posterior a la apertura, 422 `datos-invalidos`. Solo el due\u00f1o.",
+                "summary": "Agregar una franja al horario",
+                "tags": [
+                    "Horario de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CrearFranja"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Franja`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Franja"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/horario/{franja}": {
+            "delete": {
+                "operationId": "catalog.opening-hours.destroy",
+                "description": "Quitar todas las franjas de un d\u00eda lo deja cerrado. Responde 404 `no-encontrado` si la franja no existe en la barber\u00eda. Solo el due\u00f1o.",
+                "summary": "Eliminar una franja del horario",
+                "tags": [
+                    "Horario de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "franja",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
             }
         },
         "/barberias/{barberia}/administracion/servicios": {
@@ -607,6 +913,55 @@
                 ],
                 "title": "BarberiaPublica"
             },
+            "Cierre": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "fecha": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "motivo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "fecha",
+                    "motivo"
+                ],
+                "title": "Cierre"
+            },
+            "CrearFranja": {
+                "type": "object",
+                "properties": {
+                    "dia": {
+                        "type": "integer",
+                        "description": "D\u00eda de la semana: 1 es lunes y 7 es domingo.",
+                        "minimum": 1,
+                        "maximum": 7
+                    },
+                    "abre": {
+                        "type": "string",
+                        "description": "Hora de apertura, HH:MM en hora de Costa Rica; est\u00e1 incluida en la franja."
+                    },
+                    "cierra": {
+                        "type": "string",
+                        "description": "Hora de cierre, HH:MM; est\u00e1 excluida de la franja y debe ser posterior a `abre`."
+                    }
+                },
+                "required": [
+                    "dia",
+                    "abre",
+                    "cierra"
+                ],
+                "title": "CrearFranja"
+            },
             "CrearServicio": {
                 "type": "object",
                 "properties": {
@@ -696,6 +1051,51 @@
                     "acepta_privacidad"
                 ],
                 "title": "Cuenta"
+            },
+            "Franja": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "dia": {
+                        "type": "integer"
+                    },
+                    "abre": {
+                        "type": "string"
+                    },
+                    "cierra": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "dia",
+                    "abre",
+                    "cierra"
+                ],
+                "title": "Franja"
+            },
+            "RegistrarCierre": {
+                "type": "object",
+                "properties": {
+                    "fecha": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Fecha del cierre, AAAA-MM-DD; hoy o posterior, en hora de Costa Rica."
+                    },
+                    "motivo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 200
+                    }
+                },
+                "required": [
+                    "fecha"
+                ],
+                "title": "RegistrarCierre"
             },
             "RegistroDeBarberia": {
                 "type": "object",

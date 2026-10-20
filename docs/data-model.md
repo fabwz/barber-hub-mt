@@ -4,7 +4,7 @@ El esquema está en tercera forma normal. Este documento describe las entidades 
 
 Las convenciones de nombres, llaves, fechas y dinero están en [database.md](database.md). Toda tabla con `barbershop_id` tiene seguridad a nivel de fila forzada, con las excepciones que lista la sección de ese documento.
 
-> **Estado:** modelo inicial (issue #26), derivado de las reglas de negocio y de los requisitos. Las tablas `users` (#40), `barbershops` y `memberships` (#36) ya existen; las demás todavía no: cada una la crea el issue de su módulo (#45, #47, #48 y #56, entre otros) y en ese pull request se actualiza este archivo. Es una propuesta para revisar; las decisiones que no están en los requisitos están marcadas en "Por confirmar".
+> **Estado:** modelo inicial (issue #26), derivado de las reglas de negocio y de los requisitos. Las tablas `users` (#40), `barbershops` y `memberships` (#36), `services` (#45), `opening_hours` y `closures` (#47) ya existen; las demás todavía no: cada una la crea el issue de su módulo (#48 y #56, entre otros) y en ese pull request se actualiza este archivo. Es una propuesta para revisar; las decisiones que no están en los requisitos están marcadas en "Por confirmar".
 
 ## Diagrama
 
@@ -14,8 +14,7 @@ erDiagram
     barbershops ||--o{ memberships : "reúne"
     barbershops ||--o{ services : "ofrece"
     barbershops ||--o{ opening_hours : "abre en"
-    barbershops ||--o{ date_exceptions : "excepciona"
-    date_exceptions ||--o{ date_exception_slots : "abre en"
+    barbershops ||--o{ closures : "cierra en"
     memberships |o--o| collaborators : "atiende como"
     collaborators ||--o{ collaborator_services : "ofrece"
     services ||--o{ collaborator_services : "es ofrecido"
@@ -171,17 +170,22 @@ Llaves candidatas: `id` y `(id, barbershop_id)`.
 
 El impuesto de un precio es `precio × 13 / 113` redondeado al colón más cercano (la mitad hacia arriba), y la base es `precio − impuesto`; así `base + impuesto = precio`. Por ejemplo, ₡7.000 son ₡6.195 de base y ₡805 de IVA, y ₡7.500 son ₡6.637 y ₡863 (RL-02).
 
-### opening_hours, date_exceptions y date_exception_slots
+### opening_hours y closures
 
-El horario semanal de la barbería y sus excepciones por fecha (HO-01).
+El horario semanal de la barbería y sus cierres por fecha (HO-01). Las dos tablas existen desde el issue #47 y tienen su política de fila `<tabla>_barbershop_isolation` (ver [database.md](database.md)). No hay tabla de excepciones con horario especial: las excepciones por fecha son solo cierres (ver la decisión más abajo).
 
 | Tabla | Columnas | Regla |
 | --- | --- | --- |
-| `opening_hours` | `id`, `barbershop_id`, `day_of_week`, `opens_at`, `closes_at` | `day_of_week` entre 1 (lunes) y 7 (domingo); `CHECK (opens_at < closes_at)`; `opening_hours_no_overlap_excl` impide franjas traslapadas el mismo día |
-| `date_exceptions` | `id`, `barbershop_id`, `on_date`, `is_closed`, `reason` | Única `(barbershop_id, on_date)`; un día cerrado o un día con horario especial |
-| `date_exception_slots` | `id`, `barbershop_id`, `date_exception_id`, `opens_at`, `closes_at` | Solo para excepciones con `is_closed = false`; mismas reglas de traslape; llave foránea `(date_exception_id, barbershop_id)` |
+| `opening_hours` | `id`, `barbershop_id` (llave foránea en cascada), `day_of_week` (`smallint`), `opens_at` y `closes_at` (`time` sin zona), `created_at`, `updated_at` | `CHECK` `opening_hours_day_of_week_check`: `day_of_week` entre 1 (lunes) y 7 (domingo). `CHECK` `opening_hours_opens_at_check`: `opens_at < closes_at`. `EXCLUDE` `opening_hours_no_overlap_excl` sobre `(barbershop_id, day_of_week, timerange(opens_at, closes_at))` impide franjas con un minuto en común el mismo día de la misma barbería; las contiguas (09:00–12:00 y 12:00–15:00) se permiten porque el fin está excluido. Llaves candidatas: `id` y `(id, barbershop_id)` |
+| `closures` | `id`, `barbershop_id` (llave foránea en cascada), `closed_on` (`date`), `reason` (`varchar(200)`, opcional), `created_at`, `updated_at` | Única `(barbershop_id, closed_on)`: una fecha se cierra una sola vez. Llaves candidatas: `id` y `(id, barbershop_id)` |
 
-Sin una excepción para la fecha, rige el horario semanal; con una, esta lo reemplaza. Las horas no llevan zona horaria: son horas de pared de la barbería, que opera en `America/Costa_Rica` (HO-03).
+Los días de la semana sin franjas están cerrados. Si la fecha tiene un cierre, ese día no tiene espacios aunque el horario semanal los tenga; sin cierre rige el horario semanal. Las horas no llevan zona horaria: son horas de pared de la barbería, que opera en `America/Costa_Rica` (HO-03).
+
+La migración de `opening_hours` crea la extensión `btree_gist` y el tipo `timerange` (ver [database.md](database.md)); su `down()` los elimina para que `migrate:fresh` siga funcionando. El solape se rechaza primero en el caso de uso (`TimeSlotOverlapsException`) y el repositorio traduce la violación `23P01` de la restricción a la misma excepción; un cierre repetido se rechaza en el caso de uso y, como segunda barrera, la violación de la llave única (`ClosureAlreadyExistsException`).
+
+**Solo cierres, sin horario especial (decisión del #47).** RF-04 pide «días cerrados y excepciones por fecha», pero el flujo solo describe marcar feriados y cierres especiales, y los criterios solo piden eliminar los espacios de un día cerrado. Por eso una fecha o está cerrada o rige el horario semanal; abrir un feriado con otro horario no se modela. Si más adelante se necesita, se agrega una tabla de franjas por fecha sin cambiar `closures`.
+
+Lo que todavía no existe: HO-04 (mostrar al dueño las reservas confirmadas que quedan fuera de un nuevo horario o dentro de un cierre) necesita la tabla `reservations`, que crea el #126. Ningún issue abierto pide todavía el endpoint de esa lista (el #76 solo la menciona desde la interfaz), así que queda pendiente de asignar.
 
 ### collaborators
 
@@ -437,12 +441,11 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 
 ## Por confirmar
 
-1. **Excepciones por fecha (RF-04).** Se modelaron como `date_exceptions` con `date_exception_slots` para poder abrir un feriado con horario especial. Si el dueño solo necesita cerrar días, basta una tabla de cierres.
-2. **Aceptaciones de los colaboradores.** CL-02 exige las dos aceptaciones para crear una cuenta. Una cuenta de colaborador que crea el dueño (UP-04) todavía no las tiene: ¿se piden en su primer ingreso?
-3. **Servicios cubiertos por un bono adquirido.** Se leen de la definición viva. Si el dueño edita los servicios de un bono ya vendido, cambia lo que cubre el que ya compraron los clientes. ¿Se congelan al comprar?
-4. **Nombre de servicio único por barbería.** Los requisitos no lo exigen, así que no hay restricción.
-5. **Búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
-6. **Corte infantil.** CL-05 pide registrarlo a nombre de una persona adulta responsable, y no hay un campo que lo distinga de otro servicio.
+1. **Aceptaciones de los colaboradores.** CL-02 exige las dos aceptaciones para crear una cuenta. Una cuenta de colaborador que crea el dueño (UP-04) todavía no las tiene: ¿se piden en su primer ingreso?
+2. **Servicios cubiertos por un bono adquirido.** Se leen de la definición viva. Si el dueño edita los servicios de un bono ya vendido, cambia lo que cubre el que ya compraron los clientes. ¿Se congelan al comprar?
+3. **Nombre de servicio único por barbería.** Los requisitos no lo exigen, así que no hay restricción.
+4. **Búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
+5. **Corte infantil.** CL-05 pide registrarlo a nombre de una persona adulta responsable, y no hay un campo que lo distinga de otro servicio.
 
 ## Regla para cada migración nueva
 
