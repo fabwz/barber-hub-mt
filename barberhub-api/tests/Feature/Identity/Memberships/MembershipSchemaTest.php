@@ -136,7 +136,7 @@ final class MembershipSchemaTest extends TestCase
     private function insertBarbershop(): string
     {
         $id = (string) Str::uuid7();
-        DB::table('barbershops')->insert(['id' => $id, 'name' => 'Pura Navaja', 'city' => 'San Carlos', 'phone' => '2460-0000']);
+        DB::table('barbershops')->insert(['id' => $id, 'name' => 'Pura Navaja', 'city' => 'San Carlos', 'phone' => '2460-0000', 'public_link' => $id]);
 
         return $id;
     }

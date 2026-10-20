@@ -29,7 +29,8 @@ Las rutas y los atributos JSON son parte de lo que ve quien consume la API, por 
 | Barbería (inquilino) | `Barbershop` | `barbershops` | `barberias` |
 | Ciudad de la barbería | `City` | `barbershops.city` | `ciudad` |
 | Teléfono de la barbería (contacto) | `Phone` | `barbershops.phone` | `telefono` |
-| Enlace público | `PublicLink` | `barbershops.public_link` | `enlace` |
+| Enlace público (se genera una vez; el segundo homónimo lleva `-2`) | `PublicLink`, `PublicLinkGenerator` | `barbershops.public_link` | `enlace` |
+| Datos públicos de la barbería (los que ve cualquier visitante) | `PublicBarbershop` | — | `BarberiaPublica` |
 | Persona (cuenta) | `User` | `users` | — |
 | Nombre | `name` | `name` | `nombre` |
 | Correo | `Email` | `email` | `correo` |

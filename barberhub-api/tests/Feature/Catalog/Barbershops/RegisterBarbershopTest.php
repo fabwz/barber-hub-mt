@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Src\Catalog\Barbershops\Application\Contracts\OwnerMemberships;
+use Src\Catalog\Barbershops\Application\UseCases\RegisterBarbershop;
 use Src\Identity\Memberships\Domain\Exceptions\RoleAlreadyAssignedException;
 use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
@@ -59,15 +60,56 @@ final class RegisterBarbershopTest extends TestCase
                 'nombre' => 'Barbería Pura Navaja',
                 'ciudad' => 'San Carlos',
                 'telefono' => '2460-0000',
+                'enlace' => 'pura-navaja',
                 'rol' => 'dueno',
             ],
         ]);
+        $this->assertSame('pura-navaja', DB::table('barbershops')->sole()->public_link);
 
         $membership = DB::table('memberships')->sole();
         $this->assertSame($this->user->id, $membership->user_id);
         $this->assertSame($id, $membership->barbershop_id);
         $this->assertSame('owner', $membership->role);
         $this->assertTrue($membership->is_active);
+    }
+
+    /** The second and third barbershop with the same name get the next number, whatever the accents and capitals (RF-02, MT-07). */
+    public function test_homonyms_get_consecutive_links(): void
+    {
+        $links = [
+            $this->register($this->payload())->assertCreated()->json('data.enlace'),
+            $this->register($this->payload())->assertCreated()->json('data.enlace'),
+            $this->register($this->payload(['nombre' => 'BARBERIA PURA NAVAJA']))->assertCreated()->json('data.enlace'),
+        ];
+
+        $this->assertSame(['pura-navaja', 'pura-navaja-2', 'pura-navaja-3'], $links);
+        $this->assertSame($links, DB::table('barbershops')->orderBy('created_at')->orderBy('id')->pluck('public_link')->all());
+    }
+
+    /** The name is reduced to lowercase words without accents, symbols or repeated spaces (RF-02). */
+    public function test_link_drops_accents_symbols_and_repeated_spaces(): void
+    {
+        $this->register($this->payload(['nombre' => '  Peluquería   Ñandú -- Éxito & Co.  ']))
+            ->assertCreated()
+            ->assertJsonPath('data.enlace', 'peluqueria-nandu-exito-co');
+    }
+
+    /** When the allowed links are all taken the registration answers a conflict and stores neither barbershop nor owner. */
+    public function test_exhausted_links_answer_a_conflict_and_store_nothing(): void
+    {
+        $links = ['pura-navaja', ...array_map(fn (int $number): string => "pura-navaja-{$number}", range(2, RegisterBarbershop::MAX_LINK_ATTEMPTS))];
+        DB::table('barbershops')->insert(array_map(
+            fn (string $link): array => ['name' => 'Otra', 'city' => 'San Carlos', 'phone' => '2460-0000', 'public_link' => $link],
+            $links,
+        ));
+
+        $this->register($this->payload())
+            ->assertConflict()
+            ->assertJsonPath('type', rtrim((string) config('app.url'), '/').'/problemas/conflicto')
+            ->assertJsonPath('detail', 'No se pudo asignar un enlace libre a la barbería. Intente con otro nombre.');
+
+        $this->assertDatabaseCount('barbershops', RegisterBarbershop::MAX_LINK_ATTEMPTS);
+        $this->assertDatabaseCount('memberships', 0);
     }
 
     /** One person can register several barbershops and owns each of them. */

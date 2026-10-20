@@ -18,7 +18,7 @@ final readonly class BarbershopController
     /** Register a barbershop and make the authenticated person its owner. */
     #[Endpoint(
         title: 'Registrar una barbería',
-        description: 'Crea una barbería con nombre, ciudad y teléfono de contacto, sin servicios ni horario, y deja a la persona autenticada como su dueña activa (`rol: dueno`). Una persona puede registrar varias barberías. Responde 401 `no-autenticado` sin token y 422 `datos-invalidos` si falta un dato o supera su largo máximo (`errores` lista cada campo).',
+        description: 'Crea una barbería con nombre, ciudad y teléfono de contacto, sin servicios ni horario, y deja a la persona autenticada como su dueña activa (`rol: dueno`). Una persona puede registrar varias barberías. La respuesta trae el `enlace` público, derivado del nombre (por ejemplo `pura-navaja`, o `pura-navaja-2` si ya existe), que se genera una sola vez y no cambia. Responde 401 `no-autenticado` sin token y 422 `datos-invalidos` si falta un dato o supera su largo máximo (`errores` lista cada campo).',
     )]
     public function store(RegisterBarbershopRequest $request, RegisterBarbershop $registerBarbershop): JsonResponse
     {

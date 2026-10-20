@@ -133,7 +133,7 @@ Las crean Laravel y Sanctum. `personal_access_tokens` (migración del #41) guard
 
 ### barbershops
 
-Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36 con las columnas marcadas como creadas; las demás son previstas y las agrega el issue que se indica, con una migración posterior. Todavía no tiene política de fila: llega con el #38.
+Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36 y el #37 le agregó `public_link`; las columnas marcadas como previstas y las agrega el issue que se indica, con una migración posterior. Todavía no tiene política de fila: llega con el #38.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -141,7 +141,7 @@ Cada fila es un inquilino. La política de cobro y la pasarela son parámetros d
 | `name` | `varchar(120)` | Obligatoria |
 | `city` | `varchar(80)` | Obligatoria (RF-01) |
 | `phone` | `varchar(30)` | Obligatorio; es el contacto de la barbería (RF-01) |
-| `public_link` | `varchar(80)` | Prevista, #37. Única en todo el sistema; derivada del nombre (RF-02, MT-07) |
+| `public_link` | `varchar(120)` | Obligatoria, creada en el #37. Llave única `barbershops_public_link_unique` en todo el sistema y `CHECK` `barbershops_public_link_format_check` (minúsculas, dígitos y guiones). Se deriva del nombre al registrar la barbería, con un número si ya existe, y no cambia al renombrarla (RF-02, MT-07) |
 | `logo_path` | `varchar(255)` | Prevista, #46. Opcional; guardado y servido por barbería (MT-05) |
 | `payment_mode` | `varchar(10)` | Prevista, #49. `CHECK` entre `none`, `deposit` y `full` (PA-01) |
 | `deposit_percentage` | `smallint` | Prevista, #49. `CHECK` entre 10 y 100; obligatoria si `payment_mode` es `deposit` |

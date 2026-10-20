@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Identity\Memberships;
 
+use Illuminate\Support\Str;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Models\BarbershopModel;
 use Src\Identity\Memberships\Domain\Entities\Membership;
 use Src\Identity\Memberships\Domain\Exceptions\RoleAlreadyAssignedException;
@@ -105,6 +106,11 @@ final class EloquentMembershipRepositoryTest extends TestCase
     /** Create a barbershop and return its identifier. */
     private function createBarbershop(): string
     {
-        return BarbershopModel::query()->create(['name' => 'Pura Navaja', 'city' => 'San Carlos', 'phone' => '2460-0000'])->id;
+        return BarbershopModel::query()->create([
+            'name' => 'Pura Navaja',
+            'city' => 'San Carlos',
+            'phone' => '2460-0000',
+            'public_link' => (string) Str::uuid7(),
+        ])->id;
     }
 }
