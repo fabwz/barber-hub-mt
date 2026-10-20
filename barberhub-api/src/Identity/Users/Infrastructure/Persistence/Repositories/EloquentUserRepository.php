@@ -13,10 +13,10 @@ use Src\Identity\Users\Domain\Contracts\UserRepository;
 use Src\Identity\Users\Domain\Entities\User;
 use Src\Identity\Users\Domain\Exceptions\EmailAlreadyRegisteredException;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\Phone;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
 use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
+use Src\Shared\Domain\ValueObjects\Phone;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class EloquentUserRepository implements UserRepository
 {

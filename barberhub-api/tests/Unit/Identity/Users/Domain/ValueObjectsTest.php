@@ -9,10 +9,10 @@ use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use SensitiveParameter;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\Phone;
 use Src\Identity\Users\Domain\ValueObjects\PlainPassword;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
+use Src\Shared\Domain\ValueObjects\Phone;
 
 final class ValueObjectsTest extends TestCase
 {
@@ -84,7 +84,7 @@ final class ValueObjectsTest extends TestCase
                 new Phone($phone);
                 $this->fail('An invalid phone was accepted.');
             } catch (InvalidValueException $exception) {
-                $this->assertSame('identity.phone_invalid', $exception->translationKey());
+                $this->assertSame('shared.phone_invalid', $exception->translationKey());
             }
         }
     }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Src\Identity\Users\Application\UseCases;
 
 use Src\Identity\Users\Domain\Contracts\TokenRevoker;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class RevokeCurrentToken
 {

@@ -8,10 +8,10 @@ use DateTimeImmutable;
 use Src\Identity\Users\Domain\Entities\User;
 use Src\Identity\Users\Domain\Exceptions\EmailAlreadyRegisteredException;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\Phone;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
 use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
 use Src\Identity\Users\Infrastructure\Persistence\Repositories\EloquentUserRepository;
+use Src\Shared\Domain\ValueObjects\Phone;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\TestCase;
 

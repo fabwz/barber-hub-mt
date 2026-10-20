@@ -6,9 +6,9 @@ namespace Src\Identity\Users\Domain\Entities;
 
 use DateTimeImmutable;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\Phone;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
+use Src\Shared\Domain\ValueObjects\Phone;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class User
 {

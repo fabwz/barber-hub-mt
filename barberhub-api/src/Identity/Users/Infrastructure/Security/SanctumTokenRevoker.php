@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Src\Identity\Users\Infrastructure\Security;
 
 use Src\Identity\Users\Domain\Contracts\TokenRevoker;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
 use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class SanctumTokenRevoker implements TokenRevoker
 {

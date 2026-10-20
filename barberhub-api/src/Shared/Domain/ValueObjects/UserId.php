@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-namespace Src\Identity\Users\Domain\ValueObjects;
-
-use Src\Shared\Domain\ValueObjects\Identifier;
+namespace Src\Shared\Domain\ValueObjects;
 
 final readonly class UserId extends Identifier {}

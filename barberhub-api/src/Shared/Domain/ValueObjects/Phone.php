@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Src\Identity\Users\Domain\ValueObjects;
+namespace Src\Shared\Domain\ValueObjects;
 
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 
@@ -18,7 +18,7 @@ final readonly class Phone
         $value = trim($value);
 
         if ($value === '' || mb_strlen($value) > self::MAX_LENGTH) {
-            throw new InvalidValueException('identity.phone_invalid', ['max' => self::MAX_LENGTH]);
+            throw new InvalidValueException('shared.phone_invalid', ['max' => self::MAX_LENGTH]);
         }
 
         $this->value = $value;
