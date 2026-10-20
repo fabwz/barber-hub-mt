@@ -127,7 +127,7 @@ Llaves candidatas: `id`, `(user_id, barbershop_id)` y `(id, barbershop_id)`. La 
 
 ### personal_access_tokens y password_reset_tokens
 
-Las crean Laravel y Sanctum. `personal_access_tokens` guarda un token por dispositivo (`token` es el hash SHA-256). `password_reset_tokens` guarda el hash del enlace de restablecimiento, que caduca a los 60 minutos y se borra al usarse (SE-06).
+Las crean Laravel y Sanctum. `personal_access_tokens` (migración del #41) guarda un token por dispositivo (`token` es el hash SHA-256; `tokenable_id` es un UUID, y `abilities` queda con el valor por defecto porque el rol no viaja en el token). `password_reset_tokens` guarda el hash del enlace de restablecimiento, que caduca a los 60 minutos y se borra al usarse (SE-06).
 
 ## Barbería y configuración
 
@@ -407,7 +407,7 @@ Acciones sensibles con autor, fecha y cambio, sin pantalla de consulta (SE-04).
 
 ## Tablas de infraestructura de Laravel
 
-Según el driver de colas y de caché que se elija (PD-03), Laravel agrega sus tablas (`jobs`, `failed_jobs`, `cache`). No pertenecen a una barbería y no tienen política de fila.
+Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens` (#41), `cache` y `cache_locks` (#41, con el driver de caché `database`, que guarda los contadores de intentos de ingreso); `jobs` y `failed_jobs` se agregan cuando se elija el driver de colas (PD-03). No pertenecen a una barbería y no tienen política de fila.
 
 ## Verificación de las formas normales
 
