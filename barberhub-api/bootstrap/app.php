@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 use Src\Shared\Infrastructure\Http\Middleware\EncodeJsonAsUnicode;
+use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
 use Src\Shared\Infrastructure\Http\Problem\ProblemDetailsRenderer;
 use Src\Shared\Infrastructure\Tenancy\ScopeRequestToBarbershop;
 
@@ -24,7 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(EncodeJsonAsUnicode::class);
         $middleware->trimStrings(except: ['contrasena']);
         $middleware->redirectGuestsTo(null);
-        $middleware->alias(['barbershop' => ScopeRequestToBarbershop::class]);
+        $middleware->alias([
+            'barbershop' => ScopeRequestToBarbershop::class,
+            'role' => RequireRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(new ProblemDetailsRenderer);
