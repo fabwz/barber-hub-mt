@@ -63,10 +63,11 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | IVA (impuesto dentro del precio) | `tax()` | — (se calcula) | `iva` |
 | Servicio activo | `active` | `is_active` | `activo` |
 | Servicios que ofrece un colaborador | — | `collaborator_services` | `servicios` |
-| Horario de la barbería | `OpeningHours` | `opening_hours` | `horario` |
-| Franja | `TimeRange` | `opens_at`, `closes_at` | `abre`, `cierra` |
-| Día de la semana | `DayOfWeek` | `day_of_week` | `dia` |
-| Excepción por fecha (cierre o apertura especial) | `DateException` | `date_exceptions` | `excepciones` |
+| Horario de la barbería | `OpeningHours` (módulo) | `opening_hours` | `horario` |
+| Franja del horario (inicio incluido, fin excluido) | `TimeSlot` (entidad), `TimeRange` (rango de horas) | `opens_at`, `closes_at` | `franja`, `abre`, `cierra` |
+| Hora del día (`HH:MM`) | `TimeOfDay` | `time` sin zona | `HH:MM` |
+| Día de la semana (1 lunes a 7 domingo) | `DayOfWeek` | `day_of_week` | `dia` |
+| Cierre (fecha en que la barbería no atiende, por feriado o cierre especial) | `Closure`, `ClosureDate`, `ClosureReason` | `closures` (`closed_on`, `reason`) | `cierres`, `fecha`, `motivo` |
 | Turno de un colaborador | `Shift` | `collaborator_shifts` | `turnos` |
 | Pausa de un colaborador | `BreakPeriod` | `collaborator_breaks` | `pausas` |
 | Ausencia o bloqueo de agenda | `Absence` | `collaborator_absences` | `ausencias` |
