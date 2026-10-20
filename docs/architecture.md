@@ -74,7 +74,7 @@ Convenciones de nombres: las interfaces, los objetos de valor, los DTO y los cas
 ## Flujo de una petición
 
 1. La ruta del módulo (`Infrastructure/Http/routes.php`) entrega la petición a un controlador.
-2. En las rutas con `{barberia}`, el middleware `barbershop` (previsto, #38) verifica que la persona autenticada tenga un rol en esa barbería, abre una transacción y fija en PostgreSQL la barbería de la petición.
+2. En las rutas con `{barberia}`, el middleware `barbershop` verifica que la persona autenticada tenga un rol en esa barbería, abre una transacción y fija en PostgreSQL la barbería de la petición.
 3. Un Form Request valida la forma de los datos antes de llegar al controlador.
 4. El controlador invoca un caso de uso con un DTO de datos primitivos.
 5. El caso de uso trabaja con el dominio y con los puertos.
@@ -125,7 +125,7 @@ La membresía de cliente se crea al primer uso de una operación de cliente en l
 En BarberHub una persona puede tener roles en varias barberías, así que la barbería no se deduce de la persona, como en el proyecto de referencia, sino de la ruta y se verifica contra sus membresías (RD-18). Ver [ADR 0005](adr/0005-tenancy-through-a-port-and-row-level-security.md).
 
 1. En las rutas, `{barberia}` es el UUID v7 de la barbería. La barbería nunca se toma del cuerpo, de la consulta ni de un encabezado. El enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}`, que devuelve el UUID y los datos públicos de la barbería.
-2. El middleware `barbershop` (previsto, #38) comprueba que la sesión tenga un rol en esa barbería y recién entonces fija el contexto, a través del puerto `BarbershopContext` de `Shared` (previsto, #38).
+2. El middleware `barbershop` comprueba que la sesión tenga un rol en esa barbería, por el puerto `BarbershopRoles` de `Shared`, y recién entonces fija el contexto: la barbería y el rol quedan en los atributos de la solicitud, el puerto `BarbershopContext` de `Shared` los lee y la petición corre dentro de una transacción que fija la barbería en PostgreSQL. Las rutas públicas usan `barbershop:public`, que fija la barbería de la ruta sin sesión. Esa transacción no sustituye a `TransactionRunner`: las de los casos de uso son puntos de guardado dentro de ella.
 3. Si la persona no tiene rol en la barbería, o el recurso pertenece a otra, la respuesta es 404 `no-encontrado`, con el mismo cuerpo que un recurso inexistente (UP-06). Si tiene rol pero insuficiente, 403 `prohibido`.
 4. Cada método de un repositorio recibe el `BarbershopId` y filtra por `barbershop_id`: buscar, listar y borrar. Las reglas `exists` y `unique` de los Form Requests también filtran por la barbería.
 5. PostgreSQL es la segunda barrera: las políticas de seguridad a nivel de fila ocultan las filas de otras barberías aunque una consulta olvide el filtro. El detalle está en [database.md](database.md).
@@ -140,7 +140,7 @@ La regla tiene tres excepciones:
 
 Las rutas públicas son la resolución del enlace, la lista de servicios activos y la consulta de disponibilidad, y solo exponen datos públicos.
 
-La suite `tests/Feature/Tenancy` (previsto, #38 y #123) lo comprueba con dos barberías, un caso por cada recurso. Un recurso nuevo agrega su caso a esa suite y a la matriz de permisos.
+La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada recurso, con el #123) lo comprueba con dos barberías. Un recurso nuevo agrega su caso a esa suite y a la matriz de permisos.
 
 **Pendiente:** los webhooks, las tareas en cola y las tareas programadas no tienen persona autenticada. Cómo fijan la barbería, y si hace falta un tercer rol de base de datos de mantenimiento, se decide antes de M08. Ver "Pendientes" en [database.md](database.md).
 
@@ -193,7 +193,7 @@ La ruta de salud `GET /salud` es pública, no pasa por ningún middleware y est�
 | Carpeta | Alcance |
 | --- | --- |
 | `tests/Unit` | Dominio y casos de uso, sin arrancar el framework. |
-| `tests/Feature` | Endpoints y adaptadores contra PostgreSQL, con el rol de la aplicación y solo sobre `barberhub_testing`. `tests/Feature/Tenancy` (previsto, #38 y #123) reúne las pruebas de aislamiento entre barberías. |
+| `tests/Feature` | Endpoints y adaptadores contra PostgreSQL, con el rol de la aplicación y solo sobre `barberhub_testing`. `tests/Feature/Tenancy` (#38 y #123) reúne las pruebas de aislamiento entre barberías. |
 | `tests/Architecture` | Regla de dependencias entre capas y entre módulos. |
 
 La concurrencia se prueba con conexiones paralelas reales (RNF-05). Las pasarelas, el proveedor de IA y el correo se simulan.
