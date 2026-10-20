@@ -69,4 +69,21 @@ final class MembershipTest extends TestCase
         $this->assertSame('identity.role_already_assigned', $exception->translationKey());
         $this->assertSame('conflicto', $exception->rule());
     }
+
+    /** Switching a role off and on keeps everything but the flag, and leaves the original untouched. */
+    public function test_role_is_switched_off_and_on_without_changing_anything_else(): void
+    {
+        $membership = Membership::create(
+            new MembershipId(self::MEMBERSHIP_ID),
+            new UserId(self::USER_ID),
+            new BarbershopId(self::BARBERSHOP_ID),
+            Role::Collaborator,
+        );
+
+        $off = $membership->deactivate();
+
+        $this->assertFalse($off->active);
+        $this->assertTrue($membership->active);
+        $this->assertEquals($membership, $off->activate());
+    }
 }
