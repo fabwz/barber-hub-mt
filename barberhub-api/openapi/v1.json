@@ -21,6 +21,10 @@
         {
             "name": "Sesiones",
             "description": "Ingreso con correo y contrase\u00f1a y cierre de sesi\u00f3n mediante tokens de acceso."
+        },
+        {
+            "name": "Barber\u00edas",
+            "description": "Alta de barber\u00edas y de su due\u00f1o."
         }
     ],
     "security": [
@@ -29,6 +33,52 @@
         }
     ],
     "paths": {
+        "/barberias": {
+            "post": {
+                "operationId": "catalog.barbershops.store",
+                "description": "Crea una barber\u00eda con nombre, ciudad y tel\u00e9fono de contacto, sin servicios ni horario, y deja a la persona autenticada como su due\u00f1a activa (`rol: dueno`). Una persona puede registrar varias barber\u00edas. Responde 401 `no-autenticado` sin token y 422 `datos-invalidos` si falta un dato o supera su largo m\u00e1ximo (`errores` lista cada campo).",
+                "summary": "Registrar una barber\u00eda",
+                "tags": [
+                    "Barber\u00edas"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistroDeBarberia"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Barberia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Barberia"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
         "/cuentas": {
             "post": {
                 "operationId": "identity.users.store",
@@ -195,6 +245,35 @@
             }
         },
         "schemas": {
+            "Barberia": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "ciudad": {
+                        "type": "string"
+                    },
+                    "telefono": {
+                        "type": "string"
+                    },
+                    "rol": {
+                        "type": "string",
+                        "const": "dueno"
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "ciudad",
+                    "telefono",
+                    "rol"
+                ],
+                "title": "Barberia"
+            },
             "Credenciales": {
                 "type": "object",
                 "properties": {
@@ -258,6 +337,29 @@
                     "acepta_privacidad"
                 ],
                 "title": "Cuenta"
+            },
+            "RegistroDeBarberia": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "ciudad": {
+                        "type": "string",
+                        "maxLength": 80
+                    },
+                    "telefono": {
+                        "type": "string",
+                        "maxLength": 30
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "ciudad",
+                    "telefono"
+                ],
+                "title": "RegistroDeBarberia"
             },
             "RegistroDeCuenta": {
                 "type": "object",

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Identity\Users\Domain\Contracts;
 
-use Src\Identity\Users\Domain\ValueObjects\UserId;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 interface TokenIssuer
 {

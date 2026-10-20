@@ -4,7 +4,7 @@ El esquema está en tercera forma normal. Este documento describe las entidades 
 
 Las convenciones de nombres, llaves, fechas y dinero están en [database.md](database.md). Toda tabla con `barbershop_id` tiene seguridad a nivel de fila forzada, con las excepciones que lista la sección de ese documento.
 
-> **Estado:** modelo inicial (issue #26), derivado de las reglas de negocio y de los requisitos. La tabla `users` ya existe (#40); las demás todavía no: cada una la crea el issue de su módulo (#36, #45, #47, #48 y #56, entre otros) y en ese pull request se actualiza este archivo. Es una propuesta para revisar; las decisiones que no están en los requisitos están marcadas en "Por confirmar".
+> **Estado:** modelo inicial (issue #26), derivado de las reglas de negocio y de los requisitos. Las tablas `users` (#40), `barbershops` y `memberships` (#36) ya existen; las demás todavía no: cada una la crea el issue de su módulo (#45, #47, #48 y #56, entre otros) y en ese pull request se actualiza este archivo. Es una propuesta para revisar; las decisiones que no están en los requisitos están marcadas en "Por confirmar".
 
 ## Diagrama
 
@@ -101,7 +101,7 @@ El correo es único en todo el sistema y no dentro de cada barbería: la persona
 
 ### memberships
 
-El rol de una persona en una barbería (UP-01). Es la fuente de verdad de quién puede entrar a qué.
+El rol de una persona en una barbería (UP-01). Es la fuente de verdad de quién puede entrar a qué. La tabla existe desde el issue #36 con todas las columnas de abajo. Todavía no tiene política de fila: llega con el #38.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -110,7 +110,7 @@ El rol de una persona en una barbería (UP-01). Es la fuente de verdad de quién
 | `barbershop_id` | `uuid` | Llave foránea a `barbershops`, borrado en cascada |
 | `role` | `varchar(20)` | `CHECK` entre `owner`, `collaborator` y `customer` |
 | `is_active` | `boolean` | Por defecto `true` |
-| `created_at`, `updated_at` | `timestamptz` | |
+| `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
 Llaves candidatas: `id`, `(user_id, barbershop_id)` y `(id, barbershop_id)`. La segunda garantiza un único rol por persona y barbería (UP-07); la tercera permite que otras tablas referencien la membresía junto con su barbería. Una barbería siempre conserva al menos un dueño activo (UP-05): lo verifica el caso de uso.
 
@@ -133,20 +133,22 @@ Las crean Laravel y Sanctum. `personal_access_tokens` (migración del #41) guard
 
 ### barbershops
 
-Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí.
+Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36 con las columnas marcadas como creadas; las demás son previstas y las agrega el issue que se indica, con una migración posterior. Todavía no tiene política de fila: llega con el #38.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id` | `uuid` | Llave primaria |
+| `id` | `uuid` | Llave primaria, `DEFAULT uuidv7()` |
 | `name` | `varchar(120)` | Obligatoria |
-| `public_link` | `varchar(80)` | Única en todo el sistema; derivada del nombre (RF-02, MT-07) |
-| `logo_path` | `varchar(255)` | Opcional; guardado y servido por barbería (MT-05) |
-| `payment_mode` | `varchar(10)` | `CHECK` entre `none`, `deposit` y `full` (PA-01) |
-| `deposit_percentage` | `smallint` | `CHECK` entre 10 y 100; obligatoria si `payment_mode` es `deposit` |
-| `cancellation_deadline_hours` | `smallint` | `CHECK` mayor o igual que 0 (CA-01) |
-| `payment_gateway` | `varchar(10)` | `CHECK` entre `onvo` y `paypal` (PA-02) |
-| `vouchers_enabled`, `waitlist_enabled` | `boolean` | Por defecto `false` (RF-09) |
-| `created_at`, `updated_at` | `timestamptz` | |
+| `city` | `varchar(80)` | Obligatoria (RF-01) |
+| `phone` | `varchar(30)` | Obligatorio; es el contacto de la barbería (RF-01) |
+| `public_link` | `varchar(80)` | Prevista, #37. Única en todo el sistema; derivada del nombre (RF-02, MT-07) |
+| `logo_path` | `varchar(255)` | Prevista, #46. Opcional; guardado y servido por barbería (MT-05) |
+| `payment_mode` | `varchar(10)` | Prevista, #49. `CHECK` entre `none`, `deposit` y `full` (PA-01) |
+| `deposit_percentage` | `smallint` | Prevista, #49. `CHECK` entre 10 y 100; obligatoria si `payment_mode` es `deposit` |
+| `cancellation_deadline_hours` | `smallint` | Prevista, #49. `CHECK` mayor o igual que 0 (CA-01) |
+| `payment_gateway` | `varchar(10)` | Prevista, #49. `CHECK` entre `onvo` y `paypal` (PA-02) |
+| `vouchers_enabled`, `waitlist_enabled` | `boolean` | Prevista, #49. Por defecto `false` (RF-09) |
+| `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
 Las credenciales de las pasarelas no se guardan aquí: viven en variables de entorno. Si cada barbería necesita su propia cuenta de cobro, queda por definir en PD-07.
 

@@ -9,9 +9,9 @@ use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Src\Identity\Users\Application\DTOs\RegisterCustomerCommand;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\Phone;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
 use Src\Identity\Users\Infrastructure\Http\Rules\MeetsPasswordPolicy;
+use Src\Shared\Domain\ValueObjects\Phone;
 
 #[SchemaName('RegistroDeCuenta')]
 final class RegisterCustomerRequest extends FormRequest

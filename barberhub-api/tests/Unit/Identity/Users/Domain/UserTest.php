@@ -8,9 +8,9 @@ use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Src\Identity\Users\Domain\Entities\User;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\Phone;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
+use Src\Shared\Domain\ValueObjects\Phone;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 final class UserTest extends TestCase
 {

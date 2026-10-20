@@ -13,7 +13,7 @@ return [
     'password_without_number' => 'La contraseña debe incluir al menos un número.',
     'password_without_symbol' => 'La contraseña debe incluir al menos un signo especial.',
     'password_without_uppercase' => 'La contraseña debe incluir al menos una letra mayúscula.',
-    'phone_invalid' => 'El teléfono es obligatorio y no puede superar los :max caracteres.',
+    'role_already_assigned' => 'La persona ya tiene un rol en esta barbería.',
     'too_many_login_attempts' => 'Demasiados intentos de ingreso. Intente de nuevo en :minutes minuto.|Demasiados intentos de ingreso. Intente de nuevo en :minutes minutos.',
 
 ];

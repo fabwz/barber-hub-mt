@@ -112,7 +112,7 @@ final class RegisterCustomerTest extends TestCase
         return [
             'blank name' => ['   ', 'ana@barberhub.test', '8888-0000', 'identity.name_invalid'],
             'malformed email' => ['Ana Mora', 'ana.barberhub.test', '8888-0000', 'identity.email_invalid'],
-            'blank phone' => ['Ana Mora', 'ana@barberhub.test', '   ', 'identity.phone_invalid'],
+            'blank phone' => ['Ana Mora', 'ana@barberhub.test', '   ', 'shared.phone_invalid'],
         ];
     }
 

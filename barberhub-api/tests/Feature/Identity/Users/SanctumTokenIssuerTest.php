@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Identity\Users;
 
 use Laravel\Sanctum\PersonalAccessToken;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
 use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
 use Src\Identity\Users\Infrastructure\Security\SanctumTokenIssuer;
+use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\TestCase;
 

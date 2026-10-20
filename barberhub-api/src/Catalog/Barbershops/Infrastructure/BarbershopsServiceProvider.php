@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Src\Catalog\Barbershops\Infrastructure;
 
 use Illuminate\Support\ServiceProvider;
+use Src\Catalog\Barbershops\Application\Contracts\OwnerMemberships;
+use Src\Catalog\Barbershops\Domain\Contracts\BarbershopRepository;
+use Src\Catalog\Barbershops\Infrastructure\Identity\IdentityOwnerMemberships;
+use Src\Catalog\Barbershops\Infrastructure\Persistence\Repositories\EloquentBarbershopRepository;
 
 final class BarbershopsServiceProvider extends ServiceProvider
 {
@@ -13,5 +17,8 @@ final class BarbershopsServiceProvider extends ServiceProvider
      *
      * @var array<class-string, class-string>
      */
-    public array $bindings = [];
+    public array $bindings = [
+        BarbershopRepository::class => EloquentBarbershopRepository::class,
+        OwnerMemberships::class => IdentityOwnerMemberships::class,
+    ];
 }

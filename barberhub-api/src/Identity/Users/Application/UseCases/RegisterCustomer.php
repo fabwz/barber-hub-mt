@@ -10,9 +10,9 @@ use Src\Identity\Users\Domain\Contracts\UserRepository;
 use Src\Identity\Users\Domain\Entities\User;
 use Src\Identity\Users\Domain\Exceptions\EmailAlreadyRegisteredException;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\Phone;
 use Src\Identity\Users\Domain\ValueObjects\PlainPassword;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
+use Src\Shared\Domain\ValueObjects\Phone;
 
 final readonly class RegisterCustomer
 {
