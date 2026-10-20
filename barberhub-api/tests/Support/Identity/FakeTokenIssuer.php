@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support\Identity;
 
 use Src\Identity\Users\Domain\Contracts\TokenIssuer;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 final class FakeTokenIssuer implements TokenIssuer
 {

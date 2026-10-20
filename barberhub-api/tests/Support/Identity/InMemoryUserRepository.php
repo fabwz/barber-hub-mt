@@ -8,7 +8,7 @@ use Src\Identity\Users\Domain\Contracts\UserRepository;
 use Src\Identity\Users\Domain\Entities\User;
 use Src\Identity\Users\Domain\Exceptions\EmailAlreadyRegisteredException;
 use Src\Identity\Users\Domain\ValueObjects\Email;
-use Src\Identity\Users\Domain\ValueObjects\UserId;
+use Src\Shared\Domain\ValueObjects\UserId;
 
 final class InMemoryUserRepository implements UserRepository
 {
