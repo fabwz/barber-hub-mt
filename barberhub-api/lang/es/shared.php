@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
 
     'invalid_identifier' => 'El identificador no es válido.',
+    'file_not_found' => 'El archivo no existe.',
     'money_negative' => 'El monto no puede ser negativo.',
     'money_below_zero' => 'El monto resultante no puede ser menor que cero.',
     'duration_not_positive' => 'La duración debe ser de al menos un minuto.',
