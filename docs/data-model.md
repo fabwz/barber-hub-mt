@@ -101,7 +101,7 @@ El correo es único en todo el sistema y no dentro de cada barbería: la persona
 
 ### memberships
 
-El rol de una persona en una barbería (UP-01). Es la fuente de verdad de quién puede entrar a qué. La tabla existe desde el issue #36 con todas las columnas de abajo. Todavía no tiene política de fila: llega con el #38.
+El rol de una persona en una barbería (UP-01). Es la fuente de verdad de quién puede entrar a qué. La tabla existe desde el issue #36 con todas las columnas de abajo. No tiene política de fila: se lee antes de conocer la barbería (ver [database.md](database.md)).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -133,7 +133,7 @@ Las crean Laravel y Sanctum. `personal_access_tokens` (migración del #41) guard
 
 ### barbershops
 
-Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36 y el #37 le agregó `public_link`; las columnas marcadas como previstas y las agrega el issue que se indica, con una migración posterior. Todavía no tiene política de fila: llega con el #38.
+Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36 y el #37 le agregó `public_link`; las columnas marcadas como previstas y las agrega el issue que se indica, con una migración posterior. No tiene política de fila: cada fila es una barbería y no lleva `barbershop_id` (ver [database.md](database.md)).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -437,7 +437,7 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 2. **Aceptaciones de los colaboradores.** CL-02 exige las dos aceptaciones para crear una cuenta. Una cuenta de colaborador que crea el dueño (UP-04) todavía no las tiene: ¿se piden en su primer ingreso?
 3. **Servicios cubiertos por un bono adquirido.** Se leen de la definición viva. Si el dueño edita los servicios de un bono ya vendido, cambia lo que cubre el que ya compraron los clientes. ¿Se congelan al comprar?
 4. **Nombre de servicio único por barbería.** Los requisitos no lo exigen, así que no hay restricción.
-5. **`memberships` sin política de fila** y **búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
+5. **Búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
 6. **Corte infantil.** CL-05 pide registrarlo a nombre de una persona adulta responsable, y no hay un campo que lo distinga de otro servicio.
 
 ## Regla para cada migración nueva

@@ -104,7 +104,7 @@ La limpieza se guarda ya sumada en `blocked_until`, porque una expresión de ín
 
 Una reserva temporal vencida sigue ocupando el espacio hasta que la tarea de expiración cambia su estado (retraso máximo de 1 minuto, NO-04). Por eso el caso de uso de reservar expira, dentro de su propia transacción, las reservas temporales vencidas del mismo colaborador antes de insertar.
 
-## Seguridad a nivel de fila (previsto, #38)
+## Seguridad a nivel de fila
 
 Es la segunda barrera del aislamiento entre barberías. La primera está en el código: cada repositorio filtra por `barbershop_id`. Si una consulta olvida ese filtro, PostgreSQL igual devuelve solo las filas de la barbería en curso.
 
@@ -135,15 +135,21 @@ Una escritura que no cumple `WITH CHECK` falla con el SQLSTATE `42501`. Un `UPDA
 
 La barbería vive en la variable `app.barbershop_id` y se fija con `set_config('app.barbershop_id', ?, true)`. El tercer argumento la limita a la transacción en curso: al confirmar o deshacer, desaparece, y una conexión reutilizada nunca hereda la barbería de la petición anterior. Después de su primera transacción, la variable de esa conexión queda como texto vacío y no como `NULL`; por eso la política usa `NULLIF`.
 
-`BarbershopTransaction`, en `Src\Shared\Infrastructure\Tenancy`, abre una transacción y fija la barbería antes de cualquier consulta. El middleware `barbershop` la usa después de verificar la membresía:
+`BarbershopTransaction`, en `Src\Shared\Infrastructure\Tenancy`, abre una transacción y fija la barbería antes de cualquier consulta; con `null` fija el texto vacío y no se alcanza ninguna fila. El middleware `barbershop` (`ScopeRequestToBarbershop`) la usa. Las transacciones de los casos de uso, anidadas dentro de la suya, son puntos de guardado, así que `DatabaseTransactionRunner` no cambia.
 
 | Rutas | Middleware | Barbería de la transacción |
 | --- | --- | --- |
-| Con `{barberia}` y sesión | `auth:sanctum` y `barbershop` | La de la ruta, solo si la persona tiene rol en ella |
-| Públicas (servicios activos y disponibilidad) | `barbershop:public` | La de la ruta, sin sesión |
+| Con `{barberia}` y sesión | `auth:sanctum` y `barbershop` | La de la ruta, solo si la persona tiene una membresía activa en ella |
+| Públicas (servicios activos y disponibilidad) | `barbershop:public` | La de la ruta, sin sesión y sin verificar membresía |
 | `GET /api/v1/enlaces/{enlace}` | Ninguno | No fija barbería: lee `barbershops` por su enlace público |
 
-Una persona sin rol en la barbería no fija ninguna: recibe 404 antes de tocar las tablas. Como el dueño de las tablas también está sujeto a las políticas, los sembradores escriben los datos de las barberías de demostración dentro de `BarbershopTransaction`, y en las pruebas cada fábrica fija la barbería de su fila antes de insertarla.
+Las rutas con `{barberia}` restringen el parámetro con `whereUuid('barberia')`; un identificador mal formado no encuentra ruta y responde el 404 genérico.
+
+En el modo por defecto, el middleware consulta la membresía **antes** de fijar la barbería (por el puerto `BarbershopRoles`, cuyo adaptador lee `memberships`; por eso esa tabla no tiene política). Una persona sin rol, o con una barbería inexistente, recibe 404 `no-encontrado` antes de tocar las tablas, con el mismo cuerpo que un recurso inexistente. Con rol, el middleware guarda `barbershop_id` y `barbershop_role` en los atributos de la solicitud (de ahí lee el puerto `BarbershopContext`), ejecuta la petición dentro de la transacción y quita los atributos al terminar. El modo público deja el rol vacío.
+
+Las excepciones de RD-18 (operaciones de cliente que crean la primera membresía, propuesta de IA y lecturas propias) no son modos todavía: el #56 y el #57 las agregan.
+
+Como el dueño de las tablas también está sujeto a las políticas, los sembradores escriben los datos de las barberías de demostración dentro de `BarbershopTransaction`, y en las pruebas cada fábrica fija la barbería de su fila antes de insertarla.
 
 ### Excepciones
 
@@ -151,7 +157,7 @@ Una persona sin rol en la barbería no fija ninguna: recibe 404 antes de tocar l
 | --- | --- |
 | `users` | Las cuentas son globales: el ingreso busca a la persona por su correo antes de saber a qué barbería pertenece |
 | `barbershops` | No tiene `barbershop_id`: cada fila es una barbería, y se busca por su enlace público o por el identificador de la ruta |
-| `memberships` | Se lee antes de conocer la barbería: para verificar el rol de la persona en `{barberia}` y para listar sus barberías (UP-08). Se protege por código: toda consulta filtra por `user_id`. **Propuesta, por confirmar en #38** |
+| `memberships` | Se lee antes de conocer la barbería: para verificar el rol de la persona en `{barberia}` y para listar sus barberías (UP-08). Se protege por código: toda consulta filtra por `user_id` |
 | `webhook_events` | El aviso de la pasarela llega sin sesión y antes de saber a qué barbería pertenece el pago. **Pendiente, ver abajo** |
 | `personal_access_tokens`, `password_reset_tokens` | Tablas de Laravel y Sanctum asociadas a la cuenta, no a una barbería |
 
@@ -162,9 +168,17 @@ PostgreSQL revisa las llaves únicas, las restricciones de exclusión y las llav
 ### Cómo agregar una tabla de una barbería
 
 1. La tabla lleva `barbershop_id`, y sus llaves únicas y foráneas lo incluyen.
-2. Una migración habilita y fuerza la seguridad a nivel de fila y crea la política `<tabla>_barbershop_isolation` con la misma expresión en `USING` y `WITH CHECK`; su `down()` deshace los tres pasos.
+2. Una migración habilita y fuerza la seguridad a nivel de fila y crea la política `<tabla>_barbershop_isolation` con la misma expresión en `USING` y `WITH CHECK`; su `down()` deshace los tres pasos. El SQL se repite en cada migración, sin ayudante: una migración no debe cambiar si cambia el código.
 3. Las rutas que la usan pasan por el middleware `barbershop`, y su fábrica fija la barbería de su fila.
-4. Una prueba revisa el catálogo de PostgreSQL y falla si una tabla con `barbershop_id`, salvo las excepciones listadas, no tiene la seguridad habilitada, forzada y con su política.
+4. Su caso se agrega a la suite `tests/Feature/Tenancy` y a la matriz de permisos.
+
+La prueba `tests/Feature/Tenancy/BarbershopPolicyCatalogTest.php` revisa el catálogo de PostgreSQL y falla si una tabla con `barbershop_id`, salvo las excepciones listadas, no tiene la seguridad habilitada, forzada y exactamente la política `<tabla>_barbershop_isolation` con la expresión de arriba. Una segunda política también falla, porque las políticas permisivas se suman. La lista de excepciones vive en `tests/Support/Shared/BarbershopIsolation.php` y debe coincidir con la tabla de arriba.
+
+`tests/Feature/Tenancy/RowLevelSecurityTest.php` prueba el comportamiento sobre una tabla temporal, `tenancy_probe`, que crea con la conexión administrativa y descarta al terminar la prueba: con el contexto de una barbería solo se ven sus filas, sin contexto no se ve ninguna, un `INSERT` o un `UPDATE` hacia otra barbería falla con el SQLSTATE `42501`, una consulta que olvida el filtro no devuelve filas ajenas y el rol dueño queda limitado igual.
+
+### Archivos de una barbería
+
+Los archivos subidos (logo, fotos) se guardan separados por barbería (MT-05). El puerto `BarbershopFileStorage` deriva toda ruta del contexto (`barbershops/{barbershop_id}/...`), le pone un nombre generado por el servidor y rechaza con 404 cualquier ruta que salga de la carpeta de la barbería en curso (`..`, otra barbería, rutas absolutas, `\`, bytes nulos). El disco es el de `filesystems.media` (`public` por defecto). Servir el archivo por HTTP es del #46.
 
 ## Reparto de responsabilidades
 
@@ -175,4 +189,3 @@ Todo objeto de la base se usa desde `Infrastructure/Persistence`, detrás de un 
 ## Pendientes
 
 1. **Procesos sin sesión.** Los webhooks de las pasarelas, las tareas en cola (expiración de reservas temporales, recordatorios, ofertas) y las tareas programadas no tienen una persona autenticada ni una barbería en la ruta. Hay que decidir cómo fijan la barbería (por ejemplo, tomándola del pago o de la reserva que procesan) y si recorrer todas las barberías exige un tercer rol de base de datos, de mantenimiento. El proyecto de referencia difiere esta decisión hasta que exista la primera tarea de ese tipo; en BarberHub llega con M08.
-2. **`memberships` sin política de fila.** Ver la tabla de excepciones. Alternativa: una política que permita las filas de la persona en sesión además de las de la barbería en curso.
