@@ -29,6 +29,14 @@
         {
             "name": "Enlaces p\u00fablicos",
             "description": "Consulta de una barber\u00eda por su enlace, sin iniciar sesi\u00f3n."
+        },
+        {
+            "name": "Servicios p\u00fablicos",
+            "description": "Consulta de los servicios de una barber\u00eda, sin iniciar sesi\u00f3n."
+        },
+        {
+            "name": "Servicios de la barber\u00eda",
+            "description": "Administraci\u00f3n de los servicios por el due\u00f1o de la barber\u00eda."
         }
     ],
     "security": [
@@ -206,6 +214,230 @@
                 "security": []
             }
         },
+        "/barberias/{barberia}/administracion/servicios": {
+            "get": {
+                "operationId": "catalog.services.index",
+                "description": "Trae todos los servicios, activos e inactivos, ordenados por nombre. Cada uno trae su `precio` con el IVA de 13 % incluido, desglosado en `base` e `iva`. Solo el due\u00f1o: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Listar los servicios de la barber\u00eda",
+                "tags": [
+                    "Servicios de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `Servicio`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Servicio"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "catalog.services.store",
+                "description": "Crea un servicio activo con nombre, duraci\u00f3n (10 a 180 minutos, de 5 en 5) y precio en colones enteros mayores que cero, con el IVA incluido. Una duraci\u00f3n o un precio fuera de rango responde 422 `datos-invalidos` y `errores` indica el campo. Solo el due\u00f1o.",
+                "summary": "Crear un servicio",
+                "tags": [
+                    "Servicios de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CrearServicio"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Servicio`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Servicio"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/servicios/{servicio}": {
+            "patch": {
+                "operationId": "catalog.services.update",
+                "description": "Cambia solo los campos que vienen. `activo: false` inactiva el servicio, que deja de ofrecerse pero se conserva para el historial, y `activo: true` lo reactiva; un servicio nunca se borra. Las reservas ya hechas conservan el precio y la duraci\u00f3n con que se hicieron (SV-03). Responde 404 `no-encontrado` si el servicio no existe en la barber\u00eda. Solo el due\u00f1o.",
+                "summary": "Editar, inactivar o reactivar un servicio",
+                "tags": [
+                    "Servicios de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "servicio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActualizarServicio"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Servicio`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Servicio"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/servicios": {
+            "get": {
+                "operationId": "catalog.services.public.index",
+                "description": "Trae solo los servicios activos, ordenados por nombre. El `precio` incluye el IVA de 13 % y viene desglosado en `base` e `iva`, de modo que `base` m\u00e1s `iva` es el `precio`. Una barber\u00eda sin servicios activos, o que no existe, devuelve una lista vac\u00eda.",
+                "summary": "Consultar los servicios de una barber\u00eda",
+                "tags": [
+                    "Servicios p\u00fablicos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ServicioPublico`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ServicioPublico"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": []
+            }
+        },
         "/tokens": {
             "post": {
                 "operationId": "identity.tokens.store",
@@ -293,6 +525,31 @@
             }
         },
         "schemas": {
+            "ActualizarServicio": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "duracion_minutos": {
+                        "type": "integer",
+                        "description": "Entre 10 y 180 minutos, de 5 en 5.",
+                        "minimum": 10,
+                        "maximum": 180
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones enteros con el IVA de 13 % incluido, mayores que cero.",
+                        "minimum": 1
+                    },
+                    "activo": {
+                        "type": "boolean",
+                        "description": "`false` inactiva el servicio y `true` lo vuelve a activar; un servicio nunca se borra."
+                    }
+                },
+                "title": "ActualizarServicio"
+            },
             "Barberia": {
                 "type": "object",
                 "properties": {
@@ -349,6 +606,32 @@
                     "telefono"
                 ],
                 "title": "BarberiaPublica"
+            },
+            "CrearServicio": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "duracion_minutos": {
+                        "type": "integer",
+                        "description": "Entre 10 y 180 minutos, de 5 en 5.",
+                        "minimum": 10,
+                        "maximum": 180
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones enteros con el IVA de 13 % incluido, mayores que cero.",
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "duracion_minutos",
+                    "precio"
+                ],
+                "title": "CrearServicio"
             },
             "Credenciales": {
                 "type": "object",
@@ -486,6 +769,76 @@
                     "acepta_privacidad"
                 ],
                 "title": "RegistroDeCuenta"
+            },
+            "Servicio": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido; es igual a `base` m\u00e1s `iva`."
+                    },
+                    "base": {
+                        "type": "integer"
+                    },
+                    "iva": {
+                        "type": "integer"
+                    },
+                    "activo": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "duracion_minutos",
+                    "precio",
+                    "base",
+                    "iva",
+                    "activo"
+                ],
+                "title": "Servicio"
+            },
+            "ServicioPublico": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido; es igual a `base` m\u00e1s `iva`."
+                    },
+                    "base": {
+                        "type": "integer"
+                    },
+                    "iva": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "duracion_minutos",
+                    "precio",
+                    "base",
+                    "iva"
+                ],
+                "title": "ServicioPublico"
             },
             "TokenDeAcceso": {
                 "type": "object",

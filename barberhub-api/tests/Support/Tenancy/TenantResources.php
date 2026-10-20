@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Support\Tenancy;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
 /**
  * Every resource that belongs to a barbershop. The issue that creates a table with barbershop_id or a route with
  * {barberia} adds its entry here (docs/database.md, "Cómo agregar una tabla de una barbería"); the coverage test fails
@@ -17,15 +20,37 @@ final class TenantResources
      *
      * @var list<string>
      */
-    public const array PUBLIC_ROUTES = [];
+    public const array PUBLIC_ROUTES = [
+        'GET api/v1/barberias/{barberia}/servicios',
+    ];
 
     /**
-     * The resources to cover. Empty until the first table of a barbershop exists.
+     * The resources to cover.
      *
      * @return list<TenantResource>
      */
     public static function all(): array
     {
-        return [];
+        return [
+            // The services the owner administers (#45); the public list is above. A service is never deleted (SV-04).
+            new TenantResource(
+                'services',
+                function (string $barbershopId): string {
+                    $id = (string) Str::uuid7();
+                    DB::table('services')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'name' => 'Corte clásico',
+                        'duration_minutes' => 30,
+                        'price' => 7000,
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/administracion/servicios',
+                [TenantResource::LIST, TenantResource::UPDATE],
+                ['nombre' => 'Corte moderno'],
+            ),
+        ];
     }
 }
