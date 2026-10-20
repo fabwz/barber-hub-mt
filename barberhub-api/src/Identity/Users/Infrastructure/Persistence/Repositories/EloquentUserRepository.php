@@ -38,6 +38,7 @@ final readonly class EloquentUserRepository implements UserRepository
                     'password' => $user->passwordHash,
                     'phone' => $user->phone?->value,
                     'is_active' => $user->active,
+                    'must_change_password' => $user->mustChangePassword,
                     'terms_accepted_at' => $user->termsAcceptedAt,
                     'privacy_accepted_at' => $user->privacyAcceptedAt,
                 ],
@@ -55,6 +56,19 @@ final readonly class EloquentUserRepository implements UserRepository
         return $model === null ? null : $this->toDomain($model);
     }
 
+    /**
+     * Find the accounts with the given identifiers; an unknown identifier is skipped.
+     *
+     * @param  list<UserId>  $ids
+     * @return list<User>
+     */
+    public function findMany(array $ids): array
+    {
+        $models = UserModel::query()->whereIn('id', array_map(fn (UserId $id): string => $id->value, $ids))->get();
+
+        return array_values($models->map($this->toDomain(...))->all());
+    }
+
     /** Rebuild the entity from its stored state. */
     private function toDomain(UserModel $model): User
     {
@@ -67,6 +81,7 @@ final readonly class EloquentUserRepository implements UserRepository
             $model->is_active,
             $this->instant($model->terms_accepted_at),
             $this->instant($model->privacy_accepted_at),
+            $model->must_change_password,
         );
     }
 

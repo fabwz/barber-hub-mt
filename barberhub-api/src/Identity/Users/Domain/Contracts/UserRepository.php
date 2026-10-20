@@ -23,4 +23,12 @@ interface UserRepository
 
     /** Find the account registered with an email address. */
     public function findByEmail(Email $email): ?User;
+
+    /**
+     * Find the accounts with the given identifiers; an unknown identifier is skipped.
+     *
+     * @param  list<UserId>  $ids
+     * @return list<User>
+     */
+    public function findMany(array $ids): array;
 }
