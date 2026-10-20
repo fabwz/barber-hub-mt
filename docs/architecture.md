@@ -124,7 +124,7 @@ La membresía de cliente se crea al primer uso de una operación de cliente en l
 
 En BarberHub una persona puede tener roles en varias barberías, así que la barbería no se deduce de la persona, como en el proyecto de referencia, sino de la ruta y se verifica contra sus membresías (RD-18). Ver [ADR 0005](adr/0005-tenancy-through-a-port-and-row-level-security.md).
 
-1. En las rutas, `{barberia}` es el UUID v7 de la barbería. La barbería nunca se toma del cuerpo, de la consulta ni de un encabezado. El enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}` (previsto, #37).
+1. En las rutas, `{barberia}` es el UUID v7 de la barbería. La barbería nunca se toma del cuerpo, de la consulta ni de un encabezado. El enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}`, que devuelve el UUID y los datos públicos de la barbería.
 2. El middleware `barbershop` (previsto, #38) comprueba que la sesión tenga un rol en esa barbería y recién entonces fija el contexto, a través del puerto `BarbershopContext` de `Shared` (previsto, #38).
 3. Si la persona no tiene rol en la barbería, o el recurso pertenece a otra, la respuesta es 404 `no-encontrado`, con el mismo cuerpo que un recurso inexistente (UP-06). Si tiene rol pero insuficiente, 403 `prohibido`.
 4. Cada método de un repositorio recibe el `BarbershopId` y filtra por `barbershop_id`: buscar, listar y borrar. Las reglas `exists` y `unique` de los Form Requests también filtran por la barbería.
