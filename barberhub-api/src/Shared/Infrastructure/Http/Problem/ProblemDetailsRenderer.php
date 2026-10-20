@@ -13,6 +13,7 @@ use Src\Shared\Domain\Exceptions\BusinessRuleException;
 use Src\Shared\Domain\Exceptions\DomainException;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\Exceptions\NotFoundException;
+use Src\Shared\Domain\Exceptions\TooManyRequestsException;
 use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
@@ -28,6 +29,15 @@ final readonly class ProblemDetailsRenderer
             $exception instanceof ValidationException => $this->respond(
                 ProblemType::InvalidData,
                 extensions: ['errores' => $exception->errors()],
+            ),
+            $exception instanceof TooManyRequestsException => $this->respond(
+                ProblemType::TooManyRequests,
+                trans_choice(
+                    $exception->translationKey(),
+                    max(1, (int) ceil($exception->retryAfterSeconds() / 60)),
+                    $exception->parameters(),
+                ),
+                headers: ['Retry-After' => (string) $exception->retryAfterSeconds()],
             ),
             $exception instanceof DomainException => $this->respond(
                 $this->typeOfDomainException($exception),

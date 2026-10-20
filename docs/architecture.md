@@ -114,7 +114,9 @@ El dominio nunca pregunta la hora. El momento actual se obtiene en el borde (HTT
 
 El contexto `Identity` guarda las cuentas en `Identity/Users` y los roles en `Identity/Memberships` (previsto, #36). Una cuenta es global: un correo, una contraseña, y puede tener un rol distinto en cada barbería (UP-07). La membresía une a la persona con una barbería y su rol: `owner`, `collaborator` o `customer`.
 
-El agregado de la cuenta es PHP puro. Dos puertos lo separan del framework: `UserRepository`, con su adaptador Eloquent, y `PasswordHasher`, cuyo adaptador usa la fachada `Hash` de Laravel. `UserModel` vive en la infraestructura, extiende el usuario autenticable de Laravel y usa `HasApiTokens` de Sanctum (previsto, #41); `config/auth.php` lo declara como proveedor del guard `sanctum` (previsto, #41).
+El agregado de la cuenta es PHP puro. Puertos lo separan del framework: `UserRepository`, con su adaptador Eloquent; `PasswordHasher`, cuyo adaptador usa la fachada `Hash` de Laravel; `TokenIssuer` y `TokenRevoker`, con adaptadores sobre los tokens personales de Sanctum; y `LoginAttempts`, con un adaptador sobre el limitador de Laravel. `UserModel` vive en la infraestructura, extiende el usuario autenticable de Laravel y usa `HasApiTokens` de Sanctum; `config/auth.php` lo declara como proveedor del guard `sanctum`.
+
+El ingreso (`POST /api/v1/tokens`) entrega un token personal por dispositivo; los cierres de sesión (`DELETE /api/v1/tokens/actual` y `DELETE /api/v1/tokens`) lo revocan y exigen `auth:sanctum`. El token identifica a la persona y no lleva permisos por rol: el rol es por barbería y se verifica en cada petición. Tras 5 fallos seguidos con el mismo correo desde la misma dirección, `LoginAttempts` bloquea nuevos intentos durante 15 minutos contados desde el quinto fallo (SE-05); el bloqueo responde 429 `demasiadas-solicitudes` con `Retry-After`, incluso si la contraseña es correcta. Los contadores viven en la caché.
 
 La membresía de cliente se crea al primer uso de una operación de cliente en la barbería, en la misma transacción que la operación (UP-09). Ver [ADR 0010](adr/0010-customer-membership-created-on-first-use.md).
 

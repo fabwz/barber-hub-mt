@@ -17,6 +17,15 @@
         {
             "name": "Cuentas",
             "description": "Registro de cuentas de personas que usan BarberHub."
+        },
+        {
+            "name": "Sesiones",
+            "description": "Ingreso con correo y contrase\u00f1a y cierre de sesi\u00f3n mediante tokens de acceso."
+        }
+    ],
+    "security": [
+        {
+            "http": []
         }
     ],
     "paths": {
@@ -60,7 +69,8 @@
                     "422": {
                         "$ref": "#/components/responses/InvalidData"
                     }
-                }
+                },
+                "security": []
             }
         },
         "/": {
@@ -94,12 +104,120 @@
                             }
                         }
                     }
+                },
+                "security": []
+            }
+        },
+        "/tokens": {
+            "post": {
+                "operationId": "identity.tokens.store",
+                "description": "Devuelve un token Bearer, que se env\u00eda en el encabezado `Authorization`. El token identifica a la persona, no su rol: el rol se verifica en cada petici\u00f3n seg\u00fan la barber\u00eda. Responde 401 `credenciales-invalidas` si el correo no existe, la contrase\u00f1a no coincide o la cuenta est\u00e1 desactivada, sin indicar cu\u00e1l dato fall\u00f3. Tras 5 intentos fallidos seguidos desde la misma direcci\u00f3n y con el mismo correo, responde 429 `demasiadas-solicitudes` durante 15 minutos, contados desde el quinto fallo, con el encabezado `Retry-After` en segundos y los minutos para reintentar en el detalle; en ese lapso rechaza incluso la contrase\u00f1a correcta.",
+                "summary": "Ingresar con correo y contrase\u00f1a",
+                "tags": [
+                    "Sesiones"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Credenciales"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`TokenDeAcceso`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TokenDeAcceso"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                },
+                "security": []
+            },
+            "delete": {
+                "operationId": "identity.tokens.destroy-all",
+                "description": "Revoca todos los tokens de la persona, incluido el de la petici\u00f3n.",
+                "summary": "Cerrar la sesi\u00f3n en todos los dispositivos",
+                "tags": [
+                    "Sesiones"
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/tokens/actual": {
+            "delete": {
+                "operationId": "identity.tokens.destroy-current",
+                "description": "Revoca el token con el que se hace la petici\u00f3n. Desde ese momento el token responde 401 `no-autenticado`.",
+                "summary": "Cerrar la sesi\u00f3n en este dispositivo",
+                "tags": [
+                    "Sesiones"
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
                 }
             }
         }
     },
     "components": {
+        "securitySchemes": {
+            "http": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        },
         "schemas": {
+            "Credenciales": {
+                "type": "object",
+                "properties": {
+                    "correo": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    },
+                    "contrasena": {
+                        "type": "string"
+                    },
+                    "dispositivo": {
+                        "type": "string",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "correo",
+                    "contrasena",
+                    "dispositivo"
+                ],
+                "title": "Credenciales"
+            },
             "Cuenta": {
                 "type": "object",
                 "properties": {
@@ -190,6 +308,23 @@
                     "acepta_privacidad"
                 ],
                 "title": "RegistroDeCuenta"
+            },
+            "TokenDeAcceso": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string"
+                    },
+                    "tipo": {
+                        "type": "string",
+                        "const": "Bearer"
+                    }
+                },
+                "required": [
+                    "token",
+                    "tipo"
+                ],
+                "title": "TokenDeAcceso"
             }
         },
         "responses": {
