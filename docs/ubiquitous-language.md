@@ -57,8 +57,10 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Negocio | Código | Base de datos | API |
 | --- | --- | --- | --- |
 | Servicio | `Service` | `services` | `servicios` |
-| Duración | `Duration` | `duration_minutes` | `duracion_minutos` |
-| Precio | `Money` | `price` | `precio` |
+| Duración | `ServiceDuration` (envuelve `Duration`) | `duration_minutes` | `duracion_minutos` |
+| Precio (con IVA incluido) | `ServicePrice` (envuelve `Money`) | `price` | `precio` |
+| Base (precio sin IVA) | `base()` | — (se calcula) | `base` |
+| IVA (impuesto dentro del precio) | `tax()` | — (se calcula) | `iva` |
 | Servicio activo | `active` | `is_active` | `activo` |
 | Servicios que ofrece un colaborador | — | `collaborator_services` | `servicios` |
 | Horario de la barbería | `OpeningHours` | `opening_hours` | `horario` |

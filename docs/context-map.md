@@ -11,7 +11,7 @@ Los objetos de valor `Money`, `Duration`, `Percentage`, `TimeInterval` e `Identi
 | Contexto | Módulos | Agregados | Objetos de valor | Eventos que publica | Carpeta |
 | --- | --- | --- | --- | --- | --- |
 | Identity (identidad y acceso) | `Users`, `Memberships` | — | `Email`, `PlainPassword`, `UserName`, `UserId` y `Phone` (en Shared); `Role`, `MembershipId` | — | Creada (#21) |
-| Catalog (catálogo y horarios) | `Barbershops`, `Services`, `OpeningHours`, `Collaborators` | — | `BarbershopName`, `City`; `BarbershopId`, `Money`, `Duration`, `Percentage` (en Shared); `TimeRange`, `PublicLink` (previstos) | — | Creada (#21) |
+| Catalog (catálogo y horarios) | `Barbershops`, `Services`, `OpeningHours`, `Collaborators` | — | `BarbershopName`, `City`, `PublicLink`; `ServiceId`, `ServiceName`, `ServiceDuration`, `ServicePrice` (#45); `BarbershopId`, `Money`, `Duration`, `Percentage` (en Shared); `TimeRange` (previsto) | — | Creada (#21); `Services` implementado (#45) |
 | Availability (disponibilidad) | `Slots` | — | `Slot` (previsto); `TimeInterval` (en Shared) | — | Creada (#21) |
 | Reservations (reservas) | `Reservations` y, más adelante, `AssistedClients` | `Reservation` | `ReservationStatus` (previsto); `TimeInterval` y `Money` (en Shared) | `ReservationConfirmed`, `ReservationCancelled`, `ReservationRescheduled`, `ReservationExpired`, `ReservationAttended`, `ReservationMissed`, `SpaceReleased` (previstos) | Creada (#21) |
 | Payments (pagos) | `Payments`, `Refunds`, `Webhooks` | `Payment` | `PaymentStatus`, `GatewayEventId` (previstos); `Money` (en Shared) | `PaymentConfirmed`, `PaymentFailed`, `RefundCompleted` (previstos) | Llega en su milestone |
@@ -34,7 +34,7 @@ Los cuatro agregados guardan reglas que no pueden romperse nunca, ni siquiera po
 
 ## Lo que no es un agregado
 
-`Users`, `Memberships`, `Barbershops`, `Services`, `OpeningHours`, `Collaborators`, los avisos y los reembolsos son datos que se administran con casos de uso simples. No tienen invariantes que crucen varias filas, así que no necesitan un agregado: basta una entidad y su repositorio. `Slots` no guarda datos: calcula la disponibilidad a partir del horario, los turnos y las reservas (DI-01).
+`Users`, `Memberships`, `Barbershops`, `Services`, `OpeningHours`, `Collaborators`, los avisos y los reembolsos son datos que se administran con casos de uso simples. No tienen invariantes que crucen varias filas, así que no necesitan un agregado: basta una entidad y su repositorio. `Service` (#45) es así: sus reglas (SV-01 y SV-02) viven en objetos de valor que envuelven `Duration` y `Money` de `Shared`, y que una reserva conserve el precio y la duración con que se hizo (SV-03) es una invariante de `Reservation`, no de `Service`. `Slots` no guarda datos: calcula la disponibilidad a partir del horario, los turnos y las reservas (DI-01).
 
 ## Cómo se actualiza
 
