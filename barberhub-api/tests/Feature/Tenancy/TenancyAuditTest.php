@@ -16,11 +16,13 @@ use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Shared\BarbershopIsolation;
 use Tests\Support\Tenancy\TenancyAudit;
 use Tests\Support\Tenancy\TenantResource;
+use Tests\Support\Tenancy\TenantResources;
 use Tests\TestCase;
 
 /**
  * The audit behind the tenancy tests can fail: on a synthetic resource (the probe table and routes registered here) a safe
- * version has no violations and each deliberate leak has some. The project has no resource of a barbershop yet to try it on.
+ * version has no violations and each deliberate leak has some. The real resources are registered alongside, so a probe
+ * is judged on what it adds.
  */
 final class TenancyAuditTest extends TestCase
 {
@@ -126,7 +128,13 @@ final class TenancyAuditTest extends TestCase
      */
     private function coverage(array $resources, array $publicRoutes = []): array
     {
-        return TenancyAudit::coverageViolations($resources, DB::connection(), Route::getRoutes(), $publicRoutes);
+        // The real resources and public routes are registered too, so only what the probe adds is left to report.
+        return TenancyAudit::coverageViolations(
+            [...TenantResources::all(), ...$resources],
+            DB::connection(),
+            Route::getRoutes(),
+            [...TenantResources::PUBLIC_ROUTES, ...$publicRoutes],
+        );
     }
 
     /**

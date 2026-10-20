@@ -171,6 +171,7 @@ return [
         'acepta_privacidad' => 'aceptación de la política de privacidad',
         'acepta_terminos' => 'aceptación de los términos y condiciones',
         'contrasena' => 'contraseña',
+        'duracion_minutos' => 'duración en minutos',
         'telefono' => 'teléfono',
     ],
 

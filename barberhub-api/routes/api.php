@@ -5,3 +5,4 @@ declare(strict_types=1);
 require base_path('src/Shared/Infrastructure/Http/routes.php');
 require base_path('src/Identity/Users/Infrastructure/Http/routes.php');
 require base_path('src/Catalog/Barbershops/Infrastructure/Http/routes.php');
+require base_path('src/Catalog/Services/Infrastructure/Http/routes.php');

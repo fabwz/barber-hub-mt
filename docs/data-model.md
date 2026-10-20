@@ -154,18 +154,22 @@ Las credenciales de las pasarelas no se guardan aquí: viven en variables de ent
 
 ### services
 
+La tabla existe desde el issue #45 con las columnas marcadas como creadas; `image_path` está prevista y la agrega el #46 con una migración posterior. Tiene la política de fila `services_barbershop_isolation` (ver [database.md](database.md)). Un servicio nunca se borra: se inactiva (SV-04).
+
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id` | `uuid` | Llave primaria |
+| `id` | `uuid` | Llave primaria, `DEFAULT uuidv7()` |
 | `barbershop_id` | `uuid` | Llave foránea a `barbershops`, borrado en cascada |
-| `name` | `varchar(120)` | Obligatoria |
-| `duration_minutes` | `smallint` | `CHECK` entre 10 y 180 y múltiplo de 5 (SV-01) |
-| `price` | `integer` | Colones enteros con IVA incluido, `CHECK` mayor que 0 (SV-01, SV-02) |
-| `image_path` | `varchar(255)` | Opcional; JPG, PNG o WebP de hasta 2 MB (SV-06) |
+| `name` | `varchar(120)` | Obligatoria. No es única: los requisitos no lo piden |
+| `duration_minutes` | `smallint` | `CHECK` `services_duration_minutes_check`: entre 10 y 180 y múltiplo de 5 (SV-01) |
+| `price` | `integer` | Colones enteros con IVA incluido, `CHECK` `services_price_check`: mayor que 0 (SV-01, SV-02). La base y el impuesto no se guardan: se calculan (SV-02) |
+| `image_path` | `varchar(255)` | Prevista, #46. Opcional; JPG, PNG o WebP de hasta 2 MB (SV-06) |
 | `is_active` | `boolean` | Por defecto `true` (SV-04) |
-| `created_at`, `updated_at` | `timestamptz` | |
+| `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
 Llaves candidatas: `id` y `(id, barbershop_id)`.
+
+El impuesto de un precio es `precio × 13 / 113` redondeado al colón más cercano (la mitad hacia arriba), y la base es `precio − impuesto`; así `base + impuesto = precio`. Por ejemplo, ₡7.000 son ₡6.195 de base y ₡805 de IVA, y ₡7.500 son ₡6.637 y ₡863 (RL-02).
 
 ### opening_hours, date_exceptions y date_exception_slots
 
