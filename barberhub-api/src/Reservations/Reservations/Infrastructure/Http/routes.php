@@ -30,3 +30,10 @@ Route::get('barberias/{barberia}/reservas/{reserva}', [ReservationController::cl
     ->middleware(['auth:sanctum', 'barbershop'])
     ->name('reservations.reservations.show')
     ->whereUuid(['barberia', 'reserva']);
+
+// The customer cancels their own and the owner any of the barbershop (RF-16). The plain mode gives a person without a
+// role the usual 404 (UP-06) and the role filter refuses a collaborator with 403; the controller picks the author by role.
+Route::post('barberias/{barberia}/reservas/{reserva}/cancelacion', [ReservationController::class, 'cancel'])
+    ->middleware(['auth:sanctum', 'barbershop', 'role:owner,customer'])
+    ->name('reservations.reservations.cancel')
+    ->whereUuid(['barberia', 'reserva']);

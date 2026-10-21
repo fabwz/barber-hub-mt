@@ -152,7 +152,7 @@ final class TenantResources
                 'reservations',
                 fn (string $barbershopId): string => self::createReservation($barbershopId),
                 'api/v1/barberias/{barberia}/reservas',
-                [TenantResource::LIST, TenantResource::SHOW],
+                [TenantResource::LIST, TenantResource::SHOW, TenantResource::CANCEL],
                 [],
                 ['api/v1/barberias/{barberia}/mis-reservas'],
             ),

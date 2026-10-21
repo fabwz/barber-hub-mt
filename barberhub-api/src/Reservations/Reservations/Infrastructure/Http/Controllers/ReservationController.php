@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Src\Reservations\Reservations\Application\UseCases\CancelReservation;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetCustomerReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetStaffReservation;
@@ -18,6 +19,7 @@ use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CreateReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\CancelledReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationDetailResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationListItemResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationResource;
@@ -85,5 +87,17 @@ final readonly class ReservationController
         return $role === 'customer'
             ? new CustomerReservationDetailResource($getCustomer->execute($userId, $reserva))
             : new StaffReservationDetailResource($getStaff->execute($userId, $role === 'owner', $reserva));
+    }
+
+    /** Cancel a reservation and free its space. */
+    #[Endpoint(
+        title: 'Cancelar una reserva',
+        description: 'Cancela la reserva y libera su espacio en la misma operación. El cliente cancela solo las suyas y la reserva queda `cancelada_por_cliente`; el dueño cancela cualquiera de su barbería y queda `cancelada_por_barberia`. La respuesta trae la `clasificacion` de la cancelación: `a_tiempo` o `tardia` (según el `plazo_cancelacion_horas` que la reserva guardó y la hora de la cancelación) para el cliente, y `por_la_barberia` para el dueño. Repetir la cancelación responde 200 con el mismo estado y la misma clasificación, sin agregar nada al historial. Una reserva completada, ausente o expirada, o una temporal que el dueño intenta cancelar, responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro cliente, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`. La consecuencia económica, el aviso al cliente y la lista de espera todavía no se aplican.',
+    )]
+    public function cancel(Request $request, string $barberia, string $reserva, CancelReservation $cancelReservation): CancelledReservationResource
+    {
+        $isOwner = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE) === 'owner';
+
+        return new CancelledReservationResource($cancelReservation->execute((string) $request->user()?->getAuthIdentifier(), $isOwner, $reserva, $this->clock->now()));
     }
 }
