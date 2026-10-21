@@ -71,18 +71,18 @@ El constructor de esquemas de Laravel no cubre funciones, procedimientos, trigge
 
 ## Extensiones y tipos (#47)
 
-Los crea la migración de `opening_hours` (#47); los turnos y las pausas de los colaboradores (#48) y las reservas (#56) usan la misma extensión y el mismo tipo.
+Los crea la migración de `opening_hours` (#47); los turnos y las pausas de los colaboradores (#48) usan la misma extensión y el mismo tipo, y las reservas (#126) usan la extensión.
 
 | Objeto | Para qué |
 | --- | --- |
 | Extensión `btree_gist` | Permite comparar con `=` columnas escalares (`uuid`, `smallint`) dentro de un índice GiST, necesario para las restricciones `EXCLUDE` |
 | Tipo `timerange` | Rango de `time` para los horarios semanales, creado con `CREATE TYPE timerange AS RANGE (subtype = time)`; PostgreSQL no lo trae incorporado |
 
-`btree_gist` es una extensión de confianza: el rol dueño de la base la instala sin ser superusuario. `php artisan migrate:fresh` borra las tablas pero no los tipos, por eso la migración elimina `timerange` antes de crearlo. Su `down()` elimina el tipo y la extensión, y una prueba (`OpeningHoursMigrationTest`) verifica que no quedan restos, también con un tipo huérfano. Como los turnos y las pausas dependen del tipo, esa prueba revierte primero la migración de los colaboradores.
+`btree_gist` es una extensión de confianza: el rol dueño de la base la instala sin ser superusuario. `php artisan migrate:fresh` borra las tablas pero no los tipos, por eso la migración elimina `timerange` antes de crearlo. Su `down()` elimina el tipo y la extensión, y una prueba (`OpeningHoursMigrationTest`) verifica que no quedan restos, también con un tipo huérfano. Como los turnos y las pausas dependen del tipo y las reservas de la extensión, esa prueba revierte primero la migración de las reservas y la de los colaboradores. La migración de las reservas no elimina la extensión en su `down()`: es de `opening_hours`, y `ReservationMigrationTest` verifica que revertirla no deja restos y que la extensión sigue.
 
 ## Restricciones de exclusión
 
-Una restricción `UNIQUE` solo compara por igualdad. Cuando la regla es «no se traslapan», se usa `EXCLUDE`, que acepta un operador por columna. Tres usos: el primero existe desde el #47, el segundo desde el #48 (turnos y pausas, una restricción por tabla con la misma forma, más el colaborador) y el tercero está previsto (#56).
+Una restricción `UNIQUE` solo compara por igualdad. Cuando la regla es «no se traslapan», se usa `EXCLUDE`, que acepta un operador por columna. Cuatro usos: el primero existe desde el #47, el segundo desde el #48 (turnos y pausas, una restricción por tabla con la misma forma, más el colaborador) y el tercero y el cuarto desde el #126 (las reservas de un colaborador y las de un cliente).
 
 ```sql
 -- Franjas del horario de una barbería (HO-01), creada en el #47: mismo día, sin minutos en común
@@ -92,15 +92,24 @@ ALTER TABLE opening_hours ADD CONSTRAINT opening_hours_no_overlap_excl EXCLUDE U
     timerange(opens_at, closes_at) WITH &&
 );
 
--- Previsto, #56. Reservas de un colaborador (RE-01): el intervalo incluye la limpieza de 5 minutos
+-- Creada en el #126. Reservas de un colaborador (RE-01): el intervalo incluye la limpieza de 5 minutos
 ALTER TABLE reservations ADD CONSTRAINT reservations_no_overlap_excl EXCLUDE USING gist (
     barbershop_id WITH =,
     collaborator_id WITH =,
     tstzrange(starts_at, blocked_until) WITH &&
 ) WHERE (status IN ('temporary', 'confirmed'));
+
+-- Creada en el #126. Reservas confirmadas de un cliente (RE-06): solo el servicio, sin la limpieza
+ALTER TABLE reservations ADD CONSTRAINT reservations_customer_no_overlap_excl EXCLUDE USING gist (
+    barbershop_id WITH =,
+    customer_membership_id WITH =,
+    tstzrange(starts_at, ends_at) WITH &&
+) WHERE (status = 'confirmed');
 ```
 
-El rango se construye con los límites por defecto `[)`: el inicio está incluido y el fin excluido, así que 09:00–12:00 y 12:00–15:00 no se traslapan. La violación devuelve el SQLSTATE `23P01`, que el repositorio traduce a la excepción del dominio: `TimeSlotOverlapsException` (409 `conflicto`) en las franjas del horario y, previsto, `espacio-no-disponible` en las reservas. El caso de uso ya rechaza el solape antes de guardar; la restricción es la segunda barrera.
+La condición `WHERE` es lo que libera el espacio: una reserva que pasa a completada, ausente, cancelada o expirada deja de contar para las dos restricciones, y la siguiente persona puede ocuparlo. `ReservationSchemaTest` prueba cada estado final, el solape rechazado, la limpieza como parte del bloqueo y la contigüidad permitida.
+
+El rango se construye con los límites por defecto `[)`: el inicio está incluido y el fin excluido, así que 09:00–12:00 y 12:00–15:00 no se traslapan. La violación devuelve el SQLSTATE `23P01`, que el repositorio traduce a la excepción del dominio: `TimeSlotOverlapsException` (409 `conflicto`) en las franjas del horario y, previsto (#56), `espacio-no-disponible` en las reservas. Hasta entonces, `EloquentReservationRepository` deja pasar la excepción de la base sin traducirla. El caso de uso ya rechaza el solape antes de guardar; la restricción es la segunda barrera.
 
 La limpieza se guarda ya sumada en `blocked_until`, porque una expresión de índice debe ser inmutable y sumar un intervalo a un `timestamptz` no lo es. Ver la excepción deliberada en [data-model.md](data-model.md).
 
@@ -173,6 +182,8 @@ PostgreSQL revisa las llaves únicas, las restricciones de exclusión y las llav
 2. Una migración habilita y fuerza la seguridad a nivel de fila y crea la política `<tabla>_barbershop_isolation` con la misma expresión en `USING` y `WITH CHECK`; su `down()` deshace los tres pasos. El SQL se repite en cada migración, sin ayudante: una migración no debe cambiar si cambia el código.
 3. Las rutas que la usan pasan por el middleware `barbershop`, y su fábrica fija la barbería de su fila.
 4. Su recurso se registra en `tests/Support/Tenancy/TenantResources.php`: la tabla, cómo crear una fila para una barbería, la ruta base con `{barberia}` y las operaciones que ofrece (listar, ver, modificar, borrar). Con eso la suite `tests/Feature/Tenancy` lo prueba contra una segunda barbería. Una ruta pública con `{barberia}` se declara en `PUBLIC_ROUTES` de ese archivo y usa `barbershop:public`. Su caso se agrega también a la matriz de permisos.
+
+**Una tabla sin rutas todavía (decisión del #126).** `reservations` y `reservation_status_history` tienen `barbershop_id`, así que la prueba de cobertura exige que estén en el registro, pero todavía no hay rutas: la creación llega con el #56 y las consultas con el #57. No hizo falta cambiar el arnés: una entrada con `operations` vacío (como `collaborator_services`, que se sirve dentro del colaborador) no prueba ninguna ruta, y la prueba de aislamiento igual crea una fila en cada barbería y verifica que la base oculta la ajena. Lo que el arnés rechaza, y sus pruebas de detección siguen cubriendo, es declarar una operación cuya ruta no existe. Cuando el #57 cree las rutas, cambia el `operations` de la entrada de `reservations` (por ejemplo `[LIST, SHOW]`) y esa misma prueba empieza a recorrerlas.
 
 La prueba `tests/Feature/Tenancy/BarbershopPolicyCatalogTest.php` revisa el catálogo de PostgreSQL y falla si una tabla con `barbershop_id`, salvo las excepciones listadas, no tiene la seguridad habilitada, forzada y exactamente la política `<tabla>_barbershop_isolation` con la expresión de arriba. Una segunda política también falla, porque las políticas permisivas se suman. La lista de excepciones vive en `tests/Support/Shared/BarbershopIsolation.php` y debe coincidir con la tabla de arriba.
 

@@ -96,7 +96,8 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Reserva asistida | `assisted` | `created_by_membership_id` | `asistida` |
 | Reprogramación | `reschedule` | `reschedule_count` | `reprogramaciones` |
 | Historial de estados | `ReservationStatusChange` | `reservation_status_history` | `historial` |
-| Limpieza entre reservas | `cleanupMinutes` | `blocked_until` | — |
+| Autor de un cambio de estado (una persona o el sistema) | `Author` | `changed_by_user_id`, nulo si es el sistema | — |
+| Limpieza entre reservas | `Reservation::CLEANUP_MINUTES` | `blocked_until` | — |
 
 ### Pagos y bonos
 

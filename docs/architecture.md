@@ -127,7 +127,17 @@ El rol y el perfil son cosas distintas: el rol vive en `memberships` (UP-07) y e
 
 El horario semanal se define completo (`ReplaceSchedule`): `WorkSchedule` es un objeto de valor que rechaza turnos solapados el mismo día, pausas solapadas y pausas fuera de un turno, y el caso de uso rechaza los turnos que no caen dentro de las franjas de la barbería de ese día (HO-02), uniendo las franjas contiguas. Cada rechazo lleva la lista y la posición del elemento (`ScheduleEntryException`), que el controlador traduce a `errores` en `turnos.N` o `pausas.N`. La consulta que leerá la disponibilidad (#53) es `ListCollaboratorsOfferingService`: los colaboradores activos que tienen habilitado un servicio, del más antiguo al más nuevo.
 
-Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas) porque las reservas no existen: queda anotada en `SetCollaboratorActive` y la cierran el #126 y el #56. Obligar el cambio de la contraseña temporal en el primer ingreso (`users.must_change_password`) es del #42.
+Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas): la tabla `reservations` ya existe (#126), pero la consulta que necesita llega con la creación de reservas (#56); queda anotada en `SetCollaboratorActive`. Obligar el cambio de la contraseña temporal en el primer ingreso (`users.must_change_password`) es del #42.
+
+### La reserva (#126)
+
+`Reservation` es el primer agregado del proyecto y vive en `Src\Reservations\Reservations`. Hasta ahora ofrece el dominio, la persistencia y el puerto `ReservationRepository`; los casos de uso y las rutas llegan con la creación (#56) y la consulta (#57).
+
+- **Estados y transiciones.** `ReservationStatus` es un `enum` con los siete estados de RE-04 y sabe a cuáles puede pasar (`next()`, `canChangeTo()`, `isFinal()`). El agregado ofrece una operación por transición (`confirm`, `expire`, `complete`, `markNoShow`, `cancelByCustomer`, `cancelByBarbershop`); las que el diagrama no tiene lanzan `TransitionNotAllowedException`, una `DomainException` sin tipo propio, así que responde 409 `conflicto` y no agrega ningún tipo de error. La referencia (`TransitionNotAllowedException` de SodaYa) extiende `BusinessRuleException` con un tipo propio; aquí no se usa porque los tipos estables son una lista cerrada (RNF-17).
+- **Historial (RE-09).** Cada transición recibe el instante y el autor como parámetros, porque el dominio nunca consulta la hora. `Author` es una persona (`UserId`, de `Shared`) o el sistema. El agregado acumula sus `ReservationStatusChange` (de, a, autor, fecha) en `pendingChanges`, la creación incluida (de nulo a `temporary`), y `EloquentReservationRepository::save()` los inserta en la misma transacción que el estado y luego llama a `markSaved()`. La referencia guarda solo la fecha de cada estado; aquí hay una tabla de historial porque RE-09 pide también el autor.
+- **Copias (SV-03, CA-01).** Al crearla se guardan el precio (`Money`), la duración (`Duration`) y el plazo de cancelación en horas. El intervalo del servicio es un `TimeInterval` y `blockedUntil` es su fin más 5 minutos de limpieza (`Reservation::CLEANUP_MINUTES`, DI-01), calculado en el dominio.
+- **Identificadores de otros módulos.** `CollaboratorId`, `ServiceId` y `CustomerMembershipId` se definen dentro de `Reservations` sobre `Identifier`, como `DishId` y `CustomerId` en la referencia: el dominio de un módulo no importa el de otro.
+- **Todavía no.** Reprogramar (#59) y cancelar con sus reglas de plazo (#60) no existen; `rescheduleCount` solo se lee. La creación con disponibilidad y concurrencia es del #56, que también traducirá la violación de las exclusiones.
 
 ### El tiempo es un parámetro
 
@@ -173,7 +183,7 @@ La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada re
 
 | Garantía | Dónde se cumple |
 | --- | --- |
-| Dos solicitudes por el mismo espacio: una gana, la otra recibe `espacio-no-disponible` | Transacción con `SELECT ... FOR UPDATE` en el caso de uso y restricción `EXCLUDE` de PostgreSQL como segunda barrera (previsto, #56 y #127) (RE-01, RE-02) |
+| Dos solicitudes por el mismo espacio: una gana, la otra recibe `espacio-no-disponible` | Transacción con `SELECT ... FOR UPDATE` en el caso de uso y restricción `EXCLUDE` de PostgreSQL como segunda barrera (la restricción existe desde el #126; la transacción llega con el #56 y el #127) (RE-01, RE-02) |
 | El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0`) más `CHECK (remaining_sessions >= 0)` (previsto, #89) (BO-03) |
 | Un evento de la pasarela se procesa una sola vez | Llave única `(gateway, event_id)` en `webhook_events` (previsto, #65) (PA-05) |
 | Cancelar es idempotente | El caso de uso revisa el estado actual dentro de la transacción (previsto, #60) (CA-06) |
