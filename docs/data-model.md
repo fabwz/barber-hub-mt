@@ -267,6 +267,8 @@ Restricciones:
 - `reservations_customer_no_overlap_excl` (#126), sobre `(barbershop_id, customer_membership_id, tstzrange(starts_at, ends_at))`, solo para el estado `confirmed`: un cliente no tiene dos reservas confirmadas solapadas en la barbería (RE-06). No incluye la limpieza: es el tiempo del servicio, no el del colaborador.
 - Llaves candidatas: `id` y `(id, barbershop_id)`, para que otras tablas referencien la reserva junto con su barbería.
 
+**Pendiente (#62).** La disponibilidad (#53) trata toda reserva temporal como ocupada porque `expires_at` aún no existe; cuando llegue esa columna, la consulta de intervalos bloqueados debe ignorar las temporales vencidas.
+
 Las dos exclusiones se aplican solo a los estados que ocupan el espacio: una reserva completada, ausente, cancelada o expirada lo libera al cambiar de estado. Las reservas contiguas (el inicio de una es el fin del bloqueo de la anterior) se permiten. Son la segunda barrera: el dominio y la disponibilidad rechazan primero (#56), y el SQLSTATE `23P01` que llegue de la base lo traducirá ese issue a `espacio-no-disponible`.
 
 El saldo pendiente por cobrar en el local (PA-10) es `price - deposit_amount` y no se guarda.
