@@ -23,3 +23,10 @@ Route::get('barberias/{barberia}/reservas', [ReservationController::class, 'inde
     ->middleware(['auth:sanctum', 'barbershop', 'role:owner,collaborator'])
     ->name('reservations.reservations.index')
     ->whereUuid('barberia');
+
+// One detail for the three roles, each with its own projection (RF-14, UP-02). The plain mode of the barbershop gives a
+// person without a role the usual 404 (UP-06); the controller picks the projection by the role the middleware found.
+Route::get('barberias/{barberia}/reservas/{reserva}', [ReservationController::class, 'show'])
+    ->middleware(['auth:sanctum', 'barbershop'])
+    ->name('reservations.reservations.show')
+    ->whereUuid(['barberia', 'reserva']);

@@ -7,16 +7,21 @@ namespace Src\Reservations\Reservations\Infrastructure\Http\Controllers;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
+use Src\Reservations\Reservations\Application\UseCases\GetCustomerReservation;
+use Src\Reservations\Reservations\Application\UseCases\GetStaffReservation;
 use Src\Reservations\Reservations\Application\UseCases\ListCustomerReservations;
 use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CreateReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationDetailResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationListItemResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationResource;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\StaffReservationDetailResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\StaffReservationListItemResource;
 use Src\Shared\Domain\Contracts\Clock;
 use Src\Shared\Infrastructure\Http\Resources\PageMeta;
@@ -65,5 +70,20 @@ final readonly class ReservationController
         $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $isOwner, $request->search(), $request->page());
 
         return StaffReservationListItemResource::collection($page->items)->additional(PageMeta::of($page));
+    }
+
+    /** Show one reservation with what the role of the person may see. */
+    #[Endpoint(
+        title: 'Mostrar una reserva',
+        description: 'Muestra una reserva con la proyección de cada rol. El cliente ve la suya (`ReservaDetalleDeCliente`): servicio, barbero, fecha, estado, precio y plazo de cancelación, sin saldo ni historial. El colaborador ve las de su propia agenda (`ReservaDetalleDeAgenda`) con el nombre del cliente y el `saldo_pendiente`, sin historial, pagos ni ingresos. El dueño ve cualquiera de su barbería con lo mismo y el `historial` de cambios de estado con `de`, `a`, `autor` (nombre, o `sistema`) y `fecha`. Sin pagos todavía, el `saldo_pendiente` es el precio completo, que se cobra en el local. Una reserva que no existe, de otra barbería, de otro cliente o de otro colaborador, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`.',
+    )]
+    public function show(Request $request, string $barberia, string $reserva, GetStaffReservation $getStaff, GetCustomerReservation $getCustomer): CustomerReservationDetailResource|StaffReservationDetailResource
+    {
+        $userId = (string) $request->user()?->getAuthIdentifier();
+        $role = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE);
+
+        return $role === 'customer'
+            ? new CustomerReservationDetailResource($getCustomer->execute($userId, $reserva))
+            : new StaffReservationDetailResource($getStaff->execute($userId, $role === 'owner', $reserva));
     }
 }

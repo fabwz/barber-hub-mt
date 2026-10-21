@@ -8,6 +8,7 @@ use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
+use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatusChange;
 use Src\Shared\Domain\ValueObjects\Page;
 use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
@@ -40,4 +41,11 @@ interface ReservationRepository
      * @return Page<Reservation>
      */
     public function page(ReservationFilter $filter, PageRequest $page): Page;
+
+    /**
+     * Read the history of a reservation of the current barbershop, from the first change to the last (RE-09).
+     *
+     * @return list<ReservationStatusChange>
+     */
+    public function history(ReservationId $id): array;
 }

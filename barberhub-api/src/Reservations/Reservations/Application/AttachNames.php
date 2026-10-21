@@ -47,4 +47,17 @@ final readonly class AttachNames
             $withCustomers ? $customers[$reservation->customerMembershipId->value] ?? '' : null,
         ));
     }
+
+    /** Pair one reservation with the same names; it reads the same lists, never row by row. */
+    public function one(Reservation $reservation, bool $withCustomer): ReservationView
+    {
+        $customers = $withCustomer ? $this->customers->namesOf([$reservation->customerMembershipId->value]) : [];
+
+        return new ReservationView(
+            $reservation,
+            $this->services->all()[$reservation->serviceId->value] ?? '',
+            $this->collaborators->names()[$reservation->collaboratorId->value] ?? '',
+            $withCustomer ? $customers[$reservation->customerMembershipId->value] ?? '' : null,
+        );
+    }
 }

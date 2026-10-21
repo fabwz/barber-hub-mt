@@ -142,6 +142,26 @@ final class EloquentReservationRepositoryTest extends TestCase
         );
     }
 
+    /** The history is read back in the order it happened, with its authors (the system has none), and only for a reservation of the current barbershop (RE-09). */
+    public function test_the_history_is_read_back_in_order(): void
+    {
+        $reservation = $this->reservation('2030-03-04 10:00', Author::person(new UserId($this->anaUser)), '2030-03-01 08:00');
+        $this->repository->save($reservation);
+        $reservation->confirm(self::at('2030-03-01 08:05'), Author::system());
+        $this->repository->save($reservation);
+
+        $history = $this->repository->history($reservation->id);
+
+        $this->assertSame(
+            [[null, ReservationStatus::Temporary, $this->anaUser], [ReservationStatus::Temporary, ReservationStatus::Confirmed, null]],
+            array_map(fn ($change): array => [$change->from, $change->to, $change->author->user?->value], $history),
+        );
+        $this->assertSame(self::at('2030-03-01 08:05')->getTimestamp(), $history[1]->at->getTimestamp());
+
+        $other = new EloquentReservationRepository(new FixedBarbershopContext(new BarbershopId($this->fadeLab)));
+        $this->assertSame([], $other->history($reservation->id));
+    }
+
     /** A change and its entry are stored together: if the entry fails, the status does not change. */
     public function test_a_failed_entry_leaves_the_status_unchanged(): void
     {

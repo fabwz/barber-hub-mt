@@ -1330,6 +1330,77 @@
                 }
             }
         },
+        "/barberias/{barberia}/reservas/{reserva}": {
+            "get": {
+                "operationId": "reservations.reservations.show",
+                "description": "Muestra una reserva con la proyecci\u00f3n de cada rol. El cliente ve la suya (`ReservaDetalleDeCliente`): servicio, barbero, fecha, estado, precio y plazo de cancelaci\u00f3n, sin saldo ni historial. El colaborador ve las de su propia agenda (`ReservaDetalleDeAgenda`) con el nombre del cliente y el `saldo_pendiente`, sin historial, pagos ni ingresos. El due\u00f1o ve cualquiera de su barber\u00eda con lo mismo y el `historial` de cambios de estado con `de`, `a`, `autor` (nombre, o `sistema`) y `fecha`. Sin pagos todav\u00eda, el `saldo_pendiente` es el precio completo, que se cobra en el local. Una reserva que no existe, de otra barber\u00eda, de otro cliente o de otro colaborador, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`.",
+                "summary": "Mostrar una reserva",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ReservaDetalleDeCliente`\n\n`ReservaDetalleDeAgenda`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/ReservaDetalleDeCliente"
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/ReservaDetalleDeAgenda"
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/administracion/servicios": {
             "get": {
                 "operationId": "catalog.services.index",
@@ -2385,6 +2456,142 @@
                     "duracion_minutos"
                 ],
                 "title": "ReservaDeLista"
+            },
+            "ReservaDetalleDeAgenda": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "servicio_nombre": {
+                        "type": "string",
+                        "description": "Nombre actual del servicio."
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "barbero_nombre": {
+                        "type": "string",
+                        "description": "Nombre del barbero."
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "cliente_nombre": {
+                        "type": "string",
+                        "description": "Nombre de la persona que reserv\u00f3."
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer",
+                        "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    },
+                    "saldo_pendiente": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Colones por cobrar en el local (PA-10): mientras no exista un dep\u00f3sito, el precio completo."
+                    },
+                    "historial": {
+                        "type": "array",
+                        "items": {}
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "servicio_nombre",
+                    "barbero",
+                    "barbero_nombre",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos",
+                    "cliente_nombre",
+                    "plazo_cancelacion_horas",
+                    "saldo_pendiente",
+                    "historial"
+                ],
+                "title": "ReservaDetalleDeAgenda"
+            },
+            "ReservaDetalleDeCliente": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "servicio_nombre": {
+                        "type": "string",
+                        "description": "Nombre actual del servicio."
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "barbero_nombre": {
+                        "type": "string",
+                        "description": "Nombre del barbero."
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer",
+                        "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "servicio_nombre",
+                    "barbero",
+                    "barbero_nombre",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos",
+                    "plazo_cancelacion_horas"
+                ],
+                "title": "ReservaDetalleDeCliente"
             },
             "Servicio": {
                 "type": "object",

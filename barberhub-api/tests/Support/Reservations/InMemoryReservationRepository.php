@@ -11,6 +11,7 @@ use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
+use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatusChange;
 use Src\Shared\Domain\ValueObjects\Page;
 use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
@@ -25,6 +26,9 @@ final class InMemoryReservationRepository implements ReservationRepository
 
     /** @var list<int> The number of history entries each save wrote. */
     public array $entriesPerSave = [];
+
+    /** @var array<string, list<ReservationStatusChange>> */
+    private array $histories = [];
 
     private int $sequence = 0;
 
@@ -42,6 +46,7 @@ final class InMemoryReservationRepository implements ReservationRepository
         }
 
         $this->entriesPerSave[] = count($reservation->pendingChanges);
+        $this->histories[$reservation->id->value] = [...($this->histories[$reservation->id->value] ?? []), ...$reservation->pendingChanges];
         $this->reservations[$reservation->id->value] = $reservation;
         $reservation->markSaved();
     }
@@ -81,6 +86,12 @@ final class InMemoryReservationRepository implements ReservationRepository
         usort($matches, fn (Reservation $a, Reservation $b): int => $a->interval->start <=> $b->interval->start);
 
         return new Page(array_slice($matches, $page->offset(), $page->size), count($matches), $page);
+    }
+
+    /** The stored history of a reservation, in the order it was written. */
+    public function history(ReservationId $id): array
+    {
+        return $this->histories[$id->value] ?? [];
     }
 
     /** Count the stored reservations. */
