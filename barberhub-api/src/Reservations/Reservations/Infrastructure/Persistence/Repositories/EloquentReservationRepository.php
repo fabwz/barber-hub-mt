@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Infrastructure\Persistence\Repositories;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
+use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -24,6 +27,10 @@ use Src\Shared\Domain\ValueObjects\TimeInterval;
 
 final readonly class EloquentReservationRepository implements ReservationRepository
 {
+    private const string EXCLUSION_VIOLATION = '23P01';
+
+    private const string CUSTOMER_EXCLUSION = 'reservations_customer_no_overlap_excl';
+
     /** Receive the port that tells which barbershop the operation belongs to. */
     public function __construct(private BarbershopContext $context) {}
 
@@ -36,12 +43,40 @@ final readonly class EloquentReservationRepository implements ReservationReposit
     /**
      * Insert the reservation once; afterwards only its status changes. Its pending history entries are inserted in the
      * same transaction, so a status never changes without leaving its entry (RE-09). A collision with another reservation
-     * is rejected by the exclusions of the table (ADR 0009); turning it into a domain exception is the job of the #56.
+     * is rejected by the exclusions of the table (ADR 0009) and translated here: the one of the collaborator is a space
+     * that is not available (RE-01) and the one of the customer is an overlap of their own reservations (RE-06).
      */
     public function save(Reservation $reservation): void
     {
         $barbershopId = $this->context->current()->value;
 
+        try {
+            $this->store($reservation, $barbershopId);
+        } catch (QueryException $exception) {
+            if ($exception->getCode() !== self::EXCLUSION_VIOLATION) {
+                throw $exception;
+            }
+
+            throw str_contains($exception->getMessage(), self::CUSTOMER_EXCLUSION) ? OverlappingReservationException::create() : SlotUnavailableException::create();
+        }
+
+        $reservation->markSaved();
+    }
+
+    /** Tell whether the customer has a confirmed reservation that shares some minute with the interval. */
+    public function hasConfirmedOverlapping(CustomerMembershipId $customer, TimeInterval $interval): bool
+    {
+        return $this->ofBarbershop()
+            ->where('customer_membership_id', $customer->value)
+            ->where('status', ReservationStatus::Confirmed->value)
+            ->where('starts_at', '<', $interval->end)
+            ->where('ends_at', '>', $interval->start)
+            ->exists();
+    }
+
+    /** Write the reservation and its pending entries in one transaction (a savepoint inside the one of the request). */
+    private function store(Reservation $reservation, string $barbershopId): void
+    {
         DB::transaction(function () use ($reservation, $barbershopId): void {
             $model = $this->ofBarbershop()->find($reservation->id->value);
 
@@ -69,8 +104,6 @@ final readonly class EloquentReservationRepository implements ReservationReposit
                 $this->record($reservation->id, $barbershopId, $change);
             }
         });
-
-        $reservation->markSaved();
     }
 
     /** Find the reservation among those of the current barbershop. */

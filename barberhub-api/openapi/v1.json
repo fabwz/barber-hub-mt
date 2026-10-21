@@ -53,6 +53,10 @@
         {
             "name": "Disponibilidad",
             "description": "Espacios libres de una barber\u00eda para reservar, sin iniciar sesi\u00f3n."
+        },
+        {
+            "name": "Reservas",
+            "description": "Reservar el espacio de un barbero."
         }
     ],
     "security": [
@@ -1021,6 +1025,66 @@
                 }
             }
         },
+        "/barberias/{barberia}/reservas": {
+            "post": {
+                "operationId": "reservations.reservations.store",
+                "description": "Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesi\u00f3n. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, as\u00ed que dos peticiones por el mismo espacio dejan exactamente una reserva. Sin una pol\u00edtica de pago todav\u00eda, la reserva queda `confirmada` de inmediato y guarda el precio, la duraci\u00f3n y el plazo de cancelaci\u00f3n (24 horas, provisional) vigentes. Una persona sin rol en la barber\u00eda queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membres\u00eda. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`. Si el espacio ya no est\u00e1 disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo d\u00eda, barbero y servicio, los de inicio m\u00e1s pr\u00f3ximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barber\u00eda, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barber\u00eda responde 404 `no-encontrado`, igual que una barber\u00eda inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.",
+                "summary": "Crear una reserva",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CrearReserva"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Reserva`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Reserva"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/administracion/servicios": {
             "get": {
                 "operationId": "catalog.services.index",
@@ -1624,6 +1688,31 @@
                 ],
                 "title": "CrearFranja"
             },
+            "CrearReserva": {
+                "type": "object",
+                "properties": {
+                    "servicio": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Identificador del servicio activo de la barber\u00eda."
+                    },
+                    "barbero": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Identificador del barbero, el de un espacio de la consulta de disponibilidad."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del espacio, fecha y hora ISO 8601 con desfase, por ejemplo `2030-03-05T10:00:00-06:00`."
+                    }
+                },
+                "required": [
+                    "servicio",
+                    "barbero",
+                    "inicio"
+                ],
+                "title": "CrearReserva"
+            },
             "CrearServicio": {
                 "type": "object",
                 "properties": {
@@ -1889,6 +1978,64 @@
                     "acepta_privacidad"
                 ],
                 "title": "RegistroDeCuenta"
+            },
+            "Reserva": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva; al crearla sin pago queda `confirmada`.",
+                        "enum": [
+                            "temporal",
+                            "confirmada",
+                            "completada",
+                            "ausente",
+                            "cancelada_por_cliente",
+                            "cancelada_por_barberia",
+                            "expirada"
+                        ]
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer",
+                        "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "barbero",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos",
+                    "plazo_cancelacion_horas"
+                ],
+                "title": "Reserva"
             },
             "Servicio": {
                 "type": "object",

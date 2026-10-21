@@ -20,6 +20,12 @@ use Src\Shared\Domain\ValueObjects\TimeInterval;
 
 final class Reservation
 {
+    /**
+     * Hours before the reservation within which it can be cancelled without penalty, for every barbershop until the
+     * cancellation policies of #49 exist. Provisional: #49 replaces it with the value the barbershop defines (CA-01).
+     */
+    public const int DEFAULT_CANCELLATION_DEADLINE_HOURS = 24;
+
     /** Minutes of cleaning after the service, during which the collaborator cannot take another reservation (DI-01). */
     public const int CLEANUP_MINUTES = 5;
 
