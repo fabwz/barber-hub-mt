@@ -254,7 +254,7 @@ El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es 
 | `blocked_until` | `timestamptz` | Creada en el #126. Fin del servicio más 5 minutos de limpieza; `CHECK (ends_at <= blocked_until)`. El dominio la calcula (`Reservation::CLEANUP_MINUTES`) |
 | `price` | `integer` | Creada en el #126. Precio vigente al reservar (SV-03); `CHECK` mayor que 0 |
 | `duration_minutes` | `smallint` | Creada en el #126. Duración vigente al reservar (SV-03); `CHECK` mayor que 0, sin repetir el rango del servicio para que un cambio del catálogo no invalide reservas existentes |
-| `cancellation_deadline_hours` | `smallint` | Creada en el #126. Plazo de cancelación vigente al reservar (CA-01); `CHECK` mayor o igual que 0 |
+| `cancellation_deadline_hours` | `smallint` | Creada en el #126. Plazo de cancelación vigente al reservar (CA-01); `CHECK` mayor o igual que 0. Hasta el #49 toda reserva guarda 24 horas (`Reservation::DEFAULT_CANCELLATION_DEADLINE_HOURS`), un valor provisional |
 | `deposit_amount` | `integer` | Prevista, con el pago (PA-06). `CHECK` mayor o igual que 0; depósito calculado al reservar |
 | `expires_at` | `timestamptz` | Prevista, con el pago (RE-05). Solo en las temporales: 10 minutos desde que inicia el pago |
 | `reschedule_count` | `smallint` | Creada en el #126. `CHECK` entre 0 y 2 (CA-05); por defecto 0. Aumentarla es de reprogramar (#59) |
@@ -269,7 +269,7 @@ Restricciones:
 
 **Pendiente (#62).** La disponibilidad (#53) trata toda reserva temporal como ocupada porque `expires_at` aún no existe; cuando llegue esa columna, la consulta de intervalos bloqueados debe ignorar las temporales vencidas.
 
-Las dos exclusiones se aplican solo a los estados que ocupan el espacio: una reserva completada, ausente, cancelada o expirada lo libera al cambiar de estado. Las reservas contiguas (el inicio de una es el fin del bloqueo de la anterior) se permiten. Son la segunda barrera: el dominio y la disponibilidad rechazan primero (#56), y el SQLSTATE `23P01` que llegue de la base lo traducirá ese issue a `espacio-no-disponible`.
+Las dos exclusiones se aplican solo a los estados que ocupan el espacio: una reserva completada, ausente, cancelada o expirada lo libera al cambiar de estado. Las reservas contiguas (el inicio de una es el fin del bloqueo de la anterior) se permiten. Son la segunda barrera: el dominio y la disponibilidad rechazan primero (#56), y el SQLSTATE `23P01` que llega de la base lo traduce `EloquentReservationRepository` según la restricción: `espacio-no-disponible` para la del colaborador y un conflicto (`reserva-solapada`, tipo `conflicto`) para la del cliente.
 
 El saldo pendiente por cobrar en el local (PA-10) es `price - deposit_amount` y no se guarda.
 
@@ -466,7 +466,7 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 2. **Servicios cubiertos por un bono adquirido.** Se leen de la definición viva. Si el dueño edita los servicios de un bono ya vendido, cambia lo que cubre el que ya compraron los clientes. ¿Se congelan al comprar?
 3. **Nombre de servicio único por barbería.** Los requisitos no lo exigen, así que no hay restricción.
 4. **Búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
-5. **Corte infantil.** CL-05 pide registrarlo a nombre de una persona adulta responsable, y no hay un campo que lo distinga de otro servicio.
+5. **Corte infantil (resuelto en el #56).** CL-05 pide registrarlo a nombre de una persona adulta responsable. Se cumple por construcción, sin columna nueva: no existen cuentas de menores y la reserva queda a nombre de la cuenta de la sesión, que es de una persona adulta; el cuerpo de la reserva no acepta otro cliente. Si más adelante hace falta distinguir los servicios infantiles, sería un campo del catálogo, no de la reserva.
 
 ## Regla para cada migración nueva
 
