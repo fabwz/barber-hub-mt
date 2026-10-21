@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Domain\Entities;
 
 use DateTimeImmutable;
+use LogicException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
+use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -143,6 +145,27 @@ final class Reservation
     public function cancelByBarbershop(DateTimeImmutable $at, Author $author): void
     {
         $this->changeTo(ReservationStatus::CancelledByBarbershop, $at, $author);
+    }
+
+    /**
+     * Classify the cancellation made at the given instant: the barbershop's is its own class and the customer's is on time
+     * up to the deadline copied into the reservation, and late after it (CA-01, CA-04). It is computed, never stored.
+     */
+    public function classifyCancellation(DateTimeImmutable $cancelledAt): CancellationClass
+    {
+        return match ($this->status) {
+            ReservationStatus::CancelledByBarbershop => CancellationClass::ByBarbershop,
+            ReservationStatus::CancelledByCustomer => $cancelledAt <= $this->interval->start->modify("-{$this->cancellationDeadlineHours} hours")
+                ? CancellationClass::OnTime
+                : CancellationClass::Late,
+            default => throw new LogicException('Only a cancelled reservation has a cancellation class.'),
+        };
+    }
+
+    /** Tell whether the reservation was cancelled, by either side. */
+    public function isCancelled(): bool
+    {
+        return $this->status === ReservationStatus::CancelledByCustomer || $this->status === ReservationStatus::CancelledByBarbershop;
     }
 
     /** Forget the pending changes once the repository stored them. */
