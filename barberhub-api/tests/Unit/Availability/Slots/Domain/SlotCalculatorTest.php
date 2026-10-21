@@ -113,7 +113,9 @@ final class SlotCalculatorTest extends TestCase
         return [
             'exactly 60 minutes ahead' => ['2030-03-05 08:00', $all],
             'one minute under the notice' => ['2030-03-05 08:01', ['09:15', '09:30', '09:45', '10:00', '10:15']],
+            'one minute over the notice' => ['2030-03-05 07:59', $all],
             'in the middle of the notice' => ['2030-03-05 08:45', ['09:45', '10:00', '10:15']],
+            'one minute inside the window' => ['2030-02-03 10:01', ['09:00', '09:15', '09:30', '09:45', '10:00']],
             'the day has passed' => ['2030-03-06 08:00', []],
             'exactly 30 days ahead' => ['2030-02-03 10:00', ['09:00', '09:15', '09:30', '09:45', '10:00']],
             'one minute beyond the window' => ['2030-02-03 09:59', ['09:00', '09:15', '09:30', '09:45']],
@@ -165,6 +167,41 @@ final class SlotCalculatorTest extends TestCase
         $slots = $this->calculate([['00:00', '02:00']], [['00:00', '02:00']], [], 30, now: '2030-03-05 23:30', date: '2030-03-06');
 
         $this->assertSame('00:30', $this->starts($slots)[0]);
+    }
+
+    /**
+     * The notice is counted on the Costa Rica clock whatever the zone of the one that asks: 05:00 UTC is midnight in Costa
+     * Rica, so the earliest space of the next day is 1:00 and the edge is inclusive.
+     */
+    #[DataProvider('utcMoments')]
+    public function test_the_notice_at_the_midnight_of_costa_rica(string $utc, string $first): void
+    {
+        $now = new DateTimeImmutable($utc, new DateTimeZone('UTC'));
+        $slots = $this->calculate([['00:00', '03:00']], [['00:00', '03:00']], [], 30, now: $now, date: '2030-03-06');
+
+        $this->assertSame($first, $this->starts($slots)[0]);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function utcMoments(): array
+    {
+        return [
+            '23:00 in Costa Rica, 60 minutes before midnight' => ['2030-03-06 05:00', '00:00'],
+            'one minute after that' => ['2030-03-06 05:01', '00:15'],
+            'midnight in Costa Rica' => ['2030-03-06 06:00', '01:00'],
+        ];
+    }
+
+    /** The cleaning counts as part of the space: it fits when it ends exactly where a reservation starts, not a minute later (DI-01). */
+    public function test_the_cleaning_of_the_space_counts_against_the_next_reservation(): void
+    {
+        $reservation = [TimeInterval::between($this->at(self::DAY.' 10:00'), $this->at(self::DAY.' 10:20'))];
+
+        $exact = $this->calculate([['09:00', '11:00']], [['09:00', '11:00']], [], 40, blocked: $reservation);
+        $over = $this->calculate([['09:00', '11:00']], [['09:00', '11:00']], [], 41, blocked: $reservation);
+
+        $this->assertSame(['09:00', '09:15'], $this->starts($exact)); // 09:15 + 40 + 5 ends at 10:00
+        $this->assertSame(['09:00'], $this->starts($over)); // 09:15 + 41 + 5 ends at 10:01
     }
 
     /** The closest spaces to the requested start come first, the earlier one wins a tie, and they are listed by start. */
