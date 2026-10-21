@@ -85,6 +85,17 @@ final class TenancyAuditTest extends TestCase
         );
     }
 
+    /** A customer route must use the customer mode: with the plain middleware it would answer 404 to the first booking of a person. */
+    public function test_a_customer_route_without_the_customer_mode_is_reported(): void
+    {
+        $resource = $this->registerRoutes('sondas', ['auth:sanctum', 'barbershop'], false);
+        $route = 'GET '.self::BASE.'sondas';
+
+        $violations = TenancyAudit::coverageViolations([...TenantResources::all(), $resource], DB::connection(), Route::getRoutes(), TenantResources::PUBLIC_ROUTES, [...TenantResources::CUSTOMER_ROUTES, $route]);
+
+        $this->assertContains("{$route}: is without the barbershop:customer middleware", $violations);
+    }
+
     /** A route that sets the barbershop of the URL without checking the person lets a member read and change the other barbershop. */
     public function test_a_route_that_trusts_the_url_is_reported(): void
     {
@@ -134,6 +145,7 @@ final class TenancyAuditTest extends TestCase
             DB::connection(),
             Route::getRoutes(),
             [...TenantResources::PUBLIC_ROUTES, ...$publicRoutes],
+            TenantResources::CUSTOMER_ROUTES,
         );
     }
 

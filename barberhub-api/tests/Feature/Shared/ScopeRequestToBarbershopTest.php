@@ -26,20 +26,24 @@ final class ScopeRequestToBarbershopTest extends TestCase
 
     private const string PREFIX = '/api/v1/pruebas/barberias/';
 
+    private InMemoryBarbershopRoles $roles;
+
     /** The person is an owner of the first barbershop and has no role in the second, which exists for others. */
     protected function setUp(): void
     {
         parent::setUp();
 
-        $roles = new InMemoryBarbershopRoles;
-        $roles->grant(self::USER_ID, self::BARBERSHOP_ID, 'owner');
-        $this->app->instance(BarbershopRoles::class, $roles);
+        $this->roles = new InMemoryBarbershopRoles;
+        $this->roles->grant(self::USER_ID, self::BARBERSHOP_ID, 'owner');
+        $this->app->instance(BarbershopRoles::class, $this->roles);
 
         Route::prefix('api/v1/pruebas')->middleware('api')->group(function (): void {
             Route::get('barberias/{barberia}/estado', fn (Request $request): array => self::state($request))
                 ->middleware(['auth:sanctum', 'barbershop'])->whereUuid('barberia');
             Route::get('publico/{barberia}/estado', fn (Request $request): array => self::state($request))
                 ->middleware('barbershop:public')->whereUuid('barberia');
+            Route::get('cliente/{barberia}/estado', fn (Request $request): array => self::state($request))
+                ->middleware(['auth:sanctum', 'barbershop:customer'])->whereUuid('barberia');
             Route::get('modo/{barberia}/estado', fn (Request $request): array => self::state($request))
                 ->middleware(['auth:sanctum', 'barbershop:inventado'])->whereUuid('barberia');
         });
@@ -157,6 +161,48 @@ final class ScopeRequestToBarbershopTest extends TestCase
         $this->getJson('/api/v1/pruebas/publico/'.self::OTHER_ID.'/estado')
             ->assertOk()
             ->assertJsonPath('setting', self::OTHER_ID);
+    }
+
+    /** The customer mode lets a person without a role through, with no role in the context, so the operation creates the membership (UP-09). */
+    public function test_customer_mode_lets_a_person_without_a_role_through(): void
+    {
+        $this->actAsTheMember();
+
+        $this->getJson('/api/v1/pruebas/cliente/'.self::OTHER_ID.'/estado')->assertOk()->assertExactJson([
+            'setting' => self::OTHER_ID,
+            'context' => self::OTHER_ID,
+            'role' => null,
+            'levels' => 1,
+        ]);
+    }
+
+    /** A customer of the barbershop goes through with that role. */
+    public function test_customer_mode_lets_a_customer_through(): void
+    {
+        $this->roles->grant(self::USER_ID, self::OTHER_ID, 'customer');
+        $this->actAsTheMember();
+
+        $this->getJson('/api/v1/pruebas/cliente/'.self::OTHER_ID.'/estado')->assertOk()->assertJsonPath('role', 'customer');
+    }
+
+    /** An owner or a collaborator of that barbershop is refused with 403 before the barbershop is set (UP-07, RD-18). */
+    public function test_customer_mode_refuses_the_staff_of_the_barbershop(): void
+    {
+        $this->roles->grant(self::USER_ID, self::OTHER_ID, 'collaborator');
+        $this->actAsTheMember();
+
+        foreach ([self::BARBERSHOP_ID, self::OTHER_ID] as $barbershopId) {
+            $this->getJson('/api/v1/pruebas/cliente/'.$barbershopId.'/estado')
+                ->assertForbidden()
+                ->assertHeader('Content-Type', 'application/problem+json')
+                ->assertJsonPath('type', 'http://localhost/problemas/prohibido');
+        }
+    }
+
+    /** The customer mode still asks for a session. */
+    public function test_customer_mode_without_a_session_is_unauthenticated(): void
+    {
+        $this->getJson('/api/v1/pruebas/cliente/'.self::OTHER_ID.'/estado')->assertUnauthorized();
     }
 
     /** A mode nobody defined is a mistake in the route and fails instead of letting the request through. */

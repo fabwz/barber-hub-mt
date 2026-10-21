@@ -24,6 +24,7 @@ final class TenantResourceCoverageTest extends TestCase
             DB::connection(),
             Route::getRoutes(),
             TenantResources::PUBLIC_ROUTES,
+            TenantResources::CUSTOMER_ROUTES,
         ));
     }
 }

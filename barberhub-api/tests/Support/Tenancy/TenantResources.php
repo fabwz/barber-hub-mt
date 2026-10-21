@@ -26,6 +26,16 @@ final class TenantResources
     ];
 
     /**
+     * The routes of customer operations that create the first membership (RD-18): they use the "customer" mode of the
+     * barbershop middleware and, unlike the public ones, belong to a resource.
+     *
+     * @var list<string>
+     */
+    public const array CUSTOMER_ROUTES = [
+        'POST api/v1/barberias/{barberia}/reservas',
+    ];
+
+    /**
      * The resources to cover.
      *
      * @return list<TenantResource>
@@ -134,8 +144,8 @@ final class TenantResources
                 ),
                 ['collaborator_shifts', 'collaborator_breaks'],
             ),
-            // The reservations have no route yet: the creation arrives with #56 and the queries with #57, which give these two
-            // entries their path and operations. With none declared the audit still proves what the database hides.
+            // The creation of #56 is a customer route (POST, in CUSTOMER_ROUTES); the queries arrive with #57, which gives these two
+            // entries their operations. With none declared the audit still proves what the database hides.
             new TenantResource(
                 'reservations',
                 fn (string $barbershopId): string => self::createReservation($barbershopId),
