@@ -49,6 +49,10 @@
         {
             "name": "Colaboradores",
             "description": "Personal con agenda propia: sus servicios, su horario semanal y sus pausas. Solo el due\u00f1o de la barber\u00eda los administra."
+        },
+        {
+            "name": "Disponibilidad",
+            "description": "Espacios libres de una barber\u00eda para reservar, sin iniciar sesi\u00f3n."
         }
     ],
     "security": [
@@ -707,6 +711,83 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/InvalidData"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/barberias/{barberia}/disponibilidad": {
+            "get": {
+                "operationId": "availability.slots.index",
+                "description": "Trae los espacios libres del `servicio` en la `fecha` (AAAA-MM-DD), agrupados por barbero: los del `barbero` indicado o, si se omite, los de todos los que ofrecen el servicio. Cada espacio trae `inicio` y `fin` en ISO 8601 con el desfase de Costa Rica (-06:00) y el `barbero`. Incluye el servicio con su duraci\u00f3n y su precio con el IVA de 13 % desglosado en `base` e `iva`. Ning\u00fan espacio empieza con menos de 60 minutos de anticipaci\u00f3n ni a m\u00e1s de 30 d\u00edas; una fecha fuera de ese plazo devuelve la lista vac\u00eda. Si la `fecha` no tiene espacios, `dias_siguientes` trae hasta 3 d\u00edas posteriores que s\u00ed los tienen, dentro de ese plazo. La asignaci\u00f3n de \"cualquiera disponible\" y la lista de espera no est\u00e1n disponibles todav\u00eda. Una `fecha` con formato inv\u00e1lido responde 422 `datos-invalidos` con el campo; un servicio inexistente, inactivo o de otra barber\u00eda y un barbero que no es de la barber\u00eda responden 404 `no-encontrado`; un barbero inactivo o que no ofrece el servicio, 422 `datos-invalidos`.",
+                "summary": "Consultar la disponibilidad",
+                "tags": [
+                    "Disponibilidad"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "servicio",
+                        "in": "query",
+                        "required": true,
+                        "description": "Identificador del servicio activo de la barber\u00eda.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "barbero",
+                        "in": "query",
+                        "description": "Identificador del barbero. Si se omite, trae los espacios de todos los que ofrecen el servicio.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "fecha",
+                        "in": "query",
+                        "required": true,
+                        "description": "D\u00eda de la consulta, AAAA-MM-DD, en hora de Costa Rica.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`Disponibilidad`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Disponibilidad"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 },
                 "security": []
@@ -1632,6 +1713,64 @@
                     "acepta_privacidad"
                 ],
                 "title": "Cuenta"
+            },
+            "Disponibilidad": {
+                "type": "object",
+                "properties": {
+                    "servicio": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "nombre": {
+                                "type": "string"
+                            },
+                            "duracion_minutos": {
+                                "type": "integer"
+                            },
+                            "precio": {
+                                "type": "integer",
+                                "description": "Colones con el IVA incluido; es igual a `base` m\u00e1s `iva` (RL-02)."
+                            },
+                            "base": {
+                                "type": "integer"
+                            },
+                            "iva": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "nombre",
+                            "duracion_minutos",
+                            "precio",
+                            "base",
+                            "iva"
+                        ]
+                    },
+                    "fecha": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "barberos": {
+                        "type": "array",
+                        "description": "Espacios del d\u00eda, agrupados por barbero; un barbero sin espacios no aparece.",
+                        "items": {}
+                    },
+                    "dias_siguientes": {
+                        "type": "array",
+                        "description": "Si el d\u00eda no tiene espacios, hasta 3 d\u00edas siguientes que s\u00ed los tienen; si no, una lista vac\u00eda.",
+                        "items": {}
+                    }
+                },
+                "required": [
+                    "servicio",
+                    "fecha",
+                    "barberos",
+                    "dias_siguientes"
+                ],
+                "title": "Disponibilidad"
             },
             "Franja": {
                 "type": "object",

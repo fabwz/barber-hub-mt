@@ -25,6 +25,14 @@ final class CalendarDateTest extends TestCase
         }
     }
 
+    /** The next day crosses the end of a month and of a leap February. */
+    public function test_next_day(): void
+    {
+        $this->assertSame('2030-03-01', CalendarDate::of('2030-02-28')->next()->value);
+        $this->assertSame('2028-02-29', CalendarDate::of('2028-02-28')->next()->value);
+        $this->assertSame('2031-01-01', CalendarDate::of('2030-12-31')->next()->value);
+    }
+
     /** @return array<string, array{string}> */
     public static function invalidDates(): array
     {
