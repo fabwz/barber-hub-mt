@@ -146,13 +146,13 @@ final class TenantResources
                 ['collaborator_shifts', 'collaborator_breaks'],
             ),
             // The creation of #56 and "my reservations" of #57 are customer routes (in CUSTOMER_ROUTES); the listing of the staff
-            // is the LIST operation, which the owner of Pura Navaja tries against Fade Lab. The detail (#58) adds SHOW. The history
-            // has no route of its own, so the audit only proves what the database hides.
+            // is the LIST operation, which the owner of Pura Navaja tries against Fade Lab; the detail of #58 is SHOW. The history
+            // has no route of its own (it comes inside the detail), so the audit only proves what the database hides.
             new TenantResource(
                 'reservations',
                 fn (string $barbershopId): string => self::createReservation($barbershopId),
                 'api/v1/barberias/{barberia}/reservas',
-                [TenantResource::LIST],
+                [TenantResource::LIST, TenantResource::SHOW],
                 [],
                 ['api/v1/barberias/{barberia}/mis-reservas'],
             ),

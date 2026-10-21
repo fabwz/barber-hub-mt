@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
 
+    'author_system' => 'sistema',
     'cancellation_deadline_invalid' => 'El plazo de cancelación no puede ser negativo.',
     'customer_overlap' => 'Ya tiene una reserva confirmada que se solapa con ese horario en esta barbería.',
     'price_invalid' => 'El precio de la reserva debe ser de al menos ₡1.',
