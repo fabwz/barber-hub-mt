@@ -1399,6 +1399,73 @@
                         "$ref": "#/components/responses/NotFound"
                     }
                 }
+            },
+            "patch": {
+                "operationId": "reservations.reservations.reschedule",
+                "description": "Mueve una reserva `confirmada` al espacio que empieza en `inicio` y, si se manda `barbero`, con ese barbero; sin \u00e9l conserva el suyo. Es at\u00f3mica: bloquea al barbero de destino, vuelve a validar la disponibilidad del nuevo espacio sin contar la propia reserva (moverla 15 minutos no choca consigo misma) y la mueve junto con su fin y su limpieza. Si el espacio ya no est\u00e1 disponible responde 409 `espacio-no-disponible` con hasta 3 `alternativas` del mismo d\u00eda, barbero y servicio, y la reserva queda como estaba. El precio, la duraci\u00f3n y el plazo de cancelaci\u00f3n guardados no cambian y no se cobra otro dep\u00f3sito. El cliente reprograma solo las suyas y solo hasta el `plazo_cancelacion_horas` antes del inicio ORIGINAL: despu\u00e9s responde 409 `plazo-vencido`. El due\u00f1o reprograma cualquiera de su barber\u00eda sin plazo. Cada reprogramaci\u00f3n queda en el historial como una entrada de `confirmada` a `confirmada` con su autor y fecha, y una reserva se reprograma como m\u00e1ximo 2 veces: la tercera responde 409 `conflicto`. Una reserva que no est\u00e1 confirmada responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barber\u00eda o de otro cliente, un barbero que no existe en la barber\u00eda y una persona sin rol en la barber\u00eda responden 404 `no-encontrado`; un dato mal escrito, 422 `datos-invalidos`. El aviso por correo al cliente cuando reprograma el due\u00f1o y la lista de espera todav\u00eda no se aplican.",
+                "summary": "Reprogramar una reserva",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReprogramarReserva"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Reserva`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Reserva"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
             }
         },
         "/barberias/{barberia}/reservas/{reserva}/cancelacion": {
@@ -2350,6 +2417,24 @@
                     "acepta_privacidad"
                 ],
                 "title": "RegistroDeCuenta"
+            },
+            "ReprogramarReserva": {
+                "type": "object",
+                "properties": {
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del nuevo espacio, fecha y hora ISO 8601 con desfase, por ejemplo `2030-03-05T10:00:00-06:00`."
+                    },
+                    "barbero": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Identificador del barbero del nuevo espacio; si se omite, la reserva sigue con el mismo barbero."
+                    }
+                },
+                "required": [
+                    "inicio"
+                ],
+                "title": "ReprogramarReserva"
             },
             "Reserva": {
                 "type": "object",

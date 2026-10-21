@@ -196,6 +196,18 @@ Dos lecturas paginadas de `Reservations`, ambas `GET`, ordenadas por inicio (y p
 - **Todavía no.** La consecuencia económica (#67), el aviso por correo (#96), el registro técnico (#51) y el evento de la lista de espera.
 - **Aislamiento.** `reservations` suma la operación `CANCEL` en `TenantResources`; la auditoría la prueba con `POST .../cancelacion`.
 
+### La reprogramación de una reserva (#59)
+
+`PATCH /barberias/{barberia}/reservas/{reserva}` con `inicio` y `barbero` opcional (`auth:sanctum`, `barbershop`, `role:owner,customer`, como la cancelación). En la referencia no existe: es una divergencia de la API, no de la arquitectura. `ReservationController::reschedule` solo pasa el rol; `RescheduleReservation` decide.
+
+- **Quién y cuándo.** El cliente reprograma solo las suyas y el dueño cualquiera de su barbería; una ajena, de otra barbería o inexistente es el mismo 404 (UP-06) y el colaborador recibe 403. Solo se mueve una reserva `confirmada`; en otro estado, `TransitionNotAllowedException` (409 `conflicto`).
+- **Reglas en la entidad.** `Reservation::reschedule()` aplica el plazo (CA-01): el cliente solo hasta `cancellationDeadlineHours` antes del inicio ORIGINAL, si no `RescheduleDeadlineExpiredException` (409 `plazo-vencido`); el dueño no tiene plazo (CA-07). El máximo es `MAX_RESCHEDULES = 2` (CA-05): la tercera lanza `RescheduleLimitReachedException` (409 `conflicto`, sin tipo estable nuevo). Mueve inicio, fin y `blocked_until`, y el colaborador si cambia; precio, duración y plazo copiados no cambian (SV-03). `collaboratorId`, `interval`, `blockedUntil` y `rescheduleCount` dejaron de ser `readonly` y pasan a `private(set)`.
+- **Atómica (RE-08).** En una transacción: `findForUpdate` de la reserva, reglas de la entidad, `CollaboratorLock` del colaborador de destino, `FreeSlots::isFree()` con el cálculo del #53 y comprobación de solape del cliente (RE-06), ambas SIN contar la propia reserva, y `save()`. Liberar el espacio original es el mismo `UPDATE`. Si el espacio está tomado, la transacción se deshace, la reserva queda intacta y el error `espacio-no-disponible` trae hasta 3 alternativas leídas después del rollback, como en el #56. La segunda barrera es la exclusión `reservations_no_overlap_excl`: su 23P01 en el `UPDATE` se traduce igual.
+- **La propia reserva no se bloquea.** `BlockedIntervals`, `ListAvailableSlots`, `ListAlternativeSlots`, `FreeSlots` y `BlockedIntervalReader` reciben `?string $ignoringReservationId`; sin él, mover una reserva 15 minutos chocaría consigo misma. Las alternativas también la excluyen, así que su espacio original puede aparecer entre ellas.
+- **Historial.** Cada reprogramación agrega una entrada `confirmada` a `confirmada` con el autor y la fecha (RE-09); no hay columnas ni tablas nuevas, y `reschedule_count` ya existía con `CHECK` entre 0 y 2. `CancelReservation` no se afecta: busca la entrada cuyo destino es el estado cancelado.
+- **Todavía no.** El cobro de depósito no se repite (CA-05) porque aún no hay pagos; el aviso por correo al cliente cuando reprograma el dueño y que pueda cancelar sin perder el depósito (CA-08) son el #96 y los pagos; la oferta del espacio liberado a la lista de espera (RF-31) y el registro técnico (#51).
+- **Aislamiento.** `reservations` suma la operación `UPDATE` en `TenantResources`; la reserva de la auditoría ahora es reprogramable (un miércoles dentro de la ventana, con turno y servicio), y la auditoría la mueve 15 minutos.
+
 ### La disponibilidad (#53)
 
 `Availability/Slots` no tiene tablas ni estado: calcula los espacios libres de un servicio en un día con datos que ya existen. Su dominio es puro y recibe esos datos cargados, más la hora actual como parámetro. La ruta pública es del #55 (más abajo).

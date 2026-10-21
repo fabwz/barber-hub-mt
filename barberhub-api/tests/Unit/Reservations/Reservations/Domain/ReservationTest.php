@@ -10,6 +10,8 @@ use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
+use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
@@ -35,6 +37,8 @@ final class ReservationTest extends TestCase
     private const string CUSTOMER_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d04';
 
     private const string USER_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d05';
+
+    private const string OTHER_COLLABORATOR_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d06';
 
     /** A new reservation is temporary, has one service and one collaborator and no reschedules (RE-03, RE-05). */
     public function test_a_new_reservation_is_temporary(): void
@@ -314,6 +318,107 @@ final class ReservationTest extends TestCase
             'confirmed>cancelled_by_barbershop',
         ], $allowed);
         $this->assertCount(35, iterator_to_array(self::forbiddenTransitions()));
+    }
+
+    /** Rescheduling moves the start, the end and the cleaning, keeps the copies and counts one more reschedule (RF-15, SV-03, DI-01). */
+    public function test_rescheduling_moves_the_space_and_keeps_the_copies(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Confirmed);
+
+        $reservation->reschedule(new CollaboratorId(self::OTHER_COLLABORATOR_ID), self::at('2030-03-04 14:00'), false, self::at('2030-03-01 08:00'), Author::person(new UserId(self::USER_ID)));
+
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->status);
+        $this->assertSame(self::OTHER_COLLABORATOR_ID, $reservation->collaboratorId->value);
+        $this->assertEquals(self::at('2030-03-04 14:00'), $reservation->interval->start);
+        $this->assertEquals(self::at('2030-03-04 14:45'), $reservation->interval->end);
+        $this->assertEquals(self::at('2030-03-04 14:50'), $reservation->blockedUntil);
+        $this->assertSame(1, $reservation->rescheduleCount);
+        $this->assertSame(8500, $reservation->price->colones);
+        $this->assertSame(45, $reservation->duration->minutes);
+        $this->assertSame(4, $reservation->cancellationDeadlineHours);
+    }
+
+    /** The move leaves one confirmed-to-confirmed entry with its author and date (RE-09). */
+    public function test_rescheduling_leaves_a_confirmed_to_confirmed_entry(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Confirmed);
+        $author = Author::person(new UserId(self::USER_ID));
+
+        $reservation->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 11:00'), false, self::at('2030-03-01 09:00'), $author);
+
+        $this->assertCount(1, $reservation->pendingChanges);
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->pendingChanges[0]->from);
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->pendingChanges[0]->to);
+        $this->assertSame($author, $reservation->pendingChanges[0]->author);
+        $this->assertEquals(self::at('2030-03-01 09:00'), $reservation->pendingChanges[0]->at);
+    }
+
+    /** The customer measures the deadline against the original start: 4 hours before it still works, a minute later does not (CA-01). */
+    public function test_the_customer_deadline_is_measured_against_the_original_start(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Confirmed);
+        $reservation->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 16:00'), false, self::at('2030-03-04 06:00'), Author::system());
+
+        $late = $this->reservationIn(ReservationStatus::Confirmed);
+
+        try {
+            $late->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 16:00'), false, self::at('2030-03-04 06:01'), Author::system());
+            $this->fail('The deadline had passed.');
+        } catch (RescheduleDeadlineExpiredException) {
+            $this->assertSame(0, $late->rescheduleCount);
+            $this->assertEquals(self::at('2030-03-04 10:00'), $late->interval->start);
+            $this->assertSame([], $late->pendingChanges);
+        }
+    }
+
+    /** The owner is not bound by the deadline (CA-07). */
+    public function test_the_owner_has_no_deadline(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Confirmed);
+
+        $reservation->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 16:00'), true, self::at('2030-03-04 09:59'), Author::system());
+
+        $this->assertSame(1, $reservation->rescheduleCount);
+    }
+
+    /** A reservation is rescheduled twice at most (CA-05). */
+    public function test_the_third_reschedule_is_rejected(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Confirmed);
+        $at = self::at('2030-03-01 08:00');
+
+        $reservation->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 11:00'), false, $at, Author::system());
+        $reservation->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 12:00'), false, $at, Author::system());
+
+        $this->expectException(RescheduleLimitReachedException::class);
+
+        try {
+            $reservation->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 13:00'), true, $at, Author::system());
+        } finally {
+            $this->assertSame(2, $reservation->rescheduleCount);
+            $this->assertEquals(self::at('2030-03-04 12:00'), $reservation->interval->start);
+        }
+    }
+
+    /** Only a confirmed reservation can be rescheduled (RF-15, RE-04). */
+    #[DataProvider('notConfirmedStatuses')]
+    public function test_only_a_confirmed_reservation_can_be_rescheduled(ReservationStatus $status): void
+    {
+        $reservation = $this->reservationIn($status);
+
+        $this->expectException(TransitionNotAllowedException::class);
+
+        $reservation->reschedule(new CollaboratorId(self::COLLABORATOR_ID), self::at('2030-03-04 11:00'), true, self::at('2030-03-01 08:00'), Author::system());
+    }
+
+    /** @return iterable<string, array{ReservationStatus}> */
+    public static function notConfirmedStatuses(): iterable
+    {
+        foreach (ReservationStatus::cases() as $status) {
+            if ($status !== ReservationStatus::Confirmed) {
+                yield $status->value => [$status];
+            }
+        }
     }
 
     /** A reservation in the status, reached through the allowed changes and without pending history. */

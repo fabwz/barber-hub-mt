@@ -156,14 +156,14 @@ final class CreateReservationTest extends TestCase
         {
             public function __construct(private readonly FreeSlots $real) {}
 
-            public function isFree(string $serviceId, string $collaboratorId, DateTimeImmutable $startsAt, DateTimeImmutable $now): bool
+            public function isFree(string $serviceId, string $collaboratorId, DateTimeImmutable $startsAt, DateTimeImmutable $now, ?string $ignoringReservationId = null): bool
             {
                 return true;
             }
 
-            public function alternatives(string $serviceId, string $collaboratorId, DateTimeImmutable $requested, DateTimeImmutable $now): array
+            public function alternatives(string $serviceId, string $collaboratorId, DateTimeImmutable $requested, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
             {
-                return $this->real->alternatives($serviceId, $collaboratorId, $requested, $now);
+                return $this->real->alternatives($serviceId, $collaboratorId, $requested, $now, $ignoringReservationId);
             }
         });
         $this->actAs($this->luis);

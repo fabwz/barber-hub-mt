@@ -34,11 +34,12 @@ final readonly class ListAvailableSlots
      * It reads the service, the opening hours, the staff and the reservations once each, whatever the number of
      * collaborators, and stops early when the barbershop is closed or nobody works. "Any available" (DI-04) is the
      * assignment of the first of these lists to a collaborator, which belongs to #54. A caller that asks for several
-     * days passes the duration it already read, so the service is not read again for each day.
+     * days passes the duration it already read, so the service is not read again for each day. The reservation named in
+     * `$ignoringReservationId` holds no space, so moving it a few minutes does not collide with itself (RE-08).
      *
      * @return list<Slot>
      */
-    public function execute(string $serviceId, string $date, ?string $collaboratorId, DateTimeImmutable $now, ?Duration $known = null): array
+    public function execute(string $serviceId, string $date, ?string $collaboratorId, DateTimeImmutable $now, ?Duration $known = null, ?string $ignoringReservationId = null): array
     {
         $duration = $known ?? $this->services->bookableDuration($serviceId) ?? throw ServiceNotBookableException::create();
         $day = CalendarDate::of($date);
@@ -58,7 +59,7 @@ final readonly class ListAvailableSlots
             return [];
         }
 
-        $blocked = $this->blocked->between(array_map(fn (StaffWorkday $member): string => $member->collaboratorId, $staff), $day->window());
+        $blocked = $this->blocked->between(array_map(fn (StaffWorkday $member): string => $member->collaboratorId, $staff), $day->window(), $ignoringReservationId);
         $slots = [];
 
         foreach ($staff as $member) {

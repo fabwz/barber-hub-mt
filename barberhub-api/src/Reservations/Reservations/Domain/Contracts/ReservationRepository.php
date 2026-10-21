@@ -19,7 +19,7 @@ interface ReservationRepository
     public function nextId(): ReservationId;
 
     /**
-     * Persist a new reservation, or the status of an existing one, with its pending history entries in one transaction.
+     * Persist a new reservation, or the status and the space of an existing one, with its pending history entries in one transaction.
      * A collision the database rejects comes out as a SlotUnavailableException (the collaborator already has a reservation
      * in that time) or an OverlappingReservationException (the customer has a confirmed one).
      */
@@ -27,9 +27,10 @@ interface ReservationRepository
 
     /**
      * Tell whether a customer role has a confirmed reservation of the current barbershop sharing some minute with the
-     * interval (RE-06). The exclusion of the table is the second barrier.
+     * interval (RE-06), leaving out the reservation being rescheduled, which cannot overlap itself. The exclusion of the
+     * table is the second barrier.
      */
-    public function hasConfirmedOverlapping(CustomerMembershipId $customer, TimeInterval $interval): bool;
+    public function hasConfirmedOverlapping(CustomerMembershipId $customer, TimeInterval $interval, ?ReservationId $ignoring = null): bool;
 
     /** Find a reservation among those of the current barbershop. */
     public function find(ReservationId $id): ?Reservation;

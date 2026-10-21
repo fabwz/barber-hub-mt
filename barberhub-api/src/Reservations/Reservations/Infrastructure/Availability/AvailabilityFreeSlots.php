@@ -23,9 +23,9 @@ final readonly class AvailabilityFreeSlots implements FreeSlots
     ) {}
 
     /** Whether the day of the moment lists a free space of the collaborator that starts exactly then. */
-    public function isFree(string $serviceId, string $collaboratorId, DateTimeImmutable $startsAt, DateTimeImmutable $now): bool
+    public function isFree(string $serviceId, string $collaboratorId, DateTimeImmutable $startsAt, DateTimeImmutable $now, ?string $ignoringReservationId = null): bool
     {
-        $slots = $this->available->execute($serviceId, CalendarDate::fromMoment($startsAt)->value, $collaboratorId, $now);
+        $slots = $this->available->execute($serviceId, CalendarDate::fromMoment($startsAt)->value, $collaboratorId, $now, null, $ignoringReservationId);
 
         return array_any($slots, fn (Slot $slot): bool => $slot->start->getTimestamp() === $startsAt->getTimestamp());
     }
@@ -35,14 +35,14 @@ final readonly class AvailabilityFreeSlots implements FreeSlots
      *
      * @return list<SlotAlternative>
      */
-    public function alternatives(string $serviceId, string $collaboratorId, DateTimeImmutable $requested, DateTimeImmutable $now): array
+    public function alternatives(string $serviceId, string $collaboratorId, DateTimeImmutable $requested, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
     {
         return array_map(
             fn (Slot $slot): SlotAlternative => new SlotAlternative(
                 new CollaboratorId($slot->collaboratorId->value),
                 TimeInterval::between($slot->start, $slot->end),
             ),
-            $this->alternatives->execute($serviceId, $collaboratorId, $requested, $now),
+            $this->alternatives->execute($serviceId, $collaboratorId, $requested, $now, $ignoringReservationId),
         );
     }
 }

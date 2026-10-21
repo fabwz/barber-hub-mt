@@ -21,13 +21,14 @@ final readonly class ListAlternativeSlots
 
     /**
      * List up to 3 free spaces of the same collaborator, service and day as a requested start, the closest to it (RE-02).
-     * The reservation of #56 offers them when the space asked for is taken.
+     * The reservation of #56 offers them when the space asked for is taken; the reschedule of #59 does too, leaving its
+     * own reservation out.
      *
      * @return list<Slot>
      */
-    public function execute(string $serviceId, string $collaboratorId, DateTimeImmutable $requestedStart, DateTimeImmutable $now): array
+    public function execute(string $serviceId, string $collaboratorId, DateTimeImmutable $requestedStart, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
     {
-        $slots = $this->available->execute($serviceId, CalendarDate::fromMoment($requestedStart)->value, $collaboratorId, $now);
+        $slots = $this->available->execute($serviceId, CalendarDate::fromMoment($requestedStart)->value, $collaboratorId, $now, null, $ignoringReservationId);
 
         return $this->calculator->nearest($slots, $requestedStart, self::LIMIT);
     }

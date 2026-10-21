@@ -52,11 +52,12 @@ final class InMemoryReservationRepository implements ReservationRepository
     }
 
     /** Tell whether the customer has a confirmed reservation that shares a minute with the interval. */
-    public function hasConfirmedOverlapping(CustomerMembershipId $customer, TimeInterval $interval): bool
+    public function hasConfirmedOverlapping(CustomerMembershipId $customer, TimeInterval $interval, ?ReservationId $ignoring = null): bool
     {
         return array_any(
             $this->reservations,
-            fn (Reservation $reservation): bool => $reservation->customerMembershipId->equals($customer)
+            fn (Reservation $reservation): bool => ($ignoring === null || $reservation->id->value !== $ignoring->value)
+                && $reservation->customerMembershipId->equals($customer)
                 && $reservation->status === ReservationStatus::Confirmed
                 && $reservation->interval->overlaps($interval),
         );

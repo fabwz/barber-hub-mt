@@ -65,6 +65,17 @@ final class BlockedIntervalReaderTest extends TestCase
         );
     }
 
+    /** The reservation being rescheduled can be left out, and only that one, so it does not block its own move (RE-08). */
+    public function test_a_reservation_can_be_left_out(): void
+    {
+        $moving = $this->insertReservation($this->kevin, 'confirmed', '2030-03-05 09:00');
+        $this->insertReservation($this->kevin, 'confirmed', '2030-03-05 10:00');
+
+        $intervals = $this->blocked->execute([$this->kevin], $this->day('2030-03-05'), $moving)[$this->kevin];
+
+        $this->assertSame([['10:00', '10:50']], array_map(fn (TimeInterval $interval): array => [$this->local($interval->start), $this->local($interval->end)], $intervals));
+    }
+
     /** The end of a block is the end of the cleaning, not of the service. */
     public function test_a_block_ends_with_the_cleaning(): void
     {
@@ -150,12 +161,13 @@ final class BlockedIntervalReaderTest extends TestCase
     }
 
     /** Insert a reservation of a new customer (one customer never has two confirmed reservations at once, RE-06), with the 5 minutes of cleaning after the service. */
-    private function insertReservation(string $collaboratorId, string $status, string $startsAt, int $duration = 45): void
+    private function insertReservation(string $collaboratorId, string $status, string $startsAt, int $duration = 45): string
     {
         $start = self::at($startsAt);
+        $id = (string) Str::uuid7();
 
         DB::table('reservations')->insert([
-            'id' => (string) Str::uuid7(),
+            'id' => $id,
             'barbershop_id' => $this->puraNavaja,
             'collaborator_id' => $collaboratorId,
             'service_id' => $this->haircut,
@@ -168,6 +180,8 @@ final class BlockedIntervalReaderTest extends TestCase
             'duration_minutes' => $duration,
             'cancellation_deadline_hours' => 4,
         ]);
+
+        return $id;
     }
 
     private static function at(string $moment): DateTimeImmutable

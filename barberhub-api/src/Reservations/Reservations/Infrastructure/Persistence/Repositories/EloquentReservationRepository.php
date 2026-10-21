@@ -47,7 +47,8 @@ final readonly class EloquentReservationRepository implements ReservationReposit
     }
 
     /**
-     * Insert the reservation once; afterwards only its status changes. Its pending history entries are inserted in the
+     * Insert the reservation once; afterwards its status changes and, when it is rescheduled, its space (collaborator, start,
+     * end, blocked-until and the count of reschedules). Its pending history entries are inserted in the
      * same transaction, so a status never changes without leaving its entry (RE-09). A collision with another reservation
      * is rejected by the exclusions of the table (ADR 0009) and translated here: the one of the collaborator is a space
      * that is not available (RE-01) and the one of the customer is an overlap of their own reservations (RE-06).
@@ -70,9 +71,10 @@ final readonly class EloquentReservationRepository implements ReservationReposit
     }
 
     /** Tell whether the customer has a confirmed reservation that shares some minute with the interval. */
-    public function hasConfirmedOverlapping(CustomerMembershipId $customer, TimeInterval $interval): bool
+    public function hasConfirmedOverlapping(CustomerMembershipId $customer, TimeInterval $interval, ?ReservationId $ignoring = null): bool
     {
         return $this->ofBarbershop()
+            ->when($ignoring !== null, fn (Builder $query): Builder => $query->where('id', '!=', $ignoring?->value))
             ->where('customer_membership_id', $customer->value)
             ->where('status', ReservationStatus::Confirmed->value)
             ->where('starts_at', '<', $interval->end)
@@ -103,7 +105,14 @@ final readonly class EloquentReservationRepository implements ReservationReposit
                     'reschedule_count' => $reservation->rescheduleCount,
                 ]);
             } else {
-                $model->update(['status' => $reservation->status->value]);
+                $model->update([
+                    'status' => $reservation->status->value,
+                    'collaborator_id' => $reservation->collaboratorId->value,
+                    'starts_at' => $reservation->interval->start,
+                    'ends_at' => $reservation->interval->end,
+                    'blocked_until' => $reservation->blockedUntil,
+                    'reschedule_count' => $reservation->rescheduleCount,
+                ]);
             }
 
             foreach ($reservation->pendingChanges as $change) {

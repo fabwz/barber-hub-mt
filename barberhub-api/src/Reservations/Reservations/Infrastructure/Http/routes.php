@@ -37,3 +37,11 @@ Route::post('barberias/{barberia}/reservas/{reserva}/cancelacion', [ReservationC
     ->middleware(['auth:sanctum', 'barbershop', 'role:owner,customer'])
     ->name('reservations.reservations.cancel')
     ->whereUuid(['barberia', 'reserva']);
+
+// The customer reschedules their own and the owner any of the barbershop (RF-15), as the cancellation: the plain mode
+// gives a person without a role the usual 404 (UP-06), the role filter refuses a collaborator with 403 and the controller
+// tells the owner, who has no deadline, from the customer.
+Route::patch('barberias/{barberia}/reservas/{reserva}', [ReservationController::class, 'reschedule'])
+    ->middleware(['auth:sanctum', 'barbershop', 'role:owner,customer'])
+    ->name('reservations.reservations.reschedule')
+    ->whereUuid(['barberia', 'reserva']);

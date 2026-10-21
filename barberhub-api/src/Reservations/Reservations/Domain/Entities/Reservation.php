@@ -6,6 +6,8 @@ namespace Src\Reservations\Reservations\Domain\Entities;
 
 use DateTimeImmutable;
 use LogicException;
+use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
+use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
@@ -31,6 +33,9 @@ final class Reservation
     /** Minutes of cleaning after the service, during which the collaborator cannot take another reservation (DI-01). */
     public const int CLEANUP_MINUTES = 5;
 
+    /** Times a reservation can be moved (CA-05). */
+    public const int MAX_RESCHEDULES = 2;
+
     /**
      * Hold the full state of a reservation.
      *
@@ -38,15 +43,15 @@ final class Reservation
      */
     private function __construct(
         public readonly ReservationId $id,
-        public readonly CollaboratorId $collaboratorId,
+        public private(set) CollaboratorId $collaboratorId,
         public readonly ServiceId $serviceId,
         public readonly CustomerMembershipId $customerMembershipId,
-        public readonly TimeInterval $interval,
-        public readonly DateTimeImmutable $blockedUntil,
+        public private(set) TimeInterval $interval,
+        public private(set) DateTimeImmutable $blockedUntil,
         public readonly Money $price,
         public readonly Duration $duration,
         public readonly int $cancellationDeadlineHours,
-        public readonly int $rescheduleCount,
+        public private(set) int $rescheduleCount,
         public private(set) ReservationStatus $status,
         public private(set) array $pendingChanges,
     ) {}
@@ -145,6 +150,40 @@ final class Reservation
     public function cancelByBarbershop(DateTimeImmutable $at, Author $author): void
     {
         $this->changeTo(ReservationStatus::CancelledByBarbershop, $at, $author);
+    }
+
+    /**
+     * Move a confirmed reservation to another start and, if the collaborator changes, to another collaborator (RF-15). The
+     * price, the duration and the deadline are the ones copied when it was booked (SV-03), so the end and the cleaning
+     * follow the new start. A customer can do it only up to the deadline before the ORIGINAL start; the owner is not bound
+     * by it (CA-01, CA-07). At most twice (CA-05). The change leaves a confirmed-to-confirmed entry in the history with its
+     * author and date. That the new space is free is not decided here: the caller checks it while it holds the collaborator.
+     *
+     * @throws TransitionNotAllowedException when the reservation is not confirmed
+     * @throws RescheduleDeadlineExpiredException
+     * @throws RescheduleLimitReachedException
+     */
+    public function reschedule(CollaboratorId $collaboratorId, DateTimeImmutable $startsAt, bool $byOwner, DateTimeImmutable $at, Author $author): void
+    {
+        if ($this->status !== ReservationStatus::Confirmed) {
+            throw TransitionNotAllowedException::create();
+        }
+
+        if (! $byOwner && $at > $this->interval->start->modify("-{$this->cancellationDeadlineHours} hours")) {
+            throw RescheduleDeadlineExpiredException::create();
+        }
+
+        if ($this->rescheduleCount >= self::MAX_RESCHEDULES) {
+            throw RescheduleLimitReachedException::create();
+        }
+
+        $endsAt = $startsAt->modify("+{$this->duration->minutes} minutes");
+
+        $this->collaboratorId = $collaboratorId;
+        $this->interval = TimeInterval::between($startsAt, $endsAt);
+        $this->blockedUntil = $endsAt->modify('+'.self::CLEANUP_MINUTES.' minutes');
+        $this->rescheduleCount++;
+        $this->pendingChanges[] = new ReservationStatusChange($this->status, $this->status, $author, $at);
     }
 
     /**
