@@ -1401,6 +1401,62 @@
                 }
             }
         },
+        "/barberias/{barberia}/reservas/{reserva}/cancelacion": {
+            "post": {
+                "operationId": "reservations.reservations.cancel",
+                "description": "Cancela la reserva y libera su espacio en la misma operaci\u00f3n. El cliente cancela solo las suyas y la reserva queda `cancelada_por_cliente`; el due\u00f1o cancela cualquiera de su barber\u00eda y queda `cancelada_por_barberia`. La respuesta trae la `clasificacion` de la cancelaci\u00f3n: `a_tiempo` o `tardia` (seg\u00fan el `plazo_cancelacion_horas` que la reserva guard\u00f3 y la hora de la cancelaci\u00f3n) para el cliente, y `por_la_barberia` para el due\u00f1o. Repetir la cancelaci\u00f3n responde 200 con el mismo estado y la misma clasificaci\u00f3n, sin agregar nada al historial. Una reserva completada, ausente o expirada, o una temporal que el due\u00f1o intenta cancelar, responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barber\u00eda o de otro cliente, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`. La consecuencia econ\u00f3mica, el aviso al cliente y la lista de espera todav\u00eda no se aplican.",
+                "summary": "Cancelar una reserva",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ReservaCancelada`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ReservaCancelada"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/administracion/servicios": {
             "get": {
                 "operationId": "catalog.services.index",
@@ -2343,6 +2399,60 @@
                     "plazo_cancelacion_horas"
                 ],
                 "title": "Reserva"
+            },
+            "ReservaCancelada": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva; al crearla sin pago queda `confirmada`."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer",
+                        "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    },
+                    "clasificacion": {
+                        "type": "string",
+                        "description": "Clasificaci\u00f3n de la cancelaci\u00f3n: `a_tiempo`, `tardia` o `por_la_barberia` (CA-01, CA-04). Se calcula, no se guarda."
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "barbero",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos",
+                    "plazo_cancelacion_horas",
+                    "clasificacion"
+                ],
+                "title": "ReservaCancelada"
             },
             "ReservaDeAgenda": {
                 "type": "object",

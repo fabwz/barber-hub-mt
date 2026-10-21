@@ -123,16 +123,21 @@ final class TenancyAudit
                 $violations[] = "{$table}: delete of an own row does not succeed";
             }
 
+            if ($resource->supports(TenantResource::CANCEL) && ! self::succeeds($send('POST', $resource->uri($own, $create($own)).TenantResource::CANCEL_SUFFIX, []))) {
+                $violations[] = "{$table}: cancel of an own row does not succeed";
+            }
+
             foreach (self::requests($resource) as [$operation, $method, $payload, $withRow]) {
+                $suffix = $operation === TenantResource::CANCEL ? TenantResource::CANCEL_SUFFIX : '';
                 // The URL of the other barbershop answers like a barbershop that does not exist.
-                $swapped = $send($method, $resource->uri($other, $withRow ? $otherRow : null), $payload);
-                $nobody = $send($method, $resource->uri($unknown, $withRow ? $otherRow : null), $payload);
+                $swapped = $send($method, $resource->uri($other, $withRow ? $otherRow : null).$suffix, $payload);
+                $nobody = $send($method, $resource->uri($unknown, $withRow ? $otherRow : null).$suffix, $payload);
                 $violations = [...$violations, ...self::notFoundViolations("{$table}: {$operation} with the URL of the other barbershop", $swapped, $nobody)];
 
                 if ($withRow) {
                     // A row of the other barbershop under the own one answers like a row that does not exist.
-                    $foreign = $send($method, $resource->uri($own, $otherRow), $payload);
-                    $absent = $send($method, $resource->uri($own, $missing), $payload);
+                    $foreign = $send($method, $resource->uri($own, $otherRow).$suffix, $payload);
+                    $absent = $send($method, $resource->uri($own, $missing).$suffix, $payload);
                     $violations = [...$violations, ...self::notFoundViolations("{$table}: {$operation} of a row of the other barbershop", $foreign, $absent)];
                 }
             }
@@ -169,6 +174,7 @@ final class TenancyAudit
             [TenantResource::SHOW, 'GET', [], true],
             [TenantResource::UPDATE, 'PATCH', $resource->updatePayload, true],
             [TenantResource::DELETE, 'DELETE', [], true],
+            [TenantResource::CANCEL, 'POST', [], true],
         ] as $request) {
             if ($resource->supports($request[0])) {
                 $requests[] = $request;

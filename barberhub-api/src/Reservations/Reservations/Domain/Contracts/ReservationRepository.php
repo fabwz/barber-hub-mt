@@ -35,6 +35,12 @@ interface ReservationRepository
     public function find(ReservationId $id): ?Reservation;
 
     /**
+     * Find a reservation among those of the current barbershop and lock its row until the transaction ends, so two
+     * simultaneous changes of the same reservation run one after the other.
+     */
+    public function findForUpdate(ReservationId $id): ?Reservation;
+
+    /**
      * Read one page of the reservations of the current barbershop that match the filter, from the earliest start to the
      * latest.
      *

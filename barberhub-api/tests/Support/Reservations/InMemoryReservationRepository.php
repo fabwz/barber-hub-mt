@@ -68,6 +68,12 @@ final class InMemoryReservationRepository implements ReservationRepository
         return $this->reservations[$id->value] ?? null;
     }
 
+    /** Find a stored reservation; nothing else runs in memory, so there is no row to lock. */
+    public function findForUpdate(ReservationId $id): ?Reservation
+    {
+        return $this->find($id);
+    }
+
     /**
      * Page the stored reservations that match the filter, from the earliest start to the latest.
      *

@@ -6,11 +6,13 @@ namespace Tests\Unit\Reservations\Reservations\Domain;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
+use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -211,6 +213,33 @@ final class ReservationTest extends TestCase
         $this->assertSame(ReservationStatus::Confirmed, $stored->status);
         $this->assertSame(1, $stored->rescheduleCount);
         $this->assertSame([], $stored->pendingChanges);
+    }
+
+    /** A customer's cancellation is on time up to the deadline copied into the reservation (4 hours before 10:00), and late after it (CA-01). */
+    public function test_the_cancellation_of_the_customer_is_classified_by_the_deadline(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::CancelledByCustomer);
+
+        $this->assertSame(CancellationClass::OnTime, $reservation->classifyCancellation(self::at('2030-03-01 08:00')));
+        $this->assertSame(CancellationClass::OnTime, $reservation->classifyCancellation(self::at('2030-03-04 06:00')));
+        $this->assertSame(CancellationClass::Late, $reservation->classifyCancellation(self::at('2030-03-04 06:00:01')));
+        $this->assertSame(CancellationClass::Late, $reservation->classifyCancellation(self::at('2030-03-04 11:00')));
+    }
+
+    /** A cancellation of the barbershop is its own class, whenever it happens (CA-04). */
+    public function test_the_cancellation_of_the_barbershop_is_its_own_class(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::CancelledByBarbershop);
+
+        $this->assertSame(CancellationClass::ByBarbershop, $reservation->classifyCancellation(self::at('2030-03-04 09:59')));
+    }
+
+    /** Only a cancelled reservation has a cancellation class. */
+    public function test_a_reservation_that_is_not_cancelled_has_no_class(): void
+    {
+        $this->expectException(LogicException::class);
+
+        $this->reservationIn(ReservationStatus::Confirmed)->classifyCancellation(self::at('2030-03-02 09:00'));
     }
 
     /**

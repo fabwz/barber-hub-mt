@@ -185,6 +185,17 @@ Dos lecturas paginadas de `Reservations`, ambas `GET`, ordenadas por inicio (y p
 - **Historial (RE-09).** `ReservationRepository::history()` lee `reservation_status_history` por reserva, de la primera a la última entrada. Los autores se resuelven por nombre con `AuthorDirectory` (adaptador `UsersAuthorDirectory` sobre `ListAccountSummaries`), en una sola lectura de cuentas sin importar cuántas entradas haya; el sistema no tiene nombre y se muestra como `sistema` (`reservations.author_system`). Nunca se expone el correo.
 - **Aislamiento.** `reservations` suma la operación `SHOW` en `TenantResources`.
 
+### La cancelación de una reserva (#60)
+
+`POST /barberias/{barberia}/reservas/{reserva}/cancelacion` (`auth:sanctum`, `barbershop`, `role:owner,customer`). En la referencia es `POST {pedido}/cancelacion`; aquí cuelga de la reserva. El middleware `barbershop` da el 404 a quien no tiene rol y `role:` rechaza con 403 al colaborador. `ReservationController::cancel` solo pasa el rol; `CancelReservation` decide el autor.
+
+- **Quién cancela qué.** El cliente cancela solo las suyas (`cancelByCustomer`, estado `cancelada_por_cliente`); el dueño, cualquiera de su barbería (`cancelByBarbershop`, `cancelada_por_barberia`). Una reserva ajena, de otra barbería o inexistente es el mismo 404 (UP-06). Por el diagrama de RE-04, el dueño no cancela una reserva temporal: recibe 409 `conflicto`.
+- **Clasificación (CA-01, CA-04).** `Reservation::classifyCancellation()` devuelve `CancellationClass`: `a_tiempo` si el cliente cancela hasta `inicio` menos `cancellationDeadlineHours` (la copia de la reserva), `tardia` después, `por_la_barberia` si cancela el dueño. Se calcula, no se guarda (sin columnas nuevas) y se devuelve en `clasificacion`. En una repetición se mide con la fecha de la entrada del historial que canceló, para que no cambie con el paso del tiempo.
+- **Idempotencia (CA-06).** La reserva se lee con `findForUpdate()` (`FOR UPDATE`) dentro de la transacción, así que dos cancelaciones simultáneas se turnan y la segunda la encuentra cancelada. Repetir devuelve 200 con el mismo estado y no agrega entradas al historial; si ya la canceló el cliente, el dueño que repite no la convierte en cancelación de la barbería. Una reserva completada, ausente o expirada lanza `TransitionNotAllowedException` (409 `conflicto`).
+- **Espacio libre (CA-07).** Las exclusiones solo cubren los estados temporal y confirmada, así que el cambio de estado libera el espacio en la misma transacción. Una prueba vuelve a reservar el mismo espacio después de cancelar.
+- **Todavía no.** La consecuencia económica (#67), el aviso por correo (#96), el registro técnico (#51) y el evento de la lista de espera.
+- **Aislamiento.** `reservations` suma la operación `CANCEL` en `TenantResources`; la auditoría la prueba con `POST .../cancelacion`.
+
 ### La disponibilidad (#53)
 
 `Availability/Slots` no tiene tablas ni estado: calcula los espacios libres de un servicio en un día con datos que ya existen. Su dominio es puro y recibe esos datos cargados, más la hora actual como parámetro. La ruta pública es del #55 (más abajo).
