@@ -109,6 +109,22 @@ final class ListSlotsTest extends TestCase
         $this->assertSame([], $this->useCase()->execute($this->degradado, self::TUESDAY, $this->daniela, $this->at('2030-01-01 08:00')));
     }
 
+    /** The edges of DI-03 over the real data: 60 minutes of notice and 30 days, both inclusive. */
+    public function test_the_edges_of_the_notice_and_the_window_with_real_data(): void
+    {
+        $first = fn (string $now): array => array_slice($this->starts($this->useCase()->execute($this->degradado, self::TUESDAY, $this->daniela, $this->at($now))), 0, 1);
+
+        $this->assertSame(['09:00'], $first('2030-03-05 08:00'));
+        $this->assertSame(['11:00'], $first('2030-03-05 08:01'));
+
+        // Tuesday 2 April 2030 is the last one of the window: its 10:00 is 30 days after 10:00 of Sunday 3 March.
+        $last = fn (string $now): ?string => array_last($this->starts($this->useCase()->execute($this->degradado, '2030-04-02', $this->daniela, $this->at($now))));
+
+        $this->assertSame('10:00', $last('2030-03-03 10:00'));
+        $this->assertSame('10:00', $last('2030-03-03 10:01'));
+        $this->assertSame('09:45', $last('2030-03-03 09:59'));
+    }
+
     /** An inactive service, or one of another barbershop, cannot be booked. */
     public function test_a_service_of_another_barbershop_is_not_bookable(): void
     {
