@@ -15,5 +15,6 @@ return [
     'day_of_week_out_of_range' => 'El día de la semana debe estar entre :min (lunes) y :max (domingo).',
     'time_of_day_invalid' => 'La hora debe escribirse como HH:MM, de 00:00 a 23:59.',
     'time_range_start_not_before_end' => 'La hora de apertura debe ser anterior a la de cierre.',
+    'page_out_of_range' => 'La página empieza en 1 y tiene de 1 a :max elementos.',
 
 ];

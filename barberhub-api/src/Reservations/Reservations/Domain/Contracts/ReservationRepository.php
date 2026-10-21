@@ -6,7 +6,10 @@ namespace Src\Reservations\Reservations\Domain\Contracts;
 
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 
 interface ReservationRepository
@@ -29,4 +32,12 @@ interface ReservationRepository
 
     /** Find a reservation among those of the current barbershop. */
     public function find(ReservationId $id): ?Reservation;
+
+    /**
+     * Read one page of the reservations of the current barbershop that match the filter, from the earliest start to the
+     * latest.
+     *
+     * @return Page<Reservation>
+     */
+    public function page(ReservationFilter $filter, PageRequest $page): Page;
 }

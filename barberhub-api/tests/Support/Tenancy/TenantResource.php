@@ -23,6 +23,7 @@ final readonly class TenantResource
      * @param  string  $path  Route of the collection as the router writes it, with {barberia}, for example "api/v1/barberias/{barberia}/servicios". A row is served at "<path>/<id>".
      * @param  list<string>  $operations  What the routes offer: LIST (GET path), SHOW (GET path/id), UPDATE (PATCH path/id) and DELETE (DELETE path/id).
      * @param  array<string, mixed>  $updatePayload  A valid body for UPDATE.
+     * @param  list<string>  $otherPaths  Routes of the resource outside its collection path, such as "my reservations"; the coverage check counts them as its own.
      */
     public function __construct(
         public string $table,
@@ -30,6 +31,7 @@ final readonly class TenantResource
         public string $path,
         public array $operations,
         public array $updatePayload = [],
+        public array $otherPaths = [],
     ) {}
 
     /** Whether the routes of the resource offer the operation. */
@@ -49,6 +51,12 @@ final readonly class TenantResource
     /** Whether a route (as the router writes it) is one of this resource. */
     public function owns(string $routeUri): bool
     {
-        return $routeUri === $this->path || str_starts_with($routeUri, $this->path.'/');
+        foreach ([$this->path, ...$this->otherPaths] as $path) {
+            if ($routeUri === $path || str_starts_with($routeUri, $path.'/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

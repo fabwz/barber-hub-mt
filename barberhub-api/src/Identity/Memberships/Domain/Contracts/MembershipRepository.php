@@ -24,4 +24,13 @@ interface MembershipRepository
 
     /** Find the role of a person in a barbershop. */
     public function findByUserAndBarbershop(UserId $userId, BarbershopId $barbershopId): ?Membership;
+
+    /**
+     * Find the accounts behind some memberships of a barbershop, indexed by membership; a membership of another barbershop
+     * is skipped, so a foreign identifier reads like an unknown one (UP-06).
+     *
+     * @param  list<MembershipId>  $ids
+     * @return array<string, UserId>
+     */
+    public function usersOf(array $ids, BarbershopId $barbershopId): array;
 }

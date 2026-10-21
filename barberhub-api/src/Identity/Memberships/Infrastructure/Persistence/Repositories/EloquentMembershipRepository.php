@@ -42,6 +42,28 @@ final readonly class EloquentMembershipRepository implements MembershipRepositor
         }
     }
 
+    /**
+     * Read the account of each membership of the barbershop in one query.
+     *
+     * @param  list<MembershipId>  $ids
+     * @return array<string, UserId>
+     */
+    public function usersOf(array $ids, BarbershopId $barbershopId): array
+    {
+        $users = [];
+
+        $rows = MembershipModel::query()
+            ->where('barbershop_id', $barbershopId->value)
+            ->whereIn('id', array_map(fn (MembershipId $id): string => $id->value, $ids))
+            ->get(['id', 'user_id']);
+
+        foreach ($rows as $row) {
+            $users[$row->id] = new UserId($row->user_id);
+        }
+
+        return $users;
+    }
+
     /** Find the role of the person in the barbershop. */
     public function findByUserAndBarbershop(UserId $userId, BarbershopId $barbershopId): ?Membership
     {

@@ -33,6 +33,7 @@ final class TenantResources
      */
     public const array CUSTOMER_ROUTES = [
         'POST api/v1/barberias/{barberia}/reservas',
+        'GET api/v1/barberias/{barberia}/mis-reservas',
     ];
 
     /**
@@ -144,13 +145,16 @@ final class TenantResources
                 ),
                 ['collaborator_shifts', 'collaborator_breaks'],
             ),
-            // The creation of #56 is a customer route (POST, in CUSTOMER_ROUTES); the queries arrive with #57, which gives these two
-            // entries their operations. With none declared the audit still proves what the database hides.
+            // The creation of #56 and "my reservations" of #57 are customer routes (in CUSTOMER_ROUTES); the listing of the staff
+            // is the LIST operation, which the owner of Pura Navaja tries against Fade Lab. The detail (#58) adds SHOW. The history
+            // has no route of its own, so the audit only proves what the database hides.
             new TenantResource(
                 'reservations',
                 fn (string $barbershopId): string => self::createReservation($barbershopId),
                 'api/v1/barberias/{barberia}/reservas',
+                [TenantResource::LIST],
                 [],
+                ['api/v1/barberias/{barberia}/mis-reservas'],
             ),
             new TenantResource(
                 'reservation_status_history',

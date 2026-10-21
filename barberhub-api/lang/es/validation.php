@@ -172,9 +172,12 @@ return [
         'acepta_privacidad' => 'aceptación de la política de privacidad',
         'acepta_terminos' => 'aceptación de los términos y condiciones',
         'cierra' => 'hora de cierre',
+        'colaborador' => 'colaborador',
         'contrasena' => 'contraseña',
         'dia' => 'día',
         'duracion_minutos' => 'duración en minutos',
+        'pagina' => 'página',
+        'por_pagina' => 'elementos por página',
         'telefono' => 'teléfono',
     ],
 

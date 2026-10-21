@@ -7,13 +7,22 @@ namespace Src\Reservations\Reservations\Infrastructure\Http\Controllers;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
+use Src\Reservations\Reservations\Application\UseCases\ListCustomerReservations;
+use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CreateReservationRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservationsRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationListItemResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationResource;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\StaffReservationListItemResource;
 use Src\Shared\Domain\Contracts\Clock;
+use Src\Shared\Infrastructure\Http\Resources\PageMeta;
+use Src\Shared\Infrastructure\Tenancy\RequestBarbershopContext;
 
-#[Group('Reservas', 'Reservar el espacio de un barbero.')]
+#[Group('Reservas', 'Reservar el espacio de un barbero y consultar las reservas según el rol.')]
 final readonly class ReservationController
 {
     /** Receive the port that tells the current instant. */
@@ -31,5 +40,30 @@ final readonly class ReservationController
         return new ReservationResource($reservation)
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /** List the reservations the person made in the barbershop. */
+    #[Endpoint(
+        title: 'Listar mis reservas',
+        description: 'Lista, de la de inicio más próximo a la más lejana, las reservas que la persona de la sesión hizo en la barbería, con el nombre del `servicio` y del `barbero`. Se puede filtrar por `dia` (fecha de Costa Rica) y por `estado`. Una persona que todavía no reservó ahí recibe la lista vacía, no un error. El dueño o un colaborador de esa barbería recibe 403 `prohibido`: su vista es `GET /reservas`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.',
+    )]
+    public function mine(ListMyReservationsRequest $request, ListCustomerReservations $listReservations): AnonymousResourceCollection
+    {
+        $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $request->search(), $request->page());
+
+        return ReservationListItemResource::collection($page->items)->additional(PageMeta::of($page));
+    }
+
+    /** List the reservations of the agenda the owner or the collaborator may see. */
+    #[Endpoint(
+        title: 'Listar las reservas de la barbería',
+        description: 'Lista, de la de inicio más próximo a la más lejana, las reservas que el rol permite ver, con el nombre del `servicio`, del `barbero` y del cliente (`cliente_nombre`; nunca su correo ni su teléfono). El dueño ve las de todos los colaboradores de su barbería y puede filtrar por `colaborador`; un colaborador ve solo las de su propio perfil y, si pide el `colaborador` de otro, recibe el mismo 404 `no-encontrado` de un recurso inexistente. Un colaborador que no existe en la barbería responde 404 también al dueño. Se puede filtrar además por `dia` (fecha de Costa Rica) y por `estado`. Una persona sin rol en la barbería recibe 404 y un cliente, 403 `prohibido`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.',
+    )]
+    public function index(ListReservationsRequest $request, ListStaffReservations $listReservations): AnonymousResourceCollection
+    {
+        $isOwner = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE) === 'owner';
+        $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $isOwner, $request->search(), $request->page());
+
+        return StaffReservationListItemResource::collection($page->items)->additional(PageMeta::of($page));
     }
 }

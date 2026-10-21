@@ -10,7 +10,7 @@ use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
-use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
+use Src\Reservations\Reservations\Infrastructure\Http\ReservationStatusNames;
 
 /**
  * @property-read Reservation $resource
@@ -36,7 +36,7 @@ final class ReservationResource extends JsonResource
             'servicio' => $this->reservation->serviceId->value,
             'barbero' => $this->reservation->collaboratorId->value,
             /** Estado de la reserva; al crearla sin pago queda `confirmada`. */
-            'estado' => $this->statusName($this->reservation->status),
+            'estado' => ReservationStatusNames::of($this->reservation->status),
             /** Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00). */
             'inicio' => $this->moment($this->reservation->interval->start),
             /** Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`. */
@@ -47,20 +47,6 @@ final class ReservationResource extends JsonResource
             /** Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
             'plazo_cancelacion_horas' => $this->reservation->cancellationDeadlineHours,
         ];
-    }
-
-    /** The name of the status in the API. */
-    private function statusName(ReservationStatus $status): string
-    {
-        return match ($status) {
-            ReservationStatus::Temporary => 'temporal',
-            ReservationStatus::Confirmed => 'confirmada',
-            ReservationStatus::Completed => 'completada',
-            ReservationStatus::NoShow => 'ausente',
-            ReservationStatus::CancelledByCustomer => 'cancelada_por_cliente',
-            ReservationStatus::CancelledByBarbershop => 'cancelada_por_barberia',
-            ReservationStatus::Expired => 'expirada',
-        };
     }
 
     /** Write an instant as ISO 8601 in the time zone of the application, Costa Rica. */
