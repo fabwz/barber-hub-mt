@@ -14,4 +14,7 @@ interface PublicServiceReader
      * @return list<PublicService>
      */
     public function activeServices(): array;
+
+    /** Read one active service of the current barbershop; none if it does not exist, belongs to another barbershop or is inactive. */
+    public function activeService(string $serviceId): ?PublicService;
 }

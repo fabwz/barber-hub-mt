@@ -21,15 +21,32 @@ final readonly class InMemoryPublicServiceReader implements PublicServiceReader
     public function activeServices(): array
     {
         return array_values(array_map(
-            fn (Service $service): PublicService => new PublicService(
-                $service->id->value,
-                $service->name->value,
-                $service->duration->minutes(),
-                $service->price->colones(),
-                $service->price->base()->colones,
-                $service->price->tax()->colones,
-            ),
+            $this->toPublicService(...),
             array_filter($this->services->all(), fn (Service $service): bool => $service->active),
         ));
+    }
+
+    /** Read one active service with its breakdown. */
+    public function activeService(string $serviceId): ?PublicService
+    {
+        foreach ($this->services->all() as $service) {
+            if ($service->active && $service->id->value === $serviceId) {
+                return $this->toPublicService($service);
+            }
+        }
+
+        return null;
+    }
+
+    private function toPublicService(Service $service): PublicService
+    {
+        return new PublicService(
+            $service->id->value,
+            $service->name->value,
+            $service->duration->minutes(),
+            $service->price->colones(),
+            $service->price->base()->colones,
+            $service->price->tax()->colones,
+        );
     }
 }
