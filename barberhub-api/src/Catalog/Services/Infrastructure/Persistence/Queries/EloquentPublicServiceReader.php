@@ -29,17 +29,33 @@ final readonly class EloquentPublicServiceReader implements PublicServiceReader
             ->orderBy('id')
             ->get();
 
-        return array_values($services->map(function (ServiceModel $service): PublicService {
-            $price = new ServicePrice($service->price);
+        return array_values($services->map($this->toPublicService(...))->all());
+    }
 
-            return new PublicService(
-                $service->id,
-                $service->name,
-                $service->duration_minutes,
-                $price->colones(),
-                $price->base()->colones,
-                $price->tax()->colones,
-            );
-        })->all());
+    /** Read one active service of the current barbershop with one query. */
+    public function activeService(string $serviceId): ?PublicService
+    {
+        $service = ServiceModel::query()
+            ->where('barbershop_id', $this->context->current()->value)
+            ->where('is_active', true)
+            ->whereKey($serviceId)
+            ->first();
+
+        return $service === null ? null : $this->toPublicService($service);
+    }
+
+    /** Split the stored price into the base and the VAT the customer sees. */
+    private function toPublicService(ServiceModel $service): PublicService
+    {
+        $price = new ServicePrice($service->price);
+
+        return new PublicService(
+            $service->id,
+            $service->name,
+            $service->duration_minutes,
+            $price->colones(),
+            $price->base()->colones,
+            $price->tax()->colones,
+        );
     }
 }

@@ -47,6 +47,12 @@ final readonly class CalendarDate
         return DayOfWeek::fromMoment($this->at(0));
     }
 
+    /** The day after this one. */
+    public function next(): self
+    {
+        return self::fromMoment($this->at(self::MINUTES_PER_DAY));
+    }
+
     /** The instant that is some minutes after the midnight that starts the day; 1440 is the midnight that ends it. */
     public function at(int $minutes): DateTimeImmutable
     {

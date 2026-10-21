@@ -16,6 +16,7 @@ use Src\Availability\Slots\Domain\ValueObjects\CalendarDate;
 use Src\Availability\Slots\Domain\ValueObjects\CollaboratorId;
 use Src\Availability\Slots\Domain\ValueObjects\DayAgenda;
 use Src\Availability\Slots\Domain\ValueObjects\Slot;
+use Src\Shared\Domain\ValueObjects\Duration;
 
 final readonly class ListAvailableSlots
 {
@@ -32,13 +33,14 @@ final readonly class ListAvailableSlots
      * List the free spaces for a service on a date, of one collaborator or of all who offer it, in order of start (RF-10).
      * It reads the service, the opening hours, the staff and the reservations once each, whatever the number of
      * collaborators, and stops early when the barbershop is closed or nobody works. "Any available" (DI-04) is the
-     * assignment of the first of these lists to a collaborator, which belongs to #54.
+     * assignment of the first of these lists to a collaborator, which belongs to #54. A caller that asks for several
+     * days passes the duration it already read, so the service is not read again for each day.
      *
      * @return list<Slot>
      */
-    public function execute(string $serviceId, string $date, ?string $collaboratorId, DateTimeImmutable $now): array
+    public function execute(string $serviceId, string $date, ?string $collaboratorId, DateTimeImmutable $now, ?Duration $known = null): array
     {
-        $duration = $this->services->bookableDuration($serviceId) ?? throw ServiceNotBookableException::create();
+        $duration = $known ?? $this->services->bookableDuration($serviceId) ?? throw ServiceNotBookableException::create();
         $day = CalendarDate::of($date);
         $open = $this->hours->openRangesOn($day);
 

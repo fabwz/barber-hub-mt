@@ -22,6 +22,7 @@ final class TenantResources
      */
     public const array PUBLIC_ROUTES = [
         'GET api/v1/barberias/{barberia}/servicios',
+        'GET api/v1/barberias/{barberia}/disponibilidad',
     ];
 
     /**

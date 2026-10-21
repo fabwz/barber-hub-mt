@@ -6,6 +6,7 @@ return [
 
     'break_outside_shift' => 'La pausa debe caer dentro de un turno del mismo día.',
     'breaks_overlap' => 'La pausa se traslapa con otra del mismo día.',
+    'collaborator_not_bookable' => 'El colaborador no atiende este servicio o no está disponible para reservas.',
     'collaborator_not_found' => 'Este colaborador no existe',
     'end_not_after_start' => 'La hora de fin debe ser posterior a la de inicio.',
     'profile_already_exists' => 'La persona ya tiene un perfil de colaborador en esta barbería.',

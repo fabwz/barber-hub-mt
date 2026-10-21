@@ -141,7 +141,7 @@ Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas):
 
 ### La disponibilidad (#53)
 
-`Availability/Slots` no tiene tablas ni estado: calcula los espacios libres de un servicio en un día con datos que ya existen. Su dominio es puro y recibe esos datos cargados, más la hora actual como parámetro. Las rutas son del #55; hasta entonces solo hay dominio, aplicación y adaptadores de lectura.
+`Availability/Slots` no tiene tablas ni estado: calcula los espacios libres de un servicio en un día con datos que ya existen. Su dominio es puro y recibe esos datos cargados, más la hora actual como parámetro. La ruta pública es del #55 (más abajo).
 
 - **Modelo de lectura.** `DayAgenda` reúne, para un colaborador y una fecha (`CalendarDate`), las franjas abiertas de la barbería, sus turnos y pausas (horas de pared) y los intervalos que ocupan las reservas (instantes). `SlotCalculator::forAgenda()` devuelve una lista de `Slot` (colaborador, inicio y fin del servicio, sin la limpieza) y `nearest()` elige los más cercanos a una hora pedida.
 - **Reglas.** Un espacio de `servicio + 5 min` debe caber en un turno del colaborador y en el horario de la barbería (se unen los rangos contiguos), no tocar una pausa ni solapar una reserva (DI-01); las reservas contiguas se permiten. Los espacios empiezan en los cuartos de hora del reloj (:00, :15, :30, :45), no en el inicio del turno (DI-02). Los límites de DI-03 son inclusivos: exactamente 60 minutos de anticipación y exactamente 30 días sí se pueden reservar. Las reservas temporales cuentan como ocupadas (DI-05); la lista de espera es un issue diferido. Un servicio solo lo ofrecen los colaboradores activos que lo tienen habilitado (CO-01).
@@ -150,6 +150,15 @@ Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas):
 - **Casos de uso.** `ListAvailableSlots` (un colaborador o todos los que ofrecen el servicio) y `ListAlternativeSlots` (hasta 3 espacios del mismo día y servicio, los de inicio más cercano, RE-02; lo usará el #56). "Cualquiera disponible" (DI-04) es el #54 y no está hecho, pero la consulta por colaborador ya devuelve lo que necesita.
 - **Sin N+1.** Una consulta de un día lee el servicio, el horario y los cierres, los colaboradores con sus hijos (tres consultas para todos, no por colaborador) y **una** consulta de reservas con `collaborator_id IN (...)` acotada a ese día. Se detiene antes de leer el personal y las reservas si la barbería está cerrada. Una prueba de integración comprueba que el número de consultas es el mismo con 2 y con 6 colaboradores.
 - **Pendiente.** La reserva temporal (RE-05) caduca a los 10 minutos, pero `reservations.expires_at` no existe todavía (llega con los pagos, #62), así que hoy toda reserva temporal cuenta como bloqueo. Cuando exista la columna, `EloquentBlockedIntervalReader` debe excluir las temporales vencidas. Tampoco se consideran las ausencias del colaborador (CO-06), cuya tabla `collaborator_absences` no está creada.
+
+### La consulta pública de disponibilidad (#55)
+
+`GET /api/v1/barberias/{barberia}/disponibilidad?servicio=&barbero=&fecha=` es pública (`barbershop:public`, registrada en `PUBLIC_ROUTES` del arnés de aislamiento). Lo atiende el caso de uso `SearchAvailability`, que se apoya en `ListAvailableSlots`.
+
+- **Respuesta.** El servicio con su duración y su precio con el IVA desglosado, la `fecha` y los espacios agrupados por barbero (`barberos[].espacios[]`, con `inicio` y `fin` en ISO 8601 con `-06:00` y el `barbero` que se envía al reservar). Con `barbero` trae un solo grupo; sin él, un grupo por cada colaborador que ofrece el servicio y tiene espacios. No incluye imagen (#46).
+- **Días siguientes.** Si la fecha no tiene espacios, `dias_siguientes` trae hasta 3 días posteriores con espacios, buscando solo dentro de la ventana de DI-03 y deteniéndose al encontrar los 3. Una fecha fuera de la ventana devuelve la lista vacía y no busca. Lee el servicio y los nombres una vez, y cada día que revisa lee cierre, horario, personal (4 consultas) y reservas: en el peor caso, 31 días × 7 consultas más 7 fijas. La asignación de "cualquiera disponible" (#54) y la lista de espera (diferida) no están.
+- **Validaciones.** Forma en `AvailabilityRequest` (422 con el campo). Un servicio inexistente, inactivo o de otra barbería, y un barbero que no es de la barbería, dan el mismo 404 `no-encontrado`; un barbero de la barbería que está inactivo o no ofrece el servicio da 422 `datos-invalidos` (`CollaboratorNotBookableException`).
+- **Puertos nuevos.** `ServiceCatalog::bookableService()` (caso `GetPublicService` de `Services`) y `StaffRoster::bookableNames()` (caso `ListBookableStaff` de `Collaborators`, que solo expone el nombre de la cuenta, nunca el correo).
 
 ### El tiempo es un parámetro
 
