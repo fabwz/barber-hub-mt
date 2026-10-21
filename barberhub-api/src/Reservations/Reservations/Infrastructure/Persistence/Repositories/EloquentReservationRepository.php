@@ -12,6 +12,7 @@ use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
+use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
@@ -27,6 +28,7 @@ use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\Page;
 use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
+use Src\Shared\Domain\ValueObjects\UserId;
 use Src\Shared\Infrastructure\Persistence\EloquentPages;
 
 final readonly class EloquentReservationRepository implements ReservationRepository
@@ -145,6 +147,28 @@ final readonly class EloquentReservationRepository implements ReservationReposit
         }
 
         return EloquentPages::of($query->orderBy('starts_at')->orderBy('id'), $page, fn (ReservationModel $model): Reservation => $this->toDomain($model));
+    }
+
+    /**
+     * Read the entries of the history of the reservation in the order they happened, among those of the current barbershop.
+     *
+     * @return list<ReservationStatusChange>
+     */
+    public function history(ReservationId $id): array
+    {
+        $entries = ReservationStatusChangeModel::query()
+            ->where('barbershop_id', $this->context->current()->value)
+            ->where('reservation_id', $id->value)
+            ->orderBy('changed_at')
+            ->orderBy('id')
+            ->get();
+
+        return array_values($entries->map(fn (ReservationStatusChangeModel $entry): ReservationStatusChange => new ReservationStatusChange(
+            $entry->from_status === null ? null : ReservationStatus::from($entry->from_status),
+            ReservationStatus::from($entry->to_status),
+            $entry->changed_by_user_id === null ? Author::system() : Author::person(new UserId($entry->changed_by_user_id)),
+            $entry->changed_at,
+        ))->all());
     }
 
     /** Insert one entry of the history. */
