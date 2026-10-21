@@ -10,6 +10,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Src\Shared\Domain\Exceptions\AuthenticationFailedException;
 use Src\Shared\Domain\Exceptions\BusinessRuleException;
+use Src\Shared\Domain\Exceptions\HasProblemMembers;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\Exceptions\TooManyRequestsException;
 use Tests\TestCase;
@@ -47,6 +48,8 @@ final class ProblemDetailsTest extends TestCase
             );
 
             Route::get('espera/{seconds}', fn (int $seconds) => throw new WaitViolation('pruebas.espera', ['seconds' => $seconds, 'minutes' => (int) ceil($seconds / 60)]));
+
+            Route::get('miembros', fn () => throw new MembersViolation('problems.conflicto.detail'));
 
             Route::get('regla/{rule}', fn (string $rule) => throw new RuleViolation('problems.conflicto.detail', ['rule' => $rule]));
         });
@@ -185,6 +188,19 @@ final class ProblemDetailsTest extends TestCase
         ];
     }
 
+    /** An error that brings its own members adds them to the document, and cannot replace the standard ones. */
+    public function test_error_with_members_adds_them_to_the_document(): void
+    {
+        $response = $this->getJson('/api/v1/pruebas/miembros')->assertConflict();
+
+        $response->assertHeader('Content-Type', self::CONTENT_TYPE)
+            ->assertJsonPath('type', self::BASE.'espacio-no-disponible')
+            ->assertJsonPath('status', 409)
+            ->assertJsonPath('instance', 'urn:uuid:'.$response->headers->get('X-Request-Id'))
+            ->assertJsonPath('alternativas', [['inicio' => '2030-03-05T10:00:00-06:00']]);
+        $this->assertSame(['type', 'title', 'status', 'detail', 'instance', 'alternativas'], array_keys($response->json()));
+    }
+
     /** An unexpected failure never leaks technical details, not even in debug mode (SE-03). */
     public function test_unexpected_failure_hides_technical_details(): void
     {
@@ -223,5 +239,19 @@ final class RuleViolation extends BusinessRuleException
     public function rule(): string
     {
         return (string) $this->parameters()['rule'];
+    }
+}
+
+/** Business rule with extra members, one of them trying to replace a standard member. */
+final class MembersViolation extends BusinessRuleException implements HasProblemMembers
+{
+    public function rule(): string
+    {
+        return 'espacio-no-disponible';
+    }
+
+    public function problemMembers(): array
+    {
+        return ['status' => 200, 'alternativas' => [['inicio' => '2030-03-05T10:00:00-06:00']]];
     }
 }

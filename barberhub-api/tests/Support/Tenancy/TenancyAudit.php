@@ -28,9 +28,10 @@ final class TenancyAudit
      *
      * @param  list<TenantResource>  $resources
      * @param  list<string>  $publicRoutes  "METHOD uri", as in TenantResources::PUBLIC_ROUTES.
+     * @param  list<string>  $customerRoutes  "METHOD uri" of the operations that create the first membership, as in TenantResources::CUSTOMER_ROUTES (RD-18).
      * @return list<string>
      */
-    public static function coverageViolations(array $resources, ConnectionInterface $db, RouteCollectionInterface $routes, array $publicRoutes): array
+    public static function coverageViolations(array $resources, ConnectionInterface $db, RouteCollectionInterface $routes, array $publicRoutes, array $customerRoutes = []): array
     {
         $violations = [];
         $registered = array_map(fn (TenantResource $resource): string => $resource->table, $resources);
@@ -51,7 +52,12 @@ final class TenancyAudit
 
             $name = implode('|', array_diff($route->methods(), ['HEAD'])).' '.$route->uri();
             $public = in_array($name, $publicRoutes, true);
-            $expected = $public ? 'barbershop:public' : 'barbershop';
+            $customer = in_array($name, $customerRoutes, true);
+            $expected = match (true) {
+                $public => 'barbershop:public',
+                $customer => 'barbershop:customer',
+                default => 'barbershop',
+            };
 
             if (! in_array($expected, $route->gatherMiddleware(), true)) {
                 $violations[] = "{$name}: is without the {$expected} middleware";

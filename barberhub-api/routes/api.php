@@ -10,3 +10,4 @@ require base_path('src/Catalog/OpeningHours/Infrastructure/Http/routes.php');
 require base_path('src/Catalog/Closures/Infrastructure/Http/routes.php');
 require base_path('src/Catalog/Collaborators/Infrastructure/Http/routes.php');
 require base_path('src/Availability/Slots/Infrastructure/Http/routes.php');
+require base_path('src/Reservations/Reservations/Infrastructure/Http/routes.php');

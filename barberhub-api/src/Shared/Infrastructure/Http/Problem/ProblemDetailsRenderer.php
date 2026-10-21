@@ -11,6 +11,7 @@ use Illuminate\Validation\ValidationException;
 use Src\Shared\Domain\Exceptions\AuthenticationFailedException;
 use Src\Shared\Domain\Exceptions\BusinessRuleException;
 use Src\Shared\Domain\Exceptions\DomainException;
+use Src\Shared\Domain\Exceptions\HasProblemMembers;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\Exceptions\NotFoundException;
 use Src\Shared\Domain\Exceptions\TooManyRequestsException;
@@ -21,6 +22,9 @@ use Throwable;
 final readonly class ProblemDetailsRenderer
 {
     public const string CONTENT_TYPE = 'application/problem+json';
+
+    /** Members of every problem document (RFC 9457); an error cannot replace them. */
+    private const array STANDARD_MEMBERS = ['type', 'title', 'status', 'detail', 'instance'];
 
     /** Render any exception as an RFC 9457 problem document. */
     public function __invoke(Throwable $exception): JsonResponse
@@ -42,6 +46,7 @@ final readonly class ProblemDetailsRenderer
             $exception instanceof DomainException => $this->respond(
                 $this->typeOfDomainException($exception),
                 __($exception->translationKey(), $exception->parameters()),
+                extensions: $exception instanceof HasProblemMembers ? $this->customMembers($exception) : [],
             ),
             $exception instanceof AuthenticationException => $this->respond(ProblemType::Unauthenticated),
             $exception instanceof HttpExceptionInterface => $this->respond(
@@ -62,6 +67,16 @@ final readonly class ProblemDetailsRenderer
             $exception instanceof BusinessRuleException => ProblemType::tryFrom($exception->rule()) ?? ProblemType::Conflict,
             default => ProblemType::Conflict,
         };
+    }
+
+    /**
+     * The extra members an error brings, without the ones the document already has.
+     *
+     * @return array<string, mixed>
+     */
+    private function customMembers(HasProblemMembers $exception): array
+    {
+        return array_diff_key($exception->problemMembers(), array_flip(self::STANDARD_MEMBERS));
     }
 
     /**

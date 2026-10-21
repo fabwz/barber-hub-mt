@@ -10,6 +10,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
+use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
@@ -19,6 +21,7 @@ use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\Eloque
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
+use Src\Shared\Domain\ValueObjects\TimeInterval;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Shared\FixedBarbershopContext;
@@ -157,7 +160,7 @@ final class EloquentReservationRepositoryTest extends TestCase
         $this->assertSame(1, DB::table('reservation_status_history')->count());
     }
 
-    /** A reservation that overlaps another of the collaborator is rejected by the database; the #56 turns that into the domain error. */
+    /** A reservation that overlaps another of the collaborator is rejected by the database and reported as a space not available (RE-01). */
     public function test_an_overlapping_reservation_is_rejected_by_the_database(): void
     {
         $this->repository->save($this->reservation('2030-03-04 10:00'));
@@ -166,12 +169,51 @@ final class EloquentReservationRepositoryTest extends TestCase
         try {
             $this->repository->save($this->reservation('2030-03-04 10:30', customer: $luis));
             $this->fail('A reservation over another was stored.');
-        } catch (QueryException $exception) {
-            $this->assertSame('23P01', $exception->getCode());
+        } catch (SlotUnavailableException) {
+            $this->addToAssertionCount(1);
         }
 
         $this->assertSame(1, DB::table('reservations')->count());
         $this->assertSame(1, DB::table('reservation_status_history')->count());
+    }
+
+    /** The same customer with two confirmed reservations at once is rejected by the database and reported as an overlap (RE-06). */
+    public function test_a_customer_overlap_is_rejected_by_the_database_and_translated(): void
+    {
+        $author = Author::person(new UserId($this->anaUser));
+        $first = $this->reservation('2030-03-04 10:00', $author);
+        $first->confirm(self::at('2030-03-01 08:01'), $author);
+        $this->repository->save($first);
+        $second = $this->reservation('2030-03-04 10:30', $author, collaborator: $this->insertCollaborator($this->puraNavaja));
+        $second->confirm(self::at('2030-03-01 08:01'), $author);
+
+        $this->expectException(OverlappingReservationException::class);
+
+        try {
+            $this->repository->save($second);
+        } finally {
+            $this->assertSame(1, DB::table('reservations')->count());
+            $this->assertSame(2, DB::table('reservation_status_history')->count());
+        }
+    }
+
+    /** The overlap check sees only confirmed reservations of that customer that share a minute; touching ends do not count. */
+    public function test_confirmed_overlap_of_a_customer_is_detected(): void
+    {
+        $author = Author::person(new UserId($this->anaUser));
+        $confirmed = $this->reservation('2030-03-04 10:00', $author);
+        $confirmed->confirm(self::at('2030-03-01 08:01'), $author);
+        $this->repository->save($confirmed);
+        $this->repository->save($this->reservation('2030-03-04 14:00', $author, collaborator: $this->insertCollaborator($this->puraNavaja)));
+        $ana = new CustomerMembershipId($this->ana);
+        $interval = fn (string $from, string $to): TimeInterval => TimeInterval::between(self::at($from), self::at($to));
+
+        $this->assertTrue($this->repository->hasConfirmedOverlapping($ana, $interval('2030-03-04 10:30', '2030-03-04 11:15')));
+        $this->assertFalse($this->repository->hasConfirmedOverlapping($ana, $interval('2030-03-04 10:45', '2030-03-04 11:30')));
+        $this->assertFalse($this->repository->hasConfirmedOverlapping($ana, $interval('2030-03-04 14:00', '2030-03-04 14:45')), 'a temporary reservation does not count');
+
+        [$luis] = $this->insertCustomer($this->puraNavaja);
+        $this->assertFalse($this->repository->hasConfirmedOverlapping(new CustomerMembershipId($luis), $interval('2030-03-04 10:30', '2030-03-04 11:15')));
     }
 
     /** A reservation that ended in a final status releases the space for the next one. */
@@ -217,11 +259,11 @@ final class EloquentReservationRepositoryTest extends TestCase
     }
 
     /** A 45-minute reservation of Ana with Kevin at the given moment of 4 March. */
-    private function reservation(string $startsAt, ?Author $author = null, string $at = '2030-03-01 08:00', ?string $customer = null): Reservation
+    private function reservation(string $startsAt, ?Author $author = null, string $at = '2030-03-01 08:00', ?string $customer = null, ?string $collaborator = null): Reservation
     {
         return Reservation::create(
             $this->repository->nextId(),
-            new CollaboratorId($this->kevin),
+            new CollaboratorId($collaborator ?? $this->kevin),
             new ServiceId($this->haircut),
             new CustomerMembershipId($customer ?? $this->ana),
             self::at($startsAt),
