@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Infrastructure;
 
 use Illuminate\Support\ServiceProvider;
+use Src\Reservations\Reservations\Application\Contracts\BlockedIntervalReader;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
+use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentBlockedIntervalReader;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
 
 final class ReservationsServiceProvider extends ServiceProvider
@@ -17,5 +19,6 @@ final class ReservationsServiceProvider extends ServiceProvider
      */
     public array $bindings = [
         ReservationRepository::class => EloquentReservationRepository::class,
+        BlockedIntervalReader::class => EloquentBlockedIntervalReader::class,
     ];
 }
