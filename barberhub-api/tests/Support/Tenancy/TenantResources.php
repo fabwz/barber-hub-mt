@@ -133,7 +133,60 @@ final class TenantResources
                 ),
                 ['collaborator_shifts', 'collaborator_breaks'],
             ),
+            // The reservations have no route yet: the creation arrives with #56 and the queries with #57, which give these two
+            // entries their path and operations. With none declared the audit still proves what the database hides.
+            new TenantResource(
+                'reservations',
+                fn (string $barbershopId): string => self::createReservation($barbershopId),
+                'api/v1/barberias/{barberia}/reservas',
+                [],
+            ),
+            new TenantResource(
+                'reservation_status_history',
+                function (string $barbershopId): string {
+                    $id = (string) Str::uuid7();
+                    DB::table('reservation_status_history')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'reservation_id' => self::createReservation($barbershopId),
+                        'to_status' => 'temporary',
+                        'changed_at' => '2030-03-01 08:00:00-06',
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/reservas',
+                [],
+            ),
         ];
+    }
+
+    /** Insert a reservation with its own collaborator, service and customer in a barbershop and return its identifier. */
+    private static function createReservation(string $barbershopId): string
+    {
+        $serviceId = (string) Str::uuid7();
+        $membershipId = (string) Str::uuid7();
+        $userId = (string) Str::uuid7();
+        $id = (string) Str::uuid7();
+        DB::table('services')->insert(['id' => $serviceId, 'barbershop_id' => $barbershopId, 'name' => 'Degradado', 'duration_minutes' => 45, 'price' => 8500]);
+        DB::table('users')->insert(['id' => $userId, 'name' => 'Ana Rojas', 'email' => "{$userId}@barberhub.test", 'password' => 'hash']);
+        DB::table('memberships')->insert(['id' => $membershipId, 'user_id' => $userId, 'barbershop_id' => $barbershopId, 'role' => 'customer']);
+        DB::table('reservations')->insert([
+            'id' => $id,
+            'barbershop_id' => $barbershopId,
+            'collaborator_id' => self::createCollaborator($barbershopId),
+            'service_id' => $serviceId,
+            'customer_membership_id' => $membershipId,
+            'status' => 'confirmed',
+            'starts_at' => '2030-03-04 10:00:00-06',
+            'ends_at' => '2030-03-04 10:45:00-06',
+            'blocked_until' => '2030-03-04 10:50:00-06',
+            'price' => 8500,
+            'duration_minutes' => 45,
+            'cancellation_deadline_hours' => 4,
+        ]);
+
+        return $id;
     }
 
     /** Insert an account and its collaborator profile in a barbershop and return the identifier of the profile. */
