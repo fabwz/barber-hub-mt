@@ -41,6 +41,12 @@ final readonly class FailingCollaboratorRepository implements CollaboratorReposi
         return $this->real->findByUser($userId);
     }
 
+    /** Lock a collaborator like the real repository. */
+    public function lock(CollaboratorId $id): bool
+    {
+        return $this->real->lock($id);
+    }
+
     /**
      * List the collaborators like the real repository.
      *

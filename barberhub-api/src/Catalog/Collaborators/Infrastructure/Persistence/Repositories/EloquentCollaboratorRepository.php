@@ -98,6 +98,12 @@ final readonly class EloquentCollaboratorRepository implements CollaboratorRepos
         return $model === null ? null : $this->hydrate(new Collection([$model]))[0];
     }
 
+    /** Lock the row of the collaborator with `SELECT … FOR UPDATE`; the lock lasts until the outermost transaction ends. */
+    public function lock(CollaboratorId $id): bool
+    {
+        return $this->ofBarbershop()->whereKey($id->value)->lockForUpdate()->value('id') !== null;
+    }
+
     /**
      * List the collaborators of the current barbershop from the oldest to the newest.
      *

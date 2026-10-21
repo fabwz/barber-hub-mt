@@ -56,6 +56,12 @@ final class InMemoryCollaboratorRepository implements CollaboratorRepository
         return array_find($this->collaborators, fn (Collaborator $collaborator): bool => $collaborator->userId->equals($userId));
     }
 
+    /** Tell whether the collaborator exists; there is nothing to lock in memory. */
+    public function lock(CollaboratorId $id): bool
+    {
+        return isset($this->collaborators[$id->value]);
+    }
+
     /**
      * List the stored collaborators from the oldest to the newest.
      *

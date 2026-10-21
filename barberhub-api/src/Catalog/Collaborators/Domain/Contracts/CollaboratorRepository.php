@@ -31,6 +31,13 @@ interface CollaboratorRepository
     public function findByUser(UserId $userId): ?Collaborator;
 
     /**
+     * Lock the row of a collaborator of the current barbershop until the open transaction ends (`SELECT … FOR UPDATE`), so
+     * two reservations of the same collaborator are decided one after the other (RE-01). It must run inside a transaction.
+     * It tells whether the collaborator exists in the barbershop.
+     */
+    public function lock(CollaboratorId $id): bool;
+
+    /**
      * List every collaborator of the current barbershop, active or not, from the oldest to the newest.
      *
      * @return list<Collaborator>

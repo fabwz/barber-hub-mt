@@ -53,6 +53,26 @@ final class EloquentCollaboratorRepositoryTest extends TestCase
         $this->kidsHaircut = $this->insertService($this->puraNavaja, 'Corte infantil');
     }
 
+    /** The lock reads the row with FOR UPDATE inside the transaction and finds only collaborators of the barbershop. */
+    public function test_lock_takes_the_row_for_update_and_only_of_the_barbershop(): void
+    {
+        $kevin = $this->collaborator('kevin@barberhub.test');
+        $this->repository->save($kevin);
+        $queries = [];
+        DB::listen(function ($query) use (&$queries): void {
+            $queries[] = strtolower($query->sql);
+        });
+
+        $this->assertTrue($this->repository->lock($kevin->id));
+        $this->assertFalse($this->repository->lock($this->repository->nextId()));
+
+        $this->assertNotEmpty(array_filter($queries, fn (string $sql): bool => str_contains($sql, 'from "collaborators"') && str_contains($sql, 'for update')));
+
+        $this->scopeQueriesTo($this->fadeLab);
+        $other = new EloquentCollaboratorRepository(new FixedBarbershopContext(new BarbershopId($this->fadeLab)));
+        $this->assertFalse($other->lock($kevin->id));
+    }
+
     /** A collaborator with services, shifts and breaks is read back unchanged. */
     public function test_a_saved_collaborator_is_read_back_unchanged(): void
     {
