@@ -20,7 +20,7 @@ final class InMemoryBlockedIntervals implements BlockedIntervals
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function between(array $collaboratorIds, TimeInterval $window): array
+    public function between(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
     {
         $this->reads++;
 

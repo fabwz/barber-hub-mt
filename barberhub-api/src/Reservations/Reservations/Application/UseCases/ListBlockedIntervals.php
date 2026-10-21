@@ -14,17 +14,17 @@ final readonly class ListBlockedIntervals
 
     /**
      * List the intervals some collaborators have held in a window by temporary or confirmed reservations, cleaning included;
-     * the availability reads it (DI-01, DI-05, RE-01).
+     * the availability reads it (DI-01, DI-05, RE-01). The reservation named is left out: it is the one being moved (RE-08).
      *
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function execute(array $collaboratorIds, TimeInterval $window): array
+    public function execute(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
     {
         if ($collaboratorIds === []) {
             return [];
         }
 
-        return $this->reader->between($collaboratorIds, $window);
+        return $this->reader->between($collaboratorIds, $window, $ignoringReservationId);
     }
 }

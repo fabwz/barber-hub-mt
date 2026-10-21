@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Infrastructure\Persistence\Queries;
 
 use DateTimeImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Src\Reservations\Reservations\Application\Contracts\BlockedIntervalReader;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Models\ReservationModel;
@@ -23,9 +24,10 @@ final readonly class EloquentBlockedIntervalReader implements BlockedIntervalRea
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function between(array $collaboratorIds, TimeInterval $window): array
+    public function between(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
     {
         $rows = ReservationModel::query()
+            ->when($ignoringReservationId !== null, fn (Builder $query): Builder => $query->where('id', '!=', $ignoringReservationId))
             ->where('barbershop_id', $this->context->current()->value)
             ->whereIn('collaborator_id', $collaboratorIds)
             ->whereIn('status', [ReservationStatus::Temporary->value, ReservationStatus::Confirmed->value])

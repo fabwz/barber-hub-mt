@@ -19,8 +19,8 @@ final readonly class ReservationsBlockedIntervals implements BlockedIntervals
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function between(array $collaboratorIds, TimeInterval $window): array
+    public function between(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
     {
-        return $this->listBlocked->execute($collaboratorIds, $window);
+        return $this->listBlocked->execute($collaboratorIds, $window, $ignoringReservationId);
     }
 }
