@@ -120,6 +120,14 @@ final readonly class EloquentReservationRepository implements ReservationReposit
         return $model === null ? null : $this->toDomain($model);
     }
 
+    /** Find the reservation among those of the current barbershop, locking its row. */
+    public function findForUpdate(ReservationId $id): ?Reservation
+    {
+        $model = $this->ofBarbershop()->lockForUpdate()->find($id->value);
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     /**
      * Read the page with two statements, the count and the rows, ordered by start. The customer and the collaborator come
      * from the filter, never from the request, so each listing decides its own scope.
