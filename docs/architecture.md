@@ -167,7 +167,23 @@ Dos lecturas paginadas de `Reservations`, ambas `GET`, ordenadas por inicio (y p
 - **Sin N+1.** Una consulta de reservas (más el conteo) y lecturas fijas de nombres, sin importar el tamaño de la página: `AttachNames` lee los servicios (`ServiceNames`, caso de uso `ListServices`, también inactivos: SV-04), los colaboradores (`CollaboratorDirectory`, `ListCollaborators`) y, para el personal, los clientes (`CustomerDirectory`: `ListMembershipUsers` y `ListAccountSummaries`). Una página vacía no lee nada. `ListReservationsPaginationTest` compara el número de consultas con 1 y con 50 filas.
 - **Qué expone.** `ReservationListItemResource` (`ReservaDeLista`): `id`, `servicio`, `servicio_nombre`, `barbero`, `barbero_nombre`, `estado`, `inicio`, `fin`, `precio` y `duracion_minutos`. `StaffReservationListItemResource` (`ReservaDeAgenda`) agrega `cliente_nombre`; nunca el correo ni el teléfono (CO-04). Los ids se mantienen para que el cliente web reutilice el tipo de `Reserva`; el plazo de cancelación queda para el detalle (#58).
 - **Paginación de la referencia.** `Page`, `PageRequest`, `ListRequest`, `PageMeta` y `EloquentPages` no existían en `Shared`: se incorporaron tal cual de la referencia (el texto de `shared.page_out_of_range` y los atributos `pagina` y `por_pagina` incluidos). Divergencia con la referencia: el filtro `estado` se lee con `filled()` y no con `has()`, para que `?estado=` vacío no falle.
-- **Aislamiento.** `reservations` declara la operación `LIST` en `TenantResources` y la ruta `mis-reservas` entra por `CUSTOMER_ROUTES` y por la nueva lista `otherPaths` de `TenantResource`, porque no cuelga de la ruta de la colección. Todavía no hay detalle (#58), cancelar (#60) ni reprogramar (#59).
+- **Aislamiento.** `reservations` declara la operación `LIST` en `TenantResources` y la ruta `mis-reservas` entra por `CUSTOMER_ROUTES` y por la nueva lista `otherPaths` de `TenantResource`, porque no cuelga de la ruta de la colección. Todavía no hay cancelar (#60) ni reprogramar (#59).
+
+### El detalle de una reserva (#58)
+
+`GET /barberias/{barberia}/reservas/{reserva}` (`auth:sanctum`, `barbershop`), una sola ruta con tres proyecciones según el rol que fijó el middleware. `ReservationController::show` elige el caso de uso; ninguno recibe el rol del cliente de la petición.
+
+| Rol | Caso de uso | Recurso (esquema) | Qué ve |
+| --- | --- | --- | --- |
+| Cliente | `GetCustomerReservation` | `CustomerReservationDetailResource` (`ReservaDetalleDeCliente`) | Su reserva con los campos del listado y `plazo_cancelacion_horas`. Sin saldo (PA-10), sin historial, sin nombre de cliente |
+| Colaborador | `GetStaffReservation` | `StaffReservationDetailResource` (`ReservaDetalleDeAgenda`) | Las de su propia agenda, con `cliente_nombre` y `saldo_pendiente` (CO-04). Sin `historial` |
+| Dueño | `GetStaffReservation` | el mismo | Cualquiera de su barbería, además con `historial`: `de`, `a`, `autor` y `fecha` |
+
+- **404 uniforme (UP-06).** `ReservationNotFoundException` cubre la reserva inexistente, la de otra barbería (el repositorio filtra por la barbería y la política de filas es la segunda barrera), la de otro cliente y la de otro colaborador. Quien no tiene rol en la barbería recibe el 404 del middleware.
+- **Divergencia con el plan: `barbershop` sin `:customer`.** El modo `customer` deja pasar a quien no tiene rol y rechaza con 403 al personal, y una sola ruta no puede tener dos pilas de middleware. El modo normal ya da 404 sin rol, y los tres roles existentes están permitidos, así que no hace falta `role:`. Por eso un cliente sin rol recibe 404 y no una lista vacía: no es una lectura de datos propios en lote.
+- **Saldo pendiente (PA-10).** Todavía no hay pagos ni depósitos: el saldo es el precio completo de la reserva, que se cobra en el local. Cuando exista el depósito del #49 se descuenta aquí. No se agregaron columnas ni tablas; el detalle de pagos y los ingresos tampoco se exponen.
+- **Historial (RE-09).** `ReservationRepository::history()` lee `reservation_status_history` por reserva, de la primera a la última entrada. Los autores se resuelven por nombre con `AuthorDirectory` (adaptador `UsersAuthorDirectory` sobre `ListAccountSummaries`), en una sola lectura de cuentas sin importar cuántas entradas haya; el sistema no tiene nombre y se muestra como `sistema` (`reservations.author_system`). Nunca se expone el correo.
+- **Aislamiento.** `reservations` suma la operación `SHOW` en `TenantResources`.
 
 ### La disponibilidad (#53)
 
