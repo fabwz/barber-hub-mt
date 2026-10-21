@@ -1,0 +1,9 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Src\Reservations\Reservations\Domain\ValueObjects;
+
+use Src\Shared\Domain\ValueObjects\Identifier;
+
+final readonly class ReservationId extends Identifier {}

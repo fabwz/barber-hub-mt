@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Infrastructure;
 
 use Illuminate\Support\ServiceProvider;
+use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
+use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
 
 final class ReservationsServiceProvider extends ServiceProvider
 {
@@ -13,5 +15,7 @@ final class ReservationsServiceProvider extends ServiceProvider
      *
      * @var array<class-string, class-string>
      */
-    public array $bindings = [];
+    public array $bindings = [
+        ReservationRepository::class => EloquentReservationRepository::class,
+    ];
 }

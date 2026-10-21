@@ -186,7 +186,7 @@ La migración de `opening_hours` crea la extensión `btree_gist` y el tipo `time
 
 **Solo cierres, sin horario especial (decisión del #47).** RF-04 pide «días cerrados y excepciones por fecha», pero el flujo solo describe marcar feriados y cierres especiales, y los criterios solo piden eliminar los espacios de un día cerrado. Por eso una fecha o está cerrada o rige el horario semanal; abrir un feriado con otro horario no se modela. Si más adelante se necesita, se agrega una tabla de franjas por fecha sin cambiar `closures`.
 
-Lo que todavía no existe: HO-04 (mostrar al dueño las reservas confirmadas que quedan fuera de un nuevo horario o dentro de un cierre) necesita la tabla `reservations`, que crea el #126. Ningún issue abierto pide todavía el endpoint de esa lista (el #76 solo la menciona desde la interfaz), así que queda pendiente de asignar.
+Lo que todavía no existe: HO-04 (mostrar al dueño las reservas confirmadas que quedan fuera de un nuevo horario o dentro de un cierre) necesita la tabla `reservations`, que creó el #126. Ningún issue abierto pide todavía el endpoint de esa lista (el #76 solo la menciona desde la interfaz), así que queda pendiente de asignar.
 
 ### collaborators
 
@@ -197,7 +197,7 @@ El perfil con agenda: la persona que atiende. Existe desde el issue #48. Un due�
 | `id` | `uuid` | Llave primaria, `DEFAULT uuidv7()` |
 | `barbershop_id` | `uuid` | Llave foránea a `barbershops`, borrado en cascada |
 | `user_id` | `uuid` | Llave foránea a `users`, borrado en cascada |
-| `is_active` | `boolean` | Por defecto `true`; no se desactiva con reservas futuras confirmadas (CO-03), comprobación que llega con las reservas (#126 y #56) |
+| `is_active` | `boolean` | Por defecto `true`; no se desactiva con reservas futuras confirmadas (CO-03), comprobación que llega con la creación de reservas (#56), ahora que la tabla existe (#126) |
 | `created_at`, `updated_at` | `timestamptz` | `created_at` es la antigüedad de alta que desempata «cualquiera disponible» (DI-04) |
 
 Llaves candidatas: `id`, `(barbershop_id, user_id)` (un perfil por persona y barbería, CO-01) y `(id, barbershop_id)`, para que otras tablas referencien el perfil junto con su barbería.
@@ -238,47 +238,52 @@ La persona que el dueño registra para una reserva asistida, sin cuenta (CL-06).
 
 ### reservations
 
-El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es el agregado más importante.
+El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es el agregado más importante. La tabla existe desde el issue #126 con las columnas marcadas como creadas; las demás son previstas y las agrega el issue de su función, con una migración posterior. Tiene la política de fila `reservations_barbershop_isolation` (ver [database.md](database.md)).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id` | `uuid` | Llave primaria |
-| `barbershop_id` | `uuid` | Llave foránea a `barbershops` |
-| `collaborator_id`, `service_id` | `uuid` | Llaves foráneas compuestas con `barbershop_id` |
-| `customer_membership_id` | `uuid` | Opcional; llave foránea compuesta a `memberships` |
-| `assisted_client_id` | `uuid` | Opcional; llave foránea compuesta a `assisted_clients` |
-| `created_by_membership_id` | `uuid` | Opcional; quien la creó cuando es asistida |
-| `purchased_voucher_id` | `uuid` | Opcional; el bono usado (RF-28) |
-| `status` | `varchar(30)` | `CHECK` entre los siete estados de RE-04 |
-| `starts_at`, `ends_at` | `timestamptz` | Inicio y fin del servicio; `CHECK (starts_at < ends_at)` |
-| `blocked_until` | `timestamptz` | Fin del servicio más 5 minutos de limpieza; `CHECK (ends_at <= blocked_until)` |
-| `price` | `integer` | Precio vigente al reservar (SV-03) |
-| `duration_minutes` | `smallint` | Duración vigente al reservar (SV-03) |
-| `cancellation_deadline_hours` | `smallint` | Plazo de cancelación vigente al reservar (CA-01) |
-| `deposit_amount` | `integer` | `CHECK` mayor o igual que 0; depósito calculado al reservar (PA-06) |
-| `expires_at` | `timestamptz` | Solo en las temporales: 10 minutos desde que inicia el pago (RE-05) |
-| `reschedule_count` | `smallint` | `CHECK` entre 0 y 2 (CA-05) |
-| `created_at`, `updated_at` | `timestamptz` | |
+| `id` | `uuid` | Creada en el #126. Llave primaria, `DEFAULT uuidv7()` |
+| `barbershop_id` | `uuid` | Creada en el #126. Llave foránea a `barbershops`, borrado en cascada |
+| `collaborator_id`, `service_id` | `uuid` | Creadas en el #126. Llaves foráneas compuestas con `barbershop_id` a `collaborators` y `services`, sin cascada: un servicio nunca se borra (SV-04) y un colaborador con reservas tampoco |
+| `customer_membership_id` | `uuid` | Creada en el #126, obligatoria por ahora. Llave foránea compuesta a `memberships`. Pasa a ser opcional con las reservas asistidas |
+| `assisted_client_id` | `uuid` | Prevista, con las reservas asistidas. Opcional; llave foránea compuesta a `assisted_clients` |
+| `created_by_membership_id` | `uuid` | Prevista, con las reservas asistidas. Opcional; quien la creó cuando es asistida |
+| `purchased_voucher_id` | `uuid` | Prevista, con los bonos (RF-28). Opcional; el bono usado |
+| `status` | `varchar(30)` | Creada en el #126. `CHECK` entre los siete estados de RE-04 |
+| `starts_at`, `ends_at` | `timestamptz` | Creadas en el #126. Inicio y fin del servicio; `CHECK (starts_at < ends_at)` |
+| `blocked_until` | `timestamptz` | Creada en el #126. Fin del servicio más 5 minutos de limpieza; `CHECK (ends_at <= blocked_until)`. El dominio la calcula (`Reservation::CLEANUP_MINUTES`) |
+| `price` | `integer` | Creada en el #126. Precio vigente al reservar (SV-03); `CHECK` mayor que 0 |
+| `duration_minutes` | `smallint` | Creada en el #126. Duración vigente al reservar (SV-03); `CHECK` mayor que 0, sin repetir el rango del servicio para que un cambio del catálogo no invalide reservas existentes |
+| `cancellation_deadline_hours` | `smallint` | Creada en el #126. Plazo de cancelación vigente al reservar (CA-01); `CHECK` mayor o igual que 0 |
+| `deposit_amount` | `integer` | Prevista, con el pago (PA-06). `CHECK` mayor o igual que 0; depósito calculado al reservar |
+| `expires_at` | `timestamptz` | Prevista, con el pago (RE-05). Solo en las temporales: 10 minutos desde que inicia el pago |
+| `reschedule_count` | `smallint` | Creada en el #126. `CHECK` entre 0 y 2 (CA-05); por defecto 0. Aumentarla es de reprogramar (#59) |
+| `created_at`, `updated_at` | `timestamptz` | Creadas en el #126. Por defecto `now()` |
 
 Restricciones:
 
-- `CHECK (num_nonnulls(customer_membership_id, assisted_client_id) = 1)`: la reserva es de una cuenta o de un cliente asistido, nunca de ambos.
-- `reservations_no_overlap_excl`: un colaborador no tiene dos reservas temporales o confirmadas con intervalos solapados, incluida la limpieza (RE-01). Ver [database.md](database.md).
-- Una segunda exclusión sobre `(barbershop_id, customer_membership_id, tstzrange(starts_at, ends_at))`, solo para estado `confirmed`: un cliente no tiene dos reservas confirmadas solapadas en la barbería (RE-06).
+- Prevista, con las reservas asistidas: `CHECK (num_nonnulls(customer_membership_id, assisted_client_id) = 1)`: la reserva es de una cuenta o de un cliente asistido, nunca de ambos.
+- `reservations_no_overlap_excl` (#126): un colaborador no tiene dos reservas temporales o confirmadas con intervalos solapados, incluida la limpieza (RE-01). Ver [database.md](database.md).
+- `reservations_customer_no_overlap_excl` (#126), sobre `(barbershop_id, customer_membership_id, tstzrange(starts_at, ends_at))`, solo para el estado `confirmed`: un cliente no tiene dos reservas confirmadas solapadas en la barbería (RE-06). No incluye la limpieza: es el tiempo del servicio, no el del colaborador.
+- Llaves candidatas: `id` y `(id, barbershop_id)`, para que otras tablas referencien la reserva junto con su barbería.
+
+Las dos exclusiones se aplican solo a los estados que ocupan el espacio: una reserva completada, ausente, cancelada o expirada lo libera al cambiar de estado. Las reservas contiguas (el inicio de una es el fin del bloqueo de la anterior) se permiten. Son la segunda barrera: el dominio y la disponibilidad rechazan primero (#56), y el SQLSTATE `23P01` que llegue de la base lo traducirá ese issue a `espacio-no-disponible`.
 
 El saldo pendiente por cobrar en el local (PA-10) es `price - deposit_amount` y no se guarda.
 
 ### reservation_status_history
 
-Cada cambio de estado, con fecha y autor (RE-09).
+Cada cambio de estado, con fecha y autor (RE-09). Existe desde el issue #126, con la política de fila `reservation_status_history_barbershop_isolation`. Solo se inserta: nunca se actualiza, y solo se borra junto con su reserva. El agregado acumula sus cambios (`ReservationStatusChange`) y el repositorio los guarda en la misma transacción que el estado, incluida la creación.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id`, `barbershop_id`, `reservation_id` | `uuid` | Llave primaria y llaves foráneas compuestas |
-| `from_status` | `varchar(30)` | Nula en el estado inicial |
+| `id`, `barbershop_id`, `reservation_id` | `uuid` | Llave primaria (`DEFAULT uuidv7()`), llave foránea a `barbershops` y llave foránea compuesta `(reservation_id, barbershop_id)` a `reservations`, en cascada |
+| `from_status` | `varchar(30)` | Nula en la creación. `CHECK` entre los siete estados |
 | `to_status` | `varchar(30)` | `CHECK` entre los siete estados |
-| `changed_by_membership_id` | `uuid` | Nula cuando cambia el sistema (webhook, expiración) |
-| `changed_at` | `timestamptz` | |
+| `changed_by_user_id` | `uuid` | Nula cuando cambia el sistema (webhook, expiración). Llave foránea a `users` |
+| `changed_at` | `timestamptz` | El instante que recibe el dominio |
+
+**Corrección de un borrador.** El borrador llamaba al autor `changed_by_membership_id`. Se corrigió a `changed_by_user_id` en el #126: el autor que recibe el dominio es una persona (`UserId`, de `Shared`) o el sistema, y las membresías son de `Identity`, que `Reservations` no importa.
 
 ### reservation_reminders
 
