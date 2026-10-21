@@ -16,9 +16,11 @@ use Src\Reservations\Reservations\Application\UseCases\GetCustomerReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetStaffReservation;
 use Src\Reservations\Reservations\Application\UseCases\ListCustomerReservations;
 use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
+use Src\Reservations\Reservations\Application\UseCases\RescheduleReservation;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CreateReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Requests\RescheduleReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CancelledReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationDetailResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationListItemResource;
@@ -99,5 +101,24 @@ final readonly class ReservationController
         $isOwner = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE) === 'owner';
 
         return new CancelledReservationResource($cancelReservation->execute((string) $request->user()?->getAuthIdentifier(), $isOwner, $reserva, $this->clock->now()));
+    }
+
+    /** Move a confirmed reservation to another space. */
+    #[Endpoint(
+        title: 'Reprogramar una reserva',
+        description: 'Mueve una reserva `confirmada` al espacio que empieza en `inicio` y, si se manda `barbero`, con ese barbero; sin él conserva el suyo. Es atómica: bloquea al barbero de destino, vuelve a validar la disponibilidad del nuevo espacio sin contar la propia reserva (moverla 15 minutos no choca consigo misma) y la mueve junto con su fin y su limpieza. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` con hasta 3 `alternativas` del mismo día, barbero y servicio, y la reserva queda como estaba. El precio, la duración y el plazo de cancelación guardados no cambian y no se cobra otro depósito. El cliente reprograma solo las suyas y solo hasta el `plazo_cancelacion_horas` antes del inicio ORIGINAL: después responde 409 `plazo-vencido`. El dueño reprograma cualquiera de su barbería sin plazo. Cada reprogramación queda en el historial como una entrada de `confirmada` a `confirmada` con su autor y fecha, y una reserva se reprograma como máximo 2 veces: la tercera responde 409 `conflicto`. Una reserva que no está confirmada responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro cliente, un barbero que no existe en la barbería y una persona sin rol en la barbería responden 404 `no-encontrado`; un dato mal escrito, 422 `datos-invalidos`. El aviso por correo al cliente cuando reprograma el dueño y la lista de espera todavía no se aplican.',
+    )]
+    public function reschedule(RescheduleReservationRequest $request, string $barberia, string $reserva, RescheduleReservation $rescheduleReservation): ReservationResource
+    {
+        $isOwner = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE) === 'owner';
+
+        return new ReservationResource($rescheduleReservation->execute(
+            (string) $request->user()?->getAuthIdentifier(),
+            $isOwner,
+            $reserva,
+            $request->startsAt(),
+            $request->collaboratorId(),
+            $this->clock->now(),
+        ));
     }
 }

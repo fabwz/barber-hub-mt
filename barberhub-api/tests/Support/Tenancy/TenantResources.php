@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support\Tenancy;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -146,14 +148,15 @@ final class TenantResources
                 ['collaborator_shifts', 'collaborator_breaks'],
             ),
             // The creation of #56 and "my reservations" of #57 are customer routes (in CUSTOMER_ROUTES); the listing of the staff
-            // is the LIST operation, which the owner of Pura Navaja tries against Fade Lab; the detail of #58 is SHOW. The history
-            // has no route of its own (it comes inside the detail), so the audit only proves what the database hides.
+            // is the LIST operation, which the owner of Pura Navaja tries against Fade Lab; the detail of #58 is SHOW; the
+            // cancellation of #60 is CANCEL and the reschedule of #59 is UPDATE, which moves the reservation 15 minutes.
+            // The history has no route of its own (it comes inside the detail), so the audit only proves what the database hides.
             new TenantResource(
                 'reservations',
                 fn (string $barbershopId): string => self::createReservation($barbershopId),
                 'api/v1/barberias/{barberia}/reservas',
-                [TenantResource::LIST, TenantResource::SHOW, TenantResource::CANCEL],
-                [],
+                [TenantResource::LIST, TenantResource::SHOW, TenantResource::UPDATE, TenantResource::CANCEL],
+                ['inicio' => self::reservationStart('10:15')->format(DATE_ATOM)],
                 ['api/v1/barberias/{barberia}/mis-reservas'],
             ),
             new TenantResource(
@@ -176,7 +179,22 @@ final class TenantResources
         ];
     }
 
-    /** Insert a reservation with its own collaborator, service and customer in a barbershop and return its identifier. */
+    /**
+     * A Wednesday at least a week from now at the given time, in Costa Rica. Both demo barbershops open on Wednesdays, so
+     * the reservation of the audit can really be moved there, inside the booking window of the real clock.
+     */
+    private static function reservationStart(string $time): DateTimeImmutable
+    {
+        $zone = new DateTimeZone('America/Costa_Rica');
+
+        return new DateTimeImmutable('next wednesday +1 week '.$time, $zone);
+    }
+
+    /**
+     * Insert a reservation with its own collaborator, service and customer in a barbershop and return its identifier. The
+     * collaborator offers the service on Wednesdays from 10:00 to 18:00 and the reservation is at 10:00 on one, so it can be
+     * rescheduled.
+     */
     private static function createReservation(string $barbershopId): string
     {
         $serviceId = (string) Str::uuid7();
@@ -186,16 +204,20 @@ final class TenantResources
         DB::table('services')->insert(['id' => $serviceId, 'barbershop_id' => $barbershopId, 'name' => 'Degradado', 'duration_minutes' => 45, 'price' => 8500]);
         DB::table('users')->insert(['id' => $userId, 'name' => 'Ana Rojas', 'email' => "{$userId}@barberhub.test", 'password' => 'hash']);
         DB::table('memberships')->insert(['id' => $membershipId, 'user_id' => $userId, 'barbershop_id' => $barbershopId, 'role' => 'customer']);
+        $collaboratorId = self::createCollaborator($barbershopId);
+        DB::table('collaborator_services')->insert(['id' => (string) Str::uuid7(), 'barbershop_id' => $barbershopId, 'collaborator_id' => $collaboratorId, 'service_id' => $serviceId]);
+        DB::table('collaborator_shifts')->insert(['id' => (string) Str::uuid7(), 'barbershop_id' => $barbershopId, 'collaborator_id' => $collaboratorId, 'day_of_week' => 3, 'starts_at' => '10:00', 'ends_at' => '18:00']);
+        $start = self::reservationStart('10:00');
         DB::table('reservations')->insert([
             'id' => $id,
             'barbershop_id' => $barbershopId,
-            'collaborator_id' => self::createCollaborator($barbershopId),
+            'collaborator_id' => $collaboratorId,
             'service_id' => $serviceId,
             'customer_membership_id' => $membershipId,
             'status' => 'confirmed',
-            'starts_at' => '2030-03-04 10:00:00-06',
-            'ends_at' => '2030-03-04 10:45:00-06',
-            'blocked_until' => '2030-03-04 10:50:00-06',
+            'starts_at' => $start->format('Y-m-d H:i:sP'),
+            'ends_at' => $start->modify('+45 minutes')->format('Y-m-d H:i:sP'),
+            'blocked_until' => $start->modify('+50 minutes')->format('Y-m-d H:i:sP'),
             'price' => 8500,
             'duration_minutes' => 45,
             'cancellation_deadline_hours' => 4,
