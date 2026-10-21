@@ -45,6 +45,27 @@ final class InMemoryMembershipRepository implements MembershipRepository
         );
     }
 
+    /**
+     * Find the accounts behind some memberships of a barbershop, indexed by membership.
+     *
+     * @param  list<MembershipId>  $ids
+     * @return array<string, UserId>
+     */
+    public function usersOf(array $ids, BarbershopId $barbershopId): array
+    {
+        $users = [];
+
+        foreach ($ids as $id) {
+            $membership = $this->memberships[$id->value] ?? null;
+
+            if ($membership !== null && $membership->barbershopId->equals($barbershopId)) {
+                $users[$id->value] = $membership->userId;
+            }
+        }
+
+        return $users;
+    }
+
     /** Count the stored memberships. */
     public function count(): int
     {

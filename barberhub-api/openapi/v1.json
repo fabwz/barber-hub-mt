@@ -56,7 +56,7 @@
         },
         {
             "name": "Reservas",
-            "description": "Reservar el espacio de un barbero."
+            "description": "Reservar el espacio de un barbero y consultar las reservas seg\u00fan el rol."
         }
     ],
     "security": [
@@ -1083,6 +1083,251 @@
                         "$ref": "#/components/responses/NotFound"
                     }
                 }
+            },
+            "get": {
+                "operationId": "reservations.reservations.index",
+                "description": "Lista, de la de inicio m\u00e1s pr\u00f3ximo a la m\u00e1s lejana, las reservas que el rol permite ver, con el nombre del `servicio`, del `barbero` y del cliente (`cliente_nombre`; nunca su correo ni su tel\u00e9fono). El due\u00f1o ve las de todos los colaboradores de su barber\u00eda y puede filtrar por `colaborador`; un colaborador ve solo las de su propio perfil y, si pide el `colaborador` de otro, recibe el mismo 404 `no-encontrado` de un recurso inexistente. Un colaborador que no existe en la barber\u00eda responde 404 tambi\u00e9n al due\u00f1o. Se puede filtrar adem\u00e1s por `dia` (fecha de Costa Rica) y por `estado`. Una persona sin rol en la barber\u00eda recibe 404 y un cliente, 403 `prohibido`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.",
+                "summary": "Listar las reservas de la barber\u00eda",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "N\u00famero de p\u00e1gina, desde 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "por_pagina",
+                        "in": "query",
+                        "description": "Elementos por p\u00e1gina, de 1 a 50. Por defecto, 15.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "dia",
+                        "in": "query",
+                        "description": "D\u00eda de las reservas, fecha de pared en Costa Rica con la forma `2030-03-05`. Sin \u00e9l se listan todos los d\u00edas.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "estado",
+                        "in": "query",
+                        "description": "Estado por el que filtrar: `temporal`, `confirmada`, `completada`, `ausente`, `cancelada_por_cliente`, `cancelada_por_barberia` o `expirada`. Sin \u00e9l se listan todos.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "temporal",
+                                "confirmada",
+                                "completada",
+                                "ausente",
+                                "cancelada_por_cliente",
+                                "cancelada_por_barberia",
+                                "expirada"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "colaborador",
+                        "in": "query",
+                        "description": "Identificador del colaborador por el que filtrar. El due\u00f1o elige a cualquiera de su barber\u00eda; un colaborador solo puede pedir el suyo.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ReservaDeAgenda`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ReservaDeAgenda"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "por_pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "ultima_pagina": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "pagina",
+                                                "por_pagina",
+                                                "total",
+                                                "ultima_pagina"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/mis-reservas": {
+            "get": {
+                "operationId": "reservations.reservations.mine",
+                "description": "Lista, de la de inicio m\u00e1s pr\u00f3ximo a la m\u00e1s lejana, las reservas que la persona de la sesi\u00f3n hizo en la barber\u00eda, con el nombre del `servicio` y del `barbero`. Se puede filtrar por `dia` (fecha de Costa Rica) y por `estado`. Una persona que todav\u00eda no reserv\u00f3 ah\u00ed recibe la lista vac\u00eda, no un error. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`: su vista es `GET /reservas`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.",
+                "summary": "Listar mis reservas",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "N\u00famero de p\u00e1gina, desde 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "por_pagina",
+                        "in": "query",
+                        "description": "Elementos por p\u00e1gina, de 1 a 50. Por defecto, 15.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "dia",
+                        "in": "query",
+                        "description": "D\u00eda de las reservas, fecha de pared en Costa Rica con la forma `2030-03-05`. Sin \u00e9l se listan todos los d\u00edas.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "estado",
+                        "in": "query",
+                        "description": "Estado por el que filtrar: `temporal`, `confirmada`, `completada`, `ausente`, `cancelada_por_cliente`, `cancelada_por_barberia` o `expirada`. Sin \u00e9l se listan todos.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "temporal",
+                                "confirmada",
+                                "completada",
+                                "ausente",
+                                "cancelada_por_cliente",
+                                "cancelada_por_barberia",
+                                "expirada"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ReservaDeLista`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ReservaDeLista"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "por_pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "ultima_pagina": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "pagina",
+                                                "por_pagina",
+                                                "total",
+                                                "ultima_pagina"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
             }
         },
         "/barberias/{barberia}/administracion/servicios": {
@@ -1993,16 +2238,7 @@
                     },
                     "estado": {
                         "type": "string",
-                        "description": "Estado de la reserva; al crearla sin pago queda `confirmada`.",
-                        "enum": [
-                            "temporal",
-                            "confirmada",
-                            "completada",
-                            "ausente",
-                            "cancelada_por_cliente",
-                            "cancelada_por_barberia",
-                            "expirada"
-                        ]
+                        "description": "Estado de la reserva; al crearla sin pago queda `confirmada`."
                     },
                     "inicio": {
                         "type": "string",
@@ -2036,6 +2272,119 @@
                     "plazo_cancelacion_horas"
                 ],
                 "title": "Reserva"
+            },
+            "ReservaDeAgenda": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "servicio_nombre": {
+                        "type": "string",
+                        "description": "Nombre actual del servicio."
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "barbero_nombre": {
+                        "type": "string",
+                        "description": "Nombre del barbero."
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "cliente_nombre": {
+                        "type": "string",
+                        "description": "Nombre de la persona que reserv\u00f3."
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "servicio_nombre",
+                    "barbero",
+                    "barbero_nombre",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos",
+                    "cliente_nombre"
+                ],
+                "title": "ReservaDeAgenda"
+            },
+            "ReservaDeLista": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "servicio_nombre": {
+                        "type": "string",
+                        "description": "Nombre actual del servicio."
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "barbero_nombre": {
+                        "type": "string",
+                        "description": "Nombre del barbero."
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "servicio_nombre",
+                    "barbero",
+                    "barbero_nombre",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos"
+                ],
+                "title": "ReservaDeLista"
             },
             "Servicio": {
                 "type": "object",

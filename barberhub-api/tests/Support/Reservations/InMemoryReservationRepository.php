@@ -8,8 +8,11 @@ use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 
 final class InMemoryReservationRepository implements ReservationRepository
@@ -58,6 +61,26 @@ final class InMemoryReservationRepository implements ReservationRepository
     public function find(ReservationId $id): ?Reservation
     {
         return $this->reservations[$id->value] ?? null;
+    }
+
+    /**
+     * Page the stored reservations that match the filter, from the earliest start to the latest.
+     *
+     * @return Page<Reservation>
+     */
+    public function page(ReservationFilter $filter, PageRequest $page): Page
+    {
+        $window = $filter->window();
+        $matches = array_values(array_filter(
+            $this->reservations,
+            fn (Reservation $reservation): bool => ($filter->customer === null || $reservation->customerMembershipId->equals($filter->customer))
+                && ($filter->collaborator === null || $reservation->collaboratorId->equals($filter->collaborator))
+                && ($filter->status === null || $reservation->status === $filter->status)
+                && ($window === null || ($reservation->interval->start >= $window->start && $reservation->interval->start < $window->end)),
+        ));
+        usort($matches, fn (Reservation $a, Reservation $b): int => $a->interval->start <=> $b->interval->start);
+
+        return new Page(array_slice($matches, $page->offset(), $page->size), count($matches), $page);
     }
 
     /** Count the stored reservations. */

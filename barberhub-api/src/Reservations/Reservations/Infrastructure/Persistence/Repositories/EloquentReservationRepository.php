@@ -14,6 +14,7 @@ use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationExcept
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatusChange;
@@ -23,7 +24,10 @@ use Src\Reservations\Reservations\Infrastructure\Persistence\Models\ReservationS
 use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
+use Src\Shared\Infrastructure\Persistence\EloquentPages;
 
 final readonly class EloquentReservationRepository implements ReservationRepository
 {
@@ -112,6 +116,35 @@ final readonly class EloquentReservationRepository implements ReservationReposit
         $model = $this->ofBarbershop()->find($id->value);
 
         return $model === null ? null : $this->toDomain($model);
+    }
+
+    /**
+     * Read the page with two statements, the count and the rows, ordered by start. The customer and the collaborator come
+     * from the filter, never from the request, so each listing decides its own scope.
+     *
+     * @return Page<Reservation>
+     */
+    public function page(ReservationFilter $filter, PageRequest $page): Page
+    {
+        $query = $this->ofBarbershop();
+
+        if ($filter->customer !== null) {
+            $query->where('customer_membership_id', $filter->customer->value);
+        }
+
+        if ($filter->collaborator !== null) {
+            $query->where('collaborator_id', $filter->collaborator->value);
+        }
+
+        if ($filter->status !== null) {
+            $query->where('status', $filter->status->value);
+        }
+
+        if (($window = $filter->window()) !== null) {
+            $query->where('starts_at', '>=', $window->start)->where('starts_at', '<', $window->end);
+        }
+
+        return EloquentPages::of($query->orderBy('starts_at')->orderBy('id'), $page, fn (ReservationModel $model): Reservation => $this->toDomain($model));
     }
 
     /** Insert one entry of the history. */
