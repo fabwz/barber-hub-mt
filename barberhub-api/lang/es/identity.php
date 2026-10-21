@@ -14,6 +14,7 @@ return [
     'password_without_symbol' => 'La contraseña debe incluir al menos un signo especial.',
     'password_without_uppercase' => 'La contraseña debe incluir al menos una letra mayúscula.',
     'role_already_assigned' => 'La persona ya tiene un rol en esta barbería.',
+    'staff_cannot_be_customer' => 'Quien es dueño o colaborador de una barbería no puede reservar en ella como cliente.',
     'too_many_login_attempts' => 'Demasiados intentos de ingreso. Intente de nuevo en :minutes minuto.|Demasiados intentos de ingreso. Intente de nuevo en :minutes minutos.',
 
 ];
