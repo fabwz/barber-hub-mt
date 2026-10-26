@@ -92,6 +92,38 @@ Horario: lunes a viernes de 7:00 a 17:00 y sábado de 7:00 a 12:00; domingo cerr
 
 > **Advertencia:** los datos de demostración son solo para desarrollo local. El sembrador se niega a ejecutarse en producción, porque sus cuentas comparten una contraseña conocida. Nunca se siembra en producción.
 
+## Integración continua
+
+El flujo `.github/workflows/ci.yml` se ejecuta en cada pull request y en cada push a `main`. Cancela las ejecuciones obsoletas de la misma rama y corre cuatro trabajos independientes y en paralelo:
+
+| Trabajo | Qué verifica |
+| --- | --- |
+| `lint` | `composer validate --strict` y Pint (`composer lint`). |
+| `analyse` | Larastan (`composer analyse`). |
+| `test` | Levanta PostgreSQL 18, crea los roles y las bases con `database/roles.sql` y ejecuta `php artisan test` (suites `Unit`, `Architecture` y `Feature`, incluidas las pruebas de concurrencia). |
+| `secrets` | gitleaks sobre todo el historial; falla si encuentra una credencial. |
+
+Las contraseñas del trabajo `test` son valores inventados para la base efímera de cada ejecución; no son secretos reales. gitleaks se descarga en una versión fija y se verifica con su suma SHA-256. Si algún día marca un valor ficticio a propósito, se agrega una excepción mínima, por archivo y por valor, en un `.gitleaks.toml`, con un comentario que explique por qué es ficticio; nunca se excluyen carpetas ni reglas enteras.
+
+### Bloquear la integración con la CI en rojo
+
+Que un pull request con la CI en rojo no se pueda integrar es una regla de GitHub, no código. Pasos (requieren permisos de administrador del repositorio):
+
+1. Abre el repositorio en GitHub y ve a **Settings > Rules > Rulesets**.
+2. Abre la regla que protege `main` (o crea una con **New ruleset > New branch ruleset** y como destino la rama `main`), con **Enforcement status** en **Active**.
+3. Activa **Require status checks to pass**.
+4. Con **Add checks**, agrega los cuatro trabajos: `lint`, `analyse`, `test` y `secrets`. Si no aparecen en la lista, primero debe haberse ejecutado el flujo al menos una vez en un pull request.
+5. Opcional: activa **Require branches to be up to date before merging**.
+6. Guarda con **Create** o **Save changes**.
+
+Cómo comprobar que funciona:
+
+1. Crea una rama de prueba con un error evidente, por ejemplo un archivo PHP con una línea mal indentada, y abre un pull request hacia `main`.
+2. Espera a que el trabajo `lint` termine en rojo.
+3. Comprueba que el botón **Merge pull request** está desactivado y que la sección de verificaciones dice que faltan los checks requeridos.
+4. Corrige el error y haz push: cuando los cuatro trabajos queden en verde, el botón se activa.
+5. Cierra el pull request de prueba y borra la rama.
+
 ## Estado
 
 En construcción. La instalación y la declaración de uso de IA se documentan a medida que avanza el proyecto.
