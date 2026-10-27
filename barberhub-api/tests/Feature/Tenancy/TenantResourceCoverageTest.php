@@ -25,6 +25,7 @@ final class TenantResourceCoverageTest extends TestCase
             Route::getRoutes(),
             TenantResources::PUBLIC_ROUTES,
             TenantResources::CUSTOMER_ROUTES,
+            TenantResources::BARBERSHOP_ROUTES,
         ));
     }
 }

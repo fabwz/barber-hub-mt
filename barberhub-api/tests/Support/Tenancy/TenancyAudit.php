@@ -29,9 +29,10 @@ final class TenancyAudit
      * @param  list<TenantResource>  $resources
      * @param  list<string>  $publicRoutes  "METHOD uri", as in TenantResources::PUBLIC_ROUTES.
      * @param  list<string>  $customerRoutes  "METHOD uri" of the operations that create the first membership, as in TenantResources::CUSTOMER_ROUTES (RD-18).
+     * @param  list<string>  $barbershopRoutes  "METHOD uri" of the routes that act on the barbershop itself and belong to no resource, as in TenantResources::BARBERSHOP_ROUTES.
      * @return list<string>
      */
-    public static function coverageViolations(array $resources, ConnectionInterface $db, RouteCollectionInterface $routes, array $publicRoutes, array $customerRoutes = []): array
+    public static function coverageViolations(array $resources, ConnectionInterface $db, RouteCollectionInterface $routes, array $publicRoutes, array $customerRoutes = [], array $barbershopRoutes = []): array
     {
         $violations = [];
         $registered = array_map(fn (TenantResource $resource): string => $resource->table, $resources);
@@ -63,7 +64,7 @@ final class TenancyAudit
                 $violations[] = "{$name}: is without the {$expected} middleware";
             }
 
-            if (! $public && array_filter($resources, fn (TenantResource $resource): bool => $resource->owns($route->uri())) === []) {
+            if (! $public && ! in_array($name, $barbershopRoutes, true) && array_filter($resources, fn (TenantResource $resource): bool => $resource->owns($route->uri())) === []) {
                 $violations[] = "{$name}: belongs to no resource of TenantResources and is not a listed public route";
             }
         }

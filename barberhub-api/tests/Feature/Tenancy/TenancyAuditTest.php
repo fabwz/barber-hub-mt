@@ -146,6 +146,7 @@ final class TenancyAuditTest extends TestCase
             Route::getRoutes(),
             [...TenantResources::PUBLIC_ROUTES, ...$publicRoutes],
             TenantResources::CUSTOMER_ROUTES,
+            TenantResources::BARBERSHOP_ROUTES,
         );
     }
 
