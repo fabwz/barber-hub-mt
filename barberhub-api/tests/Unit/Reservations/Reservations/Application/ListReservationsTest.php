@@ -71,8 +71,8 @@ final class ListReservationsTest extends TestCase
     /** The owner sees the reservations of every collaborator and may narrow to one. */
     public function test_the_owner_sees_every_collaborator(): void
     {
-        $all = $this->staff()->execute(self::ANA_USER, true, new ReservationSearch, new PageRequest);
-        $kevin = $this->staff()->execute(self::ANA_USER, true, new ReservationSearch(collaboratorId: self::KEVIN), new PageRequest);
+        $all = $this->staff()->execute(self::ANA_USER, true, new ReservationSearch, new PageRequest, $this->now());
+        $kevin = $this->staff()->execute(self::ANA_USER, true, new ReservationSearch(collaboratorId: self::KEVIN), new PageRequest, $this->now());
 
         $this->assertSame(3, $all->total);
         $this->assertSame(['Ana', 'Luis', 'Ana'], array_map(fn ($view): ?string => $view->customerName, $all->items));
@@ -84,14 +84,14 @@ final class ListReservationsTest extends TestCase
     {
         $this->expectException(CollaboratorNotFoundException::class);
 
-        $this->staff()->execute(self::ANA_USER, true, new ReservationSearch(collaboratorId: '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0dff'), new PageRequest);
+        $this->staff()->execute(self::ANA_USER, true, new ReservationSearch(collaboratorId: '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0dff'), new PageRequest, $this->now());
     }
 
     /** A collaborator sees only their own profile's reservations, naming it or not. */
     public function test_a_collaborator_sees_only_their_own(): void
     {
-        $named = $this->staff()->execute(self::KEVIN_USER, false, new ReservationSearch(collaboratorId: self::KEVIN), new PageRequest);
-        $unnamed = $this->staff()->execute(self::KEVIN_USER, false, new ReservationSearch, new PageRequest);
+        $named = $this->staff()->execute(self::KEVIN_USER, false, new ReservationSearch(collaboratorId: self::KEVIN), new PageRequest, $this->now());
+        $unnamed = $this->staff()->execute(self::KEVIN_USER, false, new ReservationSearch, new PageRequest, $this->now());
 
         $this->assertSame(1, $named->total);
         $this->assertSame(1, $unnamed->total);
@@ -103,13 +103,13 @@ final class ListReservationsTest extends TestCase
     {
         $this->expectException(CollaboratorNotFoundException::class);
 
-        $this->staff()->execute(self::KEVIN_USER, false, new ReservationSearch(collaboratorId: self::DANIELA), new PageRequest);
+        $this->staff()->execute(self::KEVIN_USER, false, new ReservationSearch(collaboratorId: self::DANIELA), new PageRequest, $this->now());
     }
 
     /** A collaborator without a profile has no agenda: an empty page, not every reservation. */
     public function test_a_collaborator_without_a_profile_sees_nothing(): void
     {
-        $page = $this->staff()->execute(self::ANA_USER, false, new ReservationSearch, new PageRequest);
+        $page = $this->staff()->execute(self::ANA_USER, false, new ReservationSearch, new PageRequest, $this->now());
 
         $this->assertSame([], $page->items);
         $this->assertSame(0, $page->total);
@@ -118,7 +118,7 @@ final class ListReservationsTest extends TestCase
     /** A customer sees only their role's reservations, without the name of any customer. */
     public function test_a_customer_sees_only_their_own(): void
     {
-        $page = $this->customer()->execute(self::ANA_USER, new ReservationSearch, new PageRequest);
+        $page = $this->customer()->execute(self::ANA_USER, new ReservationSearch, new PageRequest, $this->now());
 
         $this->assertSame(2, $page->total);
         $this->assertSame([null, null], array_map(fn ($view): ?string => $view->customerName, $page->items));
@@ -128,7 +128,7 @@ final class ListReservationsTest extends TestCase
     /** A person without a customer role has an empty page and the repository and the directories are not read (RD-18). */
     public function test_a_person_without_a_role_gets_an_empty_page(): void
     {
-        $page = $this->customer()->execute('0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d99', new ReservationSearch, new PageRequest(2, 10));
+        $page = $this->customer()->execute('0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d99', new ReservationSearch, new PageRequest(2, 10), $this->now());
 
         $this->assertSame([], $page->items);
         $this->assertSame(0, $page->total);
@@ -139,7 +139,7 @@ final class ListReservationsTest extends TestCase
     /** A filter by status narrows the page. */
     public function test_the_status_filter_narrows_the_page(): void
     {
-        $page = $this->customer()->execute(self::ANA_USER, new ReservationSearch(status: ReservationStatus::Completed), new PageRequest);
+        $page = $this->customer()->execute(self::ANA_USER, new ReservationSearch(status: ReservationStatus::Completed), new PageRequest, $this->now());
 
         $this->assertSame(0, $page->total);
     }
@@ -152,6 +152,11 @@ final class ListReservationsTest extends TestCase
     private function customer(): ListCustomerReservations
     {
         return new ListCustomerReservations($this->reservations, $this->customers(), $this->attach());
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2030-03-01 08:00:00');
     }
 
     private function attach(): AttachNames

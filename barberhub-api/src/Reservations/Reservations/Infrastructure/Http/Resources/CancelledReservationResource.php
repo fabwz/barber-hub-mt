@@ -31,7 +31,7 @@ final class CancelledReservationResource extends JsonResource
     /**
      * Expose the reservation as the creation does, plus how its cancellation is classified.
      *
-     * @return array{id: string, servicio: string, barbero: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, plazo_cancelacion_horas: int, clasificacion: string}
+     * @return array{id: string, servicio: string, barbero: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, plazo_cancelacion_horas: int, expira_en: string|null, clasificacion: string}
      */
     public function toArray(Request $request): array
     {

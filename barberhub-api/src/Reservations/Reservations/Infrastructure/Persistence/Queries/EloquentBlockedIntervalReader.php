@@ -19,18 +19,23 @@ final readonly class EloquentBlockedIntervalReader implements BlockedIntervalRea
 
     /**
      * Read the intervals of the temporary and confirmed reservations of some collaborators that overlap a window.
-     * Every temporary reservation counts: the condition "not expired" is added when `expires_at` exists (#62).
+     * A temporary reservation counts only while its payment window is open at `$now`, even if nobody marked it expired yet
+     * (DI-05, RE-05); a confirmed one always counts.
      *
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function between(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
+    public function between(array $collaboratorIds, TimeInterval $window, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
     {
         $rows = ReservationModel::query()
             ->when($ignoringReservationId !== null, fn (Builder $query): Builder => $query->where('id', '!=', $ignoringReservationId))
             ->where('barbershop_id', $this->context->current()->value)
             ->whereIn('collaborator_id', $collaboratorIds)
-            ->whereIn('status', [ReservationStatus::Temporary->value, ReservationStatus::Confirmed->value])
+            ->where(fn (Builder $held): Builder => $held
+                ->where('status', ReservationStatus::Confirmed->value)
+                ->orWhere(fn (Builder $temporary): Builder => $temporary
+                    ->where('status', ReservationStatus::Temporary->value)
+                    ->where(fn (Builder $open): Builder => $open->whereNull('expires_at')->orWhere('expires_at', '>', $now))))
             ->where('starts_at', '<', $window->end)
             ->where('blocked_until', '>', $window->start)
             ->orderBy('starts_at')

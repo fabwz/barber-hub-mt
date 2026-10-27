@@ -10,6 +10,7 @@ use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerMemberships;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
+use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
@@ -25,7 +26,7 @@ use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CreateReservation
 {
-    /** Receive the reservation repository, the ports to the neighbouring modules and the transaction port. */
+    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations and the transaction port. */
     public function __construct(
         private ReservationRepository $reservations,
         private BookableServices $services,
@@ -33,6 +34,8 @@ final readonly class CreateReservation
         private CollaboratorLock $collaborators,
         private FreeSlots $slots,
         private CustomerMemberships $customers,
+        private PaymentRequirement $payment,
+        private ExpireOverdueReservations $expireOverdue,
         private TransactionRunner $transaction,
     ) {}
 
@@ -41,8 +44,11 @@ final readonly class CreateReservation
      * free (never trusting an earlier check), creates the customer role if the person has none yet (UP-09), checks the
      * customer has no other confirmed reservation at that time (RE-06) and stores the reservation with the price, duration
      * and the cancellation deadline the barbershop has now (SV-03, CA-01), so a later change of the deadline leaves it as it
-     * was. Until the payments arrive (#62 to #64) every reservation is confirmed right away (RE-07), so its history has two
-     * entries: creation and confirmation. If anything fails the transaction is
+     * was. Right after it locks the collaborator and before it checks the space, it expires the temporary reservations of
+     * that collaborator whose payment window closed, so the exclusion of the database does not collide with them (RE-05).
+     * If the barbershop charges, the reservation stays temporary and expires 10 minutes after it was made unless its
+     * payment confirms it (RE-05, PA-06); if not, it is confirmed right away (RE-07), so its history has two entries:
+     * creation and confirmation. If anything fails the transaction is
      * rolled back and no membership is left. When the space is taken, by the check or by the exclusion of the database
      * (the second barrier, ADR 0009), the error carries up to 3 alternatives, read after the rollback (RE-02).
      *
@@ -57,6 +63,7 @@ final readonly class CreateReservation
         try {
             return $this->transaction->run(function () use ($command, $service, $author, $now): Reservation {
                 $this->collaborators->lock($command->collaboratorId);
+                $this->expireOverdue->execute($command->collaboratorId, $now);
 
                 if (! $this->slots->isFree($command->serviceId, $command->collaboratorId, $command->startsAt, $now)) {
                     throw SlotUnavailableException::create();
@@ -80,7 +87,10 @@ final readonly class CreateReservation
                     throw OverlappingReservationException::create();
                 }
 
-                $reservation->confirm($now, $author);
+                if (! $this->payment->isRequired()) {
+                    $reservation->confirm($now, $author);
+                }
+
                 $this->reservations->save($reservation);
 
                 return $reservation;

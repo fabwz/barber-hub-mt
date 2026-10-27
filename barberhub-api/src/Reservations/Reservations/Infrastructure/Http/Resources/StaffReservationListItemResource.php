@@ -25,7 +25,7 @@ final class StaffReservationListItemResource extends JsonResource
      * Expose the reservation of a listing plus the name of the customer, and nothing else about them: never the email or
      * the phone (CO-04).
      *
-     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, cliente_nombre: string}
+     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null, cliente_nombre: string}
      */
     public function toArray(Request $request): array
     {

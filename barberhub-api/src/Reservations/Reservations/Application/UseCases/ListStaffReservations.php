@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Application\UseCases;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
 use Src\Reservations\Reservations\Application\DTOs\ReservationSearch;
@@ -29,13 +30,13 @@ final readonly class ListStaffReservations
      * owner sees those of every collaborator and may narrow to one; a collaborator sees only those of their own profile
      * (CO-04) and, if they ask for another collaborator, gets the same not-found of a collaborator that does not exist
      * (UP-06). The owner asking for a collaborator that is not in the barbershop gets it too. A collaborator without a
-     * profile has no agenda, so their page is empty. The names of the customers come with the page, never their contact.
+     * profile has no agenda, so their page is empty. The names of the customers come with the page, never their contact. A temporary reservation past its payment window reads as expired (DI-05).
      *
      * @return Page<ReservationView>
      *
      * @throws CollaboratorNotFoundException
      */
-    public function execute(string $userId, bool $isOwner, ReservationSearch $search, PageRequest $page): Page
+    public function execute(string $userId, bool $isOwner, ReservationSearch $search, PageRequest $page, DateTimeImmutable $now): Page
     {
         $collaboratorId = $isOwner ? $this->requestedByOwner($search->collaboratorId) : $this->ownAgenda($userId, $search->collaboratorId);
 
@@ -43,9 +44,9 @@ final readonly class ListStaffReservations
             return new Page([], 0, $page);
         }
 
-        $filter = new ReservationFilter(null, $collaboratorId === null ? null : new CollaboratorId($collaboratorId), $search->status, $search->day);
+        $filter = new ReservationFilter(null, $collaboratorId === null ? null : new CollaboratorId($collaboratorId), $search->status, $search->day, $now);
 
-        return $this->attachNames->to($this->reservations->page($filter, $page), true);
+        return $this->attachNames->to($this->reservations->page($filter, $page), true, $now);
     }
 
     /** The collaborator the owner narrows to, which must be in the barbershop. */

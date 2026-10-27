@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
+use Src\Reservations\Reservations\Application\UseCases\ExpireOverdueReservations;
 use Src\Reservations\Reservations\Application\UseCases\RescheduleReservation;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
@@ -240,7 +241,7 @@ final class RescheduleReservationTest extends TestCase
             }
         };
 
-        return new RescheduleReservation($this->reservations, $customers, $lock, $slots, $this->transaction);
+        return new RescheduleReservation($this->reservations, $customers, $lock, $slots, new ExpireOverdueReservations($this->reservations), $this->transaction);
     }
 
     private static function at(string $moment): DateTimeImmutable

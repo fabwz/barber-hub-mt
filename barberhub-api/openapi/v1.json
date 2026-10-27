@@ -1136,7 +1136,7 @@
         "/barberias/{barberia}/reservas": {
             "post": {
                 "operationId": "reservations.reservations.store",
-                "description": "Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesi\u00f3n. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, as\u00ed que dos peticiones por el mismo espacio dejan exactamente una reserva. Sin una pol\u00edtica de pago todav\u00eda, la reserva queda `confirmada` de inmediato y guarda el precio, la duraci\u00f3n y el plazo de cancelaci\u00f3n (24 horas, provisional) vigentes. Una persona sin rol en la barber\u00eda queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membres\u00eda. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`. Si el espacio ya no est\u00e1 disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo d\u00eda, barbero y servicio, los de inicio m\u00e1s pr\u00f3ximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barber\u00eda, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barber\u00eda responde 404 `no-encontrado`, igual que una barber\u00eda inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.",
+                "description": "Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesi\u00f3n. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, as\u00ed que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barber\u00eda no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora l\u00edmite de pago en `expira_en` (10 minutos), retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duraci\u00f3n y el plazo de cancelaci\u00f3n (24 horas, provisional) vigentes. Una persona sin rol en la barber\u00eda queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membres\u00eda. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`. Si el espacio ya no est\u00e1 disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo d\u00eda, barbero y servicio, los de inicio m\u00e1s pr\u00f3ximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barber\u00eda, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barber\u00eda responde 404 `no-encontrado`, igual que una barber\u00eda inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.",
                 "summary": "Crear una reserva",
                 "tags": [
                     "Reservas"
@@ -2631,7 +2631,7 @@
                     },
                     "estado": {
                         "type": "string",
-                        "description": "Estado de la reserva; al crearla sin pago queda `confirmada`."
+                        "description": "Estado de la reserva; al crearla queda `confirmada` si la barber\u00eda no cobra y `temporal` si cobra."
                     },
                     "inicio": {
                         "type": "string",
@@ -2651,6 +2651,13 @@
                     "plazo_cancelacion_horas": {
                         "type": "integer",
                         "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva ya est\u00e1 confirmada."
                     }
                 },
                 "required": [
@@ -2662,7 +2669,8 @@
                     "fin",
                     "precio",
                     "duracion_minutos",
-                    "plazo_cancelacion_horas"
+                    "plazo_cancelacion_horas",
+                    "expira_en"
                 ],
                 "title": "Reserva"
             },
@@ -2680,7 +2688,7 @@
                     },
                     "estado": {
                         "type": "string",
-                        "description": "Estado de la reserva; al crearla sin pago queda `confirmada`."
+                        "description": "Estado de la reserva; al crearla queda `confirmada` si la barber\u00eda no cobra y `temporal` si cobra."
                     },
                     "inicio": {
                         "type": "string",
@@ -2701,6 +2709,13 @@
                         "type": "integer",
                         "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
                     },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva ya est\u00e1 confirmada."
+                    },
                     "clasificacion": {
                         "type": "string",
                         "description": "Clasificaci\u00f3n de la cancelaci\u00f3n: `a_tiempo`, `tardia` o `por_la_barberia` (CA-01, CA-04). Se calcula, no se guarda."
@@ -2716,6 +2731,7 @@
                     "precio",
                     "duracion_minutos",
                     "plazo_cancelacion_horas",
+                    "expira_en",
                     "clasificacion"
                 ],
                 "title": "ReservaCancelada"
@@ -2742,7 +2758,7 @@
                     },
                     "estado": {
                         "type": "string",
-                        "description": "Estado de la reserva."
+                        "description": "Estado de la reserva; una temporal cuyo plazo de pago venci\u00f3 se muestra `expirada`."
                     },
                     "inicio": {
                         "type": "string",
@@ -2758,6 +2774,13 @@
                     },
                     "duracion_minutos": {
                         "type": "integer"
+                    },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago."
                     },
                     "cliente_nombre": {
                         "type": "string",
@@ -2775,6 +2798,7 @@
                     "fin",
                     "precio",
                     "duracion_minutos",
+                    "expira_en",
                     "cliente_nombre"
                 ],
                 "title": "ReservaDeAgenda"
@@ -2801,7 +2825,7 @@
                     },
                     "estado": {
                         "type": "string",
-                        "description": "Estado de la reserva."
+                        "description": "Estado de la reserva; una temporal cuyo plazo de pago venci\u00f3 se muestra `expirada`."
                     },
                     "inicio": {
                         "type": "string",
@@ -2817,6 +2841,13 @@
                     },
                     "duracion_minutos": {
                         "type": "integer"
+                    },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago."
                     }
                 },
                 "required": [
@@ -2829,7 +2860,8 @@
                     "inicio",
                     "fin",
                     "precio",
-                    "duracion_minutos"
+                    "duracion_minutos",
+                    "expira_en"
                 ],
                 "title": "ReservaDeLista"
             },
@@ -2855,7 +2887,7 @@
                     },
                     "estado": {
                         "type": "string",
-                        "description": "Estado de la reserva."
+                        "description": "Estado de la reserva; una temporal cuyo plazo de pago venci\u00f3 se muestra `expirada`."
                     },
                     "inicio": {
                         "type": "string",
@@ -2871,6 +2903,13 @@
                     },
                     "duracion_minutos": {
                         "type": "integer"
+                    },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago."
                     },
                     "cliente_nombre": {
                         "type": "string",
@@ -2903,6 +2942,7 @@
                     "fin",
                     "precio",
                     "duracion_minutos",
+                    "expira_en",
                     "cliente_nombre",
                     "plazo_cancelacion_horas",
                     "saldo_pendiente",
@@ -2932,7 +2972,7 @@
                     },
                     "estado": {
                         "type": "string",
-                        "description": "Estado de la reserva."
+                        "description": "Estado de la reserva; una temporal cuyo plazo de pago venci\u00f3 se muestra `expirada`."
                     },
                     "inicio": {
                         "type": "string",
@@ -2948,6 +2988,13 @@
                     },
                     "duracion_minutos": {
                         "type": "integer"
+                    },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago."
                     },
                     "plazo_cancelacion_horas": {
                         "type": "integer",
@@ -2965,6 +3012,7 @@
                     "fin",
                     "precio",
                     "duracion_minutos",
+                    "expira_en",
                     "plazo_cancelacion_horas"
                 ],
                 "title": "ReservaDetalleDeCliente"

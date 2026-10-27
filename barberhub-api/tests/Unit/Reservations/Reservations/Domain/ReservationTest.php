@@ -10,6 +10,7 @@ use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Exceptions\PaymentWindowExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
@@ -50,6 +51,55 @@ final class ReservationTest extends TestCase
         $this->assertSame(self::SERVICE_ID, $reservation->serviceId->value);
         $this->assertSame(self::CUSTOMER_ID, $reservation->customerMembershipId->value);
         $this->assertSame(0, $reservation->rescheduleCount);
+    }
+
+    /** A new reservation expires 10 minutes after it was made; confirming it clears the deadline (RE-05). */
+    public function test_a_new_reservation_has_a_payment_window_that_confirming_clears(): void
+    {
+        $reservation = $this->reservation();
+
+        $this->assertEquals(self::at('2030-03-01 08:10'), $reservation->expiresAt);
+
+        $reservation->confirm(self::at('2030-03-01 08:09'), Author::system());
+
+        $this->assertNull($reservation->expiresAt);
+    }
+
+    /** The window is open until its last instant and closed from the deadline on, even if nobody marked the status (DI-05). */
+    public function test_a_temporary_reservation_is_overdue_from_its_deadline(): void
+    {
+        $reservation = $this->reservation();
+
+        $this->assertFalse($reservation->isOverdueAt(self::at('2030-03-01 08:09:59')));
+        $this->assertTrue($reservation->isOverdueAt(self::at('2030-03-01 08:10')));
+        $this->assertSame(ReservationStatus::Temporary, $reservation->statusAt(self::at('2030-03-01 08:09:59')));
+        $this->assertSame(ReservationStatus::Expired, $reservation->statusAt(self::at('2030-03-01 08:10')));
+        $this->assertSame(ReservationStatus::Temporary, $reservation->status);
+    }
+
+    /** An overdue reservation cannot be confirmed and stays as it was (RE-05). */
+    public function test_an_overdue_reservation_cannot_be_confirmed(): void
+    {
+        $reservation = $this->reservation();
+
+        $this->expectException(PaymentWindowExpiredException::class);
+
+        try {
+            $reservation->confirm(self::at('2030-03-01 08:10'), Author::system());
+        } finally {
+            $this->assertSame(ReservationStatus::Temporary, $reservation->status);
+        }
+    }
+
+    /** Expiring clears the deadline: only a temporary reservation has one. */
+    public function test_expiring_clears_the_deadline(): void
+    {
+        $reservation = $this->reservation();
+
+        $reservation->expire(self::at('2030-03-01 08:11'), Author::system());
+
+        $this->assertNull($reservation->expiresAt);
+        $this->assertSame(ReservationStatus::Expired, $reservation->statusAt(self::at('2030-03-01 08:30')));
     }
 
     /** The reservation keeps the price, the duration and the cancellation deadline it was booked with (SV-03, CA-01). */
@@ -116,7 +166,7 @@ final class ReservationTest extends TestCase
     {
         $reservation = $this->reservationIn($from);
         $author = Author::person(new UserId(self::USER_ID));
-        $at = self::at('2030-03-02 09:30');
+        $at = self::at('2030-03-01 08:05');
 
         $reservation->{$action}($at, $author);
 
@@ -212,6 +262,7 @@ final class ReservationTest extends TestCase
             4,
             1,
             ReservationStatus::Confirmed,
+            null,
         );
 
         $this->assertSame(ReservationStatus::Confirmed, $stored->status);

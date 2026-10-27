@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Application\UseCases;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\DTOs\ReservationSearch;
@@ -26,11 +27,11 @@ final readonly class ListCustomerReservations
     /**
      * List one page of the reservations a person made in the current barbershop (CL-04). The scope is their own customer
      * role, found from the session and never from the request; a person without one has not reserved here yet, so the
-     * page is empty, not an error (RD-18). The names of other customers are not read, because these are all their own.
+     * page is empty, not an error (RD-18). The names of other customers are not read, because these are all their own. A temporary reservation past its payment window reads as expired (DI-05).
      *
      * @return Page<ReservationView>
      */
-    public function execute(string $userId, ReservationSearch $search, PageRequest $page): Page
+    public function execute(string $userId, ReservationSearch $search, PageRequest $page, DateTimeImmutable $now): Page
     {
         $membershipId = $this->customers->find($userId);
 
@@ -38,8 +39,8 @@ final readonly class ListCustomerReservations
             return new Page([], 0, $page);
         }
 
-        $filter = new ReservationFilter(new CustomerMembershipId($membershipId), null, $search->status, $search->day);
+        $filter = new ReservationFilter(new CustomerMembershipId($membershipId), null, $search->status, $search->day, $now);
 
-        return $this->attachNames->to($this->reservations->page($filter, $page), false);
+        return $this->attachNames->to($this->reservations->page($filter, $page), false, $now);
     }
 }

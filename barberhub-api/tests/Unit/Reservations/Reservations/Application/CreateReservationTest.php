@@ -16,9 +16,11 @@ use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerMemberships;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
+use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
 use Src\Reservations\Reservations\Application\DTOs\BookableService;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
+use Src\Reservations\Reservations\Application\UseCases\ExpireOverdueReservations;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
@@ -67,6 +69,9 @@ final class CreateReservationTest extends TestCase
     private int $deadlineHours = 12;
 
     private bool $collaboratorExists = true;
+
+    /** Whether the barbershop charges before it confirms. */
+    private bool $paymentRequired = false;
 
     private CreateReservation $createReservation;
 
@@ -136,7 +141,17 @@ final class CreateReservationTest extends TestCase
             }
         };
 
-        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $this->transaction);
+        $payment = new class($this) implements PaymentRequirement
+        {
+            public function __construct(private readonly CreateReservationTest $test) {}
+
+            public function isRequired(): bool
+            {
+                return $this->test->paymentRequired();
+            }
+        };
+
+        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations), $this->transaction);
     }
 
     /** The reservation is confirmed at once with the copies of the service, and its history has creation and confirmation (RE-07, SV-03, RE-09). */
@@ -152,6 +167,32 @@ final class CreateReservationTest extends TestCase
         $this->assertEquals(self::at('2030-03-05 10:45'), $reservation->interval->end);
         $this->assertSame([2], $this->reservations->entriesPerSave);
         $this->assertNotNull($this->reservations->find($reservation->id));
+    }
+
+    /** A barbershop that charges leaves the reservation temporary, with 10 minutes to pay, and it is not confirmed (RE-05, PA-06). */
+    public function test_a_barbershop_that_charges_leaves_the_reservation_temporary_with_a_deadline(): void
+    {
+        $this->paymentRequired = true;
+
+        $reservation = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+
+        $this->assertSame(ReservationStatus::Temporary, $reservation->status);
+        $this->assertEquals(self::at('2030-03-01 08:10'), $reservation->expiresAt);
+        $this->assertSame([1], $this->reservations->entriesPerSave);
+    }
+
+    /** A temporary reservation of someone else whose window closed is expired before the space is checked, and it frees the space (RE-05, DI-05). */
+    public function test_an_overdue_temporary_reservation_is_expired_before_the_check(): void
+    {
+        $this->paymentRequired = true;
+        $stale = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+        $this->paymentRequired = false;
+
+        $fresh = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:10'));
+
+        $this->assertSame(ReservationStatus::Expired, $stale->status);
+        $this->assertTrue($this->reservations->history($stale->id)[1]->author->isSystem());
+        $this->assertSame(ReservationStatus::Confirmed, $fresh->status);
     }
 
     /** The collaborator is locked before the availability is checked again, and the membership comes after the check (RE-01, UP-09). */
@@ -280,6 +321,11 @@ final class CreateReservationTest extends TestCase
     }
 
     /** @internal Used by the ports of the test. */
+    public function paymentRequired(): bool
+    {
+        return $this->paymentRequired;
+    }
+
     public function isFree(): bool
     {
         return $this->free;

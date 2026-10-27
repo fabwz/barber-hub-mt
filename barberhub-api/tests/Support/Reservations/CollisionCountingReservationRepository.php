@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Support\Reservations;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
+use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -61,6 +63,16 @@ final class CollisionCountingReservationRepository implements ReservationReposit
     public function findForUpdate(ReservationId $id): ?Reservation
     {
         return $this->inner->findForUpdate($id);
+    }
+
+    /**
+     * Delegate.
+     *
+     * @return list<Reservation>
+     */
+    public function lockOverdueOf(CollaboratorId $collaborator, DateTimeImmutable $now): array
+    {
+        return $this->inner->lockOverdueOf($collaborator, $now);
     }
 
     /**
