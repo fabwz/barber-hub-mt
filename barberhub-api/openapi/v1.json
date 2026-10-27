@@ -27,6 +27,10 @@
             "description": "Alta de barber\u00edas y de su due\u00f1o."
         },
         {
+            "name": "Cobro de la barber\u00eda",
+            "description": "Modalidad de cobro, dep\u00f3sito, pasarela y cancelaci\u00f3n gratuita, a cargo del due\u00f1o."
+        },
+        {
             "name": "Enlaces p\u00fablicos",
             "description": "Consulta de una barber\u00eda por su enlace, sin iniciar sesi\u00f3n."
         },
@@ -253,6 +257,110 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/cobro": {
+            "get": {
+                "operationId": "catalog.barbershops.payment-policy.show",
+                "description": "Trae la `modalidad` (`sin_pago`, `deposito` o `total`), el `porcentaje_deposito` (solo con `deposito`; `null` en las otras), el `plazo_cancelacion_horas` de cancelaci\u00f3n gratuita y la `pasarela` (`onvo`, `paypal` o `null`). Una barber\u00eda nueva no cobra, sin pasarela y con 24 horas de plazo. Solo el due\u00f1o: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Consultar la pol\u00edtica de cobro",
+                "tags": [
+                    "Cobro de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`Cobro`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Cobro"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "catalog.barbershops.payment-policy.update",
+                "description": "Cambia solo los campos que vienen. El dep\u00f3sito va de 10 a 100 % y es obligatorio con `deposito`; con `sin_pago` o `total` no se admite. El plazo va de 0 a 720 horas. `deposito` y `total` exigen una `pasarela`. Un valor fuera de rango o una combinaci\u00f3n inv\u00e1lida responde 422 `datos-invalidos`. El cambio aplica a las reservas y los cobros nuevos: las reservas ya creadas conservan el plazo con que se hicieron (CA-01). Solo el due\u00f1o.",
+                "summary": "Cambiar la pol\u00edtica de cobro",
+                "tags": [
+                    "Cobro de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActualizarCobro"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Cobro`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Cobro"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
@@ -1835,6 +1943,40 @@
             }
         },
         "schemas": {
+            "ActualizarCobro": {
+                "type": "object",
+                "properties": {
+                    "modalidad": {
+                        "type": "string",
+                        "description": "`sin_pago`, `deposito` o `total`.",
+                        "enum": [
+                            "sin_pago",
+                            "deposito",
+                            "total"
+                        ]
+                    },
+                    "porcentaje_deposito": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Entre 10 y 100; obligatorio con `deposito` y no admitido en las otras modalidades.",
+                        "minimum": 10,
+                        "maximum": 100
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer",
+                        "description": "Horas de cancelaci\u00f3n gratuita antes de la reserva, de 0 a 720.",
+                        "minimum": 0,
+                        "maximum": 720
+                    },
+                    "pasarela": {
+                        "description": "`onvo` o `paypal`; obligatoria con `deposito` y `total`.",
+                        "$ref": "#/components/schemas/PaymentGateway"
+                    }
+                },
+                "title": "ActualizarCobro"
+            },
             "ActualizarServicio": {
                 "type": "object",
                 "properties": {
@@ -2036,6 +2178,36 @@
                     "motivo"
                 ],
                 "title": "Cierre"
+            },
+            "Cobro": {
+                "type": "object",
+                "properties": {
+                    "modalidad": {
+                        "type": "string"
+                    },
+                    "porcentaje_deposito": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer"
+                    },
+                    "pasarela": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "modalidad",
+                    "porcentaje_deposito",
+                    "plazo_cancelacion_horas",
+                    "pasarela"
+                ],
+                "title": "Cobro"
             },
             "Colaborador": {
                 "type": "object",
@@ -2323,6 +2495,15 @@
                     "cierra"
                 ],
                 "title": "Franja"
+            },
+            "PaymentGateway": {
+                "type": "string",
+                "description": "The single gateway a barbershop collects through: ONVO Pay or PayPal (PA-02).\n",
+                "enum": [
+                    "onvo",
+                    "paypal"
+                ],
+                "title": "PaymentGateway"
             },
             "RegistrarCierre": {
                 "type": "object",

@@ -12,13 +12,13 @@ use Src\Identity\Memberships\Domain\Entities\Membership;
 use Src\Identity\Memberships\Domain\Exceptions\StaffCannotBeCustomerException;
 use Src\Identity\Memberships\Domain\ValueObjects\Role;
 use Src\Reservations\Reservations\Application\Contracts\BookableServices;
+use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerMemberships;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Application\DTOs\BookableService;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
-use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
@@ -63,6 +63,9 @@ final class CreateReservationTest extends TestCase
 
     private bool $serviceExists = true;
 
+    /** The free-cancellation deadline the barbershop has now. */
+    private int $deadlineHours = 12;
+
     private bool $collaboratorExists = true;
 
     private CreateReservation $createReservation;
@@ -82,6 +85,15 @@ final class CreateReservationTest extends TestCase
             public function find(string $serviceId): ?BookableService
             {
                 return $this->test->serviceExists() ? new BookableService(Money::of(8500), Duration::ofMinutes(45)) : null;
+            }
+        };
+        $deadlines = new class($test) implements CancellationDeadlines
+        {
+            public function __construct(private readonly CreateReservationTest $test) {}
+
+            public function current(): int
+            {
+                return $this->test->deadlineHours();
             }
         };
         $lock = new class($test) implements CollaboratorLock
@@ -124,7 +136,7 @@ final class CreateReservationTest extends TestCase
             }
         };
 
-        $this->createReservation = new CreateReservation($this->reservations, $services, $lock, $slots, $customers, $this->transaction);
+        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $this->transaction);
     }
 
     /** The reservation is confirmed at once with the copies of the service, and its history has creation and confirmation (RE-07, SV-03, RE-09). */
@@ -135,7 +147,7 @@ final class CreateReservationTest extends TestCase
         $this->assertSame(ReservationStatus::Confirmed, $reservation->status);
         $this->assertSame(8500, $reservation->price->colones);
         $this->assertSame(45, $reservation->duration->minutes);
-        $this->assertSame(Reservation::DEFAULT_CANCELLATION_DEADLINE_HOURS, $reservation->cancellationDeadlineHours);
+        $this->assertSame(12, $reservation->cancellationDeadlineHours);
         $this->assertSame(self::DANIELA_ID, $reservation->collaboratorId->value);
         $this->assertEquals(self::at('2030-03-05 10:45'), $reservation->interval->end);
         $this->assertSame([2], $this->reservations->entriesPerSave);
@@ -287,6 +299,12 @@ final class CreateReservationTest extends TestCase
     public function serviceExists(): bool
     {
         return $this->serviceExists;
+    }
+
+    /** @internal Used by the ports of the test. */
+    public function deadlineHours(): int
+    {
+        return $this->deadlineHours;
     }
 
     /** @internal Used by the ports of the test. */

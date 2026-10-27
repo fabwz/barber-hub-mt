@@ -7,7 +7,6 @@ namespace Tests\Feature\Reservations\Reservations;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
-use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityFreeSlots;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Reservations\SeedsBookableBarbershops;
@@ -50,7 +49,7 @@ final class CreateReservationTest extends TestCase
             ->assertJsonPath('data.fin', '2030-03-05T10:45:00-06:00')
             ->assertJsonPath('data.precio', 7000)
             ->assertJsonPath('data.duracion_minutos', 45)
-            ->assertJsonPath('data.plazo_cancelacion_horas', Reservation::DEFAULT_CANCELLATION_DEADLINE_HOURS);
+            ->assertJsonPath('data.plazo_cancelacion_horas', 24);
 
         $membership = DB::table('memberships')->where('user_id', $this->ana)->where('barbershop_id', $this->puraNavaja)->first();
         $this->assertNotNull($membership);
@@ -62,7 +61,7 @@ final class CreateReservationTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame($membership->id, $row->customer_membership_id);
         $this->assertSame('confirmed', $row->status);
-        $this->assertSame([7000, 45, Reservation::DEFAULT_CANCELLATION_DEADLINE_HOURS], [$row->price, $row->duration_minutes, $row->cancellation_deadline_hours]);
+        $this->assertSame([7000, 45, 24], [$row->price, $row->duration_minutes, $row->cancellation_deadline_hours]);
     }
 
     /** The history has one entry for the creation and one for the confirmation, both by the person who booked (RE-07, RE-09). */
@@ -90,6 +89,26 @@ final class CreateReservationTest extends TestCase
 
         $row = DB::table('reservations')->where('id', $id)->first();
         $this->assertSame([7000, 45], [$row?->price, $row?->duration_minutes]);
+    }
+
+    /** The reservation copies the deadline the barbershop has when it is made; changing it from 4 to 12 hours leaves the earlier one at 4 (CA-01, RF-08). */
+    public function test_the_reservation_keeps_the_deadline_after_the_barbershop_changes_it(): void
+    {
+        $this->scopeQueriesTo($this->puraNavaja);
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['cancellation_deadline_hours' => 4]);
+        $this->actAs($this->ana);
+        $first = $this->postJson($this->reservationsUrl($this->puraNavaja), $this->booking())->assertCreated()
+            ->assertJsonPath('data.plazo_cancelacion_horas', 4)->json('data.id');
+
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['cancellation_deadline_hours' => 12]);
+        $second = $this->postJson($this->reservationsUrl($this->puraNavaja), $this->booking(startsAt: '2030-03-05T14:00:00-06:00'))->assertCreated()
+            ->assertJsonPath('data.plazo_cancelacion_horas', 12)->json('data.id');
+
+        $this->scopeQueriesTo($this->puraNavaja);
+        $this->assertSame(
+            [$first => 4, $second => 12],
+            array_map(intval(...), DB::table('reservations')->whereIn('id', [$first, $second])->pluck('cancellation_deadline_hours', 'id')->all()),
+        );
     }
 
     /** The second reservation of the same person reuses their customer role instead of creating another. */

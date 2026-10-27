@@ -6,6 +6,7 @@ namespace Src\Reservations\Reservations\Application\UseCases;
 
 use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\Contracts\BookableServices;
+use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerMemberships;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
@@ -28,6 +29,7 @@ final readonly class CreateReservation
     public function __construct(
         private ReservationRepository $reservations,
         private BookableServices $services,
+        private CancellationDeadlines $deadlines,
         private CollaboratorLock $collaborators,
         private FreeSlots $slots,
         private CustomerMemberships $customers,
@@ -38,8 +40,9 @@ final readonly class CreateReservation
      * Book a space for a customer (RF-11). In one transaction it locks the collaborator, checks again that the space is
      * free (never trusting an earlier check), creates the customer role if the person has none yet (UP-09), checks the
      * customer has no other confirmed reservation at that time (RE-06) and stores the reservation with the price, duration
-     * and cancellation deadline in force now (SV-03). Without payment policies yet (#49) every reservation is confirmed
-     * right away (RE-07), so its history has two entries: creation and confirmation. If anything fails the transaction is
+     * and the cancellation deadline the barbershop has now (SV-03, CA-01), so a later change of the deadline leaves it as it
+     * was. Until the payments arrive (#62 to #64) every reservation is confirmed right away (RE-07), so its history has two
+     * entries: creation and confirmation. If anything fails the transaction is
      * rolled back and no membership is left. When the space is taken, by the check or by the exclusion of the database
      * (the second barrier, ADR 0009), the error carries up to 3 alternatives, read after the rollback (RE-02).
      *
@@ -68,7 +71,7 @@ final readonly class CreateReservation
                     $command->startsAt,
                     $service->price,
                     $service->duration,
-                    Reservation::DEFAULT_CANCELLATION_DEADLINE_HOURS,
+                    $this->deadlines->current(),
                     $author,
                     $now,
                 );

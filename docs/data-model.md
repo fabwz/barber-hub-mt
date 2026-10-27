@@ -133,7 +133,7 @@ Las crean Laravel y Sanctum. `personal_access_tokens` (migración del #41) guard
 
 ### barbershops
 
-Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36, el #37 le agregó `public_link` y el #39 `payment_gateway`; las columnas marcadas como previstas y las agrega el issue que se indica, con una migración posterior. No tiene política de fila: cada fila es una barbería y no lleva `barbershop_id` (ver [database.md](database.md)).
+Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36, el #37 le agregó `public_link`, el #39 `payment_gateway` y el #49 la política de cobro; las columnas marcadas como previstas y las agrega el issue que se indica, con una migración posterior. No tiene política de fila: cada fila es una barbería y no lleva `barbershop_id` (ver [database.md](database.md)).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -143,10 +143,10 @@ Cada fila es un inquilino. La política de cobro y la pasarela son parámetros d
 | `phone` | `varchar(30)` | Obligatorio; es el contacto de la barbería (RF-01) |
 | `public_link` | `varchar(120)` | Obligatoria, creada en el #37. Llave única `barbershops_public_link_unique` en todo el sistema y `CHECK` `barbershops_public_link_format_check` (minúsculas, dígitos y guiones). Se deriva del nombre al registrar la barbería, con un número si ya existe, y no cambia al renombrarla (RF-02, MT-07) |
 | `logo_path` | `varchar(255)` | Prevista, #46. Opcional; guardado y servido por barbería (MT-05) |
-| `payment_mode` | `varchar(10)` | Prevista, #49. `CHECK` entre `none`, `deposit` y `full` (PA-01) |
-| `deposit_percentage` | `smallint` | Prevista, #49. `CHECK` entre 10 y 100; obligatoria si `payment_mode` es `deposit` |
-| `cancellation_deadline_hours` | `smallint` | Prevista, #49. `CHECK` mayor o igual que 0 (CA-01) |
-| `payment_gateway` | `varchar(10)` | Creada en el #39. Admite nulos (barbería sin pasarela) y tiene el `CHECK` `barbershops_payment_gateway_check` entre `onvo` y `paypal` (PA-02). Los datos de demostración la usan; el #49 la configura y exige junto con las demás columnas de cobro |
+| `payment_mode` | `varchar(10)` | Creada en el #49. Obligatoria, por defecto `none`. `CHECK` `barbershops_payment_mode_check` entre `none`, `deposit` y `full` (PA-01) |
+| `deposit_percentage` | `smallint` | Creada en el #49. Nula salvo en depósito. `CHECK` `barbershops_deposit_percentage_check` entre 10 y 100 y `CHECK` `barbershops_deposit_percentage_mode_check`: tiene valor si y solo si `payment_mode` es `deposit` (PA-01) |
+| `cancellation_deadline_hours` | `smallint` | Creada en el #49. Obligatoria, por defecto 24. `CHECK` `barbershops_cancellation_deadline_check` entre 0 y 720 (CA-01). Cambiarla no toca las reservas ya creadas, que guardan su copia |
+| `payment_gateway` | `varchar(10)` | Creada en el #39. Admite nulos (barbería sin pasarela) y tiene el `CHECK` `barbershops_payment_gateway_check` entre `onvo` y `paypal` (PA-02). Desde el #49 el `CHECK` `barbershops_payment_gateway_required_check` exige una pasarela cuando `payment_mode` es `deposit` o `full`. Cambiarla aplica a los cobros nuevos (PA-02) |
 | `vouchers_enabled`, `waitlist_enabled` | `boolean` | Prevista, #49. Por defecto `false` (RF-09) |
 | `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
@@ -254,7 +254,7 @@ El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es 
 | `blocked_until` | `timestamptz` | Creada en el #126. Fin del servicio más 5 minutos de limpieza; `CHECK (ends_at <= blocked_until)`. El dominio la calcula (`Reservation::CLEANUP_MINUTES`) |
 | `price` | `integer` | Creada en el #126. Precio vigente al reservar (SV-03); `CHECK` mayor que 0 |
 | `duration_minutes` | `smallint` | Creada en el #126. Duración vigente al reservar (SV-03); `CHECK` mayor que 0, sin repetir el rango del servicio para que un cambio del catálogo no invalide reservas existentes |
-| `cancellation_deadline_hours` | `smallint` | Creada en el #126. Plazo de cancelación vigente al reservar (CA-01); `CHECK` mayor o igual que 0. Hasta el #49 toda reserva guarda 24 horas (`Reservation::DEFAULT_CANCELLATION_DEADLINE_HOURS`), un valor provisional |
+| `cancellation_deadline_hours` | `smallint` | Creada en el #126. Plazo de cancelación vigente al reservar (CA-01); `CHECK` mayor o igual que 0. Desde el #49 es la copia de `barbershops.cancellation_deadline_hours` al momento de reservar |
 | `deposit_amount` | `integer` | Prevista, con el pago (PA-06). `CHECK` mayor o igual que 0; depósito calculado al reservar |
 | `expires_at` | `timestamptz` | Prevista, con el pago (RE-05). Solo en las temporales: 10 minutos desde que inicia el pago |
 | `reschedule_count` | `smallint` | Creada en el #126. `CHECK` entre 0 y 2 (CA-05); por defecto 0. Aumentarla es de reprogramar (#59) |

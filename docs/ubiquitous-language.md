@@ -103,11 +103,12 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 
 | Negocio | Código | Base de datos | API |
 | --- | --- | --- | --- |
-| Modalidad de cobro | `PaymentMode` | `payment_mode` | `modalidad_cobro` |
-| Sin pago, depósito, pago total | `None`, `Deposit`, `Full` | `none`, `deposit`, `full` | `sin_pago`, `deposito`, `pago_total` |
-| Porcentaje del depósito | `Percentage` | `deposit_percentage` | `porcentaje_deposito` |
+| Política de cobro (modalidad, depósito, plazo y pasarela de la barbería) | `PaymentPolicy` | columnas de `barbershops` | `cobro` (recurso `administracion/cobro`) |
+| Modalidad de cobro | `PaymentMode` | `payment_mode` | `modalidad` |
+| Sin pago, depósito, pago total | `None`, `Deposit`, `Full` | `none`, `deposit`, `full` | `sin_pago`, `deposito`, `total` |
+| Porcentaje del depósito (de 10 a 100 %; solo con la modalidad depósito) | `PaymentPolicy::depositPercentage` | `deposit_percentage` | `porcentaje_deposito` |
 | Depósito (monto que se paga al reservar) | `Money` | `reservations.deposit_amount` | `monto_deposito` |
-| Plazo de cancelación gratuita | `cancellationDeadline` | `cancellation_deadline_hours` | `plazo_cancelacion_horas` |
+| Plazo de cancelación gratuita (de 0 a 720 horas) | `cancellationDeadlineHours` | `cancellation_deadline_hours` | `plazo_cancelacion_horas` |
 | Pasarela de pago | `PaymentGateway` | `payment_gateway` | `pasarela` |
 | ONVO Pay, PayPal | `Onvo`, `Paypal` | `onvo`, `paypal` | `onvo`, `paypal` |
 | Pago | `Payment` | `payments` | `pagos` |
