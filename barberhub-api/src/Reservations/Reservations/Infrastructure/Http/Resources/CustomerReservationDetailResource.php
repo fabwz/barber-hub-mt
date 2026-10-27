@@ -25,7 +25,7 @@ final class CustomerReservationDetailResource extends JsonResource
      * Expose the reservation of the listing plus the deadline it kept, and nothing of the balance or the history: the
      * customer does not see the authors (RF-14) and the balance is shown to the staff (PA-10).
      *
-     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, plazo_cancelacion_horas: int}
+     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null, plazo_cancelacion_horas: int}
      */
     public function toArray(Request $request): array
     {

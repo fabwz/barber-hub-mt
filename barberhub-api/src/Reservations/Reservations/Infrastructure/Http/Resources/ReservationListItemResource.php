@@ -28,7 +28,7 @@ final class ReservationListItemResource extends JsonResource
      * Expose the reservation as it appears in a listing: with the names of the service and the barber, and the price and
      * duration it kept when it was made (SV-03). It never carries the customer: that is for the agenda of the staff.
      *
-     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int}
+     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null}
      */
     public function toArray(Request $request): array
     {
@@ -42,8 +42,8 @@ final class ReservationListItemResource extends JsonResource
             'barbero' => $reservation->collaboratorId->value,
             /** Nombre del barbero. */
             'barbero_nombre' => $this->view->collaboratorName,
-            /** Estado de la reserva. */
-            'estado' => ReservationStatusNames::of($reservation->status),
+            /** Estado de la reserva; una temporal cuyo plazo de pago venció se muestra `expirada`. */
+            'estado' => ReservationStatusNames::of($this->view->status),
             /** Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00). */
             'inicio' => $this->moment($reservation->interval->start),
             /** Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`. */
@@ -51,6 +51,8 @@ final class ReservationListItemResource extends JsonResource
             /** Colones con el IVA incluido, el precio vigente al reservar. */
             'precio' => $reservation->price->colones,
             'duracion_minutos' => $reservation->duration->minutes,
+            /** Hora límite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago. */
+            'expira_en' => $this->view->expiresAt === null ? null : $this->moment($this->view->expiresAt),
         ];
     }
 

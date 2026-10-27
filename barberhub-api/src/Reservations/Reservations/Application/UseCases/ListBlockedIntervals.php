@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Application\UseCases;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\Contracts\BlockedIntervalReader;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 
@@ -14,17 +15,17 @@ final readonly class ListBlockedIntervals
 
     /**
      * List the intervals some collaborators have held in a window by temporary or confirmed reservations, cleaning included;
-     * the availability reads it (DI-01, DI-05, RE-01). The reservation named is left out: it is the one being moved (RE-08).
+     * the availability reads it (DI-01, DI-05, RE-01). A temporary one past its payment window holds nothing (RE-05). The reservation named is left out: it is the one being moved (RE-08).
      *
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function execute(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
+    public function execute(array $collaboratorIds, TimeInterval $window, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
     {
         if ($collaboratorIds === []) {
             return [];
         }
 
-        return $this->reader->between($collaboratorIds, $window, $ignoringReservationId);
+        return $this->reader->between($collaboratorIds, $window, $now, $ignoringReservationId);
     }
 }

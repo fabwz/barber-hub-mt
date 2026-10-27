@@ -40,7 +40,7 @@ final readonly class ReservationController
     /** Book a space of a barber. */
     #[Endpoint(
         title: 'Crear una reserva',
-        description: 'Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesión. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, así que dos peticiones por el mismo espacio dejan exactamente una reserva. Sin una política de pago todavía, la reserva queda `confirmada` de inmediato y guarda el precio, la duración y el plazo de cancelación (24 horas, provisional) vigentes. Una persona sin rol en la barbería queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo día, barbero y servicio, los de inicio más próximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barbería, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.',
+        description: 'Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesión. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, así que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barbería no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora límite de pago en `expira_en` (10 minutos), retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duración y el plazo de cancelación (24 horas, provisional) vigentes. Una persona sin rol en la barbería queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo día, barbero y servicio, los de inicio más próximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barbería, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.',
     )]
     public function store(CreateReservationRequest $request, CreateReservation $createReservation): JsonResponse
     {
@@ -58,7 +58,7 @@ final readonly class ReservationController
     )]
     public function mine(ListMyReservationsRequest $request, ListCustomerReservations $listReservations): AnonymousResourceCollection
     {
-        $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $request->search(), $request->page());
+        $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $request->search(), $request->page(), $this->clock->now());
 
         return ReservationListItemResource::collection($page->items)->additional(PageMeta::of($page));
     }
@@ -71,7 +71,7 @@ final readonly class ReservationController
     public function index(ListReservationsRequest $request, ListStaffReservations $listReservations): AnonymousResourceCollection
     {
         $isOwner = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE) === 'owner';
-        $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $isOwner, $request->search(), $request->page());
+        $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $isOwner, $request->search(), $request->page(), $this->clock->now());
 
         return StaffReservationListItemResource::collection($page->items)->additional(PageMeta::of($page));
     }
@@ -87,8 +87,8 @@ final readonly class ReservationController
         $role = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE);
 
         return $role === 'customer'
-            ? new CustomerReservationDetailResource($getCustomer->execute($userId, $reserva))
-            : new StaffReservationDetailResource($getStaff->execute($userId, $role === 'owner', $reserva));
+            ? new CustomerReservationDetailResource($getCustomer->execute($userId, $reserva, $this->clock->now()))
+            : new StaffReservationDetailResource($getStaff->execute($userId, $role === 'owner', $reserva, $this->clock->now()));
     }
 
     /** Cancel a reservation and free its space. */

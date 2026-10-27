@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Domain\Contracts;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -40,6 +42,14 @@ interface ReservationRepository
      * simultaneous changes of the same reservation run one after the other.
      */
     public function findForUpdate(ReservationId $id): ?Reservation;
+
+    /**
+     * Find the temporary reservations of a collaborator in the current barbershop whose payment window closed at the
+     * instant, locking their rows until the transaction ends.
+     *
+     * @return list<Reservation>
+     */
+    public function lockOverdueOf(CollaboratorId $collaborator, DateTimeImmutable $now): array;
 
     /**
      * Read one page of the reservations of the current barbershop that match the filter, from the earliest start to the

@@ -24,12 +24,13 @@ use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class RescheduleReservation
 {
-    /** Receive the reservation repository, the ports to the neighbouring modules and the transaction port. */
+    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations and the transaction port. */
     public function __construct(
         private ReservationRepository $reservations,
         private CustomerDirectory $customers,
         private CollaboratorLock $collaborators,
         private FreeSlots $slots,
+        private ExpireOverdueReservations $expireOverdue,
         private TransactionRunner $transaction,
     ) {}
 
@@ -37,7 +38,8 @@ final readonly class RescheduleReservation
      * Move a confirmed reservation to another start and, optionally, another collaborator (RF-15). It is atomic (RE-08): in
      * one transaction it locks the reservation, applies the rules of the entity (status, deadline of the customer, limit of
      * two), locks the collaborator of the destination, checks again that the new space is free by the same calculation as
-     * the booking, leaving the reservation itself out because it cannot collide with itself, and moves it. If the space is
+     * the booking, leaving the reservation itself out because it cannot collide with itself, and moves it. Before that check it expires the overdue
+     * temporary reservations of the destination collaborator (RE-05). If the space is
      * taken, by the check or by the exclusion of the database (the second barrier, ADR 0009), nothing changes and the error
      * carries up to 3 alternatives, read after the rollback (RE-02). Freeing the old space is the same update: the exclusion
      * covers only the new one. A customer moves only their own; the owner any of the barbershop, with no deadline (CA-01,
@@ -70,6 +72,7 @@ final readonly class RescheduleReservation
 
                 $reservation->reschedule(new CollaboratorId($target), $startsAt, $isOwner, $now, Author::person(new UserId($userId)));
                 $this->collaborators->lock($target);
+                $this->expireOverdue->execute($target, $now);
 
                 if (! $this->slots->isFree($service, $target, $startsAt, $now, $id->value)) {
                     throw SlotUnavailableException::create();

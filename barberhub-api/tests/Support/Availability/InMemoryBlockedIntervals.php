@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support\Availability;
 
+use DateTimeImmutable;
 use Src\Availability\Slots\Application\Contracts\BlockedIntervals;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 
@@ -20,7 +21,7 @@ final class InMemoryBlockedIntervals implements BlockedIntervals
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function between(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
+    public function between(array $collaboratorIds, TimeInterval $window, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
     {
         $this->reads++;
 

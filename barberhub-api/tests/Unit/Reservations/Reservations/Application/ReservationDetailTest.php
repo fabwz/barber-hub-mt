@@ -81,7 +81,7 @@ final class ReservationDetailTest extends TestCase
     /** The owner gets the balance and the history in order, with the name of each author and none for the system. */
     public function test_the_owner_gets_the_balance_and_the_history_with_authors(): void
     {
-        $detail = $this->staff()->execute(self::OWNER_USER, true, $this->anas);
+        $detail = $this->staff()->execute(self::OWNER_USER, true, $this->anas, $this->now());
 
         $this->assertSame(7000, $detail->pendingBalance);
         $this->assertSame('Ana', $detail->view->customerName);
@@ -95,7 +95,7 @@ final class ReservationDetailTest extends TestCase
     /** A collaborator gets the balance of their own reservation, never the history. */
     public function test_a_collaborator_gets_the_balance_without_the_history(): void
     {
-        $detail = $this->staff()->execute(self::DANIELA_USER, false, $this->anas);
+        $detail = $this->staff()->execute(self::DANIELA_USER, false, $this->anas, $this->now());
 
         $this->assertSame(7000, $detail->pendingBalance);
         $this->assertNull($detail->history);
@@ -106,7 +106,7 @@ final class ReservationDetailTest extends TestCase
     {
         foreach ([self::KEVIN_USER, self::ANA_USER] as $user) {
             try {
-                $this->staff()->execute($user, false, $this->anas);
+                $this->staff()->execute($user, false, $this->anas, $this->now());
                 $this->fail('The reservation of another agenda was shown.');
             } catch (ReservationNotFoundException) {
                 $this->addToAssertionCount(1);
@@ -119,13 +119,13 @@ final class ReservationDetailTest extends TestCase
     {
         $this->expectException(ReservationNotFoundException::class);
 
-        $this->staff()->execute(self::OWNER_USER, true, '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0dff');
+        $this->staff()->execute(self::OWNER_USER, true, '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0dff', $this->now());
     }
 
     /** The customer gets their reservation without the balance, the history or the name of a customer. */
     public function test_a_customer_gets_their_own_without_balance_or_history(): void
     {
-        $detail = $this->customer()->execute(self::ANA_USER, $this->anas);
+        $detail = $this->customer()->execute(self::ANA_USER, $this->anas, $this->now());
 
         $this->assertSame($this->anas, $detail->view->reservation->id->value);
         $this->assertNull($detail->view->customerName);
@@ -138,7 +138,7 @@ final class ReservationDetailTest extends TestCase
     {
         foreach ([[self::LUIS_USER, $this->anas], ['0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d99', $this->anas], [self::ANA_USER, '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0dff']] as [$user, $reservation]) {
             try {
-                $this->customer()->execute($user, $reservation);
+                $this->customer()->execute($user, $reservation, $this->now());
                 $this->fail('A foreign reservation was shown.');
             } catch (ReservationNotFoundException) {
                 $this->addToAssertionCount(1);
@@ -165,6 +165,11 @@ final class ReservationDetailTest extends TestCase
     private function customer(): GetCustomerReservation
     {
         return new GetCustomerReservation($this->reservations, $this->customers(), $this->attach());
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2030-03-01 08:00:00');
     }
 
     private function attach(): AttachNames

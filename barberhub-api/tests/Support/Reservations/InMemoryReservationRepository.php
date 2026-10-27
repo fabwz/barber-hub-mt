@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Support\Reservations;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
+use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -76,6 +78,19 @@ final class InMemoryReservationRepository implements ReservationRepository
     }
 
     /**
+     * The stored temporary reservations of the collaborator whose payment window closed.
+     *
+     * @return list<Reservation>
+     */
+    public function lockOverdueOf(CollaboratorId $collaborator, DateTimeImmutable $now): array
+    {
+        return array_values(array_filter(
+            $this->reservations,
+            fn (Reservation $reservation): bool => $reservation->collaboratorId->equals($collaborator) && $reservation->isOverdueAt($now),
+        ));
+    }
+
+    /**
      * Page the stored reservations that match the filter, from the earliest start to the latest.
      *
      * @return Page<Reservation>
@@ -87,7 +102,7 @@ final class InMemoryReservationRepository implements ReservationRepository
             $this->reservations,
             fn (Reservation $reservation): bool => ($filter->customer === null || $reservation->customerMembershipId->equals($filter->customer))
                 && ($filter->collaborator === null || $reservation->collaboratorId->equals($filter->collaborator))
-                && ($filter->status === null || $reservation->status === $filter->status)
+                && ($filter->status === null || $reservation->statusAt($filter->now ?? new DateTimeImmutable('@0')) === $filter->status)
                 && ($window === null || ($reservation->interval->start >= $window->start && $reservation->interval->start < $window->end)),
         ));
         usort($matches, fn (Reservation $a, Reservation $b): int => $a->interval->start <=> $b->interval->start);

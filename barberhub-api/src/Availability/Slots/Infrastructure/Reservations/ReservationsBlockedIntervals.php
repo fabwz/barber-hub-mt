@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Availability\Slots\Infrastructure\Reservations;
 
+use DateTimeImmutable;
 use Src\Availability\Slots\Application\Contracts\BlockedIntervals;
 use Src\Reservations\Reservations\Application\UseCases\ListBlockedIntervals;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
@@ -19,8 +20,8 @@ final readonly class ReservationsBlockedIntervals implements BlockedIntervals
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
      */
-    public function between(array $collaboratorIds, TimeInterval $window, ?string $ignoringReservationId = null): array
+    public function between(array $collaboratorIds, TimeInterval $window, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
     {
-        return $this->listBlocked->execute($collaboratorIds, $window, $ignoringReservationId);
+        return $this->listBlocked->execute($collaboratorIds, $window, $now, $ignoringReservationId);
     }
 }

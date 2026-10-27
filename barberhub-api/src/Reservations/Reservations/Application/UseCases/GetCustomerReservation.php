@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Application\UseCases;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\DTOs\ReservationDetail;
@@ -21,12 +22,12 @@ final readonly class GetCustomerReservation
     ) {}
 
     /**
-     * Show a customer one of their own reservations (RF-14). Neither the balance (PA-10) nor the history, whose authors
+     * Show a customer one of their own reservations (RF-14). A temporary reservation past its payment window reads as expired (DI-05). Neither the balance (PA-10) nor the history, whose authors
      * are not for them, come with it. A reservation of another customer reads like one that does not exist (UP-06).
      *
      * @throws ReservationNotFoundException
      */
-    public function execute(string $userId, string $reservationId): ReservationDetail
+    public function execute(string $userId, string $reservationId, DateTimeImmutable $now): ReservationDetail
     {
         $membershipId = $this->customers->find($userId);
         $reservation = $this->reservations->find(new ReservationId($reservationId));
@@ -35,6 +36,6 @@ final readonly class GetCustomerReservation
             throw ReservationNotFoundException::create();
         }
 
-        return new ReservationDetail($this->attachNames->one($reservation, false), null, null);
+        return new ReservationDetail($this->attachNames->one($reservation, false, $now), null, null);
     }
 }

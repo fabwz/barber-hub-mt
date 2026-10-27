@@ -63,7 +63,7 @@ final class ReservationSchemaTest extends TestCase
 
         $this->assertEqualsCanonicalizing([
             'id', 'barbershop_id', 'collaborator_id', 'service_id', 'customer_membership_id', 'status', 'starts_at', 'ends_at',
-            'blocked_until', 'price', 'duration_minutes', 'cancellation_deadline_hours', 'reschedule_count', 'created_at', 'updated_at',
+            'blocked_until', 'price', 'duration_minutes', 'cancellation_deadline_hours', 'reschedule_count', 'expires_at', 'created_at', 'updated_at',
         ], $schema->getColumnListing('reservations'));
         $this->assertEqualsCanonicalizing(
             ['id', 'barbershop_id', 'reservation_id', 'from_status', 'to_status', 'changed_by_user_id', 'changed_at'],
@@ -134,6 +134,16 @@ final class ReservationSchemaTest extends TestCase
 
         $this->reservation(['cancellation_deadline_hours' => 0]);
         $this->assertSame(1, DB::table('reservations')->count());
+    }
+
+    /** Only a temporary reservation has an expiry instant (RE-05). */
+    public function test_only_a_temporary_reservation_has_an_expiry(): void
+    {
+        $this->assertCheckViolation(fn () => $this->reservation(['status' => 'confirmed', 'expires_at' => '2030-03-01 08:10:00-06']));
+
+        $this->reservation(['status' => 'temporary', 'expires_at' => '2030-03-01 08:10:00-06', 'starts_at' => '2030-03-05 09:00:00-06', 'ends_at' => '2030-03-05 09:45:00-06', 'blocked_until' => '2030-03-05 09:50:00-06']);
+        $this->reservation(['status' => 'confirmed', 'expires_at' => null]);
+        $this->assertSame(2, DB::table('reservations')->count());
     }
 
     /** A reservation is rescheduled twice at most (CA-05). */

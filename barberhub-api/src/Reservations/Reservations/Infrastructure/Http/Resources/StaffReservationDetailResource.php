@@ -29,7 +29,7 @@ final class StaffReservationDetailResource extends JsonResource
      * Expose the reservation of the agenda plus the deadline it kept and the balance to pay. The history belongs to the
      * owner: the answer to a collaborator has no `historial` at all (CO-04, RE-09). No payments, no income.
      *
-     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, cliente_nombre: string, plazo_cancelacion_horas: int, saldo_pendiente: int|null, historial?: list<array{de: string|null, a: string, autor: string, fecha: string}>}
+     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null, cliente_nombre: string, plazo_cancelacion_horas: int, saldo_pendiente: int|null, historial?: list<array{de: string|null, a: string, autor: string, fecha: string}>}
      */
     public function toArray(Request $request): array
     {

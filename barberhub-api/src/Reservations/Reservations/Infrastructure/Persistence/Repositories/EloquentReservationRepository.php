@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Infrastructure\Persistence\Repositories;
 
+use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -103,6 +104,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
                     'duration_minutes' => $reservation->duration->minutes,
                     'cancellation_deadline_hours' => $reservation->cancellationDeadlineHours,
                     'reschedule_count' => $reservation->rescheduleCount,
+                    'expires_at' => $reservation->expiresAt,
                 ]);
             } else {
                 $model->update([
@@ -112,6 +114,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
                     'ends_at' => $reservation->interval->end,
                     'blocked_until' => $reservation->blockedUntil,
                     'reschedule_count' => $reservation->rescheduleCount,
+                    'expires_at' => $reservation->expiresAt,
                 ]);
             }
 
@@ -138,6 +141,25 @@ final readonly class EloquentReservationRepository implements ReservationReposit
     }
 
     /**
+     * Find the temporary reservations of the collaborator whose payment window closed, locking their rows, so two
+     * simultaneous expirations or a confirmation run in turn.
+     *
+     * @return list<Reservation>
+     */
+    public function lockOverdueOf(CollaboratorId $collaborator, DateTimeImmutable $now): array
+    {
+        $models = $this->ofBarbershop()
+            ->where('collaborator_id', $collaborator->value)
+            ->where('status', ReservationStatus::Temporary->value)
+            ->where('expires_at', '<=', $now)
+            ->orderBy('starts_at')
+            ->lockForUpdate()
+            ->get();
+
+        return array_values($models->map(fn (ReservationModel $model): Reservation => $this->toDomain($model))->all());
+    }
+
+    /**
      * Read the page with two statements, the count and the rows, ordered by start. The customer and the collaborator come
      * from the filter, never from the request, so each listing decides its own scope.
      *
@@ -156,7 +178,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
         }
 
         if ($filter->status !== null) {
-            $query->where('status', $filter->status->value);
+            $this->whereStatus($query, $filter->status, $filter->now);
         }
 
         if (($window = $filter->window()) !== null) {
@@ -186,6 +208,34 @@ final readonly class EloquentReservationRepository implements ReservationReposit
             $entry->changed_by_user_id === null ? Author::system() : Author::person(new UserId($entry->changed_by_user_id)),
             $entry->changed_at,
         ))->all());
+    }
+
+    /**
+     * Narrow the query to a status as the person sees it: a temporary reservation past its window reads as expired, so it
+     * belongs to the expired ones and not to the temporary ones, whether or not it was marked yet. Without an instant the
+     * stored status decides.
+     *
+     * @param  Builder<ReservationModel>  $query
+     */
+    private function whereStatus(Builder $query, ReservationStatus $status, ?DateTimeImmutable $now): void
+    {
+        $temporary = ReservationStatus::Temporary->value;
+
+        if ($now === null || ! in_array($status, [ReservationStatus::Temporary, ReservationStatus::Expired], true)) {
+            $query->where('status', $status->value);
+
+            return;
+        }
+
+        if ($status === ReservationStatus::Temporary) {
+            $query->where('status', $temporary)->where('expires_at', '>', $now);
+
+            return;
+        }
+
+        $query->where(fn (Builder $either): Builder => $either
+            ->where('status', ReservationStatus::Expired->value)
+            ->orWhere(fn (Builder $overdue): Builder => $overdue->where('status', $temporary)->where('expires_at', '<=', $now)));
     }
 
     /** Insert one entry of the history. */
@@ -226,6 +276,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
             $model->cancellation_deadline_hours,
             $model->reschedule_count,
             ReservationStatus::from($model->status),
+            $model->expires_at,
         );
     }
 }

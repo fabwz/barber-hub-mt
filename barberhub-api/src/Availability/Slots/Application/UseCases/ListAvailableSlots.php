@@ -59,7 +59,7 @@ final readonly class ListAvailableSlots
             return [];
         }
 
-        $blocked = $this->blocked->between(array_map(fn (StaffWorkday $member): string => $member->collaboratorId, $staff), $day->window(), $ignoringReservationId);
+        $blocked = $this->blocked->between(array_map(fn (StaffWorkday $member): string => $member->collaboratorId, $staff), $day->window(), $now, $ignoringReservationId);
         $slots = [];
 
         foreach ($staff as $member) {

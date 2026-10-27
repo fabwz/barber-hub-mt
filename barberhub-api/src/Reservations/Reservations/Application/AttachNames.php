@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Application;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
@@ -23,12 +24,12 @@ final readonly class AttachNames
     /**
      * Pair each reservation of the page with the names it shows. Whatever the size of the page, it reads the services and
      * the collaborators once and, for the staff, the customers once, so a listing never reads row by row. An empty page
-     * reads nothing.
+     * reads nothing. The status of each is the one it shows at `$now`.
      *
      * @param  Page<Reservation>  $page
      * @return Page<ReservationView>
      */
-    public function to(Page $page, bool $withCustomers): Page
+    public function to(Page $page, bool $withCustomers, DateTimeImmutable $now): Page
     {
         if ($page->items === []) {
             return new Page([], $page->total, $page->request);
@@ -45,11 +46,13 @@ final readonly class AttachNames
             $services[$reservation->serviceId->value] ?? '',
             $collaborators[$reservation->collaboratorId->value] ?? '',
             $withCustomers ? $customers[$reservation->customerMembershipId->value] ?? '' : null,
+            $reservation->statusAt($now),
+            $reservation->expiresAt,
         ));
     }
 
     /** Pair one reservation with the same names; it reads the same lists, never row by row. */
-    public function one(Reservation $reservation, bool $withCustomer): ReservationView
+    public function one(Reservation $reservation, bool $withCustomer, DateTimeImmutable $now): ReservationView
     {
         $customers = $withCustomer ? $this->customers->namesOf([$reservation->customerMembershipId->value]) : [];
 
@@ -58,6 +61,8 @@ final readonly class AttachNames
             $this->services->all()[$reservation->serviceId->value] ?? '',
             $this->collaborators->names()[$reservation->collaboratorId->value] ?? '',
             $withCustomer ? $customers[$reservation->customerMembershipId->value] ?? '' : null,
+            $reservation->statusAt($now),
+            $reservation->expiresAt,
         );
     }
 }

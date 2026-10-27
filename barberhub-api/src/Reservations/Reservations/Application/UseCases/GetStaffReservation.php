@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Application\UseCases;
 
+use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\AuthorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
@@ -28,11 +29,11 @@ final readonly class GetStaffReservation
      * Show the owner or a collaborator one reservation of the current barbershop (RF-14). Both see the balance still to
      * pay, which until payments exist is the whole price because it is paid at the premises (PA-10, CO-04); only the owner
      * gets the history with the name of each author (RE-09). A collaborator reads only their own agenda; a reservation of
-     * another collaborator reads like one that does not exist (UP-06). The authors come in one read, never one per entry.
+     * another collaborator reads like one that does not exist (UP-06). The authors come in one read, never one per entry. A temporary reservation past its payment window reads as expired (DI-05).
      *
      * @throws ReservationNotFoundException
      */
-    public function execute(string $userId, bool $isOwner, string $reservationId): ReservationDetail
+    public function execute(string $userId, bool $isOwner, string $reservationId, DateTimeImmutable $now): ReservationDetail
     {
         $id = new ReservationId($reservationId);
         $reservation = $this->reservations->find($id);
@@ -42,7 +43,7 @@ final readonly class GetStaffReservation
         }
 
         return new ReservationDetail(
-            $this->attachNames->one($reservation, true),
+            $this->attachNames->one($reservation, true, $now),
             $reservation->price->colones,
             $isOwner ? $this->entriesOf($this->reservations->history($id)) : null,
         );

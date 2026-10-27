@@ -93,6 +93,7 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Cancelada por el cliente | `ReservationStatus::CancelledByCustomer` | `cancelled_by_customer` | `cancelada_por_cliente` |
 | Cancelada por la barbería | `ReservationStatus::CancelledByBarbershop` | `cancelled_by_barbershop` | `cancelada_por_barberia` |
 | Reserva expirada | `ReservationStatus::Expired` | `expired` | `expirada` |
+| Ventana de pago (10 minutos que una reserva temporal espera su pago antes de expirar) | `Reservation::PAYMENT_WINDOW_MINUTES` | `expires_at` | `expira_en` |
 | Reserva asistida | `assisted` | `created_by_membership_id` | `asistida` |
 | Reprogramación | `reschedule` | `reschedule_count` | `reprogramaciones` |
 | Historial de estados | `ReservationStatusChange` | `reservation_status_history` | `historial` |

@@ -27,7 +27,7 @@ final class ReservationResource extends JsonResource
     /**
      * Expose the reservation with the price, duration and cancellation deadline it kept when it was made (SV-03).
      *
-     * @return array{id: string, servicio: string, barbero: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, plazo_cancelacion_horas: int}
+     * @return array{id: string, servicio: string, barbero: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, plazo_cancelacion_horas: int, expira_en: string|null}
      */
     public function toArray(Request $request): array
     {
@@ -35,7 +35,7 @@ final class ReservationResource extends JsonResource
             'id' => $this->reservation->id->value,
             'servicio' => $this->reservation->serviceId->value,
             'barbero' => $this->reservation->collaboratorId->value,
-            /** Estado de la reserva; al crearla sin pago queda `confirmada`. */
+            /** Estado de la reserva; al crearla queda `confirmada` si la barbería no cobra y `temporal` si cobra. */
             'estado' => ReservationStatusNames::of($this->reservation->status),
             /** Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00). */
             'inicio' => $this->moment($this->reservation->interval->start),
@@ -46,6 +46,8 @@ final class ReservationResource extends JsonResource
             'duracion_minutos' => $this->reservation->duration->minutes,
             /** Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
             'plazo_cancelacion_horas' => $this->reservation->cancellationDeadlineHours,
+            /** Hora límite para pagar, mismo formato que `inicio`; nula si la reserva ya está confirmada. */
+            'expira_en' => $this->reservation->expiresAt === null ? null : $this->moment($this->reservation->expiresAt),
         ];
     }
 

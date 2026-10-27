@@ -57,7 +57,7 @@ final class BlockedIntervalReaderTest extends TestCase
             $this->insertReservation($this->kevin, $status, sprintf('2030-03-05 %02d:00', 11 + $index));
         }
 
-        $intervals = $this->blocked->execute([$this->kevin], $this->day('2030-03-05'))[$this->kevin];
+        $intervals = $this->blocked->execute([$this->kevin], $this->day('2030-03-05'), $this->now())[$this->kevin];
 
         $this->assertSame(
             [['09:00', '09:50'], ['10:00', '10:50']],
@@ -71,7 +71,7 @@ final class BlockedIntervalReaderTest extends TestCase
         $moving = $this->insertReservation($this->kevin, 'confirmed', '2030-03-05 09:00');
         $this->insertReservation($this->kevin, 'confirmed', '2030-03-05 10:00');
 
-        $intervals = $this->blocked->execute([$this->kevin], $this->day('2030-03-05'), $moving)[$this->kevin];
+        $intervals = $this->blocked->execute([$this->kevin], $this->day('2030-03-05'), $this->now(), $moving)[$this->kevin];
 
         $this->assertSame([['10:00', '10:50']], array_map(fn (TimeInterval $interval): array => [$this->local($interval->start), $this->local($interval->end)], $intervals));
     }
@@ -81,7 +81,7 @@ final class BlockedIntervalReaderTest extends TestCase
     {
         $this->insertReservation($this->kevin, 'confirmed', '2030-03-05 09:00');
 
-        $interval = $this->blocked->execute([$this->kevin], $this->day('2030-03-05'))[$this->kevin][0];
+        $interval = $this->blocked->execute([$this->kevin], $this->day('2030-03-05'), $this->now())[$this->kevin][0];
 
         $this->assertSame(50, $interval->duration()->minutes);
     }
@@ -93,11 +93,11 @@ final class BlockedIntervalReaderTest extends TestCase
         $this->insertReservation($this->daniela, 'confirmed', '2030-03-05 09:00');
         $this->insertReservation($this->daniela, 'confirmed', '2030-03-05 15:00');
 
-        $intervals = $this->blocked->execute([$this->kevin, $this->daniela], $this->day('2030-03-05'));
+        $intervals = $this->blocked->execute([$this->kevin, $this->daniela], $this->day('2030-03-05'), $this->now());
 
         $this->assertCount(1, $intervals[$this->kevin]);
         $this->assertCount(2, $intervals[$this->daniela]);
-        $this->assertSame([], $this->blocked->execute([$this->daniela], $this->day('2030-03-06')));
+        $this->assertSame([], $this->blocked->execute([$this->daniela], $this->day('2030-03-06'), $this->now()));
     }
 
     /** Only the collaborators asked for are read. */
@@ -106,8 +106,8 @@ final class BlockedIntervalReaderTest extends TestCase
         $this->insertReservation($this->kevin, 'confirmed', '2030-03-05 09:00');
         $this->insertReservation($this->daniela, 'confirmed', '2030-03-05 09:00');
 
-        $this->assertSame([$this->kevin], array_keys($this->blocked->execute([$this->kevin], $this->day('2030-03-05'))));
-        $this->assertSame([], $this->blocked->execute([], $this->day('2030-03-05')));
+        $this->assertSame([$this->kevin], array_keys($this->blocked->execute([$this->kevin], $this->day('2030-03-05'), $this->now())));
+        $this->assertSame([], $this->blocked->execute([], $this->day('2030-03-05'), $this->now()));
     }
 
     /** A reservation belongs to the window if it shares an instant with it: crossing a border counts, touching it does not. */
@@ -120,7 +120,7 @@ final class BlockedIntervalReaderTest extends TestCase
         $this->insertReservation($startsAtEnd, 'confirmed', '2030-03-06 00:00'); // starts when the window ends
         $this->insertReservation($endsAtStart, 'confirmed', '2030-03-04 23:10'); // blocked until 00:00 exactly
 
-        $intervals = $this->blocked->execute([$crossesStart, $crossesEnd, $before, $startsAtEnd, $endsAtStart], $this->day('2030-03-05'));
+        $intervals = $this->blocked->execute([$crossesStart, $crossesEnd, $before, $startsAtEnd, $endsAtStart], $this->day('2030-03-05'), $this->now());
 
         $this->assertEqualsCanonicalizing([$crossesStart, $crossesEnd], array_keys($intervals));
     }
@@ -131,7 +131,7 @@ final class BlockedIntervalReaderTest extends TestCase
         $this->insertReservation($this->kevin, 'confirmed', '2030-03-05 09:00');
         $other = new ListBlockedIntervals(new EloquentBlockedIntervalReader(new FixedBarbershopContext(new BarbershopId($this->fadeLab))));
 
-        $this->assertSame([], $other->execute([$this->kevin], $this->day('2030-03-05')));
+        $this->assertSame([], $other->execute([$this->kevin], $this->day('2030-03-05'), $this->now()));
     }
 
     /** Any number of collaborators is read with a single query. */
@@ -141,11 +141,16 @@ final class BlockedIntervalReaderTest extends TestCase
         $this->insertReservation($this->daniela, 'confirmed', '2030-03-05 09:00');
 
         DB::enableQueryLog();
-        $this->blocked->execute([$this->kevin, $this->daniela], $this->day('2030-03-05'));
+        $this->blocked->execute([$this->kevin, $this->daniela], $this->day('2030-03-05'), $this->now());
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
 
         $this->assertCount(1, $queries);
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2030-03-01 08:00:00', new DateTimeZone('America/Costa_Rica'));
     }
 
     private function day(string $date): TimeInterval

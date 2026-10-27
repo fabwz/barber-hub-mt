@@ -6,6 +6,7 @@ namespace Src\Reservations\Reservations\Domain\Entities;
 
 use DateTimeImmutable;
 use LogicException;
+use Src\Reservations\Reservations\Domain\Exceptions\PaymentWindowExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
@@ -27,6 +28,9 @@ final class Reservation
     /** Minutes of cleaning after the service, during which the collaborator cannot take another reservation (DI-01). */
     public const int CLEANUP_MINUTES = 5;
 
+    /** Minutes a temporary reservation waits for its payment before it expires and releases its space (RE-05, DI-05). */
+    public const int PAYMENT_WINDOW_MINUTES = 10;
+
     /** Times a reservation can be moved (CA-05). */
     public const int MAX_RESCHEDULES = 2;
 
@@ -47,6 +51,7 @@ final class Reservation
         public readonly int $cancellationDeadlineHours,
         public private(set) int $rescheduleCount,
         public private(set) ReservationStatus $status,
+        public private(set) ?DateTimeImmutable $expiresAt,
         public private(set) array $pendingChanges,
     ) {}
 
@@ -54,6 +59,7 @@ final class Reservation
      * Create a reservation. It starts temporary (RE-05); one that needs no payment is confirmed right after (RE-07).
      * It keeps the price, the duration and the cancellation deadline in force now (SV-03, CA-01), ends when the service
      * does and blocks the collaborator five minutes more for cleaning (DI-01). The creation is the first entry of its history.
+     * While it is temporary it expires once the payment window passes, counted from its creation (RE-05).
      */
     public static function create(
         ReservationId $id,
@@ -89,6 +95,7 @@ final class Reservation
             $cancellationDeadlineHours,
             0,
             ReservationStatus::Temporary,
+            $at->modify('+'.self::PAYMENT_WINDOW_MINUTES.' minutes'),
             [new ReservationStatusChange(null, ReservationStatus::Temporary, $author, $at)],
         );
     }
@@ -106,13 +113,24 @@ final class Reservation
         int $cancellationDeadlineHours,
         int $rescheduleCount,
         ReservationStatus $status,
+        ?DateTimeImmutable $expiresAt,
     ): self {
-        return new self($id, $collaboratorId, $serviceId, $customerMembershipId, $interval, $blockedUntil, $price, $duration, $cancellationDeadlineHours, $rescheduleCount, $status, []);
+        return new self($id, $collaboratorId, $serviceId, $customerMembershipId, $interval, $blockedUntil, $price, $duration, $cancellationDeadlineHours, $rescheduleCount, $status, $expiresAt, []);
     }
 
-    /** Confirm a temporary reservation, once its payment is confirmed or when it needs none (RE-07). */
+    /**
+     * Confirm a temporary reservation, once its payment is confirmed or when it needs none (RE-07). One whose payment
+     * window already closed cannot be confirmed, even if nobody marked it expired yet.
+     *
+     * @throws PaymentWindowExpiredException
+     * @throws TransitionNotAllowedException when the reservation is not temporary
+     */
     public function confirm(DateTimeImmutable $at, Author $author): void
     {
+        if ($this->isOverdueAt($at)) {
+            throw PaymentWindowExpiredException::create();
+        }
+
         $this->changeTo(ReservationStatus::Confirmed, $at, $author);
     }
 
@@ -195,6 +213,18 @@ final class Reservation
         };
     }
 
+    /** Tell whether the reservation is temporary and its payment window closed at the instant, whether or not it was marked expired (DI-05). */
+    public function isOverdueAt(DateTimeImmutable $at): bool
+    {
+        return $this->status === ReservationStatus::Temporary && $this->expiresAt !== null && $at >= $this->expiresAt;
+    }
+
+    /** The status to show at the instant: an overdue temporary reservation reads as expired, without changing it. */
+    public function statusAt(DateTimeImmutable $at): ReservationStatus
+    {
+        return $this->isOverdueAt($at) ? ReservationStatus::Expired : $this->status;
+    }
+
     /** Tell whether the reservation was cancelled, by either side. */
     public function isCancelled(): bool
     {
@@ -216,5 +246,6 @@ final class Reservation
 
         $this->pendingChanges[] = new ReservationStatusChange($this->status, $target, $author, $at);
         $this->status = $target;
+        $this->expiresAt = null;
     }
 }

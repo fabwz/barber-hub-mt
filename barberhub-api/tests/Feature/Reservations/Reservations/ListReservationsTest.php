@@ -164,7 +164,7 @@ final class ListReservationsTest extends TestCase
         $keys = array_keys($response->json('data.0'));
         sort($keys);
         $this->assertSame(
-            ['barbero', 'barbero_nombre', 'cliente_nombre', 'duracion_minutos', 'estado', 'fin', 'id', 'inicio', 'precio', 'servicio', 'servicio_nombre'],
+            ['barbero', 'barbero_nombre', 'cliente_nombre', 'duracion_minutos', 'estado', 'expira_en', 'fin', 'id', 'inicio', 'precio', 'servicio', 'servicio_nombre'],
             $keys,
         );
     }

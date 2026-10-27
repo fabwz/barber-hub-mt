@@ -7,6 +7,7 @@ return [
     'author_system' => 'sistema',
     'cancellation_deadline_invalid' => 'El plazo de cancelación no puede ser negativo.',
     'customer_overlap' => 'Ya tiene una reserva confirmada que se solapa con ese horario en esta barbería.',
+    'payment_window_expired' => 'El plazo para pagar esta reserva venció y su espacio fue liberado.',
     'price_invalid' => 'El precio de la reserva debe ser de al menos ₡1.',
     'reschedule_deadline_expired' => 'Ya pasó el plazo para reprogramar esta reserva sin penalización.',
     'reschedule_limit_reached' => 'La reserva ya se reprogramó el máximo de 2 veces.',
