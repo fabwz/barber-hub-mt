@@ -188,6 +188,27 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/reservas',
                 [],
             ),
+            // The payments have no endpoint yet (#62), so for now the audit proves only what the database hides; their routes
+            // will bring their operations here.
+            new TenantResource(
+                'payments',
+                function (string $barbershopId): string {
+                    $id = (string) Str::uuid7();
+                    DB::table('payments')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'reservation_id' => self::createReservation($barbershopId),
+                        'provider' => 'onvo',
+                        'method' => 'card',
+                        'status' => 'pending',
+                        'amount' => 2550,
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/reservas',
+                [],
+            ),
         ];
     }
 

@@ -16,16 +16,21 @@ final class ReservationMigrationTest extends TestCase
 
     private const string MIGRATION = '2026_10_20_150000_create_reservations_tables';
 
+    // The payments point at the reservations, so they go before them when rolling back and after them when applying again.
+    private const string PAYMENTS = '2026_10_26_110000_create_payments_table';
+
     /** Rolling back drops both tables with their constraints and policies and keeps the extension; applying again brings them back. */
     public function test_migration_rolls_back_and_applies_again_without_leftovers(): void
     {
         $admin = DB::connection('pgsql_admin');
         $schema = Schema::connection('pgsql_admin');
         $migration = require base_path('database/migrations/'.self::MIGRATION.'.php');
+        $payments = require base_path('database/migrations/'.self::PAYMENTS.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $payments->down();
             $migration->down();
 
             $this->assertFalse($schema->hasTable('reservations'));
@@ -35,6 +40,7 @@ final class ReservationMigrationTest extends TestCase
             $this->assertSame(1, $admin->table('pg_extension')->where('extname', 'btree_gist')->count());
 
             $migration->up();
+            $payments->up();
 
             $this->assertTrue($schema->hasTable('reservations'));
             $this->assertTrue($schema->hasTable('reservation_status_history'));
