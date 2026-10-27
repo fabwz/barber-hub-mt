@@ -11,6 +11,7 @@ use Illuminate\Validation\ValidationException;
 use Src\Shared\Domain\Exceptions\AuthenticationFailedException;
 use Src\Shared\Domain\Exceptions\BusinessRuleException;
 use Src\Shared\Domain\Exceptions\DomainException;
+use Src\Shared\Domain\Exceptions\HasInvalidField;
 use Src\Shared\Domain\Exceptions\HasProblemMembers;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\Exceptions\NotFoundException;
@@ -43,11 +44,7 @@ final readonly class ProblemDetailsRenderer
                 ),
                 headers: ['Retry-After' => (string) $exception->retryAfterSeconds()],
             ),
-            $exception instanceof DomainException => $this->respond(
-                $this->typeOfDomainException($exception),
-                __($exception->translationKey(), $exception->parameters()),
-                extensions: $exception instanceof HasProblemMembers ? $this->customMembers($exception) : [],
-            ),
+            $exception instanceof DomainException => $this->respondToDomainException($exception),
             $exception instanceof AuthenticationException => $this->respond(ProblemType::Unauthenticated),
             $exception instanceof HttpExceptionInterface => $this->respond(
                 ProblemType::fromStatus($exception->getStatusCode()),
@@ -55,6 +52,19 @@ final readonly class ProblemDetailsRenderer
             ),
             default => $this->respond(ProblemType::InternalError),
         };
+    }
+
+    /** Render a domain exception; one that points at a field also reports it under `errores`, like a validation error of the request. */
+    private function respondToDomainException(DomainException $exception): JsonResponse
+    {
+        $detail = __($exception->translationKey(), $exception->parameters());
+        $extensions = $exception instanceof HasProblemMembers ? $this->customMembers($exception) : [];
+
+        if ($exception instanceof HasInvalidField) {
+            $extensions['errores'] = [$exception->field() => [$detail]];
+        }
+
+        return $this->respond($this->typeOfDomainException($exception), $detail, extensions: $extensions);
     }
 
     /** Classify a domain exception into a problem type. */
