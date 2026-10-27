@@ -50,6 +50,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
             'provider_amount' => $payment->providerAmount?->minorUnits,
             'provider_payment_id' => $payment->providerPaymentId,
             'failure_reason' => $payment->failureReason,
+            'refund_pending' => $payment->refundPending,
             'updated_at' => $payment->updatedAt,
         ];
 
@@ -127,6 +128,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
             $model->failure_reason,
             $model->created_at,
             $model->updated_at,
+            $model->refund_pending,
         );
     }
 }

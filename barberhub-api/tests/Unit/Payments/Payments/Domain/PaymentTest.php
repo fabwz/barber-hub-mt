@@ -143,7 +143,22 @@ final class PaymentTest extends TestCase
         $this->assertNull($approved->failureReason);
     }
 
-    /** A payment the provider never saw cannot be approved. */
+    /** Only an approved payment is marked to give back, and a refund clears the mark (PA-07). */
+    public function test_only_an_approved_payment_is_marked_to_give_back(): void
+    {
+        $pending = $this->inStatus(PaymentStatus::Pending);
+        $approved = $this->inStatus(PaymentStatus::Approved);
+
+        $approved->markRefundPending($this->at());
+        $this->assertTrue($approved->refundPending);
+        $approved->refund($this->at());
+        $this->assertFalse($approved->refundPending);
+
+        $this->expectException(PaymentTransitionNotAllowedException::class);
+        $pending->markRefundPending($this->at());
+    }
+
+    /** A payment that was never charged cannot be approved. */
     public function test_a_payment_without_a_charge_cannot_be_approved(): void
     {
         $this->expectException(LogicException::class);
