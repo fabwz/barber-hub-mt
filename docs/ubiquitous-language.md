@@ -121,6 +121,9 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Cobro (el cargo que se crea en el proveedor) | `ChargeRequest`, `ChargeResult` | `provider_payment_id` | — |
 | Acción siguiente del cobro (ir a una URL o seguir instrucciones) | `NextAction` | — | — |
 | Monto y moneda del proveedor | `ProviderAmount` | `provider_currency`, `provider_amount` | — |
+| Pago a devolver (aprobado cuando la reserva ya no se pudo confirmar, PA-07) | `Payment::refundPending` | `payments.refund_pending` | `devolucion_pendiente` |
+| Datos del medio de pago (token de la tarjeta, o teléfono e identificación de SINPE Móvil) | `PaymentDetails` | — | `token`, `telefono`, `identificacion`, `tipo_identificacion` |
+| Resultado de pagar (el pago, si se creó, la acción siguiente y si la pasarela no respondió) | `PaymentOutcome` | — | — |
 | Reembolso | `Refund` | `refunds` | `reembolsos` |
 | Depósito a devolver | `RefundStatus::Due` | `due` | `a_devolver` |
 | Webhook | `WebhookEvent` | `webhook_events` | — |
