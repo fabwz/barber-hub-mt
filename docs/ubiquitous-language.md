@@ -109,10 +109,17 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Porcentaje del depósito (de 10 a 100 %; solo con la modalidad depósito) | `PaymentPolicy::depositPercentage` | `deposit_percentage` | `porcentaje_deposito` |
 | Depósito (monto que se paga al reservar) | `Money` | `reservations.deposit_amount` | `monto_deposito` |
 | Plazo de cancelación gratuita (de 0 a 720 horas) | `cancellationDeadlineHours` | `cancellation_deadline_hours` | `plazo_cancelacion_horas` |
-| Pasarela de pago | `PaymentGateway` | `payment_gateway` | `pasarela` |
+| Pasarela elegida por la barbería | `Barbershops` `PaymentGateway` | `payment_gateway` | `pasarela` |
 | ONVO Pay, PayPal | `Onvo`, `Paypal` | `onvo`, `paypal` | `onvo`, `paypal` |
 | Pago | `Payment` | `payments` | `pagos` |
-| Estado del pago | `PaymentStatus` | `status` | `estado` |
+| Estado del pago (pendiente, aprobado, rechazado, fallido, reembolsado) | `PaymentStatus` | `status` | `estado` |
+| Proveedor de pago | `PaymentProvider` | `payments.provider` | — |
+| Medio de pago (tarjeta, SINPE Móvil) | `PaymentMethod` | `payments.method` | `metodo` |
+| Pasarela (el puerto con el que el sistema cobra, consulta y reembolsa en un proveedor) | `Payments` `PaymentGateway` | — | — |
+| Elección de la pasarela de un cobro | `PaymentGatewayResolver` | — | — |
+| Cobro (el cargo que se crea en el proveedor) | `ChargeRequest`, `ChargeResult` | `provider_payment_id` | — |
+| Acción siguiente del cobro (ir a una URL o seguir instrucciones) | `NextAction` | — | — |
+| Monto y moneda del proveedor | `ProviderAmount` | `provider_currency`, `provider_amount` | — |
 | Reembolso | `Refund` | `refunds` | `reembolsos` |
 | Depósito a devolver | `RefundStatus::Due` | `due` | `a_devolver` |
 | Webhook | `WebhookEvent` | `webhook_events` | — |
@@ -122,6 +129,8 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Sesión | `Sessions` | `remaining_sessions` | `sesiones_restantes` |
 | Movimiento de saldo | `VoucherMovement` | `voucher_movements` | — |
 | Bono aplicable | `applicable` | — | — |
+
+La **pasarela** es la integración con un proveedor de pago, el puerto `PaymentGateway`; **ONVO Pay** y **PayPal** son los proveedores (`PaymentProvider`). La política de la barbería guarda cuál de las dos pasarelas eligió el dueño (`Barbershops`). El **cobro** es el cargo que el sistema crea en el proveedor; el **pago** es el registro propio de ese cobro (`Payment`), con su estado. El **depósito** es la parte del precio que se paga al reservar (el precio por el porcentaje de la política, redondeado hacia arriba al colón); con la modalidad de pago total, el monto del pago es el precio completo.
 
 El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio menos depósito). El **saldo del bono** se mide en sesiones. Son cosas distintas y no comparten nombre.
 

@@ -38,8 +38,9 @@ Hoy existen cuatro contextos, cada uno con sus módulos y las tres capas (las su
 | Catalog | `Barbershops`, `Services`, `OpeningHours`, `Closures`, `Collaborators` |
 | Availability | `Slots` |
 | Reservations | `Reservations` |
+| Payments | `Payments` |
 
-`Payments`, `Vouchers`, `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` ya existe; los `Shared` de cada contexto (previsto, #22) aún no existen.
+`Payments` existe desde el #62 con el módulo `Payments`; `Vouchers`, `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` ya existe; los `Shared` de cada contexto (previsto, #22) aún no existen.
 
 Un módulo corresponde a un agregado, no a una tabla.
 
@@ -137,6 +138,17 @@ Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas):
 - **Alcance del cambio.** Aplica a las reservas y los cobros nuevos. La reserva copia el plazo al crearse (`CreateReservation`), por eso pasar de 4 a 12 horas no cambia las ya creadas. La reserva se sigue confirmando de inmediato: el cobro llega con los issues #62 a #64.
 - **Aislamiento.** La tabla `barbershops` no lleva `barbershop_id` ni política de fila: la barbería es el inquilino. La ruta pasa por el middleware `barbershop` (404 sin rol, 403 a un colaborador) y los casos de uso leen la barbería de `BarbershopContext`, nunca de la petición. Como no hay un recurso con tabla que registrar, la ruta está en `TenantResources::BARBERSHOP_ROUTES` y su aislamiento lo prueba `PaymentPolicyTest`.
 - **Pendiente.** El registro técnico del cambio (autor, fecha, valor anterior y nuevo) es el #51.
+
+### El pago y la pasarela (#62, #129)
+
+`Payments/Payments` modela el cobro de una reserva y elige la pasarela de cada barbería (RF-20, RF-23). Todavía no tiene endpoints ni casos de uso: deja el dominio, el puerto, el resolutor y el esquema que usarán los adaptadores reales (#63 ONVO Pay, #64 PayPal).
+
+- **Agregado `Payment`.** Estados `pending`, `approved`, `rejected`, `failed` y `refunded` (`PaymentStatus`); las transiciones permitidas son `pending` a `approved`, `rejected` o `failed` y `approved` a `refunded`, y cualquier otra lanza `PaymentTransitionNotAllowedException` (409 `conflicto`, como las reservas). Guarda la reserva, el proveedor (`PaymentProvider`: `onvo`, `paypal`), el medio (`PaymentMethod`: `card`, `sinpe_movil`), el monto en colones (`Money`), el identificador del cobro en el proveedor (nulo hasta crearlo, `registerCharge`), la moneda y el monto en la unidad del proveedor (`ProviderAmount`, solo para trazabilidad) y el motivo de un rechazo o fallo. El instante entra como parámetro (`DateTimeImmutable`).
+- **Monto (PA-06).** `PaymentAmountCalculator` es un servicio de dominio puro: el pago total es el precio de la reserva y el depósito es el precio por el porcentaje, dividido entre 100 y redondeado hacia arriba al colón (₡7.000 al 30 % da ₡2.100; ₡5.001 al 33 % da ₡1.651). Reutiliza `Money::percentage`. El precio es el copiado en la reserva y el porcentaje, el de la política de la barbería; el monto nunca viene de la petición.
+- **Puerto `PaymentGateway`** (`Application/Contracts`, porque lo usan los casos de uso y no el dominio): `provider()`, `supports(PaymentMethod)`, `charge(ChargeRequest)`, `status(providerPaymentId)` y `refund(providerPaymentId, Money)`. Todo lo que entra y sale va en colones; la conversión de moneda y de unidades vive dentro de cada adaptador. `charge` devuelve un `ChargeResult` con el identificador del proveedor, el `ProviderAmount`, el estado y una `NextAction` opcional (redirigir a una URL o mostrar instrucciones, por ejemplo para SINPE Móvil). Un rechazo del proveedor es un resultado; no poder hablar con él lanza `GatewayUnavailableException`, que no es una excepción de dominio. Esta etapa no usa webhooks: el estado de un pago se obtiene consultando con `status`.
+- **Elección de la pasarela.** `PaymentGatewayResolver` (`Application`) tiene dos entradas. `forNewCharge(PaymentMethod)` usa la pasarela de la barbería (`payment_gateway`, que lee el puerto `BarbershopPaymentProvider` mediante `GetPaymentPolicy` de `Barbershops`) o, si no tiene, el valor por defecto de `config/payments.php` (variable `PAYMENTS_DEFAULT_GATEWAY`), y exige que admita el medio: si no, lanza `PaymentMethodNotSupportedException`, que responde 422 `datos-invalidos` con el campo `metodo` en `errores` (interfaz `HasInvalidField` de `Shared`, que `ProblemDetailsRenderer` traduce igual que un error de validación). `forPayment(Payment)` resuelve por el proveedor del propio pago, así que cambiar la pasarela de la barbería no afecta un cobro en curso (PA-02, RF-23). El puerto `PaymentGatewayRegistry` entrega el adaptador de un proveedor; `ConfiguredPaymentGatewayRegistry` lo busca en `payments.gateways` de `config/payments.php` y lo construye con el contenedor (un proveedor sin adaptador lanza `PaymentGatewayNotConfiguredException`). `PaymentsServiceProvider` enlaza todo, incluido el valor por defecto. Ningún controlador ni caso de uso nombra a ONVO ni a PayPal; los adaptadores se registran en la configuración al llegar.
+- **Persistencia.** Tabla `payments` (ver [data-model.md](data-model.md)), `PaymentModel` y `EloquentPaymentRepository`, que filtra por `BarbershopContext`. Su `save` corre en un punto de guardado y traduce la violación del índice parcial a `ActivePaymentExistsException`, de modo que el segundo pago activo de una reserva no aborta la transacción del llamador.
+- **Pruebas.** Lo único que se simula es la pasarela: `tests/Support/Payments/SimulatedPaymentGateway` aprueba, rechaza o falla por comunicación según la prueba (PA-09: no mueve dinero).
 
 ### La reserva (#126)
 
@@ -286,7 +298,8 @@ La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada re
 | --- | --- |
 | Dos solicitudes por el mismo espacio: una gana, la otra recibe `espacio-no-disponible` | `CreateReservation` bloquea la fila del colaborador (`SELECT ... FOR UPDATE`) y revalida la disponibilidad (#56); la restricción `EXCLUDE` de PostgreSQL es la segunda barrera y su violación se traduce a `espacio-no-disponible`. La prueba de carrera con conexiones paralelas es el #127 (RE-01, RE-02) |
 | El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0`) más `CHECK (remaining_sessions >= 0)` (previsto, #89) (BO-03) |
-| Un evento de la pasarela se procesa una sola vez | Llave única `(gateway, event_id)` en `webhook_events` (previsto, #65) (PA-05) |
+| Una reserva tiene un solo pago pendiente o aprobado | Índice único parcial `payments_one_active_per_reservation_idx` sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved` (#129); `EloquentPaymentRepository` lo traduce a `ActivePaymentExistsException`. Es la idempotencia del botón de pagar |
+| Un evento de la pasarela se procesa una sola vez | Llave única `(gateway, event_id)` en `webhook_events` (previsto, #65; esta etapa no usa webhooks) (PA-05) |
 | Cancelar es idempotente | El caso de uso revisa el estado actual dentro de la transacción (previsto, #60) (CA-06) |
 
 ## Errores
