@@ -69,13 +69,15 @@ erDiagram
     payments {
         uuid id PK
         uuid barbershop_id FK
-        varchar gateway
+        uuid reservation_id FK
+        varchar provider
+        varchar method
         varchar status
         integer amount
     }
 ```
 
-El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` y `audit_log` para mantenerse legible; sus columnas están más abajo.
+El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` (aún no creada) y `audit_log` para mantenerse legible; sus columnas están más abajo.
 
 ## Cuentas y acceso
 
@@ -304,21 +306,26 @@ Llave candidata: `(reservation_id, kind)`.
 
 ### payments
 
-Un pago es de una reserva o de la compra de un bono, nunca de ambos.
+El cobro de una reserva (RF-20). La tabla existe desde el issue #129 con las columnas marcadas como creadas. Tiene la política de fila `payments_barbershop_isolation` (ver [database.md](database.md)). La compra de un bono (`purchased_voucher_id`) llega con el milestone de los bonos, con una migración que agrega la columna y la regla de que un pago es de una reserva o de un bono, nunca de ambos.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` |
-| `reservation_id` | `uuid` | Opcional; llave foránea compuesta a `reservations` |
-| `purchased_voucher_id` | `uuid` | Opcional; llave foránea compuesta a `purchased_vouchers` |
-| `gateway` | `varchar(10)` | `CHECK` entre `onvo` y `paypal`; la pasarela vigente al cobrar (PA-02) |
-| `gateway_reference` | `varchar(255)` | Identificador del cobro en la pasarela |
-| `amount` | `integer` | Colones enteros, `CHECK` mayor que 0 |
-| `status` | `varchar(10)` | `CHECK` entre `pending`, `confirmed` y `failed`; solo lo fija el webhook verificado (PA-03) |
-| `confirmed_at` | `timestamptz` | |
-| `created_at`, `updated_at` | `timestamptz` | |
+| `id`, `barbershop_id` | `uuid` | Llave primaria (`DEFAULT uuidv7()`) y llave foránea a `barbershops`, en cascada |
+| `reservation_id` | `uuid` | Obligatoria por ahora. Llave foránea compuesta `(reservation_id, barbershop_id)` a `reservations`, sin cascada: una reserva con pagos no se borra |
+| `provider` | `varchar(10)` | `CHECK` `payments_provider_check` entre `onvo` y `paypal`; el proveedor vigente al crear el cobro, que no cambia aunque el dueño cambie la pasarela (PA-02, RF-23) |
+| `method` | `varchar(20)` | `CHECK` `payments_method_check` entre `card` y `sinpe_movil` |
+| `status` | `varchar(10)` | `CHECK` `payments_status_check` entre `pending`, `approved`, `rejected`, `failed` y `refunded` |
+| `amount` | `integer` | Colones enteros que paga el cliente (PA-06); `CHECK` mayor que 0 |
+| `provider_currency`, `provider_amount` | `char(3)`, `integer` | Moneda y monto en la unidad mínima del proveedor, solo para trazabilidad. Nulos hasta que el proveedor crea el cobro; `CHECK` `payments_provider_currency_amount_check`: ambos tienen valor o ninguno, y `provider_amount` mayor que 0 |
+| `provider_payment_id` | `varchar(100)` | Identificador del cobro en el proveedor. Nulo hasta crearlo; `CHECK` `payments_provider_payment_id_check`: un pago aprobado o reembolsado lo tiene |
+| `failure_reason` | `varchar(255)` | Motivo de un rechazo o un fallo; `CHECK` `payments_failure_reason_check`: solo con `rejected` o `failed` |
+| `created_at`, `updated_at` | `timestamptz` | Por defecto `now()`; el repositorio escribe los instantes que decide el agregado |
 
-`CHECK (num_nonnulls(reservation_id, purchased_voucher_id) = 1)`. Llave candidata: `(gateway, gateway_reference)`.
+Restricciones:
+
+- Llaves candidatas: `(id, barbershop_id)` y `(provider, provider_payment_id)`. Esta última es única entre todas las barberías porque el proveedor no las conoce; varias filas sin identificador (cobros aún no creados) conviven, ya que `NULL` no choca consigo mismo.
+- `payments_one_active_per_reservation_idx`: índice único parcial sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved`. Una reserva tiene un solo pago en curso o aprobado; uno rechazado, fallido o reembolsado la libera para un cobro nuevo. Es la idempotencia del botón de pagar: `EloquentPaymentRepository` traduce su violación (`23505`) a `ActivePaymentExistsException`.
+- Esta etapa (Investigación 1) no usa webhooks: el estado se obtiene consultando al proveedor, así que no hay tabla de eventos de la pasarela. El enunciado manda sobre el backlog en este punto, y la tabla `webhook_events` de abajo sigue siendo un diseño previsto.
 
 ### refunds (complementaria, RF-24)
 
@@ -335,7 +342,7 @@ El «depósito a devolver» de CA-02 es un reembolso en estado `due`.
 
 ### webhook_events
 
-El aviso de la pasarela se procesa una sola vez (PA-05).
+**Prevista; no se crea en la etapa Investigación 1**, que consulta el estado del pago al proveedor en lugar de recibir avisos. El aviso de la pasarela se procesa una sola vez (PA-05).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
