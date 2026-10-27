@@ -258,7 +258,7 @@ El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es 
 | `duration_minutes` | `smallint` | Creada en el #126. Duración vigente al reservar (SV-03); `CHECK` mayor que 0, sin repetir el rango del servicio para que un cambio del catálogo no invalide reservas existentes |
 | `cancellation_deadline_hours` | `smallint` | Creada en el #126. Plazo de cancelación vigente al reservar (CA-01); `CHECK` mayor o igual que 0. Desde el #49 es la copia de `barbershops.cancellation_deadline_hours` al momento de reservar |
 | `deposit_amount` | `integer` | Prevista, con el pago (PA-06). `CHECK` mayor o igual que 0; depósito calculado al reservar |
-| `expires_at` | `timestamptz` | Prevista, con el pago (RE-05). Solo en las temporales: 10 minutos desde que inicia el pago |
+| `expires_at` | `timestamptz` | Creada en el #66. Nula salvo en las temporales: la hora límite de pago, 10 minutos después de crearse (`Reservation::PAYMENT_WINDOW_MINUTES`, RE-05). `CHECK` `reservations_expires_at_check`: `expires_at IS NULL OR status = 'temporary'`; por eso confirmar, expirar o cancelar la reserva la deja en nulo |
 | `reschedule_count` | `smallint` | Creada en el #126. `CHECK` entre 0 y 2 (CA-05); por defecto 0. Aumentarla es de reprogramar (#59) |
 | `created_at`, `updated_at` | `timestamptz` | Creadas en el #126. Por defecto `now()` |
 
@@ -269,7 +269,7 @@ Restricciones:
 - `reservations_customer_no_overlap_excl` (#126), sobre `(barbershop_id, customer_membership_id, tstzrange(starts_at, ends_at))`, solo para el estado `confirmed`: un cliente no tiene dos reservas confirmadas solapadas en la barbería (RE-06). No incluye la limpieza: es el tiempo del servicio, no el del colaborador.
 - Llaves candidatas: `id` y `(id, barbershop_id)`, para que otras tablas referencien la reserva junto con su barbería.
 
-**Pendiente (#62).** La disponibilidad (#53) trata toda reserva temporal como ocupada porque `expires_at` aún no existe; cuando llegue esa columna, la consulta de intervalos bloqueados debe ignorar las temporales vencidas.
+**Expiración perezosa (#66).** Una temporal vencida (`expires_at <= ahora`) no ocupa el espacio aunque su estado siga siendo `temporary`: la consulta de intervalos bloqueados la ignora (DI-05) y las lecturas la muestran `expirada` sin escribir. El estado se actualiza a `expired` la próxima vez que se reserva o reprograma con ese colaborador (ya bloqueado), antes de revalidar la disponibilidad, para que la exclusión `reservations_no_overlap_excl` no choque con la vencida. **Pendiente:** la devolución de un pago que llega después del vencimiento (PA-07).
 
 Las dos exclusiones se aplican solo a los estados que ocupan el espacio: una reserva completada, ausente, cancelada o expirada lo libera al cambiar de estado. Las reservas contiguas (el inicio de una es el fin del bloqueo de la anterior) se permiten. Son la segunda barrera: el dominio y la disponibilidad rechazan primero (#56), y el SQLSTATE `23P01` que llega de la base lo traduce `EloquentReservationRepository` según la restricción: `espacio-no-disponible` para la del colaborador y un conflicto (`reserva-solapada`, tipo `conflicto`) para la del cliente.
 
