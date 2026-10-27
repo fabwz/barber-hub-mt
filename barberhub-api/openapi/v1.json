@@ -61,6 +61,10 @@
         {
             "name": "Reservas",
             "description": "Reservar el espacio de un barbero y consultar las reservas seg\u00fan el rol."
+        },
+        {
+            "name": "Pagos",
+            "description": "Cobro del dep\u00f3sito o del total de una reserva, consulta del estado del pago y reembolso."
         }
     ],
     "security": [
@@ -1123,6 +1127,179 @@
                 "responses": {
                     "204": {
                         "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/reservas/{reserva}/pagos": {
+            "post": {
+                "operationId": "payments.payments.store",
+                "description": "El cliente paga su reserva `temporal` con `metodo` `tarjeta` (con el `token` que el navegador cre\u00f3 con la llave p\u00fablica de la pasarela; el n\u00famero de la tarjeta nunca llega a este servidor) o `sinpe_movil` (con `telefono`, `identificacion` y `tipo_identificacion`). El monto lo calcula el servidor: el precio que la reserva guard\u00f3, completo o el porcentaje de dep\u00f3sito de la barber\u00eda redondeado hacia arriba al col\u00f3n; nunca viene del cuerpo. Responde 201 con el pago; si el estado es `pendiente`, `accion_siguiente` dice qu\u00e9 hace el cliente (ir a una p\u00e1gina o transferir por SINPE M\u00f3vil el monto exacto) y el estado final se obtiene con `GET /pagos/{pago}`. Un pago `rechazado` trae el `motivo` y deja la reserva temporal para reintentar. Si la reserva ya tiene un pago `pendiente` o `aprobado`, devuelve ese pago con 200 y no cobra otra vez. Una reserva que no est\u00e1 temporal y vigente, o de una barber\u00eda que no cobra, responde 409 `conflicto`. Si la pasarela no responde responde 503 `servicio-no-disponible`: si no lleg\u00f3 a crear el cobro el pago queda `fallido` y se puede reintentar; si fall\u00f3 al confirmarlo queda `pendiente` y no se vuelve a cobrar solo. Un m\u00e9todo que la pasarela de la barber\u00eda no admite responde 422 `datos-invalidos` en `metodo`. Una reserva inexistente, de otra barber\u00eda o de otro cliente responde 404 `no-encontrado`; el due\u00f1o o un colaborador recibe 403 `prohibido`.",
+                "summary": "Pagar una reserva",
+                "tags": [
+                    "Pagos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PagarReserva"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/pagos/{pago}": {
+            "get": {
+                "operationId": "payments.payments.show",
+                "description": "Consulta el estado del pago a la pasarela (nunca conf\u00eda en el navegador), lo actualiza y, si qued\u00f3 `aprobado`, confirma la reserva en la misma transacci\u00f3n: no queda una reserva confirmada sin su pago ni un pago aprobado sin su reserva. Un pago `rechazado`, `fallido` o ya resuelto se devuelve tal cual. Si el pago se aprob\u00f3 cuando la reserva ya hab\u00eda vencido y no se pudo confirmar, queda `aprobado` con `devolucion_pendiente` verdadero (PA-07) y la reserva sigue expirada. La puede consultar el cliente due\u00f1o de la reserva o el due\u00f1o de la barber\u00eda; un colaborador recibe 403 `prohibido`. Un pago inexistente, de otra barber\u00eda o de otro cliente responde 404 `no-encontrado`. Si la pasarela no responde, 503 `servicio-no-disponible` y el pago queda como estaba.",
+                "summary": "Consultar un pago",
+                "tags": [
+                    "Pagos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pago",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`Pago`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Pago"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/pagos/{pago}/reembolsos": {
+            "post": {
+                "operationId": "payments.payments.refund",
+                "description": "El due\u00f1o devuelve el monto completo de un pago `aprobado` por la misma pasarela con que se cobr\u00f3. Si la pasarela acepta, el pago queda `reembolsado`. Si la rechaza, el pago sigue `aprobado` y la respuesta es 409 `conflicto` con el `motivo`. Un pago que no est\u00e1 aprobado responde 409 `conflicto`; si la pasarela no responde, 503 `servicio-no-disponible`. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido`; un pago inexistente o de otra barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Reembolsar un pago",
+                "tags": [
+                    "Pagos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pago",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`Pago`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Pago"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
@@ -2495,6 +2672,156 @@
                     "cierra"
                 ],
                 "title": "Franja"
+            },
+            "PagarReserva": {
+                "type": "object",
+                "properties": {
+                    "metodo": {
+                        "type": "string",
+                        "description": "Medio de pago: `tarjeta` o `sinpe_movil`.",
+                        "enum": [
+                            "tarjeta",
+                            "sinpe_movil"
+                        ]
+                    },
+                    "token": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Con `tarjeta`: identificador del m\u00e9todo de pago que el navegador cre\u00f3 con la llave p\u00fablica de la pasarela. Nunca el n\u00famero de la tarjeta.",
+                        "maxLength": 255
+                    },
+                    "telefono": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Con `sinpe_movil`: tel\u00e9fono desde el que se hace la transferencia, por ejemplo `+50688888888`.",
+                        "maxLength": 20
+                    },
+                    "identificacion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Con `sinpe_movil`: identificaci\u00f3n de la persona, con los guiones de su tipo, por ejemplo `01-1393-1919`.",
+                        "maxLength": 30
+                    },
+                    "tipo_identificacion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Con `sinpe_movil`: tipo de identificaci\u00f3n: `0` nacional, `1` residente, `2` entidad estatal, `3` jur\u00eddica, `4` instituci\u00f3n aut\u00f3noma, `5` diplom\u00e1tico o `9` extranjero.",
+                        "enum": [
+                            "0",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
+                            "9",
+                            null
+                        ]
+                    }
+                },
+                "required": [
+                    "metodo"
+                ],
+                "title": "PagarReserva"
+            },
+            "Pago": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "reserva": {
+                        "type": "string"
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado del pago: `pendiente`, `aprobado`, `rechazado`, `fallido` o `reembolsado`. La reserva se confirma solo cuando el pago queda `aprobado`."
+                    },
+                    "metodo": {
+                        "type": "string",
+                        "description": "Medio de pago: `tarjeta` o `sinpe_movil`."
+                    },
+                    "monto": {
+                        "type": "integer",
+                        "description": "Colones cobrados: el dep\u00f3sito o el total, seg\u00fan la pol\u00edtica de la barber\u00eda."
+                    },
+                    "motivo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Motivo del rechazo o del fallo; nulo en los dem\u00e1s estados."
+                    },
+                    "devolucion_pendiente": {
+                        "type": "boolean",
+                        "description": "Verdadero si el pago se aprob\u00f3 cuando la reserva ya no se pod\u00eda confirmar y hay que devolverlo (PA-07)."
+                    },
+                    "accion_siguiente": {
+                        "description": "Solo al crear el pago: `redireccion` con la `url` a la que va el cliente (3DS) o `instrucciones` con el `numero_destino` y el `monto` exacto de la transferencia SINPE M\u00f3vil.",
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "tipo": {
+                                        "type": "string",
+                                        "const": "redireccion"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "tipo",
+                                    "url"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "tipo": {
+                                        "type": "string",
+                                        "const": "instrucciones"
+                                    },
+                                    "numero_destino": {
+                                        "type": "string"
+                                    },
+                                    "monto": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "tipo",
+                                    "numero_destino",
+                                    "monto"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "reserva",
+                    "estado",
+                    "metodo",
+                    "monto",
+                    "motivo",
+                    "devolucion_pendiente",
+                    "accion_siguiente"
+                ],
+                "title": "Pago"
             },
             "PaymentGateway": {
                 "type": "string",

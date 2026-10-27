@@ -9,7 +9,7 @@ use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
 use Src\Shared\Domain\ValueObjects\Money;
 
-/** What the gateway needs to create a charge: the amount in colones, the method and the references to find it again. */
+/** What the gateway needs to create a charge: the amount in colones, the method, what the customer gave for it and the references to find it again. */
 final readonly class ChargeRequest
 {
     public function __construct(
@@ -17,5 +17,6 @@ final readonly class ChargeRequest
         public ReservationId $reservationId,
         public Money $amount,
         public PaymentMethod $method,
+        public ?PaymentDetails $details = null,
     ) {}
 }

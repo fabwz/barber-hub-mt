@@ -19,14 +19,19 @@ final readonly class TenantResource
 
     public const string CANCEL = 'cancel';
 
+    public const string REFUND = 'refund';
+
     /** Where the cancellation of a row is served, after the row. */
     public const string CANCEL_SUFFIX = '/cancelacion';
+
+    /** Where the refund of a row is served, after the row. */
+    public const string REFUND_SUFFIX = '/reembolsos';
 
     /**
      * @param  string  $table  Table of the resource; it has a barbershop_id column.
      * @param  Closure(string): string  $createRow  Insert a row for the barbershop (it runs with that barbershop as context) and return its identifier.
      * @param  string  $path  Route of the collection as the router writes it, with {barberia}, for example "api/v1/barberias/{barberia}/servicios". A row is served at "<path>/<id>".
-     * @param  list<string>  $operations  What the routes offer: LIST (GET path), SHOW (GET path/id), UPDATE (PATCH path/id), DELETE (DELETE path/id) and CANCEL (POST path/id/cancelacion).
+     * @param  list<string>  $operations  What the routes offer: LIST (GET path), SHOW (GET path/id), UPDATE (PATCH path/id), DELETE (DELETE path/id) CANCEL (POST path/id/cancelacion) and REFUND (POST path/id/reembolsos, tried only against the other barbershop: it needs the gateway to succeed).
      * @param  array<string, mixed>  $updatePayload  A valid body for UPDATE.
      * @param  list<string>  $otherPaths  Routes of the resource outside its collection path, such as "my reservations"; the coverage check counts them as its own.
      */
