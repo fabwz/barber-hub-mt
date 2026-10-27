@@ -24,9 +24,11 @@ final class DemoBarbershopSeeder extends Seeder
 
     /**
      * Fictitious barbershops (CL-08, RNF-23, RL-04). Fixed identifiers and links make a second run update the same rows.
-     * The owner is a fictitious account with an active owner membership; the gateway is null for no gateway.
+     * The owner is a fictitious account with an active owner membership; the gateway is null for no gateway. The payment policy
+     * is the mode ("none", "deposit" or "full"), the percentage of the deposit (null unless it is a deposit) and the
+     * free-cancellation deadline in hours (PA-01, CA-01).
      *
-     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
+     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, payment_mode: string, deposit_percentage: int|null, cancellation_deadline_hours: int, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
      */
     public const array BARBERSHOPS = [
         [
@@ -36,6 +38,9 @@ final class DemoBarbershopSeeder extends Seeder
             'phone' => '0000-0001',
             'link' => 'pura-navaja',
             'gateway' => 'onvo',
+            'payment_mode' => 'deposit',
+            'deposit_percentage' => 30,
+            'cancellation_deadline_hours' => 4,
             'owner' => [
                 'id' => '0192f0c4-0000-7000-8000-00000000a001',
                 'membership' => '0192f0c4-0000-7000-8000-00000000c001',
@@ -51,6 +56,9 @@ final class DemoBarbershopSeeder extends Seeder
             'phone' => '0000-0002',
             'link' => 'fade-lab',
             'gateway' => 'paypal',
+            'payment_mode' => 'full',
+            'deposit_percentage' => null,
+            'cancellation_deadline_hours' => 24,
             'owner' => [
                 'id' => '0192f0c4-0000-7000-8000-00000000a002',
                 'membership' => '0192f0c4-0000-7000-8000-00000000c002',
@@ -66,6 +74,9 @@ final class DemoBarbershopSeeder extends Seeder
             'phone' => '0000-0003',
             'link' => 'don-chepe',
             'gateway' => null,
+            'payment_mode' => 'none',
+            'deposit_percentage' => null,
+            'cancellation_deadline_hours' => 24,
             'owner' => [
                 'id' => '0192f0c4-0000-7000-8000-00000000a003',
                 'membership' => '0192f0c4-0000-7000-8000-00000000c003',
@@ -195,6 +206,9 @@ final class DemoBarbershopSeeder extends Seeder
                     'phone' => $barbershop['phone'],
                     'public_link' => $barbershop['link'],
                     'payment_gateway' => $barbershop['gateway'],
+                    'payment_mode' => $barbershop['payment_mode'],
+                    'deposit_percentage' => $barbershop['deposit_percentage'],
+                    'cancellation_deadline_hours' => $barbershop['cancellation_deadline_hours'],
                 ],
             );
 

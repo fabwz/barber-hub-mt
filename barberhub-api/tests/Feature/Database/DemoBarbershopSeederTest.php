@@ -56,6 +56,22 @@ final class DemoBarbershopSeederTest extends TestCase
         $this->assertSame(3, DB::table('barbershops')->count());
     }
 
+    /** Pura Navaja takes a 30 % deposit with a 4-hour deadline, Fade Lab full payment and Don Chepe no payment (PA-01, CA-01). */
+    public function test_each_barbershop_has_its_payment_policy(): void
+    {
+        $this->seed(DemoBarbershopSeeder::class);
+
+        $policies = DB::table('barbershops')->orderBy('public_link')->get()->mapWithKeys(fn (object $row): array => [
+            $row->public_link => [$row->payment_mode, $row->deposit_percentage, (int) $row->cancellation_deadline_hours, $row->payment_gateway],
+        ])->all();
+
+        $this->assertSame([
+            'don-chepe' => ['none', null, 24, null],
+            'fade-lab' => ['full', null, 24, 'paypal'],
+            'pura-navaja' => ['deposit', 30, 4, 'onvo'],
+        ], $policies);
+    }
+
     /** Each barbershop has its gateway, and Don Chepe has none (PA-02). */
     public function test_each_barbershop_has_its_gateway(): void
     {
