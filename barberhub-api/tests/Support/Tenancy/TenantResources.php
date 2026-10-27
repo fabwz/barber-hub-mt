@@ -188,8 +188,9 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/reservas',
                 [],
             ),
-            // The payments have no endpoint yet (#62), so for now the audit proves only what the database hides; their routes
-            // will bring their operations here.
+            // The payment is read at pagos/{id} (#63) and refunded at pagos/{id}/reembolsos; the owner of Pura Navaja tries both against
+            // Fade Lab. Paying is a route under the reservation, which the reservations resource owns. The row has no charge in the
+            // provider, so reading it asks nobody.
             new TenantResource(
                 'payments',
                 function (string $barbershopId): string {
@@ -206,8 +207,8 @@ final class TenantResources
 
                     return $id;
                 },
-                'api/v1/barberias/{barberia}/reservas',
-                [],
+                'api/v1/barberias/{barberia}/pagos',
+                [TenantResource::SHOW, TenantResource::REFUND],
             ),
         ];
     }

@@ -36,6 +36,7 @@ final class Payment
         public private(set) ?string $failureReason,
         public readonly DateTimeImmutable $createdAt,
         public private(set) DateTimeImmutable $updatedAt,
+        public private(set) bool $refundPending = false,
     ) {}
 
     /**
@@ -72,8 +73,9 @@ final class Payment
         ?string $failureReason,
         DateTimeImmutable $createdAt,
         DateTimeImmutable $updatedAt,
+        bool $refundPending = false,
     ): self {
-        return new self($id, $barbershopId, $reservationId, $provider, $method, $amount, $providerPaymentId, $providerAmount, $status, $failureReason, $createdAt, $updatedAt);
+        return new self($id, $barbershopId, $reservationId, $provider, $method, $amount, $providerPaymentId, $providerAmount, $status, $failureReason, $createdAt, $updatedAt, $refundPending);
     }
 
     /**
@@ -148,6 +150,23 @@ final class Payment
     public function refund(DateTimeImmutable $at): void
     {
         $this->changeTo(PaymentStatus::Refunded, $at);
+        $this->refundPending = false;
+    }
+
+    /**
+     * The provider approved the money after the reservation could no longer be confirmed (PA-07): the customer paid for a
+     * space the system cannot give, so the payment stays approved and is marked as one to give back.
+     *
+     * @throws PaymentTransitionNotAllowedException when the payment is not approved
+     */
+    public function markRefundPending(DateTimeImmutable $at): void
+    {
+        if ($this->status !== PaymentStatus::Approved) {
+            throw PaymentTransitionNotAllowedException::create();
+        }
+
+        $this->refundPending = true;
+        $this->updatedAt = $at;
     }
 
     /** Apply a change the statuses allow; a rejection or a failure keeps its reason. */

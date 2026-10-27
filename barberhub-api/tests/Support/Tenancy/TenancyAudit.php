@@ -129,7 +129,11 @@ final class TenancyAudit
             }
 
             foreach (self::requests($resource) as [$operation, $method, $payload, $withRow]) {
-                $suffix = $operation === TenantResource::CANCEL ? TenantResource::CANCEL_SUFFIX : '';
+                $suffix = match ($operation) {
+                    TenantResource::CANCEL => TenantResource::CANCEL_SUFFIX,
+                    TenantResource::REFUND => TenantResource::REFUND_SUFFIX,
+                    default => '',
+                };
                 // The URL of the other barbershop answers like a barbershop that does not exist.
                 $swapped = $send($method, $resource->uri($other, $withRow ? $otherRow : null).$suffix, $payload);
                 $nobody = $send($method, $resource->uri($unknown, $withRow ? $otherRow : null).$suffix, $payload);
@@ -176,6 +180,7 @@ final class TenancyAudit
             [TenantResource::UPDATE, 'PATCH', $resource->updatePayload, true],
             [TenantResource::DELETE, 'DELETE', [], true],
             [TenantResource::CANCEL, 'POST', [], true],
+            [TenantResource::REFUND, 'POST', [], true],
         ] as $request) {
             if ($resource->supports($request[0])) {
                 $requests[] = $request;

@@ -41,6 +41,10 @@ final class SimulatedPaymentGateway implements PaymentGateway
 
     private bool $unavailable = false;
 
+    private bool $failsAfterCharge = false;
+
+    private ?string $refundRefusal = null;
+
     /**
      * Build a gateway for a provider that admits some methods.
      *
@@ -85,6 +89,22 @@ final class SimulatedPaymentGateway implements PaymentGateway
         return $this;
     }
 
+    /** The next charge is created in the provider but the answer to its confirmation never arrives; the status can still be asked. */
+    public function failsAfterCreatingTheCharge(): self
+    {
+        $this->failsAfterCharge = true;
+
+        return $this;
+    }
+
+    /** The provider refuses every refund with the reason. */
+    public function refusesRefunds(string $reason = 'Refund not allowed'): self
+    {
+        $this->refundRefusal = $reason;
+
+        return $this;
+    }
+
     public function provider(): PaymentProvider
     {
         return $this->provider;
@@ -100,13 +120,19 @@ final class SimulatedPaymentGateway implements PaymentGateway
         $this->failIfUnavailable();
         $this->charges[] = $request;
 
-        return new ChargeResult(
+        $result = new ChargeResult(
             'sim_'.$this->provider->value.'_'.count($this->charges),
             ProviderAmount::of('USD', intdiv($request->amount->colones * 100 + self::COLONES_PER_DOLLAR - 1, self::COLONES_PER_DOLLAR)),
             $this->outcome,
             $this->reason,
             $this->outcome === PaymentStatus::Pending ? NextAction::redirectTo('https://pay.test/'.$request->paymentId->value) : null,
         );
+
+        if ($this->failsAfterCharge) {
+            throw GatewayUnavailableException::afterCharge(new ChargeResult($result->providerPaymentId, $result->providerAmount, PaymentStatus::Pending), 'simulated outage after the charge');
+        }
+
+        return $result;
     }
 
     public function status(string $providerPaymentId): GatewayStatus
@@ -121,6 +147,10 @@ final class SimulatedPaymentGateway implements PaymentGateway
     {
         $this->failIfUnavailable();
         $this->refunds[] = [$providerPaymentId, $amount];
+
+        if ($this->refundRefusal !== null) {
+            return RefundResult::refused($this->refundRefusal);
+        }
 
         return RefundResult::accepted('sim_refund_'.count($this->refunds));
     }

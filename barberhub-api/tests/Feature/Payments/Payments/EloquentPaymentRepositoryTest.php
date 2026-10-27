@@ -81,6 +81,25 @@ final class EloquentPaymentRepositoryTest extends TestCase
         $this->assertSame(1, DB::table('payments')->count());
     }
 
+    /** The mark of an approved payment to give back is saved, and a refund clears it (PA-07). */
+    public function test_the_refund_pending_mark_is_saved_and_cleared_by_the_refund(): void
+    {
+        $payment = $this->payment();
+        $this->repository->save($payment);
+        $payment->registerCharge('onvo_2', ProviderAmount::of('CRC', 255000), new DateTimeImmutable('2030-03-01 08:01:00-06:00'));
+        $payment->approve(new DateTimeImmutable('2030-03-01 08:02:00-06:00'));
+        $payment->markRefundPending(new DateTimeImmutable('2030-03-01 08:11:00-06:00'));
+        $this->repository->save($payment);
+
+        $marked = $this->repository->find($payment->id);
+        $this->assertTrue($marked?->refundPending);
+
+        $marked->refund(new DateTimeImmutable('2030-03-01 08:12:00-06:00'));
+        $this->repository->save($marked);
+
+        $this->assertFalse($this->repository->find($payment->id)?->refundPending);
+    }
+
     /** A rejection is saved with its reason. */
     public function test_a_rejection_keeps_its_reason(): void
     {

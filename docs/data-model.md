@@ -319,6 +319,7 @@ El cobro de una reserva (RF-20). La tabla existe desde el issue #129 con las col
 | `provider_currency`, `provider_amount` | `char(3)`, `integer` | Moneda y monto en la unidad mínima del proveedor, solo para trazabilidad. Nulos hasta que el proveedor crea el cobro; `CHECK` `payments_provider_currency_amount_check`: ambos tienen valor o ninguno, y `provider_amount` mayor que 0 |
 | `provider_payment_id` | `varchar(100)` | Identificador del cobro en el proveedor. Nulo hasta crearlo; `CHECK` `payments_provider_payment_id_check`: un pago aprobado o reembolsado lo tiene |
 | `failure_reason` | `varchar(255)` | Motivo de un rechazo o un fallo; `CHECK` `payments_failure_reason_check`: solo con `rejected` o `failed` |
+| `refund_pending` | `boolean` | Por defecto `false` (migración del #63). Marca el pago aprobado cuando la reserva ya no se pudo confirmar y hay que devolverlo (PA-07); `CHECK` `payments_refund_pending_check`: solo con `approved`. El reembolso la limpia |
 | `created_at`, `updated_at` | `timestamptz` | Por defecto `now()`; el repositorio escribe los instantes que decide el agregado |
 
 Restricciones:

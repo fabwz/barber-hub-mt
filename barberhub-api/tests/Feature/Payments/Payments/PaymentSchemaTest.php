@@ -43,12 +43,12 @@ final class PaymentSchemaTest extends TestCase
         $this->reservation = $this->insertReservation($this->puraNavaja, 'kevin@barberhub.test', 'ana@barberhub.test', '2030-03-04 10:00');
     }
 
-    /** The table has the columns of the issue and none of the ones of the webhooks, which this stage does not use. */
+    /** The table has the columns of the issues (#129 and the mark of #63) and none of the ones of the webhooks, which this stage does not use. */
     public function test_the_table_has_only_the_columns_of_this_issue(): void
     {
         $this->assertEqualsCanonicalizing([
             'id', 'barbershop_id', 'reservation_id', 'provider', 'method', 'status', 'amount', 'provider_currency', 'provider_amount',
-            'provider_payment_id', 'failure_reason', 'created_at', 'updated_at',
+            'provider_payment_id', 'failure_reason', 'refund_pending', 'created_at', 'updated_at',
         ], Schema::connection('pgsql_admin')->getColumnListing('payments'));
         $this->assertFalse(Schema::connection('pgsql_admin')->hasTable('gateway_events'));
     }

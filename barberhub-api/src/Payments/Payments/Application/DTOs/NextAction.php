@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Application\DTOs;
 
-/** What the customer must do to finish paying: go to a page of the provider or follow some instructions. */
+use Src\Shared\Domain\ValueObjects\Money;
+
+/** What the customer must do to finish paying: go to a page of the provider or make a transfer. */
 final readonly class NextAction
 {
-    private function __construct(public NextActionType $type, public string $value) {}
+    private function __construct(public NextActionType $type, public string $value, public ?Money $amount = null) {}
 
     /** The customer goes to this URL of the provider. */
     public static function redirectTo(string $url): self
@@ -15,9 +17,9 @@ final readonly class NextAction
         return new self(NextActionType::Redirect, $url);
     }
 
-    /** The customer follows these instructions, for example to pay with SINPE Móvil. */
-    public static function instructions(string $text): self
+    /** The customer transfers exactly this amount by SINPE Móvil to this number. */
+    public static function instructions(string $destination, Money $amount): self
     {
-        return new self(NextActionType::Instructions, $text);
+        return new self(NextActionType::Instructions, $destination, $amount);
     }
 }
