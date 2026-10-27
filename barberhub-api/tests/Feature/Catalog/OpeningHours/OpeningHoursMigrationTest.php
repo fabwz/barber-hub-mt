@@ -28,6 +28,9 @@ final class OpeningHoursMigrationTest extends TestCase
     // The payments point at the reservations, so they go before them when rolling back and after them when applying again.
     private const string PAYMENTS = '2026_10_26_110000_create_payments_table';
 
+    // The expiry column is added to the reservations, so it goes before them when rolling back and after them when applying again.
+    private const string EXPIRES_AT = '2026_10_26_120000_add_expires_at_to_reservations_table';
+
     /** Rolling back drops both tables, the range type and the extension; applying again brings them back. */
     public function test_migrations_roll_back_and_apply_again_without_leftovers(): void
     {
@@ -35,6 +38,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         $this->asOwner(function (): void {
+            $this->apply(self::EXPIRES_AT, 'down');
             $this->apply(self::PAYMENTS, 'down');
             $this->apply(self::RESERVATIONS, 'down');
             $this->apply(self::COLLABORATORS, 'down');
@@ -53,6 +57,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::COLLABORATORS, 'up');
             $this->apply(self::RESERVATIONS, 'up');
             $this->apply(self::PAYMENTS, 'up');
+            $this->apply(self::EXPIRES_AT, 'up');
         });
 
         $this->assertTrue($schema->hasTable('opening_hours'));
@@ -67,6 +72,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
 
         $this->asOwner(function () use ($admin): void {
+            $this->apply(self::EXPIRES_AT, 'down');
             $this->apply(self::PAYMENTS, 'down');
             $this->apply(self::RESERVATIONS, 'down');
             $this->apply(self::COLLABORATORS, 'down');
@@ -79,6 +85,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::COLLABORATORS, 'up');
             $this->apply(self::RESERVATIONS, 'up');
             $this->apply(self::PAYMENTS, 'up');
+            $this->apply(self::EXPIRES_AT, 'up');
         });
 
         $this->assertSame(1, $admin->table('pg_type')->where('typname', 'timerange')->count());

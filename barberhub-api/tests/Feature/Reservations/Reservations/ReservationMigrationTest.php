@@ -16,6 +16,9 @@ final class ReservationMigrationTest extends TestCase
 
     private const string MIGRATION = '2026_10_20_150000_create_reservations_tables';
 
+    // The expiry column belongs to the reservations table, so it goes before the table when rolling back and after it when applying again.
+    private const string EXPIRES_AT = '2026_10_26_120000_add_expires_at_to_reservations_table';
+
     // The payments point at the reservations, so they go before them when rolling back and after them when applying again.
     private const string PAYMENTS = '2026_10_26_110000_create_payments_table';
 
@@ -26,10 +29,12 @@ final class ReservationMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
         $migration = require base_path('database/migrations/'.self::MIGRATION.'.php');
         $payments = require base_path('database/migrations/'.self::PAYMENTS.'.php');
+        $expiresAt = require base_path('database/migrations/'.self::EXPIRES_AT.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $expiresAt->down();
             $payments->down();
             $migration->down();
 
@@ -41,6 +46,7 @@ final class ReservationMigrationTest extends TestCase
 
             $migration->up();
             $payments->up();
+            $expiresAt->up();
 
             $this->assertTrue($schema->hasTable('reservations'));
             $this->assertTrue($schema->hasTable('reservation_status_history'));
