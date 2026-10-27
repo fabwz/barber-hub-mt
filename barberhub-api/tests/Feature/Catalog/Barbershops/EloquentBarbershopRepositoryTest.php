@@ -9,6 +9,7 @@ use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
 use Src\Catalog\Barbershops\Domain\Exceptions\PublicLinkTakenException;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentPolicy;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Models\BarbershopModel;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Repositories\EloquentBarbershopRepository;
@@ -51,7 +52,7 @@ final class EloquentBarbershopRepositoryTest extends TestCase
         $id = $this->repository->nextId();
         $this->repository->save($this->barbershop('Pura Navaja', 'pura-navaja', $id));
 
-        $this->repository->save(Barbershop::reconstitute($id, new BarbershopName('La Navaja'), new City('Florencia'), new Phone('2460-1111'), new PublicLink('pura-navaja')));
+        $this->repository->save(Barbershop::reconstitute($id, new BarbershopName('La Navaja'), new City('Florencia'), new Phone('2460-1111'), new PublicLink('pura-navaja'), PaymentPolicy::initial()));
 
         $this->assertDatabaseCount('barbershops', 1);
         $model = BarbershopModel::query()->findOrFail($id->value);
@@ -65,7 +66,7 @@ final class EloquentBarbershopRepositoryTest extends TestCase
         $id = $this->repository->nextId();
         $this->repository->save($this->barbershop('Barbería Pura Navaja', 'pura-navaja', $id));
 
-        $this->repository->save(Barbershop::reconstitute($id, new BarbershopName('La Navaja Dorada'), new City('San Carlos'), new Phone('2460-0000'), new PublicLink('la-navaja-dorada')));
+        $this->repository->save(Barbershop::reconstitute($id, new BarbershopName('La Navaja Dorada'), new City('San Carlos'), new Phone('2460-0000'), new PublicLink('la-navaja-dorada'), PaymentPolicy::initial()));
 
         $this->assertSame('pura-navaja', BarbershopModel::query()->findOrFail($id->value)->public_link);
         $this->assertSame('La Navaja Dorada', $this->repository->find($id)?->name->value);

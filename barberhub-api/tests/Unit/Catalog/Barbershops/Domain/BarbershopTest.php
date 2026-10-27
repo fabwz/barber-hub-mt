@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentPolicy;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
@@ -45,6 +46,7 @@ final class BarbershopTest extends TestCase
             new City('San Carlos'),
             new Phone('2460-0000'),
             new PublicLink('pura-navaja'),
+            PaymentPolicy::initial(),
         );
 
         $this->assertSame('Barbería Pura Navaja', $barbershop->name->value);

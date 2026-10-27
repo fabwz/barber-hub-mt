@@ -12,6 +12,9 @@ use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
 use Src\Catalog\Barbershops\Domain\Exceptions\PublicLinkTakenException;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentGateway;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentMode;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentPolicy;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Models\BarbershopModel;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
@@ -40,6 +43,10 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                     'name' => $barbershop->name->value,
                     'city' => $barbershop->city->value,
                     'phone' => $barbershop->phone->value,
+                    'payment_mode' => $barbershop->paymentPolicy->mode->value,
+                    'deposit_percentage' => $barbershop->paymentPolicy->depositPercentage,
+                    'cancellation_deadline_hours' => $barbershop->paymentPolicy->cancellationDeadlineHours,
+                    'payment_gateway' => $barbershop->paymentPolicy->gateway?->value,
                 ];
                 $model = BarbershopModel::query()->find($barbershop->id->value);
 
@@ -75,6 +82,12 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
             new City($model->city),
             new Phone($model->phone),
             new PublicLink($model->public_link),
+            PaymentPolicy::of(
+                PaymentMode::from($model->payment_mode),
+                $model->deposit_percentage,
+                $model->cancellation_deadline_hours,
+                $model->payment_gateway === null ? null : PaymentGateway::from($model->payment_gateway),
+            ),
         );
     }
 }

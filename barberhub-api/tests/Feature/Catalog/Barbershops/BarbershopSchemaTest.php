@@ -21,7 +21,7 @@ final class BarbershopSchemaTest extends TestCase
     {
         $columns = Schema::connection('pgsql_admin')->getColumnListing('barbershops');
 
-        $this->assertEqualsCanonicalizing(['id', 'name', 'city', 'phone', 'public_link', 'payment_gateway', 'created_at', 'updated_at'], $columns);
+        $this->assertEqualsCanonicalizing(['id', 'name', 'city', 'phone', 'public_link', 'payment_gateway', 'payment_mode', 'deposit_percentage', 'cancellation_deadline_hours', 'created_at', 'updated_at'], $columns);
     }
 
     /** The application role stores a barbershop with a version 7 identifier and timestamps. */

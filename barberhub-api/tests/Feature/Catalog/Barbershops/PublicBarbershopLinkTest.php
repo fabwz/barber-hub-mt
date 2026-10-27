@@ -10,6 +10,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentPolicy;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Repositories\EloquentBarbershopRepository;
 use Src\Shared\Domain\ValueObjects\Phone;
@@ -100,7 +101,7 @@ final class PublicBarbershopLinkTest extends TestCase
         $id = $repository->nextId();
         $repository->save(Barbershop::create($id, new BarbershopName('Barbería Pura Navaja'), new City('San Carlos'), new Phone('2460-0000'), new PublicLink('pura-navaja')));
 
-        $repository->save(Barbershop::reconstitute($id, new BarbershopName('La Navaja Dorada'), new City('San Carlos'), new Phone('2460-0000'), new PublicLink('la-navaja-dorada')));
+        $repository->save(Barbershop::reconstitute($id, new BarbershopName('La Navaja Dorada'), new City('San Carlos'), new Phone('2460-0000'), new PublicLink('la-navaja-dorada'), PaymentPolicy::initial()));
 
         $this->getJson('/api/v1/enlaces/pura-navaja')->assertOk()->assertJsonPath('data.nombre', 'La Navaja Dorada');
         $this->getJson('/api/v1/enlaces/la-navaja-dorada')->assertNotFound();
