@@ -19,8 +19,8 @@ final readonly class PaymentDetails
         public ?string $payerEmail,
     ) {}
 
-    /** A card, identified by the token the provider created in the browser. */
-    public static function card(string $token): self
+    /** A card, identified by the token the provider created in the browser, or by nothing when the provider asks for it on its own page. */
+    public static function card(?string $token = null): self
     {
         return new self($token, null, null, null, null, null);
     }

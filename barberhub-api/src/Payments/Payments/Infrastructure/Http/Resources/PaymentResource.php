@@ -46,7 +46,7 @@ final class PaymentResource extends JsonResource
             'motivo' => $this->payment->failureReason,
             /** Verdadero si el pago se aprobó cuando la reserva ya no se podía confirmar y hay que devolverlo (PA-07). */
             'devolucion_pendiente' => $this->payment->refundPending,
-            /** Solo al crear el pago: `redireccion` con la `url` a la que va el cliente (3DS) o `instrucciones` con el `numero_destino` y el `monto` exacto de la transferencia SINPE Móvil. */
+            /** Solo al crear el pago: `redireccion` con la `url` a la que va el cliente a pagar o a verificar su tarjeta, o `instrucciones` con el `numero_destino` y el `monto` exacto de la transferencia SINPE Móvil. */
             'accion_siguiente' => $this->nextAction === null ? null : $this->nextActionToArray($this->nextAction),
         ];
     }

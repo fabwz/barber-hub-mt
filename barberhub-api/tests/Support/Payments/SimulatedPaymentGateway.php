@@ -9,6 +9,7 @@ use Src\Payments\Payments\Application\DTOs\ChargeRequest;
 use Src\Payments\Payments\Application\DTOs\ChargeResult;
 use Src\Payments\Payments\Application\DTOs\GatewayStatus;
 use Src\Payments\Payments\Application\DTOs\NextAction;
+use Src\Payments\Payments\Application\DTOs\PaymentInput;
 use Src\Payments\Payments\Application\DTOs\RefundResult;
 use Src\Payments\Payments\Application\Exceptions\GatewayRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
@@ -125,6 +126,15 @@ final class SimulatedPaymentGateway implements PaymentGateway
     public function supports(PaymentMethod $method): bool
     {
         return in_array($method, $this->methods, true);
+    }
+
+    /** Asks what a gateway with its own fields asks: the token of the card; the phone and the identification for SINPE Móvil. */
+    public function requiredInput(PaymentMethod $method): array
+    {
+        return match ($method) {
+            PaymentMethod::Card => [PaymentInput::CardToken],
+            PaymentMethod::SinpeMovil => [PaymentInput::Phone, PaymentInput::Identification, PaymentInput::IdentificationType],
+        };
     }
 
     public function charge(ChargeRequest $request): ChargeResult

@@ -99,6 +99,12 @@ final readonly class PayPalGateway extends HttpPaymentGateway
         return $method === PaymentMethod::Card;
     }
 
+    /** The customer pays on the page of PayPal: nothing is asked of them before. */
+    public function requiredInput(PaymentMethod $method): array
+    {
+        return [];
+    }
+
     /**
      * Create the order with the amount converted to dollars. The customer pays on the page of PayPal, as a guest with a card, so
      * the result is always pending with the address to go to. The call carries a stable `PayPal-Request-Id`, so repeating it

@@ -7,6 +7,7 @@ namespace Src\Payments\Payments\Application\Contracts;
 use Src\Payments\Payments\Application\DTOs\ChargeRequest;
 use Src\Payments\Payments\Application\DTOs\ChargeResult;
 use Src\Payments\Payments\Application\DTOs\GatewayStatus;
+use Src\Payments\Payments\Application\DTOs\PaymentInput;
 use Src\Payments\Payments\Application\DTOs\RefundResult;
 use Src\Payments\Payments\Application\Exceptions\GatewayRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
@@ -28,6 +29,14 @@ interface PaymentGateway
 
     /** Tell whether the provider admits the payment method (PA-02). */
     public function supports(PaymentMethod $method): bool;
+
+    /**
+     * What the customer must give for the method besides choosing it; an empty list when the provider collects everything on
+     * its own page. Only these are validated and passed on, so the API asks of the customer what the gateway of the barbershop needs.
+     *
+     * @return list<PaymentInput>
+     */
+    public function requiredInput(PaymentMethod $method): array;
 
     /**
      * Create the charge in the provider. The result says whether it is already decided and, when the customer still has to do
