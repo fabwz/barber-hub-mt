@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Infrastructure\Http\Requests;
 
+use Closure;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -36,14 +37,27 @@ final class PayReservationRequest extends FormRequest
             'telefono' => [Rule::requiredIf($isSinpe), 'nullable', 'string', 'max:20'],
             /** Con `sinpe_movil`: identificación de la persona, con los guiones de su tipo, por ejemplo `01-1393-1919`. */
             'identificacion' => [Rule::requiredIf($isSinpe), 'nullable', 'string', 'max:30'],
-            /** Con `sinpe_movil`: tipo de identificación: `0` nacional, `1` residente, `2` entidad estatal, `3` jurídica, `4` institución autónoma, `5` diplomático o `9` extranjero. */
-            'tipo_identificacion' => [Rule::requiredIf($isSinpe), 'nullable', 'string', Rule::in(self::IDENTIFICATION_TYPES)],
+            /** Con `sinpe_movil`: tipo de identificación, como `"0"` o `0`: `0` nacional, `1` residente, `2` entidad estatal, `3` jurídica, `4` institución autónoma, `5` diplomático o `9` extranjero. */
+            'tipo_identificacion' => [Rule::requiredIf($isSinpe), 'nullable', $this->identificationTypeRule(), Rule::in(self::IDENTIFICATION_TYPES)],
         ];
+    }
+
+    /** Only a number or a text can be the type: `true` would pass `in` as "1". */
+    private function identificationTypeRule(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_int($value) && ! is_string($value)) {
+                $fail('validation.in')->translate();
+            }
+        };
     }
 
     /** Map the validated payload and the person of the session to the use case input. */
     public function toCommand(string $reservationId): PayCommand
     {
+        // The type arrives as "0" or 0; the command carries it as text and the provider adapter converts it to what that provider documents.
+        $identificationType = $this->input('tipo_identificacion');
+
         return new PayCommand(
             (string) $this->user()?->getAuthIdentifier(),
             $reservationId,
@@ -51,7 +65,7 @@ final class PayReservationRequest extends FormRequest
             $this->input('token'),
             $this->input('telefono'),
             $this->input('identificacion'),
-            $this->input('tipo_identificacion'),
+            $identificationType === null ? null : (string) $identificationType,
         );
     }
 }

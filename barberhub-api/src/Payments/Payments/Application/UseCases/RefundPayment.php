@@ -40,7 +40,7 @@ final readonly class RefundPayment
         }
 
         try {
-            $result = $this->gateways->forPayment($payment)->refund($payment->providerPaymentId, $payment->amount);
+            $result = $this->gateways->forPayment($payment)->refund($payment->providerPaymentId, $payment->amount, $payment->id);
         } catch (GatewayUnavailableException) {
             throw PaymentServiceUnavailableException::create();
         }

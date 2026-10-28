@@ -122,7 +122,7 @@ final class PaymentGatewayResolverTest extends TestCase
         $this->assertSame('USD', $approved->providerAmount->currency);
         $this->assertSame(510, $approved->providerAmount->minorUnits);
         $this->assertNull($approved->nextAction);
-        $this->assertSame(PaymentStatus::Approved, $this->onvo->status($approved->providerPaymentId)->status);
+        $this->assertSame(PaymentStatus::Approved, $this->onvo->status($approved->providerPaymentId, $request->paymentId)->status);
 
         $pending = $this->onvo->leavesPending()->charge($request);
         $this->assertSame(PaymentStatus::Pending, $pending->status);
@@ -132,7 +132,7 @@ final class PaymentGatewayResolverTest extends TestCase
         $this->assertSame(PaymentStatus::Rejected, $rejected->status);
         $this->assertSame('Card declined', $rejected->failureReason);
 
-        $this->assertTrue($this->onvo->refund($approved->providerPaymentId, Money::of(2550))->accepted);
+        $this->assertTrue($this->onvo->refund($approved->providerPaymentId, Money::of(2550), $request->paymentId)->accepted);
 
         $this->onvo->isUnavailable();
         $this->expectException(GatewayUnavailableException::class);

@@ -180,13 +180,13 @@ final class OnvoGatewayTest extends TestCase
         $this->assertSame(2100, $result->nextAction->amount?->colones);
         Http::assertSent(fn (Request $request): bool => $request->url() === self::BASE.'/payment-methods'
             && $request['type'] === 'mobile_number'
-            && $request['mobileNumber'] === ['identification' => '01-1393-1919', 'identificationType' => '0', 'number' => '+50688888888']
+            && $request['mobileNumber'] === ['identification' => '01-1393-1919', 'identificationType' => 0, 'number' => '+50688888888']
             && $request['billing'] === ['name' => 'Ana Rojas', 'email' => 'ana@barberhub.test']);
         Http::assertSent(fn (Request $request): bool => $request->url() === self::BASE.'/payment-intents' && $request['amount'] === 210000);
         Http::assertSent(fn (Request $request): bool => $request->url() === self::BASE.'/payment-intents/pi_5/confirm' && $request['paymentMethodId'] === 'pm_sinpe');
 
-        $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_5')->status);
-        $this->assertSame(PaymentStatus::Approved, $gateway->status('pi_5')->status);
+        $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_5', new PaymentId(self::PAYMENT))->status);
+        $this->assertSame(PaymentStatus::Approved, $gateway->status('pi_5', new PaymentId(self::PAYMENT))->status);
     }
 
     /** If the SINPE Móvil method cannot be created there is no charge at all, so the payment can fail and be retried. */
@@ -216,16 +216,16 @@ final class OnvoGatewayTest extends TestCase
             ->push(['status' => 'processing'])
             ->push(['message' => 'down'], 500)]);
 
-        $this->assertSame(PaymentStatus::Approved, $gateway->status('pi_6')->status);
-        $rejected = $gateway->status('pi_6');
+        $this->assertSame(PaymentStatus::Approved, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
+        $rejected = $gateway->status('pi_6', new PaymentId(self::PAYMENT));
         $this->assertSame(PaymentStatus::Rejected, $rejected->status);
         $this->assertSame('Tarjeta vencida', $rejected->failureReason);
-        $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_6')->status);
-        $this->assertSame(PaymentStatus::Failed, $gateway->status('pi_6')->status);
-        $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_6')->status);
+        $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
+        $this->assertSame(PaymentStatus::Failed, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
+        $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
 
         $this->expectException(GatewayUnavailableException::class);
-        $gateway->status('pi_6');
+        $gateway->status('pi_6', new PaymentId(self::PAYMENT));
     }
 
     /** A refund goes to /refunds with the intent and the whole amount in the minimum unit; a refusal and a failure are told apart. */
@@ -237,17 +237,17 @@ final class OnvoGatewayTest extends TestCase
             ->push(['message' => 'down'], 500)]);
         $gateway = $this->gateway();
 
-        $accepted = $gateway->refund('pi_1', Money::of(5000));
+        $accepted = $gateway->refund('pi_1', Money::of(5000), new PaymentId(self::PAYMENT));
         $this->assertTrue($accepted->accepted);
         $this->assertSame('re_1', $accepted->refundId);
         Http::assertSent(fn (Request $request): bool => $request->url() === self::BASE.'/refunds' && $request['paymentIntentId'] === 'pi_1' && $request['amount'] === 500000);
 
-        $refused = $gateway->refund('pi_1', Money::of(5000));
+        $refused = $gateway->refund('pi_1', Money::of(5000), new PaymentId(self::PAYMENT));
         $this->assertFalse($refused->accepted);
         $this->assertSame('Already refunded', $refused->failureReason);
 
         $this->expectException(GatewayUnavailableException::class);
-        $gateway->refund('pi_1', Money::of(5000));
+        $gateway->refund('pi_1', Money::of(5000), new PaymentId(self::PAYMENT));
     }
 
     /** A live key is refused when the adapter is built, whatever else is configured (PA-09). */
