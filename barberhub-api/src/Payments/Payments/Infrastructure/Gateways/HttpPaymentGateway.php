@@ -53,13 +53,27 @@ abstract readonly class HttpPaymentGateway implements PaymentGateway
      * Call the provider once, without retries (a charge that repeats itself could charge twice).
      *
      * @param  array<string, mixed>  $body
+     * @param  array<string, string>  $headers  Extra headers of this call, for example an idempotency key.
      *
      * @throws GatewayUnavailableException On a timeout, a failed connection, a 5xx or a refusal of our credentials.
      */
-    protected function send(string $operation, PaymentId $paymentId, string $method, string $path, array $body = []): Response
+    protected function send(string $operation, PaymentId $paymentId, string $method, string $path, array $body = [], array $headers = []): Response
+    {
+        return $this->dispatch($this->prepare($this->http)->withHeaders($headers), $operation, $paymentId, $method, $path, $body === [] ? [] : ['json' => $body]);
+    }
+
+    /**
+     * Call the provider once with a client the adapter built, classifying and logging the failures as `send` does. For the
+     * calls that do not go with the usual client, for example the one that asks for an access token.
+     *
+     * @param  array<string, mixed>  $options  Options of the HTTP client, for example `['form_params' => [...]]`.
+     *
+     * @throws GatewayUnavailableException On a timeout, a failed connection, a 5xx or a refusal of our credentials.
+     */
+    protected function dispatch(PendingRequest $client, string $operation, PaymentId $paymentId, string $method, string $path, array $options = []): Response
     {
         try {
-            $response = $this->prepare($this->http)->send($method, $path, $body === [] ? [] : ['json' => $body]);
+            $response = $client->send($method, $path, $options);
         } catch (ConnectionException $exception) {
             $this->logFailure('warning', 'The payment gateway could not be reached.', $operation, $paymentId, null, $exception->getMessage());
 

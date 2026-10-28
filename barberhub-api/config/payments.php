@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Src\Payments\Payments\Infrastructure\Gateways\OnvoGateway;
+use Src\Payments\Payments\Infrastructure\Gateways\PayPalGateway;
 
 return [
 
@@ -17,6 +18,7 @@ return [
     */
     'gateways' => [
         'onvo' => OnvoGateway::class,
+        'paypal' => PayPalGateway::class,
     ],
 
     /*
@@ -28,6 +30,20 @@ return [
         'base_url' => env('ONVO_BASE_URL') ?: 'https://api.onvopay.com/v1',
         'return_url' => env('ONVO_RETURN_URL', ''),
         'sinpe_destination' => env('ONVO_SINPE_DESTINATION') ?: '+506 70196686',
+    ],
+
+    /*
+    | PayPal (RF-20), Orders API v2. Only the sandbox is accepted: the adapter refuses the live API (PA-09). PayPal charges in
+    | dollars, so the adapter converts the colones with crc_per_usd (colones per dollar). The return and cancel URLs are where
+    | PayPal sends the customer back; the system trusts nothing of what arrives there and asks PayPal for the state instead.
+    */
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID', ''),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET', ''),
+        'base_url' => env('PAYPAL_BASE_URL') ?: 'https://api-m.sandbox.paypal.com',
+        'return_url' => env('PAYPAL_RETURN_URL', ''),
+        'cancel_url' => env('PAYPAL_CANCEL_URL', ''),
+        'crc_per_usd' => env('PAYPAL_CRC_PER_USD') ?: '500',
     ],
 
 ];
