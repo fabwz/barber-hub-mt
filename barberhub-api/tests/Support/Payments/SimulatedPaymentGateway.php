@@ -10,7 +10,9 @@ use Src\Payments\Payments\Application\DTOs\ChargeResult;
 use Src\Payments\Payments\Application\DTOs\GatewayStatus;
 use Src\Payments\Payments\Application\DTOs\NextAction;
 use Src\Payments\Payments\Application\DTOs\RefundResult;
+use Src\Payments\Payments\Application\Exceptions\GatewayRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
+use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
@@ -44,6 +46,8 @@ final class SimulatedPaymentGateway implements PaymentGateway
     private bool $failsAfterCharge = false;
 
     private ?string $refundRefusal = null;
+
+    private bool $requestRejected = false;
 
     /**
      * Build a gateway for a provider that admits some methods.
@@ -97,6 +101,14 @@ final class SimulatedPaymentGateway implements PaymentGateway
         return $this;
     }
 
+    /** The next charges fail because the provider does not accept the data it was sent. */
+    public function rejectsTheRequest(): self
+    {
+        $this->requestRejected = true;
+
+        return $this;
+    }
+
     /** The provider refuses every refund with the reason. */
     public function refusesRefunds(string $reason = 'Refund not allowed'): self
     {
@@ -135,7 +147,7 @@ final class SimulatedPaymentGateway implements PaymentGateway
         return $result;
     }
 
-    public function status(string $providerPaymentId): GatewayStatus
+    public function status(string $providerPaymentId, PaymentId $paymentId): GatewayStatus
     {
         $this->failIfUnavailable();
         $this->statusChecks[] = $providerPaymentId;
@@ -143,7 +155,7 @@ final class SimulatedPaymentGateway implements PaymentGateway
         return new GatewayStatus($this->outcome, $this->reason);
     }
 
-    public function refund(string $providerPaymentId, Money $amount): RefundResult
+    public function refund(string $providerPaymentId, Money $amount, PaymentId $paymentId): RefundResult
     {
         $this->failIfUnavailable();
         $this->refunds[] = [$providerPaymentId, $amount];
@@ -157,6 +169,10 @@ final class SimulatedPaymentGateway implements PaymentGateway
 
     private function failIfUnavailable(): void
     {
+        if ($this->requestRejected) {
+            throw GatewayRequestRejectedException::because('simulated rejection');
+        }
+
         if ($this->unavailable) {
             throw GatewayUnavailableException::because('simulated outage');
         }

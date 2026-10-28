@@ -6,7 +6,9 @@ namespace Src\Payments\Payments\Application\UseCases;
 
 use DateTimeImmutable;
 use Src\Payments\Payments\Application\Contracts\PayableReservations;
+use Src\Payments\Payments\Application\Exceptions\GatewayRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
+use Src\Payments\Payments\Application\Exceptions\PaymentRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\PaymentServiceUnavailableException;
 use Src\Payments\Payments\Application\PaymentGatewayResolver;
 use Src\Payments\Payments\Application\SettlePayment;
@@ -35,6 +37,7 @@ final readonly class GetPayment
      *
      * @throws PaymentNotFoundException
      * @throws PaymentServiceUnavailableException when the provider cannot be asked
+     * @throws PaymentRequestRejectedException when the provider does not accept the question
      */
     public function execute(string $userId, bool $isOwner, string $paymentId, DateTimeImmutable $now): Payment
     {
@@ -49,9 +52,11 @@ final readonly class GetPayment
         }
 
         try {
-            $state = $this->gateways->forPayment($payment)->status($payment->providerPaymentId);
+            $state = $this->gateways->forPayment($payment)->status($payment->providerPaymentId, $payment->id);
         } catch (GatewayUnavailableException) {
             throw PaymentServiceUnavailableException::create();
+        } catch (GatewayRequestRejectedException) {
+            throw PaymentRequestRejectedException::create();
         }
 
         $this->settle->apply($payment, $state->status, $state->failureReason, $now);

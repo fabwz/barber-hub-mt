@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Infrastructure\Gateways;
 
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
-use Src\Payments\Payments\Application\Contracts\PaymentGateway;
 use Src\Payments\Payments\Application\DTOs\ChargeRequest;
 use Src\Payments\Payments\Application\DTOs\ChargeResult;
 use Src\Payments\Payments\Application\DTOs\GatewayStatus;
 use Src\Payments\Payments\Application\DTOs\NextAction;
 use Src\Payments\Payments\Application\DTOs\RefundResult;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
+use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
@@ -28,7 +27,7 @@ use Src\Shared\Domain\ValueObjects\Money;
  * the currency (₡5.000 is 500000). It has no retries: a charge that is repeated by itself could charge twice. It never
  * accepts a live key, because every payment of this system runs in the test mode (PA-09).
  */
-final readonly class OnvoGateway implements PaymentGateway
+final readonly class OnvoGateway extends HttpPaymentGateway
 {
     /** Seconds the whole call may take, and the part of it for connecting. */
     public const int TIMEOUT_SECONDS = 10;
@@ -48,12 +47,14 @@ final readonly class OnvoGateway implements PaymentGateway
      * @throws InvalidArgumentException When the key is a live one.
      */
     public function __construct(
-        private Factory $http,
+        Factory $http,
         private string $secretKey,
         private string $baseUrl,
         private string $returnUrl,
         private string $sinpeDestination,
     ) {
+        parent::__construct($http);
+
         if (str_starts_with($secretKey, self::LIVE_KEY_PREFIX)) {
             throw new InvalidArgumentException('A live key of ONVO Pay is never accepted: every payment runs in the test mode.');
         }
@@ -79,25 +80,25 @@ final readonly class OnvoGateway implements PaymentGateway
     {
         $details = $request->details ?? throw new InvalidArgumentException('ONVO Pay needs the details of the method.');
         $isSinpe = $request->method === PaymentMethod::SinpeMovil;
-        $methodId = $isSinpe ? $this->createSinpeMethod($details->phone, $details->identification, $details->identificationType, $details->payerName, $details->payerEmail) : (string) $details->cardToken;
+        $methodId = $isSinpe ? $this->createSinpeMethod($request->paymentId, $details->phone, $details->identification, $details->identificationType, $details->payerName, $details->payerEmail) : (string) $details->cardToken;
 
         $minorUnits = $request->amount->colones * self::MINOR_UNITS_PER_COLON;
-        $intent = $this->send('POST', '/payment-intents', [
+        $intent = $this->send('create_intent', $request->paymentId, 'POST', '/payment-intents', [
             'amount' => $minorUnits,
             'currency' => self::CURRENCY,
             'description' => 'BarberHub',
             'metadata' => ['paymentId' => $request->paymentId->value, 'reservationId' => $request->reservationId->value],
         ]);
-        $intentId = $intent->successful() ? $intent->json('id') : null;
+        $intentId = $this->requireSuccess($intent)->json('id');
 
         if (! is_string($intentId) || $intentId === '') {
-            throw GatewayUnavailableException::because("ONVO Pay did not create the charge (HTTP {$intent->status()}).");
+            throw GatewayUnavailableException::because('ONVO Pay answered the charge without an identifier.');
         }
 
         $providerAmount = ProviderAmount::of(self::CURRENCY, $minorUnits);
 
         try {
-            $confirmation = $this->send('POST', "/payment-intents/{$intentId}/confirm", array_filter([
+            $confirmation = $this->send('confirm', $request->paymentId, 'POST', "/payment-intents/{$intentId}/confirm", array_filter([
                 'paymentMethodId' => $methodId,
                 'returnUrl' => $isSinpe ? '' : $this->returnUrl,
             ], fn (string $value): bool => $value !== ''));
@@ -119,13 +120,9 @@ final readonly class OnvoGateway implements PaymentGateway
     }
 
     /** Ask ONVO Pay for the payment intent and translate its state. */
-    public function status(string $providerPaymentId): GatewayStatus
+    public function status(string $providerPaymentId, PaymentId $paymentId): GatewayStatus
     {
-        $response = $this->send('GET', "/payment-intents/{$providerPaymentId}");
-
-        if (! $response->successful()) {
-            throw GatewayUnavailableException::because("ONVO Pay did not answer the status (HTTP {$response->status()}).");
-        }
+        $response = $this->requireSuccess($this->send('status', $paymentId, 'GET', "/payment-intents/{$providerPaymentId}"));
 
         [$status, $reason] = $this->interpret($response->json() ?? []);
 
@@ -133,9 +130,9 @@ final readonly class OnvoGateway implements PaymentGateway
     }
 
     /** Ask ONVO Pay to refund the amount of the payment intent, in the minimum unit. */
-    public function refund(string $providerPaymentId, Money $amount): RefundResult
+    public function refund(string $providerPaymentId, Money $amount, PaymentId $paymentId): RefundResult
     {
-        $response = $this->send('POST', '/refunds', [
+        $response = $this->send('refund', $paymentId, 'POST', '/refunds', [
             'paymentIntentId' => $providerPaymentId,
             'amount' => $amount->colones * self::MINOR_UNITS_PER_COLON,
         ]);
@@ -153,16 +150,17 @@ final readonly class OnvoGateway implements PaymentGateway
     }
 
     /** Create the SINPE Móvil payment method with the phone and identification of the customer and the name and email of the account; return its identifier. */
-    private function createSinpeMethod(?string $phone, ?string $identification, ?string $identificationType, ?string $name, ?string $email): string
+    private function createSinpeMethod(PaymentId $paymentId, ?string $phone, ?string $identification, ?string $identificationType, ?string $name, ?string $email): string
     {
-        $response = $this->send('POST', '/payment-methods', [
+        $response = $this->send('create_sinpe_method', $paymentId, 'POST', '/payment-methods', [
             'type' => 'mobile_number',
-            'mobileNumber' => ['identification' => $identification, 'identificationType' => $identificationType, 'number' => $phone],
+            // ONVO documents the identification type as an integer (0 to 5 or 9), while the API of the system takes it as "0" or 0.
+            'mobileNumber' => ['identification' => $identification, 'identificationType' => (int) $identificationType, 'number' => $phone],
             'billing' => ['name' => $name, 'email' => $email],
         ]);
-        $id = $response->successful() ? $response->json('id') : null;
+        $id = $this->requireSuccess($response)->json('id');
 
-        return is_string($id) && $id !== '' ? $id : throw GatewayUnavailableException::because("ONVO Pay did not create the SINPE Móvil method (HTTP {$response->status()}).");
+        return is_string($id) && $id !== '' ? $id : throw GatewayUnavailableException::because('ONVO Pay answered the SINPE Móvil method without an identifier.');
     }
 
     /**
@@ -201,37 +199,25 @@ final readonly class OnvoGateway implements PaymentGateway
         };
     }
 
-    /**
-     * Call the API with the timeouts and without retries. A connection that fails or a 5xx is a communication error; any
-     * other answer is returned for the caller to read.
-     *
-     * @param  array<string, mixed>  $body
-     *
-     * @throws GatewayUnavailableException
-     */
-    private function send(string $method, string $path, array $body = []): Response
+    protected function name(): string
     {
-        try {
-            $response = $this->http
-                ->baseUrl(rtrim($this->baseUrl, '/'))
-                ->withToken($this->secretKey)
-                ->acceptJson()
-                ->asJson()
-                ->timeout(self::TIMEOUT_SECONDS)
-                ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
-                ->send($method, $path, $body === [] ? [] : ['json' => $body]);
-        } catch (ConnectionException $exception) {
-            Log::warning('ONVO Pay could not be reached.', ['method' => $method, 'path' => $path]);
+        return 'onvo';
+    }
 
-            throw GatewayUnavailableException::because('ONVO Pay could not be reached.', $exception);
-        }
+    protected function secrets(): array
+    {
+        return [$this->secretKey];
+    }
 
-        if ($response->serverError()) {
-            Log::warning('ONVO Pay answered with an error.', ['method' => $method, 'path' => $path, 'status' => $response->status()]);
-
-            throw GatewayUnavailableException::because("ONVO Pay answered HTTP {$response->status()}.");
-        }
-
-        return $response;
+    /** The client of ONVO Pay: base URL, bearer token, JSON, timeouts and no retries. */
+    protected function prepare(Factory $http): PendingRequest
+    {
+        return $http
+            ->baseUrl(rtrim($this->baseUrl, '/'))
+            ->withToken($this->secretKey)
+            ->acceptJson()
+            ->asJson()
+            ->timeout(self::TIMEOUT_SECONDS)
+            ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS);
     }
 }

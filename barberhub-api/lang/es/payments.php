@@ -8,6 +8,7 @@ return [
     'amount_invalid' => 'El monto del pago debe ser de al menos ₡1.',
     'charge_not_required' => 'La barbería no cobra por adelantado: no hay nada que pagar.',
     'gateway_unavailable' => 'La pasarela de pago no responde en este momento. Intente de nuevo en unos minutos.',
+    'request_rejected' => 'La pasarela no pudo procesar los datos del pago. Revise los datos e intente de nuevo.',
     'refund_refused' => 'La pasarela no aceptó el reembolso. El pago sigue aprobado.',
     'reservation_not_open' => 'La reserva ya no espera su pago: venció su plazo o dejó de ser temporal.',
     'currency_invalid' => 'La moneda del proveedor debe ser un código de tres letras mayúsculas.',

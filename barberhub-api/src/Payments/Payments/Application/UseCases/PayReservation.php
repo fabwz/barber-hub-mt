@@ -12,6 +12,7 @@ use Src\Payments\Payments\Application\DTOs\ChargeRequest;
 use Src\Payments\Payments\Application\DTOs\PayCommand;
 use Src\Payments\Payments\Application\DTOs\PaymentDetails;
 use Src\Payments\Payments\Application\DTOs\PaymentOutcome;
+use Src\Payments\Payments\Application\Exceptions\GatewayRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
 use Src\Payments\Payments\Application\PaymentGatewayResolver;
 use Src\Payments\Payments\Application\SettlePayment;
@@ -47,7 +48,8 @@ final readonly class PayReservation
      * approved or rejected come as the provider says; if the provider cannot be reached before it created the charge the
      * payment fails and the reservation stays temporary to try again, and if it fails after (when confirming) the payment
      * stays pending for the status query to resolve and is never charged again by itself. An approval confirms the reservation
-     * in the same transaction. It joins the transaction of the caller.
+     * in the same transaction. If the provider does not accept the data before creating the charge, the payment fails the same
+     * way and the outcome says so, for a 422. It joins the transaction of the caller.
      *
      * @throws PaymentNotFoundException
      * @throws ReservationNotPayableException
@@ -85,6 +87,12 @@ final readonly class PayReservation
             $result = $gateway->charge(new ChargeRequest($payment->id, $reservationId, $amount, $command->method, $this->detailsOf($command)));
         } catch (GatewayUnavailableException $exception) {
             return $this->afterCommunicationError($payment, $exception, $now);
+        } catch (GatewayRequestRejectedException) {
+            // The provider created no charge with our data: the payment fails and the reservation stays temporary to try again.
+            $payment->fail('gateway_request_rejected', $now);
+            $this->payments->save($payment);
+
+            return new PaymentOutcome($payment, true, null, false, true);
         }
 
         $payment->registerCharge($result->providerPaymentId, $result->providerAmount, $now);
