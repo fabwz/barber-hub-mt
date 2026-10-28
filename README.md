@@ -170,7 +170,7 @@ Lo que cambia por proveedor:
 
 ### Ejecutar el flujo
 
-Con la API en marcha (`php artisan serve`, dentro de `barberhub-api`), los datos de demostración sembrados y la barbería configurada con la pasarela que se quiere probar. Cada reserva con cobro vence a los 10 minutos, así que conviene crearla justo antes de pagar. Las colecciones de Postman de `docs/postman/` ejecutan estos pasos; en su entorno hay que agregar `onvo_publishable_key` solo en *Current value*.
+Con la API en marcha (`php artisan serve`, dentro de `barberhub-api`), los datos de demostración sembrados y la barbería configurada con la pasarela que se quiere probar. Cada reserva con cobro vence a los 10 minutos, así que conviene crearla justo antes de pagar. 
 
 **ONVO, tarjeta.** El número de la tarjeta nunca pasa por nuestro servidor:
 
