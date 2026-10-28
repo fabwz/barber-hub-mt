@@ -47,6 +47,16 @@ final readonly class PaymentController
             ->setStatusCode($outcome->created ? Response::HTTP_CREATED : Response::HTTP_OK);
     }
 
+    /** Tell the customer who comes back from the payment page to ask for the state of the payment. */
+    #[Endpoint(
+        title: 'Regreso de la página de pago',
+        description: 'Dirección pública a la que la pasarela devuelve al cliente después de la página de pago. Solo responde un mensaje: no cambia ningún estado ni confía en lo que reciba por la dirección. El estado del pago siempre se consulta con `GET /barberias/{barberia}/pagos/{pago}`.',
+    )]
+    public function returned(): JsonResponse
+    {
+        return response()->json(['mensaje' => __('payments.returned')]);
+    }
+
     /** Show a payment, asking the gateway for its state. */
     #[Endpoint(
         title: 'Consultar un pago',
@@ -62,7 +72,7 @@ final readonly class PaymentController
     /** Give a payment back. */
     #[Endpoint(
         title: 'Reembolsar un pago',
-        description: 'El dueño devuelve el monto completo de un pago `aprobado` por la misma pasarela con que se cobró. Si la pasarela acepta, el pago queda `reembolsado`. Si la rechaza, el pago sigue `aprobado` y la respuesta es 409 `conflicto` con el `motivo`. Un pago que no está aprobado responde 409 `conflicto`; si la pasarela no responde, 503 `servicio-no-disponible`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido`; un pago inexistente o de otra barbería, 404 `no-encontrado`.',
+        description: 'El dueño devuelve el monto completo de un pago `aprobado` por la misma pasarela con que se cobró. Si la pasarela acepta, el pago queda `reembolsado`. Si la rechaza, el pago sigue `aprobado` y la respuesta es 409 `conflicto` con el `motivo`. Un pago que no está aprobado, o cobrado con una pasarela que no implementa reembolsos, responde 409 `conflicto`; si la pasarela no responde, 503 `servicio-no-disponible`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido`; un pago inexistente o de otra barbería, 404 `no-encontrado`.',
     )]
     public function refund(string $barberia, string $pago, RefundPayment $refundPayment): PaymentResource
     {
