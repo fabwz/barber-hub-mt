@@ -133,6 +133,40 @@ final class PaymentEndpointsTest extends TestCase
         $this->pay($reservation)->assertCreated()->assertJsonPath('data.estado', 'aprobado');
     }
 
+    /** If the provider does not accept the data before creating the charge, the payment fails, the answer is a 422 that reveals nothing and the reservation can retry. */
+    public function test_a_request_rejected_by_the_provider_fails_the_payment_with_a_422(): void
+    {
+        $reservation = $this->bookAs($this->ana);
+        $this->gateway->rejectsTheRequest();
+
+        $this->pay($reservation)
+            ->assertStatus(422)
+            ->assertJsonPath('type', fn (string $type): bool => str_ends_with($type, '/problemas/datos-invalidos'))
+            ->assertJsonPath('detail', 'La pasarela no pudo procesar los datos del pago. Revise los datos e intente de nuevo.');
+        $this->assertSame('failed', $this->onlyPaymentOf($reservation)->status);
+        $this->assertSame('temporary', $this->reservationStatus($reservation));
+    }
+
+    /** The type of identification is "0" or 0 (and the rest of the list); anything else is a 422 on that field. */
+    public function test_the_identification_type_accepts_the_listed_values_as_text_or_number(): void
+    {
+        $reservation = $this->bookAs($this->ana);
+        $this->gateway->rejects();
+        $sinpe = ['metodo' => 'sinpe_movil', 'telefono' => '+50688888888', 'identificacion' => '01-1393-1919'];
+
+        foreach (['6', 6, '00', 'x', -1, 1.5, true, [0]] as $invalid) {
+            $this->pay($reservation, [...$sinpe, 'tipo_identificacion' => $invalid])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('tipo_identificacion', 'errores');
+        }
+        $this->pay($reservation, $sinpe)->assertStatus(422)->assertJsonValidationErrors('tipo_identificacion', 'errores');
+        $this->assertCount(0, $this->gateway->charges);
+
+        foreach ([0, '0', 1, '2', 3, '4', 5, '9'] as $valid) {
+            $this->pay($reservation, [...$sinpe, 'tipo_identificacion' => $valid])->assertCreated();
+        }
+    }
+
     /** After the provider has the charge, the payment stays pending, is never charged again by itself and the status query resolves it. */
     public function test_a_communication_error_after_the_charge_leaves_it_pending_for_the_status_query(): void
     {
