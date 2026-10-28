@@ -12,6 +12,7 @@ use Src\Payments\Payments\Application\DTOs\ChargeRequest;
 use Src\Payments\Payments\Application\DTOs\ChargeResult;
 use Src\Payments\Payments\Application\DTOs\GatewayStatus;
 use Src\Payments\Payments\Application\DTOs\NextAction;
+use Src\Payments\Payments\Application\DTOs\PaymentInput;
 use Src\Payments\Payments\Application\DTOs\RefundResult;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
@@ -69,6 +70,15 @@ final readonly class OnvoGateway extends HttpPaymentGateway
     public function supports(PaymentMethod $method): bool
     {
         return in_array($method, [PaymentMethod::Card, PaymentMethod::SinpeMovil], true);
+    }
+
+    /** The card needs the token the browser created; SINPE Móvil needs the phone and the identification of the payer. */
+    public function requiredInput(PaymentMethod $method): array
+    {
+        return match ($method) {
+            PaymentMethod::Card => [PaymentInput::CardToken],
+            PaymentMethod::SinpeMovil => [PaymentInput::Phone, PaymentInput::Identification, PaymentInput::IdentificationType],
+        };
     }
 
     /**

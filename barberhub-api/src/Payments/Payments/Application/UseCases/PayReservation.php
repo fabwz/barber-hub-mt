@@ -119,7 +119,7 @@ final readonly class PayReservation
     private function detailsOf(PayCommand $command): PaymentDetails
     {
         if ($command->method === PaymentMethod::Card) {
-            return PaymentDetails::card((string) $command->cardToken);
+            return PaymentDetails::card($command->cardToken);
         }
 
         $account = $this->accounts->find($command->userId) ?? throw PaymentNotFoundException::create();
