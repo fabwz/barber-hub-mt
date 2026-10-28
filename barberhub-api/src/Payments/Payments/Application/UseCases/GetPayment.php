@@ -59,7 +59,7 @@ final readonly class GetPayment
             throw PaymentRequestRejectedException::create();
         }
 
-        $this->settle->apply($payment, $state->status, $state->failureReason, $now);
+        $this->settle->apply($payment, $state->status, $state->failureReason, $now, $state->captureId);
 
         return $payment;
     }

@@ -37,6 +37,7 @@ final class Payment
         public readonly DateTimeImmutable $createdAt,
         public private(set) DateTimeImmutable $updatedAt,
         public private(set) bool $refundPending = false,
+        public private(set) ?string $providerCaptureId = null,
     ) {}
 
     /**
@@ -74,8 +75,9 @@ final class Payment
         DateTimeImmutable $createdAt,
         DateTimeImmutable $updatedAt,
         bool $refundPending = false,
+        ?string $providerCaptureId = null,
     ): self {
-        return new self($id, $barbershopId, $reservationId, $provider, $method, $amount, $providerPaymentId, $providerAmount, $status, $failureReason, $createdAt, $updatedAt, $refundPending);
+        return new self($id, $barbershopId, $reservationId, $provider, $method, $amount, $providerPaymentId, $providerAmount, $status, $failureReason, $createdAt, $updatedAt, $refundPending, $providerCaptureId);
     }
 
     /**
@@ -105,11 +107,12 @@ final class Payment
     }
 
     /**
-     * The provider confirmed the money. Only a charge that exists in the provider can be approved.
+     * The provider confirmed the money, with the identifier of the capture when it has one. Only a charge that exists in the
+     * provider can be approved.
      *
      * @throws PaymentTransitionNotAllowedException
      */
-    public function approve(DateTimeImmutable $at): void
+    public function approve(DateTimeImmutable $at, ?string $captureId = null): void
     {
         if (! $this->status->canChangeTo(PaymentStatus::Approved)) {
             throw PaymentTransitionNotAllowedException::create();
@@ -120,6 +123,7 @@ final class Payment
         }
 
         $this->changeTo(PaymentStatus::Approved, $at);
+        $this->providerCaptureId = $captureId === null || trim($captureId) === '' ? null : trim($captureId);
     }
 
     /**

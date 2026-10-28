@@ -26,6 +26,9 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
 {
     private const string UNIQUE_VIOLATION = '23505';
 
+    /** The exchange rate is stored as an integer of ten-thousandths of a colon per unit of the currency of the provider. */
+    private const int RATE_SCALE = 10000;
+
     private const string ACTIVE_PAYMENT_INDEX = 'payments_one_active_per_reservation_idx';
 
     /** Receive the port that tells which barbershop the operation belongs to. */
@@ -48,7 +51,9 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
             'status' => $payment->status->value,
             'provider_currency' => $payment->providerAmount?->currency,
             'provider_amount' => $payment->providerAmount?->minorUnits,
+            'provider_exchange_rate' => $payment->providerAmount === null || $payment->providerAmount->exchangeRate === null ? null : (int) round((float) $payment->providerAmount->exchangeRate * self::RATE_SCALE),
             'provider_payment_id' => $payment->providerPaymentId,
+            'provider_capture_id' => $payment->providerCaptureId,
             'failure_reason' => $payment->failureReason,
             'refund_pending' => $payment->refundPending,
             'updated_at' => $payment->updatedAt,
@@ -123,12 +128,13 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
             PaymentMethod::from($model->method),
             Money::of($model->amount),
             $model->provider_payment_id,
-            $model->provider_currency === null || $model->provider_amount === null ? null : ProviderAmount::of($model->provider_currency, $model->provider_amount),
+            $model->provider_currency === null || $model->provider_amount === null ? null : ProviderAmount::of($model->provider_currency, $model->provider_amount, $model->provider_exchange_rate === null ? null : number_format($model->provider_exchange_rate / self::RATE_SCALE, 4, '.', '')),
             PaymentStatus::from($model->status),
             $model->failure_reason,
             $model->created_at,
             $model->updated_at,
             $model->refund_pending,
+            $model->provider_capture_id,
         );
     }
 }

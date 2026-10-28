@@ -81,6 +81,21 @@ final class EloquentPaymentRepositoryTest extends TestCase
         $this->assertSame(1, DB::table('payments')->count());
     }
 
+    /** The exchange rate of the provider amount and the capture of the approval are saved and read back. */
+    public function test_the_exchange_rate_and_the_capture_are_saved(): void
+    {
+        $payment = $this->payment();
+        $this->repository->save($payment);
+        $payment->registerCharge('paypal_1', ProviderAmount::of('USD', 510, '500.0000'), new DateTimeImmutable('2030-03-01 08:01:00-06:00'));
+        $payment->approve(new DateTimeImmutable('2030-03-01 08:02:00-06:00'), 'CAPTURE-1');
+        $this->repository->save($payment);
+
+        $found = $this->repository->find($payment->id);
+
+        $this->assertSame('500.0000', $found?->providerAmount?->exchangeRate);
+        $this->assertSame('CAPTURE-1', $found->providerCaptureId);
+    }
+
     /** The mark of an approved payment to give back is saved, and a refund clears it (PA-07). */
     public function test_the_refund_pending_mark_is_saved_and_cleared_by_the_refund(): void
     {
