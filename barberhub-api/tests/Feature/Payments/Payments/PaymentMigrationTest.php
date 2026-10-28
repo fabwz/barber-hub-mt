@@ -18,6 +18,8 @@ final class PaymentMigrationTest extends TestCase
 
     private const string REFUND_PENDING_MIGRATION = '2026_10_27_100000_add_refund_pending_to_payments_table';
 
+    private const string EXCHANGE_RATE_MIGRATION = '2026_10_28_100000_add_exchange_rate_and_capture_to_payments_table';
+
     /** Rolling back drops the table with its constraints, index and policy; applying again brings them back. */
     public function test_migration_rolls_back_and_applies_again_without_leftovers(): void
     {
@@ -25,10 +27,15 @@ final class PaymentMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
         $migration = require base_path('database/migrations/'.self::MIGRATION.'.php');
         $refundPending = require base_path('database/migrations/'.self::REFUND_PENDING_MIGRATION.'.php');
+        $exchangeRate = require base_path('database/migrations/'.self::EXCHANGE_RATE_MIGRATION.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $exchangeRate->down();
+            $this->assertFalse($schema->hasColumn('payments', 'provider_exchange_rate'));
+            $this->assertFalse($schema->hasColumn('payments', 'provider_capture_id'));
+            $this->assertSame(0, $admin->table('pg_constraint')->where('conname', 'payments_provider_exchange_rate_check')->count());
             $refundPending->down();
             $migration->down();
 
@@ -40,7 +47,10 @@ final class PaymentMigrationTest extends TestCase
 
             $migration->up();
             $refundPending->up();
+            $exchangeRate->up();
 
+            $this->assertTrue($schema->hasColumn('payments', 'provider_exchange_rate'));
+            $this->assertTrue($schema->hasColumn('payments', 'provider_capture_id'));
             $this->assertTrue($schema->hasTable('payments'));
             $this->assertTrue($schema->hasColumn('payments', 'refund_pending'));
             $this->assertSame(1, $admin->table('pg_policies')->where('tablename', 'payments')->count());

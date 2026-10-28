@@ -90,6 +90,38 @@ final class PaymentTest extends TestCase
         }
     }
 
+    /** The exchange rate of the provider amount is a positive decimal text, or absent. */
+    public function test_the_exchange_rate_is_validated(): void
+    {
+        $this->assertSame('500.0000', ProviderAmount::of('USD', 510, '500.0000')->exchangeRate);
+        $this->assertNull(ProviderAmount::of('USD', 510)->exchangeRate);
+
+        foreach (['0', '-500', 'abc', '5e2', ''] as $rate) {
+            try {
+                ProviderAmount::of('USD', 510, $rate);
+                $this->fail("Accepted the rate {$rate}.");
+            } catch (InvalidValueException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    /** The approval keeps the capture the provider gave, if any. */
+    public function test_the_approval_keeps_the_capture(): void
+    {
+        $payment = $this->payment();
+        $payment->registerCharge('paypal_1', ProviderAmount::of('USD', 510, '500.0000'), $this->at('+1 minute'));
+        $payment->approve($this->at('+2 minutes'), ' CAPTURE-1 ');
+
+        $this->assertSame('CAPTURE-1', $payment->providerCaptureId);
+
+        $other = $this->payment();
+        $other->registerCharge('onvo_1', ProviderAmount::of('CRC', 255000), $this->at('+1 minute'));
+        $other->approve($this->at('+2 minutes'));
+
+        $this->assertNull($other->providerCaptureId);
+    }
+
     /** A pending payment ends approved, rejected or failed, and an approved one can be refunded. */
     #[DataProvider('allowedTransitions')]
     public function test_the_allowed_transitions(PaymentStatus $from, string $action, PaymentStatus $to): void

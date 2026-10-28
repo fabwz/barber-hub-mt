@@ -31,6 +31,9 @@ final class OpeningHoursMigrationTest extends TestCase
     // The mark of the payments to give back is a column of that table: it goes before it when rolling back and after it when applying again.
     private const string REFUND_PENDING = '2026_10_27_100000_add_refund_pending_to_payments_table';
 
+    // The exchange rate and the capture are columns of the payments too: they go before the mark when rolling back and after it when applying again.
+    private const string EXCHANGE_RATE = '2026_10_28_100000_add_exchange_rate_and_capture_to_payments_table';
+
     // The expiry column is added to the reservations, so it goes before them when rolling back and after them when applying again.
     private const string EXPIRES_AT = '2026_10_26_120000_add_expires_at_to_reservations_table';
 
@@ -42,6 +45,7 @@ final class OpeningHoursMigrationTest extends TestCase
 
         $this->asOwner(function (): void {
             $this->apply(self::EXPIRES_AT, 'down');
+            $this->apply(self::EXCHANGE_RATE, 'down');
             $this->apply(self::REFUND_PENDING, 'down');
             $this->apply(self::PAYMENTS, 'down');
             $this->apply(self::RESERVATIONS, 'down');
@@ -62,6 +66,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::RESERVATIONS, 'up');
             $this->apply(self::PAYMENTS, 'up');
             $this->apply(self::REFUND_PENDING, 'up');
+            $this->apply(self::EXCHANGE_RATE, 'up');
             $this->apply(self::EXPIRES_AT, 'up');
         });
 
@@ -78,6 +83,7 @@ final class OpeningHoursMigrationTest extends TestCase
 
         $this->asOwner(function () use ($admin): void {
             $this->apply(self::EXPIRES_AT, 'down');
+            $this->apply(self::EXCHANGE_RATE, 'down');
             $this->apply(self::REFUND_PENDING, 'down');
             $this->apply(self::PAYMENTS, 'down');
             $this->apply(self::RESERVATIONS, 'down');
@@ -92,6 +98,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::RESERVATIONS, 'up');
             $this->apply(self::PAYMENTS, 'up');
             $this->apply(self::REFUND_PENDING, 'up');
+            $this->apply(self::EXCHANGE_RATE, 'up');
             $this->apply(self::EXPIRES_AT, 'up');
         });
 

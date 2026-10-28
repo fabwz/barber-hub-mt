@@ -10,6 +10,7 @@ use Src\Payments\Payments\Application\DTOs\GatewayStatus;
 use Src\Payments\Payments\Application\DTOs\RefundResult;
 use Src\Payments\Payments\Application\Exceptions\GatewayRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
+use Src\Payments\Payments\Application\Exceptions\RefundNotSupportedException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
@@ -50,6 +51,7 @@ interface PaymentGateway
      * Ask the provider to give the money of a charge back. The identifier of our payment is only for the log.
      *
      * @throws GatewayUnavailableException When the provider cannot be reached, answers with a 5xx or refuses our credentials.
+     * @throws RefundNotSupportedException When the adapter does not implement refunds.
      */
     public function refund(string $providerPaymentId, Money $amount, PaymentId $paymentId): RefundResult;
 }

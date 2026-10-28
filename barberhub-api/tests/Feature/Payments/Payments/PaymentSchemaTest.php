@@ -43,12 +43,12 @@ final class PaymentSchemaTest extends TestCase
         $this->reservation = $this->insertReservation($this->puraNavaja, 'kevin@barberhub.test', 'ana@barberhub.test', '2030-03-04 10:00');
     }
 
-    /** The table has the columns of the issues (#129 and the mark of #63) and none of the ones of the webhooks, which this stage does not use. */
+    /** The table has the columns of the issues (#129, the mark of #63 and the rate and capture of #64) and none of the ones of the webhooks, which this stage does not use. */
     public function test_the_table_has_only_the_columns_of_this_issue(): void
     {
         $this->assertEqualsCanonicalizing([
             'id', 'barbershop_id', 'reservation_id', 'provider', 'method', 'status', 'amount', 'provider_currency', 'provider_amount',
-            'provider_payment_id', 'failure_reason', 'refund_pending', 'created_at', 'updated_at',
+            'provider_exchange_rate', 'provider_payment_id', 'provider_capture_id', 'failure_reason', 'refund_pending', 'created_at', 'updated_at',
         ], Schema::connection('pgsql_admin')->getColumnListing('payments'));
         $this->assertFalse(Schema::connection('pgsql_admin')->hasTable('gateway_events'));
     }
@@ -105,6 +105,16 @@ final class PaymentSchemaTest extends TestCase
         $this->assertCheckViolation(fn () => $this->payment(['provider_amount' => 510]));
 
         $this->payment(['provider_currency' => 'USD', 'provider_amount' => 510]);
+        $this->assertSame(1, DB::table('payments')->count());
+    }
+
+    /** The exchange rate exists only with the amount of the provider and must be positive. */
+    public function test_the_exchange_rate_needs_the_provider_amount_and_is_positive(): void
+    {
+        $this->assertCheckViolation(fn () => $this->payment(['provider_exchange_rate' => 5000000]));
+        $this->assertCheckViolation(fn () => $this->payment(['provider_currency' => 'USD', 'provider_amount' => 510, 'provider_exchange_rate' => 0]));
+
+        $this->payment(['provider_currency' => 'USD', 'provider_amount' => 510, 'provider_exchange_rate' => 5000000]);
         $this->assertSame(1, DB::table('payments')->count());
     }
 

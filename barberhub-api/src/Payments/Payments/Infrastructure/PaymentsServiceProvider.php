@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Infrastructure;
 
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\ServiceProvider;
@@ -21,6 +22,7 @@ use Src\Payments\Payments\Infrastructure\Barbershops\BarbershopsBarbershopCharge
 use Src\Payments\Payments\Infrastructure\Barbershops\BarbershopsBarbershopPaymentProvider;
 use Src\Payments\Payments\Infrastructure\Gateways\ConfiguredPaymentGatewayRegistry;
 use Src\Payments\Payments\Infrastructure\Gateways\OnvoGateway;
+use Src\Payments\Payments\Infrastructure\Gateways\PayPalGateway;
 use Src\Payments\Payments\Infrastructure\Persistence\Repositories\EloquentPaymentRepository;
 use Src\Payments\Payments\Infrastructure\Reservations\ReservationsPayableReservations;
 use Src\Payments\Payments\Infrastructure\Reservations\ReservationsReservationConfirmation;
@@ -42,7 +44,7 @@ final class PaymentsServiceProvider extends ServiceProvider
         PayerAccounts::class => UsersPayerAccounts::class,
     ];
 
-    /** Bind the ONVO Pay adapter with its configuration and the resolver with the default provider of config/payments.php (PAYMENTS_DEFAULT_GATEWAY). */
+    /** Bind the adapters of ONVO Pay and PayPal with their configuration and the resolver with the default provider of config/payments.php (PAYMENTS_DEFAULT_GATEWAY). */
     public function register(): void
     {
         $this->app->bind(OnvoGateway::class, fn (Application $app): OnvoGateway => new OnvoGateway(
@@ -51,6 +53,17 @@ final class PaymentsServiceProvider extends ServiceProvider
             (string) config('payments.onvo.base_url'),
             (string) config('payments.onvo.return_url'),
             (string) config('payments.onvo.sinpe_destination'),
+        ));
+
+        $this->app->bind(PayPalGateway::class, fn (Application $app): PayPalGateway => new PayPalGateway(
+            $app->make(Factory::class),
+            $app->make(CacheRepository::class),
+            (string) config('payments.paypal.client_id'),
+            (string) config('payments.paypal.client_secret'),
+            (string) config('payments.paypal.base_url'),
+            (string) config('payments.paypal.return_url'),
+            (string) config('payments.paypal.cancel_url'),
+            (string) config('payments.paypal.crc_per_usd'),
         ));
 
         $this->app->bind(PaymentGatewayResolver::class, fn (Application $app): PaymentGatewayResolver => new PaymentGatewayResolver(

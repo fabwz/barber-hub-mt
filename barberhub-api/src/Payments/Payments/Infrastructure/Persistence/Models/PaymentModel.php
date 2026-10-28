@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $amount
  * @property string|null $provider_currency
  * @property int|null $provider_amount
+ * @property int|null $provider_exchange_rate
+ * @property string|null $provider_capture_id
  * @property string|null $provider_payment_id
  * @property string|null $failure_reason
  * @property bool $refund_pending
@@ -39,7 +41,9 @@ use Illuminate\Database\Eloquent\Model;
     'amount',
     'provider_currency',
     'provider_amount',
+    'provider_exchange_rate',
     'provider_payment_id',
+    'provider_capture_id',
     'failure_reason',
     'refund_pending',
     'created_at',
@@ -61,6 +65,7 @@ final class PaymentModel extends Model
         return [
             'amount' => 'integer',
             'provider_amount' => 'integer',
+            'provider_exchange_rate' => 'integer',
             'refund_pending' => 'boolean',
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',

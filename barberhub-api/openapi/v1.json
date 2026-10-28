@@ -1137,6 +1137,38 @@
                 }
             }
         },
+        "/pagos/retorno": {
+            "get": {
+                "operationId": "payments.payments.returned",
+                "description": "Direcci\u00f3n p\u00fablica a la que la pasarela devuelve al cliente despu\u00e9s de la p\u00e1gina de pago. Solo responde un mensaje: no cambia ning\u00fan estado ni conf\u00eda en lo que reciba por la direcci\u00f3n. El estado del pago siempre se consulta con `GET /barberias/{barberia}/pagos/{pago}`.",
+                "summary": "Regreso de la p\u00e1gina de pago",
+                "tags": [
+                    "Pagos"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "mensaje": {
+                                            "type": "string",
+                                            "const": "Regresaste del proveedor de pago: consulta el estado de tu pago."
+                                        }
+                                    },
+                                    "required": [
+                                        "mensaje"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
         "/barberias/{barberia}/reservas/{reserva}/pagos": {
             "post": {
                 "operationId": "payments.payments.store",
@@ -1257,7 +1289,7 @@
         "/barberias/{barberia}/pagos/{pago}/reembolsos": {
             "post": {
                 "operationId": "payments.payments.refund",
-                "description": "El due\u00f1o devuelve el monto completo de un pago `aprobado` por la misma pasarela con que se cobr\u00f3. Si la pasarela acepta, el pago queda `reembolsado`. Si la rechaza, el pago sigue `aprobado` y la respuesta es 409 `conflicto` con el `motivo`. Un pago que no est\u00e1 aprobado responde 409 `conflicto`; si la pasarela no responde, 503 `servicio-no-disponible`. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido`; un pago inexistente o de otra barber\u00eda, 404 `no-encontrado`.",
+                "description": "El due\u00f1o devuelve el monto completo de un pago `aprobado` por la misma pasarela con que se cobr\u00f3. Si la pasarela acepta, el pago queda `reembolsado`. Si la rechaza, el pago sigue `aprobado` y la respuesta es 409 `conflicto` con el `motivo`. Un pago que no est\u00e1 aprobado, o cobrado con una pasarela que no implementa reembolsos, responde 409 `conflicto`; si la pasarela no responde, 503 `servicio-no-disponible`. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido`; un pago inexistente o de otra barber\u00eda, 404 `no-encontrado`.",
                 "summary": "Reembolsar un pago",
                 "tags": [
                     "Pagos"

@@ -22,10 +22,10 @@ final readonly class SettlePayment
     public function __construct(private PaymentRepository $payments, private ReservationConfirmation $reservations) {}
 
     /** Move the payment to the status the provider reported and save it; a status that is still pending changes nothing. */
-    public function apply(Payment $payment, PaymentStatus $status, ?string $reason, DateTimeImmutable $now): void
+    public function apply(Payment $payment, PaymentStatus $status, ?string $reason, DateTimeImmutable $now, ?string $captureId = null): void
     {
         match ($status) {
-            PaymentStatus::Approved => $this->approve($payment, $now),
+            PaymentStatus::Approved => $this->approve($payment, $now, $captureId),
             PaymentStatus::Rejected => $payment->reject($reason, $now),
             PaymentStatus::Failed => $payment->fail($reason, $now),
             PaymentStatus::Pending, PaymentStatus::Refunded => null,
@@ -35,9 +35,9 @@ final readonly class SettlePayment
     }
 
     /** Approve the payment and confirm its reservation, or mark the payment to give back when the reservation cannot be confirmed. */
-    private function approve(Payment $payment, DateTimeImmutable $now): void
+    private function approve(Payment $payment, DateTimeImmutable $now, ?string $captureId): void
     {
-        $payment->approve($now);
+        $payment->approve($now, $captureId);
 
         if (! $this->reservations->confirm($payment->reservationId->value, $now)) {
             $payment->markRefundPending($now);
