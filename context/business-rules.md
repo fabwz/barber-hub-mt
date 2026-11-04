@@ -161,7 +161,7 @@ Lo que cambia entre barberías son parámetros, no reglas. La plataforma demostr
 | SV-03 | Una reserva conserva el precio y la duración vigentes cuando se hizo; cambiar el catálogo no altera reservas existentes. | D |
 | SV-04 | Un servicio inactivo no se puede reservar, pero sigue visible en el historial. | D |
 | SV-05 | Un servicio es reservable solo si al menos un colaborador activo lo ofrece. | D |
-| SV-06 | Las imágenes de servicios y el logo aceptan solo JPG, PNG o WebP de hasta 2 MB. | C, D |
+| SV-06 | Las imágenes de servicios, el logo y el banner aceptan solo JPG, PNG o WebP de hasta 2 MB; el banner debe medir al menos 1.200 × 400 px. | C, D |
 | SV-07 | La imagen de un servicio se muestra al cliente al elegirlo; un servicio sin imagen se muestra sin ella. | D |
 
 ### Colaboradores (CO)
@@ -284,10 +284,11 @@ Lo que cambia entre barberías son parámetros, no reglas. La plataforma demostr
 | MT-02 | Una persona de una barbería no puede leer ni modificar datos de otra, aunque conozca identificadores o altere datos de la petición. | C |
 | MT-03 | La barbería sobre la que se actúa se deduce de la sesión o del recurso, nunca de un dato que el usuario pueda manipular. | C |
 | MT-04 | Catálogo, horarios, políticas, bonos y pasarela son independientes por barbería. | C, D |
-| MT-05 | Los archivos subidos (logo, fotos) se guardan y se sirven separados por barbería. | D |
+| MT-05 | Los archivos subidos (logo, banner, fotos) se guardan y se sirven separados por barbería. | D |
 | MT-06 | La base de datos rechaza el acceso a datos de otra barbería aunque una consulta olvide el filtro. | D |
 | MT-07 | Cada barbería tiene un enlace público propio por el que sus clientes llegan a ella. | D |
-| MT-08 | El logo de la barbería se muestra a sus clientes en el encabezado de sus pantallas y en sus correos. | D |
+| MT-08 | El logo y el banner de la barbería se muestran a sus clientes en el encabezado de sus pantallas, y el logo también en sus correos. | D |
+| MT-09 | La dirección, las redes sociales (WhatsApp, Instagram, Facebook y TikTok), el logo y el banner de la barbería son datos públicos que edita solo el dueño; los enlaces de redes se validan por red y los vacíos no se muestran. | D |
 
 ### Notificaciones y procesos automáticos (NO)
 
