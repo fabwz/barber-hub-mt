@@ -250,6 +250,12 @@ jobs:
       - name: Check the types
         run: npm run type-check
 
+      - name: Regenerate the API types
+        run: npm run types
+
+      - name: Fail if the API types are outdated
+        run: git diff --exit-code -- src/api/schema.d.ts
+
   web-test:
     name: web-test
     runs-on: ubuntu-latest
