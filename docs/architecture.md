@@ -389,3 +389,38 @@ La concurrencia se prueba con conexiones paralelas reales (RNF-05). Las pasarela
 ## Convenciones, base de datos y decisiones
 
 Las convenciones de idioma y de nombres están en [ubiquitous-language.md](ubiquitous-language.md). Los roles, las migraciones y el esquema están en [database.md](database.md) y el modelo de datos, en [data-model.md](data-model.md). El motivo de cada decisión de arquitectura está en [adr/](adr/).
+
+## Cliente web (barberhub-web)
+
+El cliente es una aplicación aparte (Vue 3, TypeScript y Tailwind CSS 4) que consume la API REST. No pertenece a ningún contexto del dominio: solo conoce el contrato OpenAPI. La guía visual vive en `barberhub-web/DESIGN.md`.
+
+### Estructura
+
+- `src/assets`: `fonts` (Manrope en 400 y 500), `images` y `styles` (el CSS de entrada con Tailwind y los tokens de `DESIGN.md`).
+- `src/api`: los tipos generados desde `barberhub-api/openapi/v1.json` y el cliente HTTP único.
+- `src/components`: piezas reutilizables del sistema de diseño.
+- `src/composables`: lógica reutilizable (disponibilidad, reserva y pago).
+- `src/router`: rutas y guardas de acceso por rol.
+- `src/stores`: estado compartido (sesión y barbería activa), con Pinia.
+- `src/views`: una vista por pantalla.
+- `src/__tests__`, `App.vue` y `main.ts`.
+
+No se incluyen `custom_elements`, `Internals` ni `SSR`.
+
+### Flujo de datos
+
+1. Una vista usa composables que llaman al cliente HTTP; ninguna llamada usa tipos escritos a mano.
+2. El cliente agrega la dirección base y el token de sesión, y convierte los errores `application/problem+json` en un error tipado con `type`, `title`, `detail` y los `errores` por campo. El 409 de espacio no disponible conserva sus `alternativas`.
+3. Un 401 cierra la sesión local y un 429 expone el tiempo de espera de `Retry-After`.
+4. La barbería activa viaja siempre en la ruta (`/barberias/{barberia}/...`) y nunca en el cuerpo ni en un encabezado. El cliente no decide permisos: los decide la API (404 o 403).
+
+### Pagos en el cliente
+
+- Con ONVO, el número, el vencimiento y el código de la tarjeta se envían directo a ONVO con su llave pública; a la API solo llega el identificador del método de pago.
+- El monto lo calcula siempre el servidor.
+- Esta etapa no recibe avisos de las pasarelas: el estado del pago se confirma consultándolo, nunca por la redirección ni por lo que reporta el navegador.
+
+### Estados y accesibilidad
+
+Toda pantalla que carga datos tiene sus tres estados (cargando con esqueleto, error y vacío) y cumple WCAG 2.2 AA, con objetivos de 44 px y sin estados que dependan solo del color.
+

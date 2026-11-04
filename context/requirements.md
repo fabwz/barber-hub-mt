@@ -233,8 +233,8 @@ Son 53 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, prec
 - **Enunciado:** El sistema deberá permitir registrar una barbería nueva y dejar a quien la registra como su dueño.
 - **Actores:** Dueño.
 - **Precondiciones:** La persona tiene una cuenta.
-- **Flujo:** 1) La persona indica nombre, ciudad, contacto y, de forma opcional, el logo (RF-46). 2) El sistema crea la barbería sin servicios, sin horario y con la modalidad de cobro "sin pago". 3) La persona queda como dueño.
-- **Reglas:** MT-01, MT-04, UP-01, UP-05, UP-07.
+- **Flujo:** 1) La persona indica nombre, ciudad y contacto y, de forma opcional, el logo y el banner (RF-46), la dirección y las redes sociales (WhatsApp, Instagram, Facebook y TikTok); el dueño puede editar estos datos después. 2) El sistema crea la barbería sin servicios, sin horario y con la modalidad de cobro "sin pago". 3) La persona queda como dueño.
+- **Reglas:** MT-01, MT-04, MT-09, UP-01, UP-05, UP-07.
 - **Criterios de aceptación:**
   - Al registrar "Barbería Pura Navaja", la persona queda como su dueña.
   - Una barbería sin servicio, sin colaborador o sin horario no ofrece espacios y muestra "Esta barbería aún no está lista para recibir reservas".
@@ -246,8 +246,8 @@ Son 53 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, prec
 - **Enunciado:** El sistema deberá asignar a cada barbería un enlace público único, derivado de su nombre, por el que sus clientes llegan a ella.
 - **Actores:** Cliente; sistema.
 - **Precondiciones:** La barbería existe.
-- **Flujo:** 1) Al crearse la barbería, el sistema genera el enlace con el nombre en minúsculas, sin tildes y con guiones. 2) Si ya existe, agrega un número. 3) El enlace abre la barbería, con su logo y sus servicios. 4) El enlace no cambia si el dueño cambia el nombre.
-- **Reglas:** MT-07, MT-08.
+- **Flujo:** 1) Al crearse la barbería, el sistema genera el enlace con el nombre en minúsculas, sin tildes y con guiones. 2) Si ya existe, agrega un número. 3) El enlace abre la barbería, con su logo, su banner, su dirección, sus redes sociales y sus servicios. 4) El enlace no cambia si el dueño cambia el nombre.
+- **Reglas:** MT-07, MT-08, MT-09.
 - **Criterios de aceptación:**
   - "Barbería Pura Navaja" recibe el enlace `pura-navaja`; una segunda barbería con el mismo nombre recibe `pura-navaja-2`.
   - Un enlace inexistente muestra "Esta barbería no existe".
@@ -895,16 +895,17 @@ Son 53 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, prec
 
 ##### RF-46 · Carga de imágenes
 - **Clase:** Esencial
-- **Enunciado:** El sistema deberá permitir al dueño subir el logo de su barbería y las imágenes de sus servicios, validando su tipo y tamaño.
+- **Enunciado:** El sistema deberá permitir al dueño subir el logo y el banner de su barbería y las imágenes de sus servicios, validando su tipo y tamaño.
 - **Actores:** Dueño.
 - **Precondiciones:** La barbería existe.
-- **Flujo:** 1) El dueño elige un archivo. 2) El sistema valida el tipo (por su contenido, no por su nombre) y el tamaño. 3) Lo guarda en el espacio de su barbería. 4) El logo se muestra en el encabezado de las pantallas del cliente y en los correos; la imagen de un servicio, al elegirlo (RF-10).
+- **Flujo:** 1) El dueño elige un archivo. 2) El sistema valida el tipo (por su contenido, no por su nombre) y el tamaño. 3) Lo guarda en el espacio de su barbería. 4) El logo y el banner se muestran en el encabezado de las pantallas del cliente (el logo, también en los correos); la imagen de un servicio, al elegirlo (RF-10).
 - **Reglas:** SV-06, SV-07, MT-05, MT-08.
 - **Criterios de aceptación:**
   - Un PDF o un ejecutable se rechaza, incluso si su nombre termina en .jpg.
   - Un PNG de 3 MB se rechaza; un JPG de 1 MB se acepta.
+  - Un banner de menos de 1.200 × 400 px se rechaza con un mensaje claro.
   - La imagen de una barbería no es modificable desde otra.
-  - Una barbería sin logo muestra su nombre en el encabezado.
+  - Una barbería sin logo muestra un monograma con su nombre en el encabezado y, sin banner, una cabecera compacta.
 - **Verificación:** Prueba automatizada.
 
 
@@ -1085,7 +1086,7 @@ Son 28 requisitos medibles. Los identificadores conservan su numeración origina
 | RD-06 | Identificadores UUID v7; dinero en colones enteros; marcas de tiempo con zona horaria. | D |
 | RD-07 | Rutas, atributos JSON y mensajes al usuario en español; clases, tablas y columnas en inglés. | D |
 | RD-08 | Errores en formato RFC 9457 con el encabezado `X-Request-Id`; contrato OpenAPI generado con Scramble. | C |
-| RD-09 | Cliente web separado, en Vue con TypeScript; su estructura está pendiente de definir. | C, D |
+| RD-09 | Cliente web separado, en Vue 3 con TypeScript y Tailwind CSS 4, con la estructura de carpetas definida en `docs/architecture.md`. | C, D |
 | RD-10 | Dos pasarelas intercambiables por configuración, ONVO Pay (tarjeta y SINPE Móvil) y PayPal (tarjeta); el cobro solo se confirma por webhook verificado e idempotente. | C |
 | RD-11 | Tareas en cola con workers para recordatorios, expiración, lista de espera y avisos; el driver de colas está pendiente de definir. | C, D |
 | RD-12 | Tiempo real por WebSockets para la agenda y las ofertas; la tecnología está pendiente de definir. | D |
@@ -1230,13 +1231,13 @@ Requisitos nuevos sin equivalente anterior: RF-47, RF-48 y RF-49.
 
 | ID | Pendiente | Afecta a | Estado |
 | --- | --- | --- | --- |
-| PD-01 | Estructura del cliente web con Vue | RD-09, RNF-20 | Pendiente |
-| PD-02 | Guía visual del cliente web | RNF-21, RNF-27, RF-48 | Pendiente |
+| PD-01 | Estructura del cliente web con Vue | RD-09, RNF-20 | Resuelto (decisión 19) |
+| PD-02 | Guía visual del cliente web | RNF-21, RNF-27, RF-48 | Resuelto (`barberhub-web/DESIGN.md`) |
 | PD-03 | Alojamiento, driver de colas y tecnología de tiempo real | RD-11, RD-12, RNF-09, RNF-10, RNF-12 | Pendiente |
 | PD-04 | Proveedor del servicio de correo | RF-33, RF-34, RF-41 | Pendiente |
 | PD-05 | Almacenamiento de imágenes | RF-46, RD-17 | Pendiente |
 | PD-06 | Proveedor y modelo de IA | RF-37 | Pendiente |
-| PD-07 | Detalles de ONVO Pay (SINPE Móvil) y de PayPal (moneda y firma del webhook) | RF-20, RF-22, RF-23 | Pendiente |
+| PD-07 | Detalles de ONVO Pay (SINPE Móvil) y de PayPal (moneda y firma del webhook) | RF-20, RF-22, RF-23 | Parcial (PayPal cobra en dólares; los avisos de las pasarelas llegan en el Avance 2) |
 | PD-08 | Versión de la factura electrónica de Hacienda | RF-53 | Pendiente |
 
 ## Apéndice C. Historial de cambios

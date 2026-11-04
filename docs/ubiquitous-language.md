@@ -154,6 +154,17 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 | Mañana, tarde, noche | `Morning`, `Afternoon`, `Evening` | — | `manana`, `tarde`, `noche` |
 | Registro técnico | `AuditLog` | `audit_log` | — |
 
+### Perfil público de la barbería (previsto, #187 y #46)
+
+| Negocio | Código | Base de datos | API |
+| --- | --- | --- | --- |
+| Dirección | `address` | `barbershops.address` | `direccion` |
+| Redes sociales (WhatsApp, Instagram, Facebook y TikTok) | `SocialNetwork` | `barbershops.whatsapp_url`, `instagram_url`, `facebook_url`, `tiktok_url` | `redes` |
+| Logo | `logoPath` | `barbershops.logo_path` | `logo` |
+| Banner | `bannerPath` | `barbershops.banner_path` | `banner` |
+| Cabecera de la barbería | — (solo cliente web) | — | — |
+| Monograma (iniciales del nombre cuando no hay logo) | — (solo cliente web) | — | — |
+
 ## Roles
 
 La lista de roles es cerrada y se asigna por barbería (UP-01). Una persona tiene un único rol en cada barbería y puede tener uno distinto en otra (UP-07).

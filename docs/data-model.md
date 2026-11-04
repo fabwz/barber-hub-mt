@@ -478,6 +478,19 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 4. **Búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
 5. **Corte infantil (resuelto en el #56).** CL-05 pide registrarlo a nombre de una persona adulta responsable. Se cumple por construcción, sin columna nueva: no existen cuentas de menores y la reserva queda a nombre de la cuenta de la sesión, que es de una persona adulta; el cuerpo de la reserva no acepta otro cliente. Si más adelante hace falta distinguir los servicios infantiles, sería un campo del catálogo, no de la reserva.
 
+## Columnas previstas del perfil público de la barbería (#187 y #46)
+
+Propuesta que se confirma cuando cada issue crea su migración. La portada pública se lee sin barbería en curso y `barbershops` no tiene política de fila, así que los datos públicos van en la propia tabla y no en una tabla aparte con seguridad a nivel de fila.
+
+| Tabla | Columna | Tipo | Nulo | Nota |
+| --- | --- | --- | --- | --- |
+| `barbershops` | `address` | `varchar(200)` | Sí | Dirección en texto; con ella se arman los enlaces de ubicación |
+| `barbershops` | `whatsapp_url`, `instagram_url`, `facebook_url`, `tiktok_url` | `varchar(300)` | Sí | Una columna por red; `CHECK` de que empiecen con `https://` |
+| `barbershops` | `logo_path` | `varchar(255)` | Sí | Lo llena #46; ruta dentro del almacén de la barbería |
+| `barbershops` | `banner_path` | `varchar(255)` | Sí | Lo llena #46; el banner mide al menos 1.200 × 400 px |
+
+Cuatro redes fijas no justifican una tabla propia. Si en el futuro hubiera más, se migra a `barbershop_social_links`, única por barbería y red, con su política de fila.
+
 ## Regla para cada migración nueva
 
 Antes de fusionar un pull request con una migración se revisa que la tabla tenga llave primaria `id`, que lleve `barbershop_id` si pertenece a una barbería, que sus llaves únicas y foráneas incluyan `barbershop_id`, que tenga la seguridad a nivel de fila habilitada y forzada con su política `<tabla>_barbershop_isolation` (o que su excepción esté justificada en [database.md](database.md)), que no guarde valores calculables y que este documento quede actualizado.

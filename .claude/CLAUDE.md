@@ -1,6 +1,6 @@
 # BarberHub (barber-hub-mt)
 
-Plataforma web multi-inquilino de reservas y cobro para barberías. Proyecto individual del curso ISW-621 (UTN, Sede San Carlos). Monorepo con dos proyectos: `barberhub-api` (Laravel 13, PHP 8.4, PostgreSQL 18, arquitectura hexagonal con DDD ligero) y `barberhub-web` (Vue con TypeScript).
+Plataforma web multi-inquilino de reservas y cobro para barberías. Proyecto individual del curso ISW-621 (UTN, Sede San Carlos). Monorepo con dos proyectos: `barberhub-api` (Laravel 13, PHP 8.4, PostgreSQL 18, arquitectura hexagonal con DDD ligero) y `barberhub-web` (Vue 3, TypeScript y Tailwind CSS 4).
 
 ## Entorno
 
@@ -8,7 +8,7 @@ El desarrollador trabaja en Windows. El shell por defecto de Claude Code es Git 
 
 ## Regla principal
 
-Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta antes de seguir**. No asumas ni inventes requisitos, reglas, endpoints, nombres de tablas ni decisiones de arquitectura.
+Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta antes de seguir** cuando la duda afecte a otro issue o rompa una regla de este archivo. Si no, elige la opción más simple que siga la referencia y anótala en la entrega. No inventes requisitos, reglas, endpoints, nombres de tablas ni decisiones de arquitectura.
 
 ## Fuentes de verdad (léelas bajo demanda; no las cargues completas)
 
@@ -16,17 +16,18 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 - `context/requirements.md`: busca la ficha del RF-xx, RNF-xx o RD-xx que cite el issue.
 - `context/business-rules.md`: busca las reglas citadas (por ejemplo RE-04, PA-03, MT-03).
 - `docs/`: cómo está construido el sistema (arquitectura, base de datos, modelo de datos, lenguaje ubicuo y registros de decisión).
-- **Referencia del docente (solo lectura):** `../SodaYa-Hexagonal`; la API está en `sodaya-api-hexagonal/`. Cuando un issue diga "Base: X", lee X allí y adáptalo a barbería. No copies contenido del dominio de sodas (platos, categorías, menú). Nunca edites ese repositorio.
+- `barberhub-web/DESIGN.md`: la guía visual del cliente web (tokens, componentes, estados y accesibilidad). Es la fuente de verdad de todo lo que se ve.
+- **Referencia del docente (solo lectura):** `../SodaYa-Hexagonal`; la API está en `sodaya-api-hexagonal/`. Cuando un issue diga "Base: X", lee X allí y adáptalo a barbería. No copies contenido del dominio de sodas (platos, categorías, menú). Nunca edites ese repositorio. La arquitectura y la API siguen la referencia: una divergencia solo se acepta si el dominio de BarberHub la exige; se lista, se pregunta antes y se anota en el PR con su motivo. El cliente web no tiene referencia: sigue la estructura que entregó el docente y `DESIGN.md`.
 - `context/` solo cambia cuando el dueño del proyecto lo pide. Si encuentras una contradicción, repórtala.
 
 ## Cómo trabajar cada issue
 
-1. Lee el issue, los requisitos y reglas que cita y la "Base:" de la referencia.
-2. Presenta un plan breve y espera confirmación antes de editar archivos.
+1. Lee el issue, los requisitos y reglas que cita y la "Base:" de la referencia. Comprueba con `git -C ../SodaYa-Hexagonal log -1 --format="%h %ad %s" --date=short` que la referencia es el commit `2f7c6fd` o posterior, y di cuál es.
+2. Implementa directamente, sin pedir confirmación de un plan, salvo que el prompt pida presentarlo primero.
 3. Implementa solo lo que pide el issue: nada de extras ni refactors ajenos.
-4. Antes de terminar, deja en verde `composer lint`, `composer analyse` y `composer test` (cuando existan, issues #28 a #30).
+4. Antes de terminar, deja en verde `composer lint`, `composer analyse` y `composer test`; en el cliente web, el formato, la verificación de tipos, las pruebas y la compilación (los scripts los fija el issue #73). Ejecuta `analyse` y `test` una sola vez, al final (`analyse` es lento); mientras trabajas usa `php -l` o pruebas filtradas.
 5. Si cambia la API, regenera `openapi/v1.json` con `composer openapi`. Si cambia el esquema, la migración es reversible y se actualiza `docs/data-model.md`.
-6. Al final explica en pocas líneas las decisiones no triviales: el dueño debe poder explicar y modificar cualquier parte del código en vivo.
+6. Entrega de forma compacta: `git status`, los resultados de las comprobaciones, las decisiones y divergencias en pocas líneas, los commits propuestos y el título y la descripción del PR. El dueño debe poder explicar y modificar cualquier parte del código en vivo.
 
 ## Git y GitHub
 
@@ -43,6 +44,7 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 - **Inglés:** clases, métodos, variables, comentarios, tablas, columnas y commits.
 - **Español:** rutas de la API, atributos JSON, mensajes al usuario y tipos de error.
 - Ningún mensaje al usuario va en el código: las excepciones llevan una clave de traducción y el texto vive en `lang/es` (ADR 0008).
+- Cliente web: los textos de la interfaz van en español de Costa Rica, tratando de «usted».
 - Términos del negocio: barbería = `Barbershop`. Consulta `docs/ubiquitous-language.md` antes de nombrar algo nuevo.
 
 ## Arquitectura (api)
@@ -67,6 +69,20 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 - Cada recurso nuevo agrega su caso a la suite de aislamiento (`tests/Feature/Tenancy`) y a la matriz de permisos.
 - Procesos sin sesión (webhooks, colas, tareas programadas): el mecanismo para fijar la barbería está pendiente de definir. No lo inventes; pregunta.
 
+## Cliente web (barberhub-web)
+
+- **Pila:** Vue 3 con `<script setup lang="ts">`, TypeScript, Vite, Vue Router, Pinia, Vitest, Vue Test Utils y Tailwind CSS 4.
+- **Estructura de `src/`:** `assets` (`fonts`, `images`, `styles`), `api`, `components`, `composables`, `router`, `stores`, `views`, `__tests__`, `App.vue` y `main.ts`. No crees `custom_elements`, `Internals` ni `SSR`.
+- **Nombres:** componentes en PascalCase, vistas terminadas en `View`, composables que empiezan con `use`, tiendas `useXStore`.
+- **Diseño:** sigue `DESIGN.md`. Colores solo desde los tokens (variables CSS y `@theme` de Tailwind), bordes de 1 px, sin sombras ni degradados, Manrope en pesos 400 y 500. Si algo no está en el documento, elige lo más sobrio y anótalo.
+- **API:** los tipos se generan desde `../barberhub-api/openapi/v1.json`; nunca se escriben a mano. Un único cliente HTTP convierte los errores `problem+json` en un error tipado. Un 401 cierra la sesión local y un 429 expone `Retry-After`.
+- **Multi-inquilino:** la barbería activa viaja siempre en la ruta (`/barberias/{barberia}/...`), nunca en el cuerpo ni en un encabezado. El cliente no decide permisos: los decide la API (404 o 403).
+- **Pagos:** los datos de la tarjeta nunca se envían a nuestra API (se crean directo en ONVO con su llave pública y solo llega un identificador). El monto lo calcula el servidor. La confirmación del pago se obtiene consultando su estado, nunca por la redirección ni por lo que reporta el navegador.
+- **Estados:** toda pantalla que carga datos tiene sus tres estados: cargando (esqueleto), error y vacío.
+- **Accesibilidad:** WCAG 2.2 AA, objetivos de 44 px y ningún estado que dependa solo del color o del tono.
+- **Sesión:** no guardes el token ni datos de pago en `localStorage` hasta que el issue del acceso (#75) decida cómo se conserva la sesión.
+- **Ventanas pendientes:** los issues con la etiqueta `bloqueado-por-api` no se inician hasta que su API esté integrada.
+
 ## Base de datos
 
 - PostgreSQL 18, bases `barberhub` (desarrollo) y `barberhub_testing` (solo pruebas). Dos roles: el dueño de las tablas ejecuta las migraciones por la conexión administrativa (en la referencia, `--database=pgsql_admin`) y el rol de la aplicación atiende las peticiones sin ser dueño ni superusuario.
@@ -77,7 +93,7 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 ## Pruebas
 
 - PHPUnit 12 (no Pest), con las suites `Unit` (sin framework ni base de datos), `Feature` (PostgreSQL real, solo `barberhub_testing`) y `Architecture`.
-- Pasarelas de pago, proveedor de IA y correo se simulan en las pruebas. Las pruebas de concurrencia usan conexiones paralelas reales.
+- Pasarelas de pago, proveedor de IA y correo se simulan en las pruebas (con `Http::fake` y `Http::preventStrayRequests`: ninguna prueba llama a un proveedor real). Cliente web: Vitest y Vue Test Utils. Las pruebas de concurrencia usan conexiones paralelas reales.
 
 ## Seguridad y datos
 
@@ -90,10 +106,3 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 
 - Los extras (propinas, WhatsApp, Google Calendar y factura electrónica) se construyen solo cuando el núcleo esté terminado.
 - No implementes nada fuera de los issues del milestone en curso.
-
-## Modo de trabajo por issue
-- Implementa directamente, sin plan, salvo que el prompt lo pida. Ante una ambigüedad no cubierta, elige lo más simple que siga la referencia y anótalo.
-- Solo editas archivos y lees git. Nunca `git add`, `commit`, `push`, `mv` ni `sed` sobre el repo, ni comandos de GitHub que escriban. No crees ni leas `.env`. No ejecutes `serve`, `migrate` ni `db:seed` sobre la base de desarrollo.
-- Verifica con `composer.bat lint`, `analyse` y `test` UNA sola vez, al final, sobre el estado completo (`analyse` es lento; usa COMPOSER_PROCESS_TIMEOUT=0), y `openapi` solo si cambia la API. Mientras trabajas usa solo `php -l` y `php artisan test --filter=<clase>`. `.claude/settings.json` no entra en ningún commit.
-- Antes de empezar comprueba que la referencia (`git -C ../SodaYa-Hexagonal log -1`) es 2f7c6fd o posterior. La arquitectura y la API la siguen; anota cada divergencia con su motivo.
-- Entrega compacta: `git status`; resultados de lint, analyse y test (con el número de pruebas); decisiones y divergencias en pocas líneas; commits atómicos que compilan y pasan solos (`Refs: #N`, sin pie de atribución, `git add` sin rutas inexistentes); secuencia PowerShell terminando en `git push -u origin HEAD`; y título y descripción del PR con `Closes #N` y sus criterios.

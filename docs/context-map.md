@@ -21,6 +21,10 @@ Los objetos de valor `Money`, `Duration`, `Percentage`, `TimeInterval` e `Identi
 
 Un módulo corresponde a un agregado o a un conjunto de datos que se administra junto, no a una tabla. Los eventos de dominio y qué contexto reacciona a cada uno están en [architecture.md](architecture.md), en la sección "Colaboración entre contextos".
 
+## Consumidores externos
+
+El cliente web (`barberhub-web`) consume la API REST y no pertenece a ningún contexto: no importa código del dominio y solo conoce el contrato `openapi/v1.json`, de donde genera sus tipos. Todo lo que muestra o decide pasa por las rutas de la API.
+
 ## Invariantes de los agregados
 
 Los cuatro agregados guardan reglas que no pueden romperse nunca, ni siquiera por una petición simultánea. Cada invariante se prueba con pruebas unitarias del dominio, sin base de datos, y las que dependen de la concurrencia se refuerzan además en PostgreSQL (ver [database.md](database.md)).
