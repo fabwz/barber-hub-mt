@@ -1,0 +1,131 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens from DESIGN.md, declared once. Tailwind exposes every
+ * --color-*, --font-*, --text-* and --radius-* entry as a CSS variable,
+ * so the base styles below read them with var(--color-*).
+ */
+@theme {
+  --color-canvas: #161819;
+  --color-surface: #1c1f21;
+  --color-elevated: #272e32;
+  --color-line: #2a2f32;
+  --color-line-strong: #3a3f45;
+  --color-line-hover: #454b50;
+  --color-field: #6b7073;
+  --color-fg: #eef0f0;
+  --color-fg-muted: #9a9d9e;
+  --color-fg-subtle: #85888a;
+  --color-accent: #ece6d6;
+  --color-accent-hover: #cfc8b5;
+  --color-btn-hover: #2e373c;
+  --color-btn-active: #20262a;
+  --color-danger: #f2a3a0;
+  --color-danger-surface: #301c1a;
+  --color-danger-border: #d9706e;
+  --color-warning: #e8c27a;
+  --color-warning-surface: #2d2616;
+
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.43;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.38;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.33;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 1.2;
+
+  --radius-field: 8px;
+  --radius-card: 16px;
+  --radius-pill: 9999px;
+}
+
+/* Manrope, latin subset, weights 400 and 500 only (SIL OFL 1.1). */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/manrope-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../fonts/manrope-latin-500-normal.woff2') format('woff2');
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: -0.007em;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  input:focus,
+  input:focus-visible,
+  select:focus,
+  select:focus-visible,
+  textarea:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  ::selection {
+    background: var(--color-elevated);
+    color: var(--color-fg);
+  }
+
+  a {
+    color: var(--color-fg);
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: var(--color-accent-hover);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
