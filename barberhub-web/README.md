@@ -27,14 +27,28 @@ cp .env.example .env
 | `npm run format:check` | Verifica el formato con Prettier.    |
 | `npm run type-check`   | Verifica los tipos con `vue-tsc`.    |
 | `npm run test`         | Pruebas con Vitest y Vue Test Utils. |
+| `npm run types`        | Genera los tipos de la API.          |
 
 ## Variable de entorno
 
 Se define en `.env` (copia de `.env.example`). Nunca se escriben secretos en el repositorio.
 
-| Variable       | Valor de ejemplo        | Uso                                          |
-| -------------- | ----------------------- | -------------------------------------------- |
-| `VITE_API_URL` | `http://127.0.0.1:8000` | Dirección base de la API. Todavía no se usa. |
+| Variable       | Valor de ejemplo        | Uso                                           |
+| -------------- | ----------------------- | --------------------------------------------- |
+| `VITE_API_URL` | `http://127.0.0.1:8000` | Destino del proxy de desarrollo hacia la API. |
+
+## Tipos de la API
+
+Los tipos de la API no se escriben a mano: se generan con `openapi-typescript` desde el contrato de la API.
+
+```sh
+npm run types
+```
+
+- **Origen:** `../barberhub-api/openapi/v1.json`. **Destino:** `src/api/schema.d.ts`, que se versiona, lleva el comentario «Archivo generado, no editar» y está excluido de ESLint y Prettier.
+- **Cuándo regenerarlos:** cada vez que cambia `openapi/v1.json` (la API se regenera con `composer openapi`). Se hace un commit con el contrato nuevo y los tipos nuevos. La CI vuelve a generarlos y falla si `schema.d.ts` difiere de lo versionado.
+- **Cliente:** `src/api/client.ts` usa `openapi-fetch` con la dirección base `/api/v1` (las rutas del contrato son relativas a su `servers.url`). Todo error llega como `ApiError` (`src/api/errors.ts`). La tienda de sesión registrará el token con `setTokenProvider` y el cierre de sesión ante un 401 con `setUnauthorizedHandler`.
+- **Proxy de desarrollo:** el cliente llama a `/api/v1` en su propio origen y el servidor de Vite reenvía `/api` a `VITE_API_URL` (`vite.config.ts`), de modo que en desarrollo el navegador no necesita CORS. La API no cambia: cuando el cliente se sirva desde otro origen, habrá que configurar CORS en la API (pendiente).
 
 ## Estructura de `src/`
 
@@ -44,7 +58,7 @@ src/
 │   ├── fonts/     Manrope 400 y 500 (woff2, latin)
 │   ├── images/
 │   └── styles/    main.css: Tailwind, tokens (@theme) y estilos base
-├── api/
+├── api/           schema.d.ts (generado), client.ts, errors.ts, index.ts
 ├── components/
 ├── composables/   funciones use…
 ├── router/
