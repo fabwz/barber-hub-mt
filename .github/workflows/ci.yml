@@ -194,3 +194,110 @@ jobs:
 
       - name: Scan the history for credentials
         run: '"$RUNNER_TEMP/gitleaks/gitleaks" git --no-banner --redact --verbose --exit-code 1 .'
+
+  web-lint:
+    name: web-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: barberhub-web
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: barberhub-web/.nvmrc
+          cache: npm
+          cache-dependency-path: barberhub-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check the formatting
+        run: npm run format:check
+
+  web-types:
+    name: web-types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: barberhub-web
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: barberhub-web/.nvmrc
+          cache: npm
+          cache-dependency-path: barberhub-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the types
+        run: npm run type-check
+
+  web-test:
+    name: web-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: barberhub-web
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: barberhub-web/.nvmrc
+          cache: npm
+          cache-dependency-path: barberhub-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the tests
+        run: npm run test
+
+  web-build:
+    name: web-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: barberhub-web
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: barberhub-web/.nvmrc
+          cache: npm
+          cache-dependency-path: barberhub-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the application
+        run: npm run build
