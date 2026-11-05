@@ -131,6 +131,27 @@ Alto de 48 px, radio de 8 px, relleno `canvas`, borde de 1 px `field`, texto `fg
 - **Error:** borde `danger-border` y debajo un mensaje con ícono de 16 px, en `danger`, que nombra el problema y la salida. Se asocia con `aria-describedby` y `aria-invalid`.
 - **Deshabilitado:** borde `line` y texto `fg-subtle`.
 
+### Casilla
+Cuadro de 24 px con radio de 8 px y borde de 1 px, dentro de una fila de al menos 44 px de alto con 12 px de separación hacia su texto. Es un `button` con `role="checkbox"`, `aria-checked`, `aria-required` cuando es obligatoria y `aria-labelledby` hacia su texto.
+- **Sin marcar:** transparente con borde `field`.
+- **Marcada:** relleno `elevated`, borde `line-strong` y un check en `accent`. El check es obligatorio: el tono por sí solo no identifica el estado.
+- **Error:** borde `danger-border`, con un mensaje debajo.
+- **Enviando:** borde `line` y opacidad de 0,6.
+
+### Lista de requisitos de la contraseña
+Aparece bajo el campo de contraseña, dentro de una región `aria-live="polite"`. Antes de escribir muestra una sola línea de ayuda en `fg-subtle` («Mínimo 8 caracteres, una mayúscula, un número y un símbolo.»). Al escribir, cada requisito lleva ícono y texto:
+
+| Estado | Ícono | Texto | Anuncio |
+| --- | --- | --- | --- |
+| Pendiente | Círculo sin marca en `fg-subtle` | `fg-muted`, peso 400 | «Pendiente: » |
+| Cumplido | Círculo con check en `accent` | `fg`, peso 400 | «Cumplido: » |
+| No cumplido (tras enviar) | Círculo con X en `danger` | `danger`, peso 500 | «No cumplido: » |
+
+Los requisitos concretos los define la API.
+
+### Aviso en línea informativo
+Una fila con un ícono de información de 16 px y texto, sin color de estado. Se usa para indicar que un contenido es de ejemplo. La primera frase va en peso 500 y la segunda en `fg-muted`.
+
 ### Etiqueta de estado
 Un punto de 8 px y el texto, sin relleno. Nunca solo color.
 
