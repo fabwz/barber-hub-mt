@@ -62,7 +62,9 @@ describe('session store', () => {
     expect(session.isAuthenticated).toBe(true)
     expect(session.token).toBe('tok-1')
     expect(JSON.parse(sessionStorage.getItem(SESSION_STORAGE_KEY)!).token).toBe('tok-1')
-    expect(localStorage.length).toBe(0)
+    // Depending on the Node version, `localStorage` may not exist in the test environment.
+    const local = (globalThis as { localStorage?: Storage }).localStorage
+    expect(local?.getItem(SESSION_STORAGE_KEY) ?? null).toBeNull()
   })
 
   it('a failed login leaves no session', async () => {
