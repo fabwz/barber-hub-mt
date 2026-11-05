@@ -25,7 +25,7 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 1. Lee el issue, los requisitos y reglas que cita y la "Base:" de la referencia. Comprueba con `git -C ../SodaYa-Hexagonal log -1 --format="%h %ad %s" --date=short` que la referencia es el commit `2f7c6fd` o posterior, y di cuál es.
 2. Implementa directamente, sin pedir confirmación de un plan, salvo que el prompt pida presentarlo primero.
 3. Implementa solo lo que pide el issue: nada de extras ni refactors ajenos.
-4. Antes de terminar, deja en verde `composer lint`, `composer analyse` y `composer test`; en el cliente web, el formato, la verificación de tipos, las pruebas y la compilación (los scripts los fija el issue #73). Ejecuta `analyse` y `test` una sola vez, al final (`analyse` es lento); mientras trabajas usa `php -l` o pruebas filtradas.
+4. Antes de terminar, deja en verde `composer lint`, `composer analyse` y `composer test`; en el cliente web (desde `barberhub-web`), `npm run lint`, `npm run format:check`, `npm run type-check`, `npm run test` y `npm run build`. Ejecuta `analyse` y `test` una sola vez, al final (`analyse` es lento); mientras trabajas usa `php -l` o pruebas filtradas.
 5. Si cambia la API, regenera `openapi/v1.json` con `composer openapi`. Si cambia el esquema, la migración es reversible y se actualiza `docs/data-model.md`.
 6. Entrega de forma compacta: `git status`, los resultados de las comprobaciones, las decisiones y divergencias en pocas líneas, los commits propuestos y el título y la descripción del PR. El dueño debe poder explicar y modificar cualquier parte del código en vivo.
 
@@ -75,7 +75,7 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 - **Estructura de `src/`:** `assets` (`fonts`, `images`, `styles`), `api`, `components`, `composables`, `router`, `stores`, `views`, `__tests__`, `App.vue` y `main.ts`. No crees `custom_elements`, `Internals` ni `SSR`.
 - **Nombres:** componentes en PascalCase, vistas terminadas en `View`, composables que empiezan con `use`, tiendas `useXStore`.
 - **Diseño:** sigue `DESIGN.md`. Colores solo desde los tokens (variables CSS y `@theme` de Tailwind), bordes de 1 px, sin sombras ni degradados, Manrope en pesos 400 y 500. Si algo no está en el documento, elige lo más sobrio y anótalo.
-- **API:** los tipos se generan desde `../barberhub-api/openapi/v1.json`; nunca se escriben a mano. Un único cliente HTTP convierte los errores `problem+json` en un error tipado. Un 401 cierra la sesión local y un 429 expone `Retry-After`.
+- **API:** los tipos se generan con `npm run types` desde `../barberhub-api/openapi/v1.json` hacia `src/api/schema.d.ts`, que se versiona; nunca se escriben a mano y se regeneran cuando cambia el contrato. Un único cliente HTTP convierte los errores `problem+json` en un error tipado. Un 401 cierra la sesión local y un 429 expone `Retry-After`.
 - **Multi-inquilino:** la barbería activa viaja siempre en la ruta (`/barberias/{barberia}/...`), nunca en el cuerpo ni en un encabezado. El cliente no decide permisos: los decide la API (404 o 403).
 - **Pagos:** los datos de la tarjeta nunca se envían a nuestra API (se crean directo en ONVO con su llave pública y solo llega un identificador). El monto lo calcula el servidor. La confirmación del pago se obtiene consultando su estado, nunca por la redirección ni por lo que reporta el navegador.
 - **Estados:** toda pantalla que carga datos tiene sus tres estados: cargando (esqueleto), error y vacío.
