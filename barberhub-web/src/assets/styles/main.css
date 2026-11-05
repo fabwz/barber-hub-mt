@@ -68,8 +68,15 @@
     color-scheme: dark;
   }
 
+  /*
+   * The only gradient in the client: a faint glow in the bottom-right corner of the
+   * window, over the canvas color. No component uses gradients (designRules test).
+   */
   body {
-    background: var(--color-canvas);
+    background:
+      radial-gradient(120% 700px at 100% 100%, rgba(238, 240, 240, 0.04), rgba(238, 240, 240, 0))
+        fixed,
+      var(--color-canvas);
     color: var(--color-fg);
     font-family: var(--font-sans);
     font-size: 1rem;

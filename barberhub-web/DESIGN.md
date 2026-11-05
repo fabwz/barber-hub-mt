@@ -1,6 +1,6 @@
 # BarberHub — Guía de diseño
 
-> Consola oscura, sobria y precisa: un lienzo de grafito frío, líneas finas de 1 px y un solo acento hueso que se usa con contención. Todo es plano, sin sombras ni degradados.
+> Consola oscura, sobria y precisa: un lienzo de grafito frío, líneas finas de 1 px y un solo acento hueso que se usa con contención. Todo es plano, sin sombras ni degradados en los componentes; solo el fondo de la página lleva un destello muy tenue en una esquina.
 
 Este documento es la fuente de verdad visual del cliente web (`barberhub-web`: Vue 3, TypeScript y Tailwind CSS 4). Toda interfaz nueva lo sigue. Si algo no está aquí, se elige la opción más sobria y se anota.
 
@@ -64,6 +64,8 @@ Los campos van sobre `canvas` o `surface`, **nunca sobre `elevated`** (ahí `fie
 
 Interletrado global: `-0.007em`. Los títulos usan `text-wrap: balance` y los párrafos `text-wrap: pretty`.
 
+La negrita de un texto es siempre peso 500. La cursiva solo aparece en los textos legales (palabras en otro idioma, como *tenant*) y es la que el navegador sintetiza desde Manrope 400, porque no se carga una cursiva.
+
 | Rol | Tamaño | Interlineado | Peso | Uso |
 |---|---|---|---|---|
 | Nombre de barbería | 36 px (2.25rem) | 1,2 | 400 | Solo en su página pública |
@@ -98,7 +100,9 @@ Escala fija en rem; no hay tipografía fluida. Las cifras de precio y hora se mu
 | 1 | `surface` | Tarjetas, menús, avisos, hover |
 | 2 | `elevated` | Selección, botón tonal, página activa |
 
-**Cero sombras en cualquier elemento**, incluidos menús, avisos y diálogos: se separan con borde `line` y la superficie del nivel. **Cero degradados**, desenfoque o efectos de vidrio.
+**Cero sombras en cualquier elemento**, incluidos menús, avisos y diálogos: se separan con borde `line` y la superficie del nivel. **Cero degradados en los componentes**, desenfoque o efectos de vidrio.
+
+**Única excepción, el fondo de la página:** un degradado radial muy tenue en la esquina inferior derecha de la ventana, sobre `canvas`: `radial-gradient(120% 700px at 100% 100%, rgba(238,240,240,0.04), rgba(238,240,240,0)) fixed`. Se declara una sola vez, en la capa base de `main.css`, y ningún componente lo usa (la prueba de reglas de diseño sigue fallando si aparece un degradado en `src/components`).
 
 ## Componentes
 
@@ -130,6 +134,29 @@ Alto de 48 px, radio de 8 px, relleno `canvas`, borde de 1 px `field`, texto `fg
 - **Foco:** el borde pasa a `accent` de 1 px, sin halo ni sombra, y se quita el contorno.
 - **Error:** borde `danger-border` y debajo un mensaje con ícono de 16 px, en `danger`, que nombra el problema y la salida. Se asocia con `aria-describedby` y `aria-invalid`.
 - **Deshabilitado:** borde `line` y texto `fg-subtle`.
+- **Contraseña:** un botón con ícono de ojo (`Eye` / `EyeOff`, 20 px) de 48 × 48 px en el borde derecho del campo, con `aria-label="Mostrar contraseña"` y `aria-pressed`. Muestra u oculta lo escrito y se deshabilita mientras se envía. Está en crear cuenta y en iniciar sesión.
+- **Correo:** si falta algo, el mensaje dice qué (el `@`, lo que va antes del `@`, el dominio o los espacios) y da un ejemplo («nombre@correo.cr»). Se acepta cualquier terminación.
+- **Nombre:** no admite números ni símbolos; sí letras con tilde, espacios, apóstrofo, guion y punto.
+- **Teléfono:** solo dígitos, como máximo 8, con el guion puesto solo al escribir el quinto (`1234-5678`, también en el marcador). Teclado numérico. A la API se envían solo los dígitos.
+
+### Casilla
+Cuadro de 20 px con radio de 8 px y borde de 1 px, dentro de una fila de al menos 44 px de alto con 12 px de separación hacia su texto. Es un `button` con `role="checkbox"`, `aria-checked`, `aria-required` cuando es obligatoria y `aria-labelledby` hacia su texto.
+- **Sin marcar:** transparente con borde `field`.
+- **Marcada:** relleno `elevated`, borde `line-strong` y un check de 14 px en `accent`. El check es obligatorio: el tono por sí solo no identifica el estado.
+- **Error:** borde `danger-border`, con un mensaje debajo propio de cada casilla («Debe aceptar los Términos y condiciones para crear su cuenta.»).
+- **Texto:** las palabras de apoyo («Acepto los», «Acepto la») van en `fg-muted` y peso 400. Solo el nombre del documento va en peso 500, sin subrayado, y es un enlace a su página en la misma pestaña; un clic en el enlace no marca la casilla.
+- **Enviando:** borde `line` y opacidad de 0,6.
+
+### Lista de requisitos de la contraseña
+Aparece bajo el campo de contraseña, dentro de una región `aria-live="polite"`. Es **una sola frase** de ayuda, en 14 px y `fg-subtle`, que nombra todos los requisitos («Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.»). No cambia mientras la persona escribe.
+- **Tras enviar con algo pendiente:** la frase pasa a `danger` en peso 500, junto al mensaje de error del campo (que lleva ícono y texto, así que el estado no depende solo del color).
+- **Al cumplir todo:** la frase vuelve a `fg-subtle`. Si todo estaba bien, no pasa nada.
+- **Lectores de pantalla:** tras un envío fallido se anuncia cada requisito con texto oculto, «Cumplido: » o «No cumplido: », seguido del requisito.
+
+Los requisitos concretos salen del contrato y de las reglas del negocio (SE-07: 8 caracteres, con mayúscula, minúscula, número y símbolo).
+
+### Aviso en línea informativo
+Una fila con un ícono de información de 16 px y texto, sin color de estado, dentro de una tarjeta de 16 px con borde de 1 px `line` y relleno `surface`. Se usa para indicar que un contenido es de ejemplo. La primera frase va en peso 500 y la segunda en `fg-muted`.
 
 ### Etiqueta de estado
 Un punto de 8 px y el texto, sin relleno. Nunca solo color.
@@ -182,6 +209,14 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 - **Redes:** como máximo WhatsApp, Instagram, Facebook y TikTok, con objetivos de 44 px e íconos de 20 px. **Solo se muestran las que el dueño configuró**; no hay enlaces vacíos.
 - Se prueban cuatro casos: con logo y banner, solo con logo, sin ninguno de los dos, y con un banner oscuro y de baja calidad.
 
+## Páginas de acceso y de lectura
+
+### Columna de formulario
+Las pantallas de acceso (crear cuenta e iniciar sesión) usan una sola columna centrada de 390 px en celular y 440 px en escritorio, con el logotipo en el encabezado. Un título de página (24 px), el formulario y, debajo, el enlace a la otra pantalla («¿Ya tiene cuenta? Ingresar» o «¿No tiene cuenta? Crear cuenta»). Estados de cada pantalla: reposo, escribiendo, enviando (campos y botón deshabilitados, `aria-busy`), error por campo, error general y bloqueo.
+
+### Página de lectura
+Las páginas de texto largo (términos y política de privacidad) usan un ancho de lectura de 65 a 75 caracteres, un único `h1` de 24 px, subtítulos `h2` de 18 px en peso 500 y párrafos de 16 px. Las tablas van dentro de un contenedor con desplazamiento horizontal, con encabezados `th scope="col"`. Si el texto es provisional, un aviso en línea informativo abre la página («Texto de ejemplo. El contenido final lo define el negocio.»). Bajo el título va una línea de 14 px en `fg-subtle` con la fecha de actualización y la versión. Los fragmentos de código dentro del texto usan Manrope sobre `surface` con radio de 8 px. En el encabezado, a la izquierda, un botón «Volver» (píldora con chevron, 44 px de alto) regresa a la página anterior o, si se llegó directo, a la portada; a la derecha va el logotipo.
+
 ## Movimiento y foco
 
 - Transiciones de **150 ms** `ease-out`, solo para comunicar un cambio de estado (hover, apertura de un menú). Ninguna animación de entrada.
@@ -194,14 +229,17 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 
 - **Lucide**, trazo de 1,5 px, tamaños de 16, 20 y 24 px, heredan el color del texto. Nunca emojis ni glifos como íconos.
 - El banner y el logo son **del negocio** y se muestran dentro de su marco. BarberHub no agrega fotografías de stock ni ilustraciones decorativas.
+- **Logotipo:** el de BarberHub vive en `src/assets/images/bh-logo-bone.png` (versión hueso, para el tema oscuro) y se muestra con el componente `BrandLogo`, con `alt="BarberHub"`, dimensiones explícitas y un alto mínimo de 24 px (por defecto, 56 × 35 px). `BrandLogo` recorta el margen transparente del archivo para que el logotipo quede completo y pegado al margen de la pantalla. Se usa solo en el encabezado de las pantallas de acceso, de lectura y de la aplicación. No se recolorea ni se deforma. Las versiones negra y azul grisáceo se suman con el tema claro.
 
 ## Voz del texto
 
 - Español de Costa Rica, «usted».
 - **Botones:** verbo primero, sin punto: «Reservar cita», «Continuar al pago», «Reintentar».
 - **Errores:** dicen qué pasó y qué hacer, en una o dos frases. Sin lenguaje técnico ni mensajes crudos del servidor.
-- **Formatos:** precios `₡10.000` (punto como separador de miles); horas `10:30`; rangos `10:30–11:15`; fechas «jue 5 nov 2026» y, sin año, «sáb 7 nov».
+- **Formatos:** precios `₡10.000` (punto como separador de miles); horas `10:30`; rangos `10:30–11:15`; fechas «jue 5 nov 2026» y, sin año, «sáb 7 nov». En los textos legales, la fecha de actualización va completa: «5 de noviembre de 2026».
 - Mayúscula solo al inicio de la frase y en nombres propios. Sin signos de exclamación en mensajes del sistema.
+- **Errores de acceso:** un único mensaje genérico, sin revelar qué falló («El correo o la contraseña no son correctos.»). El bloqueo por intentos muestra el tiempo restante como `m:ss` («Demasiados intentos. Intente de nuevo en 4:32», sin punto final porque termina en la cuenta) con cuenta regresiva y el botón deshabilitado.
+- **Contenido legal:** los textos de `docs/legal/` se muestran tal cual; no se editan en las vistas.
 
 ## Accesibilidad
 
@@ -230,7 +268,7 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 - Escribir mensajes que nombran el problema y la salida.
 
 ### No hacer
-- Sombras, degradados, desenfoque, vidrio, brillos o halos.
+- Sombras, degradados en componentes (el fondo de la página es la única excepción), desenfoque, vidrio, brillos o halos.
 - Bordes de más de 1 px, o bordes de color distinto a los definidos.
 - Texto en hueso para resaltar, o un color distinto por barbería.
 - Pesos 600 o 700, fuentes monoespaciadas, o mayúsculas sostenidas en etiquetas.
@@ -269,7 +307,10 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 }
 
 body {
-  background: var(--canvas);
+  /* El único degradado: un destello tenue en la esquina inferior derecha, sobre canvas. */
+  background:
+    radial-gradient(120% 700px at 100% 100%, rgba(238, 240, 240, 0.04), rgba(238, 240, 240, 0)) fixed,
+    var(--canvas);
   color: var(--fg);
   font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
   font-size: 1rem;
@@ -344,5 +385,5 @@ Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg
 ## Pendiente
 
 - **Tema claro:** se deriva de estos mismos tokens, que ya están como variables. Hasta entonces, la interfaz es solo oscura.
-- **Pantallas por diseñar:** crear cuenta, iniciar sesión, resultado del pago y reserva confirmada, Mis reservas con detalle, cancelar y reprogramar, elegir negocio, y del dueño: servicios, cobro y datos del negocio.
+- **Pantallas por diseñar:** resultado del pago y reserva confirmada, Mis reservas con detalle, cancelar y reprogramar, elegir negocio, y del dueño: servicios, cobro y datos del negocio.
 - **Logo, banner, dirección y redes** dependen de los endpoints de datos públicos del negocio y de la subida de archivos.
