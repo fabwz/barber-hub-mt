@@ -82,6 +82,8 @@ Si no sabes algo, hay ambigüedad o dos documentos se contradicen, **pregunta an
 - **Accesibilidad:** WCAG 2.2 AA, objetivos de 44 px y ningún estado que dependa solo del color o del tono.
 - **Sesión:** no guardes el token ni datos de pago en `localStorage` hasta que el issue del acceso (#75) decida cómo se conserva la sesión.
 - **Ventanas pendientes:** los issues con la etiqueta `bloqueado-por-api` no se inician hasta que su API esté integrada.
+- **Estilo de Vue:** Composition API con `<script setup lang="ts">`, sin Options API. Props con `defineProps<Props>()` y eventos con `defineEmits<{...}>()`, con `strict` en TypeScript. Enlace bidireccional entre componentes con `defineModel()`. Slots (por defecto, nombrados y con ámbito) para componer, `provide`/`inject` con `InjectionKey` para compartir entre un componente y sus hijos, y composables `useX` para la lógica con estado. Estado compartido con Pinia y rutas con Vue Router, con carga diferida de las vistas.
+- **Fuera de alcance:** no uses `v-html` con datos de la API (XSS), render functions, JSX, SSR ni Web Components, salvo que un issue lo pida. Cada estilo se usa donde encaja de forma natural.
 
 ## Base de datos
 
