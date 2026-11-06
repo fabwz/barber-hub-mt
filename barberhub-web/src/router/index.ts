@@ -6,6 +6,12 @@ import { installGuards } from './guard'
 export const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
   {
+    path: '/b/:enlace',
+    name: 'shop',
+    component: () => import('@/views/ShopView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/ingresar',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),

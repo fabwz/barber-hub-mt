@@ -5,6 +5,10 @@ import BaseButton from '@/components/BaseButton.vue'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
+
+// TEMPORARY: development-only links to the public shop page. Vite replaces
+// import.meta.env.DEV with false in the build, so none of this ships.
+const devShops = import.meta.env.DEV ? ['pura-navaja', 'fade-lab', 'don-chepe'] : []
 </script>
 
 <template>
@@ -28,6 +32,18 @@ const session = useSessionStore()
         class="inline-flex min-h-11 items-center font-medium text-fg underline"
         >Crear cuenta</RouterLink
       >
+    </nav>
+    <nav v-if="devShops.length > 0" class="mt-8" aria-label="Barberías de desarrollo (temporal)">
+      <p class="text-sm text-fg-subtle">Temporal, solo en desarrollo</p>
+      <ul class="mt-2 flex flex-wrap gap-4">
+        <li v-for="shop in devShops" :key="shop">
+          <RouterLink
+            :to="`/b/${shop}`"
+            class="inline-flex min-h-11 items-center font-medium text-fg underline"
+            >/b/{{ shop }}</RouterLink
+          >
+        </li>
+      </ul>
     </nav>
   </main>
 </template>
