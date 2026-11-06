@@ -206,7 +206,7 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 - **Nombre:** 36 px, peso 400, balanceado.
 - **Ubicación:** un botón en píldora con ícono de pin, la dirección con la ciudad y un chevron. Despliega una lista de enlaces dentro de una tarjeta de 16 px con borde `line`: «Ver en Google Maps», «Cómo llegar» y «Abrir en Waze». Los enlaces se arman con la dirección en texto (`https://www.google.com/maps/search/?api=1&query=…`, `https://www.google.com/maps/dir/?api=1&destination=…` y `https://waze.com/ul?q=…&navigate=yes`) y abren en una pestaña nueva con `rel="noopener"`. Se implementa como un botón con `aria-expanded` que despliega una lista de enlaces, **sin** `role="menu"`.
 - **Teléfono:** enlace `tel:`, 14 px, cifras tabulares.
-- **Redes:** como máximo WhatsApp, Instagram, Facebook y TikTok, con objetivos de 44 px e íconos de 20 px. **Solo se muestran las que el dueño configuró**; no hay enlaces vacíos.
+- **Redes y correo:** como máximo WhatsApp, Instagram, Facebook y TikTok, más un enlace `mailto:` con el correo de contacto del negocio (distinto del correo de la cuenta del dueño), con objetivos de 44 px e íconos de 20 px. **Solo se muestran los que el dueño configuró** al editar los datos de su negocio; no hay enlaces vacíos.
 - Se prueban cuatro casos: con logo y banner, solo con logo, sin ninguno de los dos, y con un banner oscuro y de baja calidad.
 
 ## Páginas de acceso y de lectura
