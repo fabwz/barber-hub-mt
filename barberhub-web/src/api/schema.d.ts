@@ -935,6 +935,10 @@ export interface components {
             saldo_en_local: number;
             /** @description Hora límite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00. */
             vence_en: string | null;
+            /** @description Pasarela por la que se paga la reserva: `onvo` o `paypal`. Si ya hay un pago pendiente o aprobado es la del pago, aunque la barbería la haya cambiado después; si no, la vigente de la barbería. Es nula si la barbería no cobra o si no hay nada que pagar. Ejemplo: onvo. */
+            pasarela: string | null;
+            /** @description Métodos de pago que admite esa pasarela: `tarjeta` y `sinpe_movil` con ONVO, solo `tarjeta` con PayPal. Lista vacía si `pasarela` es nula. Ejemplo: ["tarjeta","sinpe_movil"]. */
+            metodos_de_pago: string[];
         };
         /** ReservaDeAgenda */
         ReservaDeAgenda: {
@@ -985,6 +989,10 @@ export interface components {
             saldo_en_local: number;
             /** @description Hora límite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00. */
             vence_en: string | null;
+            /** @description Pasarela por la que se paga la reserva: `onvo` o `paypal`. Si ya hay un pago pendiente o aprobado es la del pago, aunque la barbería la haya cambiado después; si no, la vigente de la barbería. Es nula si la barbería no cobra o si no hay nada que pagar. Ejemplo: onvo. */
+            pasarela: string | null;
+            /** @description Métodos de pago que admite esa pasarela: `tarjeta` y `sinpe_movil` con ONVO, solo `tarjeta` con PayPal. Lista vacía si `pasarela` es nula. Ejemplo: ["tarjeta","sinpe_movil"]. */
+            metodos_de_pago: string[];
         };
         /** ReservaDetalleDeAgenda */
         ReservaDetalleDeAgenda: {
@@ -1040,6 +1048,10 @@ export interface components {
             saldo_en_local: number;
             /** @description Hora límite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00. */
             vence_en: string | null;
+            /** @description Pasarela por la que se paga la reserva: `onvo` o `paypal`. Si ya hay un pago pendiente o aprobado es la del pago, aunque la barbería la haya cambiado después; si no, la vigente de la barbería. Es nula si la barbería no cobra o si no hay nada que pagar. Ejemplo: onvo. */
+            pasarela: string | null;
+            /** @description Métodos de pago que admite esa pasarela: `tarjeta` y `sinpe_movil` con ONVO, solo `tarjeta` con PayPal. Lista vacía si `pasarela` es nula. Ejemplo: ["tarjeta","sinpe_movil"]. */
+            metodos_de_pago: string[];
             /** @description Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
             plazo_cancelacion_horas: number;
         };
