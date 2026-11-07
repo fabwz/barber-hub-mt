@@ -19,6 +19,7 @@ use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\Percentage;
 use Src\Shared\Domain\ValueObjects\UserId;
+use Tests\Support\Reservations\FixedPaymentChannels;
 use Tests\Support\Reservations\InMemoryReservationRepository;
 use Tests\Support\Reservations\PolicyPaymentAmounts;
 
@@ -81,7 +82,7 @@ final class QuotePaymentTest extends TestCase
 
     private function quote(ChargePolicy $policy): QuotePayment
     {
-        return new QuotePayment(new PolicyPaymentAmounts($policy));
+        return new QuotePayment(new PolicyPaymentAmounts($policy), new FixedPaymentChannels);
     }
 
     private function temporary(int $price): Reservation
