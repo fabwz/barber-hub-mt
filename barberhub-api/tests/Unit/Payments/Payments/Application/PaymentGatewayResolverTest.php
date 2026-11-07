@@ -54,6 +54,16 @@ final class PaymentGatewayResolverTest extends TestCase
         $this->assertSame($this->onvo, $resolver->forNewCharge(PaymentMethod::Card));
     }
 
+    /** The gateway a new charge would use now is the one of the barbershop, or the default one when it has none, with no method asked. */
+    public function test_the_current_gateway_is_the_one_of_the_barbershop_or_the_default(): void
+    {
+        $resolver = $this->resolver(PaymentProvider::Onvo);
+
+        $this->assertSame($this->onvo, $resolver->forCurrentBarbershop());
+        $this->chosen->provider = PaymentProvider::Paypal;
+        $this->assertSame($this->paypal, $resolver->forCurrentBarbershop());
+    }
+
     /** A barbershop with no gateway chosen falls back to the default of the system. */
     public function test_a_barbershop_without_gateway_uses_the_default(): void
     {
