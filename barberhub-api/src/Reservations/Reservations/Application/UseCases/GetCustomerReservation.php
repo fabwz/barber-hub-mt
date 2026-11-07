@@ -8,21 +8,23 @@ use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\DTOs\ReservationDetail;
+use Src\Reservations\Reservations\Application\QuotePayment;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 
 final readonly class GetCustomerReservation
 {
-    /** Receive the reservation repository, the port that finds the customer role and the names attacher. */
+    /** Receive the reservation repository, the port that finds the customer role, the names attacher and the quote of what is owed. */
     public function __construct(
         private ReservationRepository $reservations,
         private CustomerDirectory $customers,
         private AttachNames $attachNames,
+        private QuotePayment $quote,
     ) {}
 
     /**
-     * Show a customer one of their own reservations (RF-14). A temporary reservation past its payment window reads as expired (DI-05). Neither the balance (PA-10) nor the history, whose authors
+     * Show a customer one of their own reservations (RF-14). A temporary reservation past its payment window reads as expired (DI-05). It carries what is owed now (RF-20). Neither the balance (PA-10) nor the history, whose authors
      * are not for them, come with it. A reservation of another customer reads like one that does not exist (UP-06).
      *
      * @throws ReservationNotFoundException
@@ -36,6 +38,8 @@ final readonly class GetCustomerReservation
             throw ReservationNotFoundException::create();
         }
 
-        return new ReservationDetail($this->attachNames->one($reservation, false, $now), null, null);
+        $view = $this->attachNames->one($reservation, false, $now);
+
+        return new ReservationDetail($view->withPayment($this->quote->one($reservation, $now)), null, null);
     }
 }

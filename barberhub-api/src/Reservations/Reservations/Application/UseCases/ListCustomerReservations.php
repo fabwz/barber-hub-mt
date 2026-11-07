@@ -9,6 +9,7 @@ use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\DTOs\ReservationSearch;
 use Src\Reservations\Reservations\Application\DTOs\ReservationView;
+use Src\Reservations\Reservations\Application\QuotePayment;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
@@ -17,17 +18,18 @@ use Src\Shared\Domain\ValueObjects\PageRequest;
 
 final readonly class ListCustomerReservations
 {
-    /** Receive the reservation repository, the port that finds the customer role and the names attacher. */
+    /** Receive the reservation repository, the port that finds the customer role, the names attacher and the quote of what is owed. */
     public function __construct(
         private ReservationRepository $reservations,
         private CustomerDirectory $customers,
         private AttachNames $attachNames,
+        private QuotePayment $quote,
     ) {}
 
     /**
      * List one page of the reservations a person made in the current barbershop (CL-04). The scope is their own customer
      * role, found from the session and never from the request; a person without one has not reserved here yet, so the
-     * page is empty, not an error (RD-18). The names of other customers are not read, because these are all their own. A temporary reservation past its payment window reads as expired (DI-05).
+     * page is empty, not an error (RD-18). The names of other customers are not read, because these are all their own. A temporary reservation past its payment window reads as expired (DI-05). Each one carries what is owed now (RF-20).
      *
      * @return Page<ReservationView>
      */
@@ -41,6 +43,6 @@ final readonly class ListCustomerReservations
 
         $filter = new ReservationFilter(new CustomerMembershipId($membershipId), null, $search->status, $search->day, $now);
 
-        return $this->attachNames->to($this->reservations->page($filter, $page), false, $now);
+        return $this->quote->page($this->attachNames->to($this->reservations->page($filter, $page), false, $now), $now);
     }
 }

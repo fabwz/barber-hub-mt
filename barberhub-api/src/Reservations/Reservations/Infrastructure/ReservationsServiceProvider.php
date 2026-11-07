@@ -14,6 +14,7 @@ use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CustomerMemberships;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
+use Src\Reservations\Reservations\Application\Contracts\PaymentAmounts;
 use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
@@ -25,6 +26,7 @@ use Src\Reservations\Reservations\Infrastructure\Collaborators\CollaboratorsColl
 use Src\Reservations\Reservations\Infrastructure\Collaborators\CollaboratorsCollaboratorLock;
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerDirectory;
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerMemberships;
+use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentAmounts;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentBlockedIntervalReader;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesBookableServices;
@@ -43,6 +45,7 @@ final class ReservationsServiceProvider extends ServiceProvider
         BookableServices::class => ServicesBookableServices::class,
         CancellationDeadlines::class => BarbershopsCancellationDeadlines::class,
         PaymentRequirement::class => BarbershopsPaymentRequirement::class,
+        PaymentAmounts::class => PaymentsPaymentAmounts::class,
         CollaboratorLock::class => CollaboratorsCollaboratorLock::class,
         CustomerMemberships::class => MembershipsCustomerMemberships::class,
         FreeSlots::class => AvailabilityFreeSlots::class,
