@@ -107,6 +107,22 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
         return $model === null ? null : $this->toDomain($model);
     }
 
+    /** Find the pending or approved payments of the reservations among those of the current barbershop. */
+    public function findActiveOfReservations(array $reservationIds): array
+    {
+        $payments = [];
+        $models = $this->ofBarbershop()
+            ->whereIn('reservation_id', array_map(fn (ReservationId $id): string => $id->value, $reservationIds))
+            ->whereIn('status', array_map(fn (PaymentStatus $status): string => $status->value, array_filter(PaymentStatus::cases(), fn (PaymentStatus $status): bool => $status->isActive())))
+            ->get();
+
+        foreach ($models as $model) {
+            $payments[$model->reservation_id] = $this->toDomain($model);
+        }
+
+        return $payments;
+    }
+
     /**
      * Scope the query to the current barbershop; the row-level policy is the second barrier.
      *

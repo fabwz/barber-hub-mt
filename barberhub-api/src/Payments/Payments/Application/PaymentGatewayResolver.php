@@ -33,13 +33,19 @@ final readonly class PaymentGatewayResolver
      */
     public function forNewCharge(PaymentMethod $method): PaymentGateway
     {
-        $gateway = $this->gateways->for($this->barbershop->current() ?? $this->default);
+        $gateway = $this->forCurrentBarbershop();
 
         if (! $gateway->supports($method)) {
             throw PaymentMethodNotSupportedException::create($method, $gateway->provider());
         }
 
         return $gateway;
+    }
+
+    /** The gateway a new charge would use now: the provider of the barbershop or, when it has none, the default one. */
+    public function forCurrentBarbershop(): PaymentGateway
+    {
+        return $this->gateways->for($this->barbershop->current() ?? $this->default);
     }
 
     /** The gateway of a payment already created: the one of its own provider, whatever the barbershop uses now. */

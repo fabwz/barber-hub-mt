@@ -26,7 +26,7 @@ final class CustomerReservationListItemResource extends JsonResource
     /**
      * Expose the reservation as the customer sees it in a listing: the item of the listing plus what they must pay now (RF-20).
      *
-     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null, monto_a_pagar: int, saldo_en_local: int, vence_en: string|null}
+     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null, monto_a_pagar: int, saldo_en_local: int, vence_en: string|null, pasarela: string|null, metodos_de_pago: list<string>}
      */
     public function toArray(Request $request): array
     {
@@ -37,9 +37,9 @@ final class CustomerReservationListItemResource extends JsonResource
     }
 
     /**
-     * The three attributes of what is owed now, shared by every reading of the customer.
+     * The attributes of what is owed now and how to pay it, shared by every reading of the customer.
      *
-     * @return array{monto_a_pagar: int, saldo_en_local: int, vence_en: string|null}
+     * @return array{monto_a_pagar: int, saldo_en_local: int, vence_en: string|null, pasarela: string|null, metodos_de_pago: list<string>}
      */
     public static function payment(PaymentDue $due): array
     {
@@ -50,6 +50,10 @@ final class CustomerReservationListItemResource extends JsonResource
             'saldo_en_local' => $due->balanceAtShop,
             /** Hora límite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00. */
             'vence_en' => $due->expiresAt === null ? null : $due->expiresAt->setTimezone(new DateTimeZone((string) config('app.timezone')))->format(DATE_ATOM),
+            /** Pasarela por la que se paga la reserva: `onvo` o `paypal`. Si ya hay un pago pendiente o aprobado es la del pago, aunque la barbería la haya cambiado después; si no, la vigente de la barbería. Es nula si la barbería no cobra o si no hay nada que pagar. Ejemplo: onvo. */
+            'pasarela' => $due->channel?->gateway,
+            /** Métodos de pago que admite esa pasarela: `tarjeta` y `sinpe_movil` con ONVO, solo `tarjeta` con PayPal. Lista vacía si `pasarela` es nula. Ejemplo: ["tarjeta","sinpe_movil"]. */
+            'metodos_de_pago' => $due->channel === null ? [] : $due->channel->methods,
         ];
     }
 }
