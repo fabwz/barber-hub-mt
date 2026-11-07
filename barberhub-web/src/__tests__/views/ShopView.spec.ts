@@ -33,8 +33,8 @@ describe('ShopView', () => {
     expect(wrapper.find('.animate-pulse').exists()).toBe(false)
     expect(wrapper.findAll('h1')).toHaveLength(1)
     expect(wrapper.get('h1').text()).toBe(SHOP.nombre)
-    expect(wrapper.get('h2').text()).toBe('Servicios')
-    const rows = wrapper.findAll('section ul > li')
+    expect(wrapper.get('h2').text()).toBe('Reservar cita')
+    const rows = wrapper.findAll('[role="radiogroup"] [role="radio"]')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.text()).toContain('Corte clásico')
     expect(rows[0]!.text()).toContain('₡7.000')
@@ -42,19 +42,25 @@ describe('ShopView', () => {
     expect(wrapper.find('a[href^="tel:"]').exists()).toBe(true)
   })
 
-  it('centers the content in a 1280 px container and limits the services to 720 px', async () => {
+  it('centers the content in a 1280 px container: header with a full-width line, then the booking box', async () => {
     mockFetch(shopHandler)
     const { wrapper } = await mountView(ShopView, '/b/pura-navaja')
     await flushPromises()
 
     const main = wrapper.get('main')
     expect(main.classes()).toEqual(expect.arrayContaining(['mx-auto', 'max-w-7xl']))
-    const content = main.get('div')
-    expect(content.classes()).toEqual(expect.arrayContaining(['px-5', 'md:px-8']))
-    expect(content.get('header').exists()).toBe(true)
-    const services = content.get('section')
-    expect(services.classes()).toContain('max-w-180')
-    expect(content.get('header').classes()).not.toContain('max-w-180')
+    const [top, body] = main.findAll(':scope > div')
+    expect(top!.classes()).toEqual(expect.arrayContaining(['border-b', 'px-5', 'md:px-8']))
+    expect(top!.get('header').exists()).toBe(true)
+    expect(body!.classes()).toEqual(expect.arrayContaining(['px-5', 'md:px-8']))
+    // One box with two columns: services (left) and date and hour (right).
+    const box = body!.get('section')
+    expect(box.classes()).toEqual(expect.arrayContaining(['md:rounded-card', 'md:border']))
+    const columns = box.findAll('div').find((d) => d.classes().includes('md:grid-cols-2'))!
+    const [left, right] = columns.findAll(':scope > div')
+    expect(left!.find('[role="radiogroup"]').exists()).toBe(true)
+    expect(right!.text()).toContain('Elija un servicio')
+    expect(right!.classes()).toContain('md:border-l')
   })
 
   it('sets document.title and restores it on leaving', async () => {
@@ -109,7 +115,8 @@ describe('ShopView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Esta barbería aún no tiene servicios.')
-    expect(wrapper.find('section ul').exists()).toBe(false)
+    expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Reservar cita')
   })
 
   it('reloads when the route parameter changes', async () => {
