@@ -26,4 +26,12 @@ interface PaymentRepository
 
     /** Find the pending or approved payment of a reservation of the current barbershop: the one a repeated press of the pay button must reuse. */
     public function findActiveOfReservation(ReservationId $reservationId): ?Payment;
+
+    /**
+     * Find the pending or approved payments of several reservations of the current barbershop, in one query.
+     *
+     * @param  list<ReservationId>  $reservationIds
+     * @return array<string, Payment> By reservation id; a reservation without an active payment is missing.
+     */
+    public function findActiveOfReservations(array $reservationIds): array;
 }

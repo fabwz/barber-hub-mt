@@ -28,6 +28,7 @@ use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\UserId;
 use stdClass;
+use Tests\Support\Reservations\FixedPaymentChannels;
 use Tests\Support\Reservations\InMemoryReservationRepository;
 use Tests\Support\Reservations\PolicyPaymentAmounts;
 
@@ -154,7 +155,7 @@ final class ListReservationsTest extends TestCase
 
     private function customer(): ListCustomerReservations
     {
-        return new ListCustomerReservations($this->reservations, $this->customers(), $this->attach(), new QuotePayment(new PolicyPaymentAmounts(ChargePolicy::none())));
+        return new ListCustomerReservations($this->reservations, $this->customers(), $this->attach(), new QuotePayment(new PolicyPaymentAmounts(ChargePolicy::none()), new FixedPaymentChannels));
     }
 
     private function now(): DateTimeImmutable
