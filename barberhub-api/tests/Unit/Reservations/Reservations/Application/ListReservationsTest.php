@@ -7,11 +7,13 @@ namespace Tests\Unit\Reservations\Reservations\Application;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;
+use Src\Payments\Payments\Application\DTOs\ChargePolicy;
 use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
 use Src\Reservations\Reservations\Application\DTOs\ReservationSearch;
+use Src\Reservations\Reservations\Application\QuotePayment;
 use Src\Reservations\Reservations\Application\UseCases\ListCustomerReservations;
 use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
@@ -27,6 +29,7 @@ use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Shared\Domain\ValueObjects\UserId;
 use stdClass;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Reservations\PolicyPaymentAmounts;
 
 /** Who sees which reservations (RF-13, CL-04, CO-04, UP-06): the use cases decide the scope, whatever the request asks. */
 final class ListReservationsTest extends TestCase
@@ -151,7 +154,7 @@ final class ListReservationsTest extends TestCase
 
     private function customer(): ListCustomerReservations
     {
-        return new ListCustomerReservations($this->reservations, $this->customers(), $this->attach());
+        return new ListCustomerReservations($this->reservations, $this->customers(), $this->attach(), new QuotePayment(new PolicyPaymentAmounts(ChargePolicy::none())));
     }
 
     private function now(): DateTimeImmutable

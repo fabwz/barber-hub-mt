@@ -7,11 +7,13 @@ namespace Tests\Unit\Reservations\Reservations\Application;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;
+use Src\Payments\Payments\Application\DTOs\ChargePolicy;
 use Src\Reservations\Reservations\Application\AttachNames;
 use Src\Reservations\Reservations\Application\Contracts\AuthorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
+use Src\Reservations\Reservations\Application\QuotePayment;
 use Src\Reservations\Reservations\Application\UseCases\GetCustomerReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetStaffReservation;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
@@ -25,6 +27,7 @@ use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Reservations\PolicyPaymentAmounts;
 
 /** Who gets which projection of a reservation, and what each one carries (RF-14, CO-04, PA-10, RE-09, UP-02, UP-06). */
 final class ReservationDetailTest extends TestCase
@@ -164,7 +167,7 @@ final class ReservationDetailTest extends TestCase
 
     private function customer(): GetCustomerReservation
     {
-        return new GetCustomerReservation($this->reservations, $this->customers(), $this->attach());
+        return new GetCustomerReservation($this->reservations, $this->customers(), $this->attach(), new QuotePayment(new PolicyPaymentAmounts(ChargePolicy::none())));
     }
 
     private function now(): DateTimeImmutable
