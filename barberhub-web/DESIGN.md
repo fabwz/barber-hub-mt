@@ -13,7 +13,7 @@ Este documento es la fuente de verdad visual del cliente web (`barberhub-web`: V
 2. **Casi todo es gris.** El hueso es el único color de marca y solo señala foco, selección con ícono, estado «confirmada» y la página activa.
 3. **Las superficies se separan con líneas de 1 px**, nunca con sombras.
 4. **Cada elemento se gana su lugar.** Pocos elementos por pantalla, mucho aire, jerarquía por tamaño y peso.
-5. **Ningún estado depende solo del color o del tono.** Siempre hay texto, ícono o forma.
+5. **Ningún estado depende solo del color o del tono.** Siempre hay texto, ícono o forma. Excepción decidida: los chips de hora y de fecha se distinguen por relleno, peso y `aria-pressed`, sin check (ver su sección).
 
 ## Tokens — Color
 
@@ -86,8 +86,8 @@ Escala fija en rem; no hay tipografía fluida. Las cifras de precio y hora se mu
 | Forma | Valor | Dónde |
 |---|---|---|
 | Píldora | `9999px` | Botones, etiquetas, chips |
-| Tarjeta | `16px` | Tarjetas, menús, fichas de método de pago, filas de servicio seleccionadas, avisos |
-| Campo | `8px` | Campos, mensajes en línea, filas de agenda seleccionadas |
+| Tarjeta | `16px` | Tarjetas, menús, fichas de método de pago, filas de servicio seleccionadas, avisos, banner de la barbería, recuadro de reserva |
+| Campo | `8px` | Campos, mensajes en línea, filas de agenda seleccionadas, chips de hora |
 | Círculo | `50%` | Logo, monograma, puntos |
 
 **Líneas:** todas de **1 px**, sin excepción. No existe ningún borde de 2 px.
@@ -116,15 +116,27 @@ Píldora transparente, borde de 1 px `line-strong`, texto `fg` en peso 400. Hove
 Texto `fg` con subrayado. Hover: `accent-hover`. Nunca se resalta con hueso en reposo.
 
 ### Chip de espacio horario y de fecha
-Píldora de 44 px de alto, padding horizontal de 16 px, texto de 14 px con cifras tabulares.
-- **Libre:** transparente, borde 1 px `line-strong`, texto `fg`. Hover: relleno `line`.
-- **Seleccionado:** relleno `elevated`, **el mismo borde** 1 px `line-strong`, texto en peso 500 y un **check de 14 px en `accent`** a la izquierda. El check es obligatorio: el tono de `elevated` contra el fondo es de solo 1,3:1 y no basta para identificar el estado. Lleva `aria-pressed="true"`.
+**Hora.** Botón de 44 px de alto con radio de campo (8 px), ancho mínimo de 72 px, padding horizontal de 16 px y texto de 14 px con cifras tabulares.
+- **Disposición (escritorio):** agrupados por turno (Mañana, Tarde y Noche, con la etiqueta en 14 px `fg-muted`). Cada turno va en **una sola línea** con desplazamiento horizontal, sin barra visible, igual que la franja de fechas.
+- **Disposición (celular):** en lugar de chips, un `select` de 52 px (radio 8 px, borde `field`, chevron de 18 px) con la opción inicial «Elija una hora». Los espacios ocupados salen deshabilitados con el sufijo «ocupada» y, si hay alguno, una nota de 14 px en `fg-subtle`: «Las horas marcadas como ocupadas no se pueden elegir.»
+- **Con «Sin preferencia»:** cada chip lleva debajo, en 12 px `fg-muted`, «con {barbero}» (una sola vez por hora).
+- **Libre:** transparente, borde 1 px `line-strong`, texto `fg`. Hover: borde `line-hover`.
+- **Seleccionado:** relleno `elevated`, **el mismo borde** 1 px `line-strong` y texto en peso 500. **Sin check:** se decidió omitir el check que pedía la versión anterior de esta guía. El estado se anuncia con `aria-pressed="true"`.
 - **Ocupado:** borde `line`, texto `fg-subtle` tachado, `aria-disabled="true"` y cursor `not-allowed`. No es seleccionable.
 - **Foco de teclado:** contorno de 1 px `accent` con 2 px de separación.
-- Los días sin horas disponibles muestran «–» como número y lo anuncian como «sin horas» para lectores de pantalla.
+
+**Día.** Píldora de 56 × 72 px con el día de la semana abreviado (14 px) y el número (18 px, tabulares), en una franja con desplazamiento horizontal sin barra visible y 8 px entre píldoras. Sobre la franja, el título «Fecha» y el mes («noviembre 2026», 14 px `fg-subtle`) a la derecha. Teclado: las flechas, Inicio y Fin mueven el foco entre días.
+- **Libre:** transparente, borde `line-strong`, texto `fg`. Hover: borde `line-hover`.
+- **Seleccionado:** relleno `elevated`, borde `line-strong` y el número en peso 500, sin check.
+- **Sin horas:** borde `line`, texto `fg-subtle`, «–» como número, `aria-disabled="true"` y cursor `not-allowed`. Se anuncia como «sin horas» a los lectores de pantalla (`aria-label` «dom 8 nov, sin horas»).
+- **Celular, «Otra fecha»:** bajo el título, una fila con el mes y el botón «Otra fecha» (chevron, 44 px de alto) que despliega el calendario del mes en una tarjeta `surface` de 16 px con borde `line`: encabezado «lun … dom», celdas de 44 px (píldora), el elegido con relleno `elevated` y peso 500, los días sin horas en `fg-muted`, y la nota «Los días con guion no tienen horas disponibles.»
 
 ### Fila de servicio (lista de selección)
-Filas planas separadas por una línea `line`. Cada fila muestra nombre, duración y precio. Hover: relleno `surface` con radio de 16 px. **Seleccionada:** relleno `elevated`, radio de 16 px, sin línea inferior, texto en peso 500 y un indicador de radio a la derecha (círculo de 1 px `line-strong` con un punto de 10 px en `accent`). Es un grupo `role="radiogroup"` con opciones `role="radio"`.
+Filas planas de **64 px** de alto (padding de 8 px arriba y abajo y 16 px a los lados). Cada fila muestra nombre, duración y precio (en la portada, con el IVA incluido y la base desglosados). La lista sobresale 16 px a cada lado de su columna para que el texto quede alineado con el resto del contenido.
+- **En reposo:** sin radio, separadas por una línea `line` de 1 px que **no llega a los bordes**: empieza y termina 16 px antes de cada lado.
+- **Hover:** relleno `surface` con radio de 16 px y sin línea.
+- **Seleccionada:** relleno `elevated`, radio de 16 px, sin línea, **solo el nombre** en peso 500 (duración y precio siguen en 400) y un indicador de radio de 22 px a la derecha: círculo de 1 px `line-strong` con un punto de 10 px en `accent`. Sin seleccionar, el círculo lleva borde `field`.
+- Es un grupo `role="radiogroup"` con opciones `role="radio"`.
 
 ### Ficha de método de pago
 Tarjeta de 16 px con borde 1 px `line-strong`, ícono de 20 px, nombre y una línea de descripción. Hover: borde `line-hover`. Seleccionada: relleno `elevated` con el mismo borde. Mismo patrón de `radiogroup`.
@@ -200,14 +212,28 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 - **Error de carga:** «Error: no pudimos cargar …», una línea con la salida («Revise su conexión e intente de nuevo. Lo que ya eligió se mantiene.») y el botón «Reintentar». Lo ya elegido por la persona nunca se pierde.
 
 ### Cabecera de la barbería (pantallas del cliente)
-- **Banner opcional:** proporción 2:1 en celular y 3:1 en escritorio, decorativo (`aria-hidden`). No lleva texto encima.
-- **Logo:** círculo de 72 px (88 px en escritorio con banner; 56 px sin banner) con borde de 1 px `line-strong`, posado sobre el borde inferior del banner. Sin logo, un **monograma** con las iniciales de las dos primeras palabras de más de dos letras del nombre, sobre `elevated`.
-- **Sin banner:** cabecera compacta, con el logo a la izquierda del nombre.
-- **Nombre:** 36 px, peso 400, balanceado.
-- **Ubicación:** un botón en píldora con ícono de pin, la dirección con la ciudad y un chevron. Despliega una lista de enlaces dentro de una tarjeta de 16 px con borde `line`: «Ver en Google Maps», «Cómo llegar» y «Abrir en Waze». Los enlaces se arman con la dirección en texto (`https://www.google.com/maps/search/?api=1&query=…`, `https://www.google.com/maps/dir/?api=1&destination=…` y `https://waze.com/ul?q=…&navigate=yes`) y abren en una pestaña nueva con `rel="noopener"`. Se implementa como un botón con `aria-expanded` que despliega una lista de enlaces, **sin** `role="menu"`.
+- **Banner opcional:** proporción 2:1 en celular y 3:1 en escritorio (4:1 en la portada de 1280 px), con **radio de 16 px**, decorativo (`aria-hidden`). Queda separado de la ventana con el mismo margen de los lados: 20 px en celular y 32 px en escritorio, también arriba. No lleva texto encima. Mientras el negocio no tenga imagen se muestra un bloque neutro `line`.
+- **Logo:** círculo de 72 px (88 px en escritorio con banner; 56 px sin banner) con borde de 1 px `line-strong`, posado sobre el borde inferior del banner, con su centro justo en ese borde. **El banner se recorta alrededor del logo** con un hueco de 6 px, de modo que se ve el fondo de la página tal cual (con su resplandor): es una máscara de borde duro, no un anillo pintado, y por eso solo existe en la mitad que toca el banner. Sin logo, un **monograma** con las iniciales de las dos primeras palabras de más de dos letras del nombre, sobre `elevated`. Mientras no haya imagen, el marco muestra un ícono de cuadro con una colina (24 px, trazo 1,5, `fg-subtle`).
+- **Sin banner:** cabecera compacta, con el logo a la izquierda del nombre en celular.
+- **Escritorio:** la cabecera va centrada y a todo el ancho de la página: logo, nombre y, debajo, una sola fila centrada (máximo 920 px) con el teléfono, la dirección y las redes. El espacio entre el teléfono y la dirección es igual al que hay entre la dirección y las redes. La línea inferior de la cabecera llega de borde a borde del contenedor de 1280 px.
+- **Nombre:** 36 px, peso 400, balanceado. Es el que entrega el negocio, sin agregar ni quitar palabras (si incluye «Barbería», es parte de su nombre).
+- **Ubicación:** un botón en píldora con ícono de pin, la dirección con la ciudad y un chevron. Despliega una lista de enlaces dentro de una tarjeta de 16 px con borde `line` (en escritorio, flotante, de 280 px y centrada bajo el botón): «Ver en Google Maps», «Cómo llegar» y «Abrir en Waze». Cada opción lleva a la derecha su propio ícono de 16 px en `fg-muted`, no una flecha de salida: el logo de Google Maps, una flecha de navegación (Lucide `Navigation`) y el logo de Waze. Las líneas entre opciones son de 1 px `line` y **no tocan el borde de la tarjeta**: empiezan y terminan 16 px antes. Los enlaces se arman con la dirección en texto (`https://www.google.com/maps/search/?api=1&query=…`, `https://www.google.com/maps/dir/?api=1&destination=…` y `https://waze.com/ul?q=…&navigate=yes`) y abren en una pestaña nueva con `rel="noopener"`. Se implementa como un botón con `aria-expanded` que despliega una lista de enlaces, **sin** `role="menu"`.
 - **Teléfono:** enlace `tel:`, 14 px, cifras tabulares.
-- **Redes y correo:** como máximo WhatsApp, Instagram, Facebook y TikTok, más un enlace `mailto:` con el correo de contacto del negocio (distinto del correo de la cuenta del dueño), con objetivos de 44 px e íconos de 20 px. **Solo se muestran los que el dueño configuró** al editar los datos de su negocio; no hay enlaces vacíos.
+- **Redes y correo:** como máximo el correo, WhatsApp, Instagram, Facebook y TikTok, **en ese orden**; el correo es un enlace `mailto:` con el correo de contacto del negocio (distinto del correo de la cuenta del dueño). Los íconos son de **18 px**: los de las redes son los glifos oficiales rellenos (ver «Íconos e imágenes») y el del correo es de Lucide. Cada uno conserva un objetivo de 44 px, pero los objetivos se traslapan 8 px para que los íconos queden más juntos. **Solo se muestran los que el dueño configuró** al editar los datos de su negocio; no hay enlaces vacíos.
 - Se prueban cuatro casos: con logo y banner, solo con logo, sin ninguno de los dos, y con un banner oscuro y de baja calidad.
+
+### Panel de reserva (portada de la barbería)
+Se muestra bajo la cabecera, en la misma pantalla (`/b/:enlace`). En escritorio es un único recuadro de 16 px con borde `line`, 32 px de padding y 32 px de separación respecto de la cabecera; en celular no hay recuadro y todo va en una columna.
+- **Título:** «Reservar cita» (24 px, peso 400) con una línea `line` debajo en escritorio.
+- **Dos columnas iguales** separadas por una línea de 1 px y 32 px de espacio a cada lado. Izquierda: «Servicio» (la fila de servicio de arriba) y «Barbero». Derecha: «Fecha» y «Hora». En celular el orden es el mismo, apilado. Los títulos de paso son de 18 px, peso 500.
+- **Barbero:** un `select` de 52 px, radio de 8 px, borde `field`, texto de 16 px en peso 500 y chevron de 18 px. La primera opción es «Sin preferencia».
+- **Sin servicio elegido:** la columna derecha muestra un círculo de 56 px (borde `line-strong`, relleno `surface`) con un ícono de calendario de 24 px, el título «Elija un servicio» (18 px, peso 500) y una línea de 14 px en `fg-muted`.
+- **Cargando horas:** 8 píldoras de esqueleto de 72 × 44 px.
+- **Error al cargar horas:** caja de 8 px de radio con relleno `danger-surface` y 16 px de padding: ícono de 20 px en `danger`, el título «No pudimos cargar los horarios.» en `danger` y peso 500, la línea «Revise su conexión e intente de nuevo. Lo que ya eligió se mantiene.» y el botón secundario «Reintentar».
+- **Sin horas ese día:** un recuadro con líneas `line` arriba y abajo, el título «No quedan horas el vie 6 nov con Mauricio.», una línea que sugiere probar otro día, botones secundarios «Ver sáb 7 nov» (los días siguientes con horas) y un botón de texto «Sin preferencia» con flecha.
+- **Barra inferior:** una fila con una línea `line` encima. A la izquierda el resumen (16 px): el servicio en peso 500 y, en `fg-muted`, la fecha y la hora con el barbero («sáb 7 nov, 08:15 con Mauricio»), con un espacio entre la hora y «con». Sin hora elegida dice «Elija una hora para continuar» (o «Elija un servicio para continuar»). A la derecha, el total (18 px, tabulares) con «IVA incluido» y el botón principal «Reservar» de 48 px y 280 px de ancho. Deshabilitado: borde `line`, relleno `surface` y texto `fg-muted`, sin opacidad. En celular la barra queda fija al pie de la pantalla, con una línea superior, el resumen dentro de una tarjeta `surface` y el botón a todo el ancho.
+- **Reserva creada:** la columna derecha pasa a «Su reserva»: el resumen (servicio, barbero, fecha, hora, total) con su etiqueta de estado, la cuenta regresiva de 10 minutos («Su espacio se libera en 9:58») y el botón «Continuar al pago». Si la reserva vence, un aviso «La reserva temporal venció.» y el botón «Elegir otro horario».
+- **Espacio ocupado (409):** bajo la hora, «Otros espacios cercanos» como chips con los espacios que devuelve la API; al elegir uno se reemplaza solo la hora.
 
 ## Páginas de acceso y de lectura
 
@@ -227,7 +253,8 @@ Las páginas de texto largo (términos y política de privacidad) usan un ancho 
 
 ## Íconos e imágenes
 
-- **Lucide**, trazo de 1,5 px, tamaños de 16, 20 y 24 px, heredan el color del texto. Nunca emojis ni glifos como íconos.
+- **Lucide**, trazo de 1,5 px, tamaños de 16, 18, 20 y 24 px, heredan el color del texto. Nunca emojis ni glifos como íconos.
+- **Logos de marca:** los de WhatsApp, Instagram, Facebook, TikTok, Google Maps y Waze son los glifos oficiales de [Simple Icons](https://simpleicons.org) (licencia CC0), rellenos (`fill: currentColor`) sobre una cuadrícula de 24 px, en el color del texto. Se copian a `src/composables/brandIcons.ts`; no se agrega la librería como dependencia. Se muestran a 18 px (redes) y 16 px (mapas).
 - El banner y el logo son **del negocio** y se muestran dentro de su marco. BarberHub no agrega fotografías de stock ni ilustraciones decorativas.
 - **Logotipo:** el de BarberHub vive en `src/assets/images/bh-logo-bone.png` (versión hueso, para el tema oscuro) y se muestra con el componente `BrandLogo`, con `alt="BarberHub"`, dimensiones explícitas y un alto mínimo de 24 px (por defecto, 56 × 35 px). `BrandLogo` recorta el margen transparente del archivo para que el logotipo quede completo y pegado al margen de la pantalla. Se usa solo en el encabezado de las pantallas de acceso, de lectura y de la aplicación. No se recolorea ni se deforma. Las versiones negra y azul grisáceo se suman con el tema claro.
 
@@ -245,7 +272,7 @@ Las páginas de texto largo (términos y política de privacidad) usan un ancho 
 
 - WCAG 2.2 AA: texto de al menos 4,5:1, componentes y foco de al menos 3:1.
 - Objetivos de 44 px como mínimo.
-- Ningún estado depende solo del color o del tono: la selección lleva check o indicador, y los estados llevan punto y texto.
+- Ningún estado depende solo del color o del tono: la selección lleva check o indicador, y los estados llevan punto y texto. Excepción decidida: los chips de hora y de fecha (relleno, peso 500 y `aria-pressed`, sin check).
 - `<html lang="es-CR">`. Un solo `h1` por pantalla.
 - Chips como `aria-pressed`; servicios y métodos de pago como `radiogroup`; página activa con `aria-current="page"`; avisos con `role="status"` o `role="alert"`; zonas que cargan con `aria-busy`.
 - Todo funciona con teclado y respeta `prefers-reduced-motion`.
@@ -262,7 +289,7 @@ Las páginas de texto largo (términos y política de privacidad) usan un ancho 
 ### Hacer
 - Separar superficies con líneas de 1 px y cambios de superficie.
 - Usar el hueso solo en foco, check de selección, punto de «confirmada», página activa y logo.
-- Marcar la selección con tono, borde discreto y un check o indicador.
+- Marcar la selección con tono, borde discreto y un check o indicador (los chips de hora y de fecha, con relleno y peso 500).
 - Mantener un único botón principal por región.
 - Usar Manrope en pesos 400 y 500, con cifras tabulares en datos.
 - Escribir mensajes que nombran el problema y la salida.
@@ -386,4 +413,4 @@ Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg
 
 - **Tema claro:** se deriva de estos mismos tokens, que ya están como variables. Hasta entonces, la interfaz es solo oscura.
 - **Pantallas por diseñar:** resultado del pago y reserva confirmada, Mis reservas con detalle, cancelar y reprogramar, elegir negocio, y del dueño: servicios, cobro y datos del negocio.
-- **Logo, banner, dirección y redes** dependen de los endpoints de datos públicos del negocio y de la subida de archivos.
+- **Logo, banner, dirección y redes** dependen de los endpoints de datos públicos del negocio y de la subida de archivos. Mientras tanto, la portada muestra datos de ejemplo (banner y logo neutros, dirección y redes ficticias) marcados como temporales en `ShopView.vue`.
