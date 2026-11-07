@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Src\Reservations\Reservations\Application\QuotePayment;
 use Src\Reservations\Reservations\Application\UseCases\CancelReservation;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetCustomerReservation;
@@ -22,8 +23,9 @@ use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservation
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\RescheduleReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CancelledReservationResource;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\CreatedReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationDetailResource;
-use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationListItemResource;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationListItemResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\StaffReservationDetailResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\StaffReservationListItemResource;
@@ -40,13 +42,14 @@ final readonly class ReservationController
     /** Book a space of a barber. */
     #[Endpoint(
         title: 'Crear una reserva',
-        description: 'Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesión. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, así que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barbería no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora límite de pago en `expira_en` (10 minutos), retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duración y el plazo de cancelación (24 horas, provisional) vigentes. Una persona sin rol en la barbería queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo día, barbero y servicio, los de inicio más próximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barbería, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.',
+        description: 'Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesión. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, así que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barbería no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora límite de pago en `expira_en` (10 minutos). La respuesta informa además `monto_a_pagar` (lo que el servidor cobraría ahora según la política de la barbería), `saldo_en_local` y `vence_en`. La reserva temporal retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duración y el plazo de cancelación (24 horas, provisional) vigentes. Una persona sin rol en la barbería queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo día, barbero y servicio, los de inicio más próximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barbería, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.',
     )]
-    public function store(CreateReservationRequest $request, CreateReservation $createReservation): JsonResponse
+    public function store(CreateReservationRequest $request, CreateReservation $createReservation, QuotePayment $quote): JsonResponse
     {
-        $reservation = $createReservation->execute($request->toCommand(), $this->clock->now());
+        $now = $this->clock->now();
+        $reservation = $createReservation->execute($request->toCommand(), $now);
 
-        return new ReservationResource($reservation)
+        return new CreatedReservationResource($reservation, $quote->one($reservation, $now))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
@@ -60,7 +63,7 @@ final readonly class ReservationController
     {
         $page = $listReservations->execute((string) $request->user()?->getAuthIdentifier(), $request->search(), $request->page(), $this->clock->now());
 
-        return ReservationListItemResource::collection($page->items)->additional(PageMeta::of($page));
+        return CustomerReservationListItemResource::collection($page->items)->additional(PageMeta::of($page));
     }
 
     /** List the reservations of the agenda the owner or the collaborator may see. */
