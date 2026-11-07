@@ -417,7 +417,7 @@ export interface paths {
         put?: never;
         /**
          * Crear una reserva
-         * @description Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesión. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, así que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barbería no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora límite de pago en `expira_en` (10 minutos), retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duración y el plazo de cancelación (24 horas, provisional) vigentes. Una persona sin rol en la barbería queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo día, barbero y servicio, los de inicio más próximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barbería, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.
+         * @description Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesión. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, así que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barbería no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora límite de pago en `expira_en` (10 minutos). La respuesta informa además `monto_a_pagar` (lo que el servidor cobraría ahora según la política de la barbería), `saldo_en_local` y `vence_en`. La reserva temporal retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duración y el plazo de cancelación (24 horas, provisional) vigentes. Una persona sin rol en la barbería queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo día, barbero y servicio, los de inicio más próximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barbería, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.
          */
         post: operations["reservations.reservations.store"];
         delete?: never;
@@ -911,6 +911,31 @@ export interface components {
             /** @description Clasificación de la cancelación: `a_tiempo`, `tardia` o `por_la_barberia` (CA-01, CA-04). Se calcula, no se guarda. */
             clasificacion: string;
         };
+        /** ReservaCreada */
+        ReservaCreada: {
+            id: string;
+            servicio: string;
+            barbero: string;
+            /** @description Estado de la reserva; al crearla queda `confirmada` si la barbería no cobra y `temporal` si cobra. */
+            estado: string;
+            /** @description Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00). */
+            inicio: string;
+            /** @description Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`. */
+            fin: string;
+            /** @description Colones con el IVA incluido, el precio vigente al reservar. */
+            precio: number;
+            duracion_minutos: number;
+            /** @description Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
+            plazo_cancelacion_horas: number;
+            /** @description Hora límite para pagar, mismo formato que `inicio`; nula si la reserva ya está confirmada. */
+            expira_en: string | null;
+            /** @description Colones que el servidor cobraría hoy por esta reserva según la política de la barbería (`sin_pago` 0, `deposito` el porcentaje del precio redondeado hacia arriba, `total` el precio); 0 si la reserva ya no espera pago o ya está pagada. Ejemplo: 2550. */
+            monto_a_pagar: number;
+            /** @description Colones del precio que no se pagan ahora, es decir, lo que se cobra en el local: el precio menos `monto_a_pagar`. Ejemplo: 5950. */
+            saldo_en_local: number;
+            /** @description Hora límite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00. */
+            vence_en: string | null;
+        };
         /** ReservaDeAgenda */
         ReservaDeAgenda: {
             id: string;
@@ -934,8 +959,8 @@ export interface components {
             /** @description Nombre de la persona que reservó. */
             cliente_nombre: string;
         };
-        /** ReservaDeLista */
-        ReservaDeLista: {
+        /** ReservaDeCliente */
+        ReservaDeCliente: {
             id: string;
             servicio: string;
             /** @description Nombre actual del servicio. */
@@ -954,6 +979,12 @@ export interface components {
             duracion_minutos: number;
             /** @description Hora límite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago. */
             expira_en: string | null;
+            /** @description Colones que el servidor cobraría hoy por esta reserva según la política de la barbería (`sin_pago` 0, `deposito` el porcentaje del precio redondeado hacia arriba, `total` el precio); 0 si la reserva ya no espera pago o ya está pagada. Ejemplo: 2550. */
+            monto_a_pagar: number;
+            /** @description Colones del precio que no se pagan ahora, es decir, lo que se cobra en el local: el precio menos `monto_a_pagar`. Ejemplo: 5950. */
+            saldo_en_local: number;
+            /** @description Hora límite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00. */
+            vence_en: string | null;
         };
         /** ReservaDetalleDeAgenda */
         ReservaDetalleDeAgenda: {
@@ -1003,6 +1034,12 @@ export interface components {
             duracion_minutos: number;
             /** @description Hora límite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago. */
             expira_en: string | null;
+            /** @description Colones que el servidor cobraría hoy por esta reserva según la política de la barbería (`sin_pago` 0, `deposito` el porcentaje del precio redondeado hacia arriba, `total` el precio); 0 si la reserva ya no espera pago o ya está pagada. Ejemplo: 2550. */
+            monto_a_pagar: number;
+            /** @description Colones del precio que no se pagan ahora, es decir, lo que se cobra en el local: el precio menos `monto_a_pagar`. Ejemplo: 5950. */
+            saldo_en_local: number;
+            /** @description Hora límite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00. */
+            vence_en: string | null;
             /** @description Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
             plazo_cancelacion_horas: number;
         };
@@ -1835,14 +1872,14 @@ export interface operations {
             };
         };
         responses: {
-            /** @description `Reserva` */
+            /** @description `ReservaCreada` */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["Reserva"];
+                        data: components["schemas"]["ReservaCreada"];
                     };
                 };
             };
@@ -1871,14 +1908,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `ReservaDeLista` */
+            /** @description Array of `ReservaDeCliente` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["ReservaDeLista"][];
+                        data: components["schemas"]["ReservaDeCliente"][];
                         meta: {
                             pagina: number;
                             por_pagina: number;
