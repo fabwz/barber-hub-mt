@@ -86,4 +86,21 @@ describe('LocationMenu', () => {
     await wrapper.get('button').trigger('click')
     expect(wrapper.get('button').attributes('aria-expanded')).toBe('false')
   })
+
+  it('each option has its own icon (not an external-link arrow) and the lines stop short of the edge', () => {
+    const wrapper = mount(LocationMenu, { props: { address: 'Avenida Central', city: 'San José' } })
+    const items = wrapper.findAll('li')
+
+    expect(items).toHaveLength(3)
+    const icons = items.map((item) => item.get('a svg').html())
+    expect(new Set(icons).size).toBe(3)
+    for (const icon of icons) expect(icon).not.toContain('lucide-external-link')
+    // Brand glyphs for Google Maps and Waze, filled; a navigation arrow for the route.
+    expect(items[0]!.get('a svg').attributes('fill')).toBe('currentColor')
+    expect(items[2]!.get('a svg').attributes('fill')).toBe('currentColor')
+    // The line above each option but the first is inset 16 px on both sides.
+    expect(items[0]!.classes().join(' ')).toContain('not-first:before:inset-x-4')
+    expect(items[1]!.classes().join(' ')).toContain('not-first:before:h-px')
+    for (const item of items) expect(item.classes()).not.toContain('not-first:border-t')
+  })
 })

@@ -137,3 +137,37 @@
     }
   }
 }
+
+/* A horizontal strip that scrolls by touch and arrow keys, with no visible bar (date picker). */
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+ * The banner is cut around the logo that overlaps its bottom edge, so a 6 px gap shows the page
+ * background itself (glow included) instead of a painted ring. A hard-edged mask, not a visible
+ * gradient. The notch is centered on the logo: at the left on a phone, in the middle on desktop.
+ */
+@utility banner-notch {
+  --notch-radius: 42px;
+  --notch-x: 36px;
+  -webkit-mask-image: radial-gradient(
+    circle var(--notch-radius) at var(--notch-x) 100%,
+    transparent calc(100% - 0.5px),
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    circle var(--notch-radius) at var(--notch-x) 100%,
+    transparent calc(100% - 0.5px),
+    #000 100%
+  );
+
+  @media (min-width: 48rem) {
+    --notch-radius: 50px;
+    --notch-x: 50%;
+  }
+}

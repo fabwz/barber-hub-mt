@@ -43,7 +43,9 @@ describe('OptionCard', () => {
     const wrapper = mountCard('row', null)
     const second = wrapper.findAll('[role="radio"]')[1]
 
-    expect(second?.classes()).toEqual(expect.arrayContaining(['hover:bg-surface', 'border-b-line']))
+    expect(second?.classes()).toEqual(
+      expect.arrayContaining(['hover:bg-surface', 'after:bg-line', 'after:inset-x-4']),
+    )
   })
 
   it('renders the 20 px icon and the radio indicator ring', () => {

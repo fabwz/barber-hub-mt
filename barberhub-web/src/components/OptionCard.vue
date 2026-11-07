@@ -25,14 +25,25 @@ const checked = computed(() => group.selected.value === value)
 const tabindex = computed(() => (!disabled && group.tabbable.value === value ? 0 : -1))
 
 const classes = computed(() => [
-  'flex min-h-11 w-full cursor-pointer items-center gap-4 rounded-card p-4 text-left text-fg transition-colors duration-150 ease-out',
-  variant === 'card' ? 'border border-line-strong' : 'border border-transparent',
+  'flex w-full cursor-pointer items-center gap-4 text-left text-fg transition-colors duration-150 ease-out',
+  // The service row is flat (64 px, no radius at rest); the payment card is a 16 px card.
+  variant === 'card' ? 'min-h-11 rounded-card p-4' : 'min-h-16 px-4 py-2',
+  variant === 'card'
+    ? 'border border-line-strong'
+    : 'relative after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-line',
   checked.value
-    ? 'bg-elevated font-medium'
+    ? 'bg-elevated font-medium after:hidden'
     : variant === 'card'
       ? 'bg-transparent font-normal hover:border-line-hover'
-      : 'border-b-line bg-transparent font-normal hover:bg-surface',
+      : 'bg-transparent font-normal hover:rounded-card hover:bg-surface hover:after:hidden',
+  checked.value && variant === 'row' ? 'rounded-card' : '',
   disabled ? 'cursor-not-allowed opacity-50' : '',
+])
+
+const indicatorClasses = computed(() => [
+  'flex shrink-0 items-center justify-center rounded-full border',
+  variant === 'row' ? 'size-5.5' : 'size-5',
+  variant === 'row' && !checked.value ? 'border-field' : 'border-line-strong',
 ])
 
 function choose(): void {
@@ -70,10 +81,7 @@ function choose(): void {
         <slot name="description" />
       </span>
     </span>
-    <span
-      class="flex size-5 shrink-0 items-center justify-center rounded-full border border-line-strong"
-      aria-hidden="true"
-    >
+    <span :class="indicatorClasses" aria-hidden="true">
       <span v-if="checked" class="size-2.5 rounded-full bg-accent" />
     </span>
   </div>
