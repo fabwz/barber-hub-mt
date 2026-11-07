@@ -9,9 +9,11 @@ interface Props {
   /** Price without VAT. */
   base: number
   vat: number
+  /** Content only, with no `li`, no border and no height: for a selectable row (OptionCard). */
+  bare?: boolean
 }
 
-const { durationMinutes, price, base, vat } = defineProps<Props>()
+const { durationMinutes, price, base, vat, bare = false } = defineProps<Props>()
 
 /** ₡10.000: dot as thousands separator. */
 function colones(amount: number): string {
@@ -27,17 +29,21 @@ const duration = computed(() => {
 </script>
 
 <template>
-  <li class="flex min-h-16 items-center gap-4 border-b border-line py-2">
+  <component
+    :is="bare ? 'div' : 'li'"
+    class="flex items-center gap-4"
+    :class="bare ? 'w-full' : 'min-h-16 border-b border-line py-2'"
+  >
     <div class="flex min-w-0 flex-1 flex-col">
       <span class="text-base">{{ name }}</span>
-      <span class="text-sm text-fg-muted tabular-nums">{{ duration }}</span>
+      <span class="text-sm font-normal text-fg-muted tabular-nums">{{ duration }}</span>
     </div>
-    <div class="flex flex-none flex-col items-end text-sm tabular-nums">
+    <div class="flex flex-none flex-col items-end text-sm font-normal tabular-nums">
       <span>{{ colones(price) }}</span>
       <span class="flex gap-x-3 text-xs text-fg-muted">
         <span>IVA incluido: {{ colones(vat) }}</span>
         <span>Base {{ colones(base) }}</span>
       </span>
     </div>
-  </li>
+  </component>
 </template>

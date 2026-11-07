@@ -9,3 +9,10 @@ export function validSocialUrl(value: string | undefined): string | null {
     return null
   }
 }
+
+/** A contact email is kept only if it has text before and after the «@» and a dot in the domain. */
+export function validEmail(value: string | undefined): string | null {
+  if (typeof value !== 'string') return null
+  const email = value.trim()
+  return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email) ? email : null
+}

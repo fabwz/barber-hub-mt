@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, useId } from 'vue'
-import { ChevronDown, ExternalLink, MapPin } from 'lucide-vue-next'
+import { ChevronDown, MapPin, Navigation } from 'lucide-vue-next'
 
+import { MAP_ICON_PATHS } from '@/composables/brandIcons'
 import { vClickOutside } from '@/composables/vClickOutside'
 
 interface Props {
@@ -23,9 +24,18 @@ const links = computed(() => {
     {
       label: 'Ver en Google Maps',
       href: `https://www.google.com/maps/search/?api=1&query=${query}`,
+      icon: 'googlemaps' as const,
     },
-    { label: 'Cómo llegar', href: `https://www.google.com/maps/dir/?api=1&destination=${query}` },
-    { label: 'Abrir en Waze', href: `https://waze.com/ul?q=${query}&navigate=yes` },
+    {
+      label: 'Cómo llegar',
+      href: `https://www.google.com/maps/dir/?api=1&destination=${query}`,
+      icon: 'route' as const,
+    },
+    {
+      label: 'Abrir en Waze',
+      href: `https://waze.com/ul?q=${query}&navigate=yes`,
+      icon: 'waze' as const,
+    },
   ]
 })
 
@@ -44,7 +54,7 @@ function closeAndFocus(): void {
   <div
     v-if="address.trim() !== ''"
     v-click-outside="close"
-    class="flex flex-col"
+    class="flex flex-col md:relative"
     @keydown.esc="closeAndFocus"
   >
     <button
@@ -52,7 +62,7 @@ function closeAndFocus(): void {
       type="button"
       :aria-expanded="open"
       :aria-controls="panelId"
-      class="-ml-2 inline-flex min-h-11 max-w-full items-center gap-2 self-start rounded-pill py-1.5 pr-3 pl-2 text-left text-sm text-fg-muted transition-colors duration-150 ease-out hover:bg-surface"
+      class="-ml-2 inline-flex min-h-11 max-w-full items-center gap-2 self-start rounded-pill py-1.5 md:ml-0 md:self-center pr-3 pl-2 text-left text-sm text-fg-muted transition-colors duration-150 ease-out hover:bg-surface"
       :class="open ? 'bg-surface' : 'bg-transparent'"
       @click="open = !open"
     >
@@ -69,9 +79,14 @@ function closeAndFocus(): void {
     <ul
       v-show="open"
       :id="panelId"
-      class="my-1 flex flex-col overflow-hidden rounded-card border border-line bg-surface"
+      class="my-1 flex flex-col overflow-hidden rounded-card border border-line bg-surface md:absolute md:top-full md:left-1/2 md:z-10 md:my-0 md:mt-1 md:w-70 md:-translate-x-1/2"
     >
-      <li v-for="link in links" :key="link.label" class="not-first:border-t not-first:border-line">
+      <!-- The lines between options stop 16 px short of the menu edge. -->
+      <li
+        v-for="link in links"
+        :key="link.label"
+        class="relative not-first:before:absolute not-first:before:inset-x-4 not-first:before:top-0 not-first:before:h-px not-first:before:bg-line"
+      >
         <a
           :href="link.href"
           target="_blank"
@@ -79,7 +94,24 @@ function closeAndFocus(): void {
           class="flex min-h-11 items-center justify-between gap-3 px-4 text-sm font-medium no-underline transition-colors duration-150 ease-out hover:bg-line"
         >
           {{ link.label }}
-          <ExternalLink :size="16" :stroke-width="1.5" class="text-fg-muted" aria-hidden="true" />
+          <Navigation
+            v-if="link.icon === 'route'"
+            :size="16"
+            :stroke-width="1.5"
+            class="text-fg-muted"
+            aria-hidden="true"
+          />
+          <svg
+            v-else
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class="text-fg-muted"
+            aria-hidden="true"
+          >
+            <path :d="MAP_ICON_PATHS[link.icon]" />
+          </svg>
         </a>
       </li>
     </ul>
