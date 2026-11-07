@@ -1345,7 +1345,7 @@
         "/barberias/{barberia}/reservas": {
             "post": {
                 "operationId": "reservations.reservations.store",
-                "description": "Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesi\u00f3n. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, as\u00ed que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barber\u00eda no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora l\u00edmite de pago en `expira_en` (10 minutos), retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duraci\u00f3n y el plazo de cancelaci\u00f3n (24 horas, provisional) vigentes. Una persona sin rol en la barber\u00eda queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membres\u00eda. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`. Si el espacio ya no est\u00e1 disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo d\u00eda, barbero y servicio, los de inicio m\u00e1s pr\u00f3ximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barber\u00eda, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barber\u00eda responde 404 `no-encontrado`, igual que una barber\u00eda inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.",
+                "description": "Reserva el espacio de un `barbero` que empieza en `inicio` para un `servicio`, a nombre de la persona de la sesi\u00f3n. Vuelve a validar la disponibilidad en ese instante, con bloqueo del barbero, as\u00ed que dos peticiones por el mismo espacio dejan exactamente una reserva. Si la barber\u00eda no cobra (modalidad `sin_pago`), la reserva queda `confirmada` de inmediato; si cobra, queda `temporal` con la hora l\u00edmite de pago en `expira_en` (10 minutos). La respuesta informa adem\u00e1s `monto_a_pagar` (lo que el servidor cobrar\u00eda ahora seg\u00fan la pol\u00edtica de la barber\u00eda), `saldo_en_local` y `vence_en`. La reserva temporal retiene el espacio hasta entonces y expira sola si el pago no llega (el espacio vuelve a estar disponible). Guarda el precio, la duraci\u00f3n y el plazo de cancelaci\u00f3n (24 horas, provisional) vigentes. Una persona sin rol en la barber\u00eda queda como cliente con su primera reserva; si la reserva falla, no queda ninguna membres\u00eda. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`. Si el espacio ya no est\u00e1 disponible responde 409 `espacio-no-disponible` y el miembro `alternativas` trae hasta 3 espacios del mismo d\u00eda, barbero y servicio, los de inicio m\u00e1s pr\u00f3ximo al pedido, con `barbero`, `inicio` y `fin`. Si la persona ya tiene una reserva confirmada que se solapa en la barber\u00eda, responde 409 `conflicto`. Un servicio o un barbero inexistente, inactivo o de otra barber\u00eda responde 404 `no-encontrado`, igual que una barber\u00eda inexistente; un dato mal escrito, 422 `datos-invalidos` con el campo.",
                 "summary": "Crear una reserva",
                 "tags": [
                     "Reservas"
@@ -1373,14 +1373,14 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "`Reserva`",
+                        "description": "`ReservaCreada`",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/components/schemas/Reserva"
+                                            "$ref": "#/components/schemas/ReservaCreada"
                                         }
                                     },
                                     "required": [
@@ -1594,7 +1594,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `ReservaDeLista`",
+                        "description": "Array of `ReservaDeCliente`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1603,7 +1603,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/ReservaDeLista"
+                                                "$ref": "#/components/schemas/ReservaDeCliente"
                                             }
                                         },
                                         "meta": {
@@ -3095,6 +3095,81 @@
                 ],
                 "title": "ReservaCancelada"
             },
+            "ReservaCreada": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva; al crearla queda `confirmada` si la barber\u00eda no cobra y `temporal` si cobra."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer",
+                        "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva ya est\u00e1 confirmada."
+                    },
+                    "monto_a_pagar": {
+                        "type": "integer",
+                        "description": "Colones que el servidor cobrar\u00eda hoy por esta reserva seg\u00fan la pol\u00edtica de la barber\u00eda (`sin_pago` 0, `deposito` el porcentaje del precio redondeado hacia arriba, `total` el precio); 0 si la reserva ya no espera pago o ya est\u00e1 pagada. Ejemplo: 2550."
+                    },
+                    "saldo_en_local": {
+                        "type": "integer",
+                        "description": "Colones del precio que no se pagan ahora, es decir, lo que se cobra en el local: el precio menos `monto_a_pagar`. Ejemplo: 5950."
+                    },
+                    "vence_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00."
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "barbero",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos",
+                    "plazo_cancelacion_horas",
+                    "expira_en",
+                    "monto_a_pagar",
+                    "saldo_en_local",
+                    "vence_en"
+                ],
+                "title": "ReservaCreada"
+            },
             "ReservaDeAgenda": {
                 "type": "object",
                 "properties": {
@@ -3162,7 +3237,7 @@
                 ],
                 "title": "ReservaDeAgenda"
             },
-            "ReservaDeLista": {
+            "ReservaDeCliente": {
                 "type": "object",
                 "properties": {
                     "id": {
@@ -3207,6 +3282,21 @@
                             "null"
                         ],
                         "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago."
+                    },
+                    "monto_a_pagar": {
+                        "type": "integer",
+                        "description": "Colones que el servidor cobrar\u00eda hoy por esta reserva seg\u00fan la pol\u00edtica de la barber\u00eda (`sin_pago` 0, `deposito` el porcentaje del precio redondeado hacia arriba, `total` el precio); 0 si la reserva ya no espera pago o ya est\u00e1 pagada. Ejemplo: 2550."
+                    },
+                    "saldo_en_local": {
+                        "type": "integer",
+                        "description": "Colones del precio que no se pagan ahora, es decir, lo que se cobra en el local: el precio menos `monto_a_pagar`. Ejemplo: 5950."
+                    },
+                    "vence_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00."
                     }
                 },
                 "required": [
@@ -3220,9 +3310,12 @@
                     "fin",
                     "precio",
                     "duracion_minutos",
-                    "expira_en"
+                    "expira_en",
+                    "monto_a_pagar",
+                    "saldo_en_local",
+                    "vence_en"
                 ],
-                "title": "ReservaDeLista"
+                "title": "ReservaDeCliente"
             },
             "ReservaDetalleDeAgenda": {
                 "type": "object",
@@ -3355,6 +3448,21 @@
                         ],
                         "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva no espera un pago."
                     },
+                    "monto_a_pagar": {
+                        "type": "integer",
+                        "description": "Colones que el servidor cobrar\u00eda hoy por esta reserva seg\u00fan la pol\u00edtica de la barber\u00eda (`sin_pago` 0, `deposito` el porcentaje del precio redondeado hacia arriba, `total` el precio); 0 si la reserva ya no espera pago o ya est\u00e1 pagada. Ejemplo: 2550."
+                    },
+                    "saldo_en_local": {
+                        "type": "integer",
+                        "description": "Colones del precio que no se pagan ahora, es decir, lo que se cobra en el local: el precio menos `monto_a_pagar`. Ejemplo: 5950."
+                    },
+                    "vence_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar la reserva temporal, ISO 8601 con el desfase de Costa Rica (-06:00); nula si no es temporal o si no hay nada que pagar. Ejemplo: 2030-03-01T08:10:00-06:00."
+                    },
                     "plazo_cancelacion_horas": {
                         "type": "integer",
                         "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
@@ -3372,6 +3480,9 @@
                     "precio",
                     "duracion_minutos",
                     "expira_en",
+                    "monto_a_pagar",
+                    "saldo_en_local",
+                    "vence_en",
                     "plazo_cancelacion_horas"
                 ],
                 "title": "ReservaDetalleDeCliente"

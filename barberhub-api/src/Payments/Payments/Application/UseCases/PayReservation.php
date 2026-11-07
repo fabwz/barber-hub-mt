@@ -73,7 +73,7 @@ final readonly class PayReservation
         }
 
         $gateway = $this->gateways->forNewCharge($command->method);
-        $amount = $policy->deposit === null ? $this->calculator->total($reservation->price) : $this->calculator->deposit($reservation->price, $policy->deposit);
+        $amount = $policy->amountOf($reservation->price, $this->calculator);
         $payment = Payment::create($this->payments->nextId(), $this->context->current(), $reservationId, $gateway->provider(), $command->method, $amount, $now);
 
         try {
