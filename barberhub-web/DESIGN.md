@@ -107,13 +107,15 @@ Escala fija en rem; no hay tipografía fluida. Las cifras de precio y hora se mu
 ## Componentes
 
 ### Botón principal (tonal)
-Píldora de `48 px` de alto en flujos de pago y `44 px` en el resto. Relleno `elevated`, texto `fg` en peso 500, 14 px, borde de 1 px `line-strong`. Hover: relleno `btn-hover`. Presionado: `btn-active`. Un solo botón principal por región visual. No existe un botón relleno de hueso.
+Píldora de `48 px` de alto en flujos de pago y `44 px` en el resto. Relleno `elevated`, texto `fg` en peso 500, 14 px, borde de 1 px `line-strong`. Hover: relleno `btn-hover`. Presionado: `btn-active`. Un solo botón principal por región visual. No existe un botón relleno de hueso. **Excepción:** en la barra de pago el texto es de 16 px, del mismo tamaño que el monto que tiene al lado.
 
 ### Botón secundario
 Píldora transparente, borde de 1 px `line-strong`, texto `fg` en peso 400. Hover: borde `line-hover`.
 
 ### Enlace
 Texto `fg` con subrayado. Hover: `accent-hover`. Nunca se resalta con hueso en reposo.
+
+**Navegación con apariencia de botón** («Volver», «Cambiar servicio u hora»): aunque sea un enlace, **no lleva subrayado**. Es una píldora de 44 px de alto, texto `fg` de 14 px en peso 500, con un chevron o una flecha de 16 a 18 px (trazo 1,5). Hover: relleno `surface`.
 
 ### Chip de espacio horario y de fecha
 **Hora.** Botón de 44 px de alto con radio de campo (8 px), ancho mínimo de 72 px, padding horizontal de 16 px y texto de 14 px con cifras tabulares.
@@ -140,6 +142,8 @@ Filas planas de **64 px** de alto (padding de 8 px arriba y abajo y 16 px a los 
 
 ### Ficha de método de pago
 Tarjeta de 16 px con borde 1 px `line-strong`, ícono de 20 px, nombre y una línea de descripción. Hover: borde `line-hover`. Seleccionada: relleno `elevated` con el mismo borde. Mismo patrón de `radiogroup`.
+- **Mosaico (pantalla de pago):** las fichas van en una fila de tres columnas con 8 px entre ellas. Cada una mide al menos 76 px de alto, tiene 8 px arriba y abajo y 6 px a los lados, y lleva el ícono de 22 px centrado **sobre** el nombre (14 px, centrado), sin indicador de radio ni descripción. Seleccionada: relleno `elevated`, nombre en peso 500 e ícono en `accent`. Bajo el grupo, una nota de 14 px en `fg-subtle` que explica el método elegido.
+- **Qué fichas salen:** las que admite la pasarela de la barbería, que cobra con una sola (PA-02). Con ONVO: «Tarjeta» y «SINPE Móvil». Con PayPal: una sola ficha, **«PayPal»** (la tarjeta se escribe en la página de PayPal), y bajo ella un bloque con líneas `line` arriba y abajo: «Pago con PayPal» en peso 500 y la nota «Al pagar, se abre PayPal para que confirme el pago.» Si hay una sola ficha, queda elegida.
 
 ### Campo de texto
 Alto de 48 px, radio de 8 px, relleno `canvas`, borde de 1 px `field`, texto `fg`, marcador `fg-subtle`. La etiqueta va arriba, en 14 px y peso 500.
@@ -150,6 +154,17 @@ Alto de 48 px, radio de 8 px, relleno `canvas`, borde de 1 px `field`, texto `fg
 - **Correo:** si falta algo, el mensaje dice qué (el `@`, lo que va antes del `@`, el dominio o los espacios) y da un ejemplo («nombre@correo.cr»). Se acepta cualquier terminación.
 - **Nombre:** no admite números ni símbolos; sí letras con tilde, espacios, apóstrofo, guion y punto.
 - **Teléfono:** solo dígitos, como máximo 8, con el guion puesto solo al escribir el quinto (`1234-5678`, también en el marcador). Teclado numérico. A la API se envían solo los dígitos.
+- **Todo campo filtra al escribir:** la tecla que no corresponde **no aparece**. No basta con limpiar el valor guardado: el campo debe mostrar el valor limpio en cada pulsación (si el valor limpio coincide con el anterior, el navegador no lo redibuja). Cada campo admite solo la cantidad que necesita.
+- **Número de tarjeta:** solo dígitos, hasta 19, en grupos de cuatro («1234 5678 9012 3456»). **Vencimiento:** solo dígitos con la barra puesta sola (`MM/AA`). **CVV** (esa es la etiqueta): de 3 a 4 dígitos. **Nombre en la tarjeta:** sin números ni símbolos (letras con tilde, espacios, apóstrofo, punto y guion), hasta 40 caracteres. Los tres primeros con teclado numérico y `autocomplete` `cc-number`, `cc-exp`, `cc-csc` y `cc-name`.
+- **Teléfono del SINPE Móvil:** igual que el teléfono de arriba. Si el navegador lo completa con «+506», se lo quita. A la API se envía `+506` y los 8 dígitos.
+- **Identificación del SINPE Móvil:** queda deshabilitada («Elija primero el tipo») hasta elegir el tipo de identificación, y se adapta a él. Al cambiar el tipo se vuelve a dar formato a lo escrito. Los formatos son los habituales de Costa Rica y **están por confirmar con ONVO**:
+
+| Tipo | Qué admite | Ejemplo |
+|---|---|---|
+| Nacional | 9 o 10 dígitos con guiones | `1-1393-1919` o `01-1393-1919` |
+| Residente | hasta 12 dígitos | `155812345678` |
+| Entidad estatal, jurídica, institución autónoma | 10 dígitos con guiones | `3-101-123456` |
+| Diplomático, extranjero | letras y números, en mayúscula, hasta 20 | `AB1234567` |
 
 ### Casilla
 Cuadro de 20 px con radio de 8 px y borde de 1 px, dentro de una fila de al menos 44 px de alto con 12 px de separación hacia su texto. Es un `button` con `role="checkbox"`, `aria-checked`, `aria-required` cuando es obligatoria y `aria-labelledby` hacia su texto.
@@ -192,6 +207,8 @@ Un punto de 8 px y el texto, sin relleno. Nunca solo color.
 
 La interfaz usa estos textos y no «Pagado», que no es un estado del sistema.
 
+**Dónde no se muestra:** en la pantalla de pago no se muestra «Pago aprobado», porque su punto `accent` (hueso) no se distingue del texto y el aviso «Su pago de ₡X fue aprobado.» ya lo dice. Tampoco «Pendiente de pago» en el resumen de una reserva temporal: lo dice la cuenta regresiva. «Pago pendiente» (amarillo) y «Pago rechazado» o «fallido» (rojo) sí se muestran.
+
 ### Fila de agenda
 Plana, sin tarjeta. Columnas: rango de hora (tabular), cliente, servicio y etiqueta de estado. Separadas por líneas de 1 px `line`. Seleccionada: relleno `elevated` con radio de 8 px, sin borde, texto en peso 500. En la vista por día, la **hora actual** se marca con un punto de 9 px y una línea de 1 px, ambos en `accent`.
 
@@ -232,8 +249,31 @@ Se muestra bajo la cabecera, en la misma pantalla (`/b/:enlace`). En escritorio 
 - **Error al cargar horas:** caja de 8 px de radio con relleno `danger-surface` y 16 px de padding: ícono de 20 px en `danger`, el título «No pudimos cargar los horarios.» en `danger` y peso 500, la línea «Revise su conexión e intente de nuevo. Lo que ya eligió se mantiene.» y el botón secundario «Reintentar».
 - **Sin horas ese día:** un recuadro con líneas `line` arriba y abajo, el título «No quedan horas el vie 6 nov con Mauricio.», una línea que sugiere probar otro día, botones secundarios «Ver sáb 7 nov» (los días siguientes con horas) y un botón de texto «Sin preferencia» con flecha.
 - **Barra inferior:** una fila con una línea `line` encima. A la izquierda el resumen (16 px): el servicio en peso 500 y, en `fg-muted`, la fecha y la hora con el barbero («sáb 7 nov, 08:15 con Mauricio»), con un espacio entre la hora y «con». Sin hora elegida dice «Elija una hora para continuar» (o «Elija un servicio para continuar»). A la derecha, el total (18 px, tabulares) con «IVA incluido» y el botón principal «Reservar» de 48 px y 280 px de ancho. Deshabilitado: borde `line`, relleno `surface` y texto `fg-muted`, sin opacidad. En celular la barra queda fija al pie de la pantalla, con una línea superior, el resumen dentro de una tarjeta `surface` y el botón a todo el ancho.
-- **Reserva creada:** la columna derecha pasa a «Su reserva»: el resumen (servicio, barbero, fecha, hora, total) con su etiqueta de estado, la cuenta regresiva de 10 minutos («Su espacio se libera en 9:58») y el botón «Continuar al pago». Si la reserva vence, un aviso «La reserva temporal venció.» y el botón «Elegir otro horario».
+- **Reserva creada:** la lista de servicios y el barbero **desaparecen**: ya hay una reserva y no tiene sentido seguir eligiendo. «Su reserva» queda en **una sola columna de 440 px centrada** en el recuadro, con el resumen (la tarjeta de «Resumen y pago»), la cuenta regresiva de 10 minutos («Su espacio se libera en 9:58», sin etiqueta de estado) y dos botones de 48 px: el principal «Continuar al pago» y el secundario **«Editar reserva»**, que vuelve a la selección para cambiar servicio, barbero, día u hora. **Cancela la reserva temporal** antes de volver (RF-16, RE-04), para que su espacio quede libre y no choque con el mismo horario; si la cancelación falla, vuelve igual, porque la reserva vence sola. Con un pago en proceso no se ofrece: en su lugar sale el aviso «Tiene un pago en proceso. Continúe al pago para ver su estado.», porque cancelar dejaría un cobro sin reserva. Si vence, un aviso «La reserva temporal venció.» y el botón «Elegir otro horario».
 - **Espacio ocupado (409):** bajo la hora, «Otros espacios cercanos» como chips con los espacios que devuelve la API; al elegir uno se reemplaza solo la hora.
+
+## Resumen y pago (pantalla del cliente)
+
+Ruta `/b/:enlace/pago/:reserva`. Diseño de origen: 6n a 6q (celular) y 9a a 9d (escritorio). Todo lo que sale de la API se muestra tal cual: los montos (`monto_a_pagar`, `saldo_en_local`) nunca se calculan en el cliente.
+
+- **Celular (una columna):** encabezado ligero con «Volver» a la izquierda y el nombre de la barbería a la derecha; el título «Resumen y pago» (24 px, peso 400); el resumen; «Cambiar servicio u hora →» (solo mientras la reserva es temporal, sin pago y en plazo; cancela la reserva como «Editar reserva») y la nota del plazo; «Método de pago» con las fichas en mosaico, su nota y el formulario; y una barra fija al pie, con una línea superior, la nota de la pasarela centrada («Pago seguro con ONVO Pay» o «Pago protegido por PayPal») y el botón de 48 px a todo el ancho.
+- **Escritorio (1280 px):** la misma cabecera de la barbería de la portada y, debajo, un recuadro de 16 px con borde `line` y 32 px de padding. Una fila superior con el título y «Volver» a la derecha, con una línea `line` debajo. Dos columnas iguales separadas por una línea de 1 px y 32 px de espacio a cada lado: a la izquierda «Su cita» (18 px, peso 500) y a la derecha «Método de pago». Cierra con una línea `line` y una fila: a la izquierda un candado de 16 px y la nota de la pasarela; en medio «A pagar ahora ₡X» (o «Total» si se cobra todo) en 16 px; y a la derecha el botón principal de 280 px.
+- **Resumen:** tarjeta `surface` con borde `line`, radio de 16 px y 20 px de padding a los lados. Filas Servicio, Barbero, Fecha, Hora (el rango y, en `fg-muted`, la duración: «09:00–09:30  30 min») y Total (el nombre en peso 500 y el monto de 18 px con «IVA incluido»), separadas por líneas de 1 px `line-strong`. **Sucursal:** el diseño la trae, pero se omite hasta que la API la entregue en la reserva.
+- **Depósito:** si `monto_a_pagar` es menor que el total, otra tarjeta con «Depósito a pagar ahora» (peso 500) y «Saldo en el local».
+- **Cuenta regresiva:** «Su espacio se libera en 9:58» bajo el resumen, con `role="timer"`. Con menos de dos minutos aparece además un aviso en línea («Quedan menos de dos minutos. Complete el pago antes de que su espacio se libere.»). Los lectores de pantalla lo oyen **solo al entrar en ese rango**, nunca cada segundo. Sin `vence_en` no hay cuenta regresiva.
+- **Plazo:** «Puede cancelar o cambiar la hora hasta N horas antes de la cita. Cada barbería define este plazo.» (14 px, `fg-subtle`), con el plazo real de la reserva.
+- **Botón de pago:** en celular «Pagar ₡X»; en escritorio solo «Pagar», para no repetir el monto de su lado. Con PayPal, «Continuar a PayPal». Los dos de 16 px. Mientras se envía: «Procesando pago…» (los puntos van **solo al final**, sin ícono de puntos antes), relleno `surface`, texto `fg-muted`, pulso lento de opacidad y deshabilitado. El formulario baja a 60 % de opacidad y se deshabilita.
+- **Estados:**
+  - **Cargando:** esqueleto de un bloque y dos filas, con `aria-busy`.
+  - **Vacío:** «No tiene una cita en curso» y «Elija servicio, barbero, fecha y hora. El resumen y el pago aparecen aquí.» con el botón «Reservar cita». En escritorio va centrado con el círculo de 56 px y el ícono de calendario; en celular, a la izquierda entre dos líneas.
+  - **Error:** «Error: no pudimos cargar su reserva.» y «Reintentar».
+  - **Esperando:** punto amarillo y «Pago pendiente», «Esperando la confirmación de su pago…» y el botón «Verificar ahora». La página consulta sola cada 3 segundos. Con SINPE Móvil se muestran antes las instrucciones: número de destino y monto exacto, cada uno con su botón «Copiar» (que pasa a «Copiado» con un check).
+  - **Tarjeta rechazada:** vuelve el formulario, con el mensaje «Su tarjeta ha sido rechazada. Por favor, pruebe con otra tarjeta o pague con SINPE Móvil.» bajo el número (borde `danger-border`, ícono y texto `danger`). El motivo que devuelve la API no se muestra en este caso.
+  - **SINPE Móvil o PayPal rechazados:** un aviso de error con el motivo de la API y «Elegir otro método».
+  - **Proveedor sin respuesta:** aviso de error («El proveedor de pago no responde. Su pago queda en verificación y no se cobrará dos veces.») y «Verificar ahora».
+  - **Vencida:** «La reserva temporal venció» y «Elegir otro horario».
+  - **Cancelada en PayPal:** aviso informativo «El pago se canceló. Puede intentarlo de nuevo o elegir otro método.»
+- **Temporal hasta el issue #84:** los avisos de pago aprobado, rechazado y vencida son el mínimo para cerrar el pago; la confirmación y sus pantallas finales se diseñan aparte.
 
 ## Páginas de acceso y de lectura
 
@@ -280,7 +320,7 @@ Las páginas de texto largo (términos y política de privacidad) usan un ancho 
 ## Notas para la implementación
 
 - **Pago con tarjeta:** el número, el vencimiento y el CVV **no se envían a nuestra API**. El método de pago se crea directamente con ONVO usando su llave pública, y a nuestro servidor solo llega su identificador.
-- **Resumen de pago:** muestra el total de la reserva y, si la barbería cobra un depósito, una línea adicional «Depósito a pagar ahora». Una reserva temporal vence a los 10 minutos y la pantalla debe mostrarlo.
+- **Resumen de pago:** muestra el total de la reserva y, si la barbería cobra un depósito, una línea adicional «Depósito a pagar ahora». Una reserva temporal vence a los 10 minutos y la pantalla debe mostrarlo. Los detalles están en «Resumen y pago».
 - **Pantallas con sus tres estados:** toda pantalla que carga datos tiene el estado cargando (esqueleto), el de error y el vacío.
 - Los tipos de TypeScript se generan desde `openapi/v1.json`; los nombres de campos están en español.
 
@@ -412,5 +452,7 @@ Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg
 ## Pendiente
 
 - **Tema claro:** se deriva de estos mismos tokens, que ya están como variables. Hasta entonces, la interfaz es solo oscura.
+- **Por confirmar con ONVO:** los formatos de la identificación del SINPE Móvil de cada tipo (tabla de «Campo de texto»).
+- **Pantalla de pago:** la fila «Sucursal» y el banner y el logo de la cabecera dependen de que la API los entregue; el pago muestra la cabecera con los mismos datos de ejemplo que la portada.
 - **Pantallas por diseñar:** resultado del pago y reserva confirmada, Mis reservas con detalle, cancelar y reprogramar, elegir negocio, y del dueño: servicios, cobro y datos del negocio.
 - **Logo, banner, dirección y redes** dependen de los endpoints de datos públicos del negocio y de la subida de archivos. Mientras tanto, la portada muestra datos de ejemplo (banner y logo neutros, dirección y redes ficticias) marcados como temporales en `ShopView.vue`.
