@@ -99,6 +99,8 @@ export const useBookingStore = defineStore('booking', () => {
   const submitting = ref(false)
   const error = ref<ApiError | null>(null)
   const alternatives = ref<SlotAlternative[]>([])
+  /** A temporary reservation is being cancelled to edit it. */
+  const releasing = ref(false)
   // A selection restored from the storage must be checked against the availability once.
   let pendingRevalidation = false
 
@@ -253,6 +255,25 @@ export const useBookingStore = defineStore('booking', () => {
     }
   }
 
+  /**
+   * Cancels a temporary reservation of the customer so its space is free again (RF-16, RE-04): going
+   * back to edit it must not collide with its own hold. The caller never offers it with a payment in
+   * progress. A failure changes nothing: the reservation expires by itself at its deadline.
+   */
+  async function release(barberia: string, reserva: string): Promise<void> {
+    if (releasing.value) return
+    releasing.value = true
+    try {
+      await api.POST('/barberias/{barberia}/reservas/{reserva}/cancelacion', {
+        params: { path: { barberia, reserva } },
+      })
+    } catch {
+      // Expired, already confirmed or no connection: the way back goes on.
+    } finally {
+      releasing.value = false
+    }
+  }
+
   return {
     shopId,
     serviceId,
@@ -264,6 +285,7 @@ export const useBookingStore = defineStore('booking', () => {
     submitting,
     error,
     alternatives,
+    releasing,
     enter,
     clear,
     selectService,
@@ -273,5 +295,6 @@ export const useBookingStore = defineStore('booking', () => {
     revalidate,
     pickAlternative,
     reserve,
+    release,
   }
 })

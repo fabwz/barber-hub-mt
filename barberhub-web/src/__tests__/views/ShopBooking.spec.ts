@@ -292,7 +292,7 @@ describe('ShopView · booking', () => {
     expect(button(wrapper, 'Reservar').attributes('disabled')).toBeDefined()
   })
 
-  it('creates the temporary reservation and shows the summary, the countdown and a disabled payment', async () => {
+  it('creates the temporary reservation and shows the summary, the countdown and the payment button', async () => {
     signIn()
     const { wrapper, fetchMock } = await open({
       reserve: () =>
@@ -309,10 +309,10 @@ describe('ShopView · booking', () => {
     const body = await requests(fetchMock, 'POST', '/reservas')[0]!.json()
     expect(body).toEqual({ servicio: SERVICES[0]!.id, barbero: MAURICIO, inicio: at('09:00') })
     expect(wrapper.text()).toContain('Su reserva')
-    expect(wrapper.text()).toContain('Pendiente de pago')
+    expect(wrapper.text()).not.toContain('Pendiente de pago')
     expect(wrapper.get('[role="timer"]').text()).toContain('10:00')
-    expect(button(wrapper, 'Continuar al pago').attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('el pago llega con el siguiente issue')
+    expect(button(wrapper, 'Continuar al pago').attributes('disabled')).toBeUndefined()
+    expect(wrapper.text()).not.toContain('el pago llega con el siguiente issue')
     // The selection is cleared once the reservation exists.
     expect(
       wrapper.findAll('[role="radio"]').every((r) => r.attributes('aria-checked') === 'false'),
@@ -390,6 +390,55 @@ describe('ShopView · booking', () => {
 
     expect(router.currentRoute.value.name).toBe('login')
     expect(router.currentRoute.value.query.redirect).toBe('/b/pura-navaja')
+  })
+
+  it('«Editar reserva» cancels the temporary reservation and brings the services back', async () => {
+    signIn()
+    const { wrapper, fetchMock } = await open({
+      reserve: () =>
+        jsonResponse(201, {
+          data: { ...RESERVATION, inicio: at('09:00'), fin: at('09:30'), expira_en: null },
+        }),
+    })
+    await chooseService(wrapper)
+    await chip(wrapper, '09:00').trigger('click')
+    await button(wrapper, 'Reservar').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[role="radio"]')).toHaveLength(0)
+
+    await button(wrapper, 'Editar reserva').trigger('click')
+    await flushPromises()
+
+    expect(requests(fetchMock, 'POST', '/cancelacion')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('Su reserva')
+    expect(wrapper.findAll('[role="radio"]').length).toBeGreaterThan(0)
+  })
+
+  it('does not offer «Editar reserva» while a payment of the reservation is in progress', async () => {
+    signIn()
+    const { wrapper, fetchMock } = await open({
+      reserve: () =>
+        jsonResponse(201, {
+          data: { ...RESERVATION, inicio: at('09:00'), fin: at('09:30'), expira_en: null },
+        }),
+    })
+    await chooseService(wrapper)
+    await chip(wrapper, '09:00').trigger('click')
+    sessionStorage.setItem(
+      'barberhub.payment',
+      JSON.stringify({
+        enlace: 'pura-navaja',
+        reserva: RESERVATION.id,
+        pago: 'p1',
+        metodo: 'sinpe_movil',
+      }),
+    )
+    await button(wrapper, 'Reservar').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Tiene un pago en proceso.')
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Editar reserva')).toBe(false)
+    expect(requests(fetchMock, 'POST', '/cancelacion')).toHaveLength(0)
   })
 
   it('shows the temporary reservation as confirmed when the shop does not charge', async () => {
