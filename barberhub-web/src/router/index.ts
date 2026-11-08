@@ -12,6 +12,18 @@ export const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
   {
+    path: '/b/:enlace/pago/:reserva',
+    name: 'payment',
+    component: () => import('@/views/PaymentView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/pago/retorno',
+    name: 'payment-return',
+    component: () => import('@/views/PaymentReturnView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/ingresar',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),

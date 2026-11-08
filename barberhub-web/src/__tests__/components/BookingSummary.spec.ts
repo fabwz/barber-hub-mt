@@ -45,14 +45,24 @@ describe('BookingSummary', () => {
     expect(wrapper.find('[role="timer"]').exists()).toBe(false)
   })
 
-  it('a temporary reservation says it is pending and shows the time left', () => {
+  it('a temporary reservation shows the time left and no status label', () => {
     const wrapper = mount(BookingSummary, {
       props: { ...BASE, status: 'temporary', remaining: '9:58' },
     })
 
-    expect(wrapper.text()).toContain('Pendiente de pago')
+    expect(wrapper.text()).not.toContain('Pendiente de pago')
     const timer = wrapper.get('[role="timer"]')
     expect(timer.text()).toContain('9:58')
+  })
+
+  it('shows the length of the service next to the hour', () => {
+    const wrapper = mount(BookingSummary, { props: { ...BASE, durationMinutes: 90 } })
+
+    expect(wrapper.text()).toContain('1 h 30 min')
+    expect(mount(BookingSummary, { props: { ...BASE, durationMinutes: 45 } }).text()).toContain(
+      '45 min',
+    )
+    expect(mount(BookingSummary, { props: BASE }).text()).not.toContain('min')
   })
 
   it('a confirmed reservation says it is confirmed', () => {

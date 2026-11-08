@@ -115,10 +115,10 @@ Se copia `.env.example` a `.env` y se completan los valores. El `.env` real no s
 | `ONVO_SINPE_DESTINATION` | Número SINPE Móvil de ONVO al que se transfiere. Por defecto `+506 70196686`. |
 | `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` | Credenciales de la aplicación *sandbox*. |
 | `PAYPAL_BASE_URL` | URL base de la API. Por defecto `https://api-m.sandbox.paypal.com`. |
-| `PAYPAL_RETURN_URL` y `PAYPAL_CANCEL_URL` | Adónde vuelve la persona tras aprobar o cancelar. Por ejemplo, `http://127.0.0.1:8000/api/v1/pagos/retorno`. |
+| `PAYPAL_RETURN_URL` y `PAYPAL_CANCEL_URL` | Adónde vuelve la persona tras aprobar o cancelar. Con el cliente web apuntan a su ruta `/pago/retorno` (por ejemplo, `http://localhost:5173/pago/retorno` y `http://localhost:5173/pago/retorno?cancelado=1`). Sin cliente, por ejemplo con Postman, sirve `http://127.0.0.1:8000/api/v1/pagos/retorno`, que solo responde un mensaje. |
 | `PAYPAL_CRC_PER_USD` | Tipo de cambio (colones por dólar) con el que PayPal cobra en USD. Por defecto 500. |
 
-La llave pública de ONVO (`onvo_test_publishable_key_…`) no es una variable de la API: el servidor nunca la lee. La usa quien crea el método de pago de la tarjeta (el navegador, o Postman).
+La llave pública de ONVO (`onvo_test_publishable_key_…`) no es una variable de la API: el servidor nunca la lee. La usa quien crea el método de pago de la tarjeta (el navegador, o Postman). En el cliente web se define en `barberhub-web/.env` con `VITE_ONVO_PUBLISHABLE_KEY` (y `VITE_ONVO_API_URL`, por defecto `https://api.onvopay.com/v1`); el cliente solo acepta llaves que empiezan por `onvo_test_` y, con otra, no llama a ONVO y muestra un error de configuración.
 
 ### Cambiar de pasarela
 
@@ -192,6 +192,19 @@ Datos de prueba de ONVO, tomados de [su documentación](https://docs.onvopay.com
 | Error del procesador | `4000 0000 0000 0119` |
 | SINPE Móvil aprobado | `+50688888888`, con identificación `01-1393-1919` (tipo `0`). Pasa a aprobado a los 15 segundos |
 | SINPE Móvil sin transferencia | `+50688889521`. Queda pendiente indefinidamente |
+
+### Cobro desde el cliente web
+
+El cliente web (`barberhub-web`, issue #83) sigue este mismo flujo en `/b/:enlace/pago/:reserva`:
+
+- **Resumen:** muestra `monto_a_pagar` y `saldo_en_local` tal como los entrega la API (nunca los calcula) y la cuenta regresiva hasta `vence_en`. Los métodos salen de `pasarela` y `metodos_de_pago` de la reserva: con ONVO, tarjeta y SINPE Móvil; con PayPal, una sola ficha, «PayPal».
+- **Tarjeta con ONVO:** el navegador crea el método de pago en ONVO con la llave pública y a la API solo envía `{"metodo":"tarjeta","token":"<id>"}`. El número, el vencimiento y el CVV no se guardan ni se registran, y se borran en cuanto ONVO devuelve el identificador.
+- **SINPE Móvil:** se piden teléfono (`1234-5678`, se envía como `+506…`), tipo de identificación e identificación. Con la respuesta del pago se muestran el número de destino y el monto exacto, cada uno con su botón «Copiar». Mientras el pago está pendiente, el cliente consulta `GET /pagos/{pago}` cada 3 segundos hasta un estado final o hasta que venza la reserva, y la persona puede pulsar «Verificar ahora».
+- **PayPal:** con la respuesta del pago (`accion_siguiente` de tipo `redireccion`) guarda `{enlace, reserva, pago, metodo}` en `sessionStorage` (clave `barberhub.payment`) y redirige a PayPal. Al volver a `/pago/retorno`, el cliente lee eso, consulta el estado una vez (que captura la orden aprobada) y sigue consultando si aún está pendiente. `?cancelado=1` muestra que el pago se canceló y permite elegir otro método.
+- **Doble clic:** el botón se bloquea mientras hay una solicitud en curso y, si la reserva ya tiene un pago `pendiente` o `aprobado`, la API devuelve ese pago con 200 en lugar de cobrar otra vez.
+- **Rechazo:** con una tarjeta rechazada el formulario vuelve con el mensaje «Su tarjeta ha sido rechazada. Por favor, pruebe con otra tarjeta o pague con SINPE Móvil.»; con SINPE o PayPal se muestra el motivo y «Elegir otro método».
+- **Editar la reserva:** «Editar reserva» y «Cambiar servicio u hora» cancelan la reserva temporal (`POST /reservas/{reserva}/cancelacion`, RF-16) para liberar el espacio. No se ofrecen si ya hay un pago en proceso.
+- **Pendiente (#84):** la reserva confirmada y las pantallas finales de pago aprobado, rechazado y vencida; hoy son avisos temporales.
 
 ### Pruebas automatizadas
 

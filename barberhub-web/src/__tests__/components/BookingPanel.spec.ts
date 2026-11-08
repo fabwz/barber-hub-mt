@@ -163,7 +163,7 @@ describe('BookingPanel', () => {
     expect(wrapper.get('[role="note"]').text()).toContain('ya no está disponible')
   })
 
-  it('shows the reservation with a countdown from the deadline of the API and a disabled payment', async () => {
+  it('shows the reservation with a countdown from the deadline of the API and the payment button', async () => {
     vi.setSystemTime(new Date('2030-03-05T10:00:00-06:00'))
     const wrapper = mount(BookingPanel, {
       props: {
@@ -179,11 +179,53 @@ describe('BookingPanel', () => {
     expect(wrapper.text()).toContain('Su reserva')
     expect(wrapper.get('[role="timer"]').text()).toContain('10:00')
     const pay = wrapper.findAll('button').find((b) => b.text() === 'Continuar al pago')!
-    expect(pay.attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('el pago llega con el siguiente issue')
+    expect(pay.attributes('disabled')).toBeUndefined()
+    await pay.trigger('click')
+    expect(wrapper.emitted('pay')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('el pago llega con el siguiente issue')
 
     await vi.advanceTimersByTimeAsync(5000)
     expect(wrapper.get('[role="timer"]').text()).toContain('9:55')
+  })
+
+  it('hides the services and the barber once there is a reservation, and offers another time', async () => {
+    const wrapper = mount(BookingPanel, {
+      props: { ...BASE, reservation: { ...SELECTION, status: 'temporary', expiresAt: null } },
+      slots: { services: '<p>Lista de servicios</p>' },
+    })
+
+    expect(wrapper.text()).not.toContain('Lista de servicios')
+    expect(wrapper.text()).not.toContain('Sin preferencia')
+    expect(wrapper.text()).toContain('Su reserva')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Editar reserva')!
+      .trigger('click')
+    expect(wrapper.emitted('edit')).toHaveLength(1)
+    expect(wrapper.emitted('restart')).toBeUndefined()
+  })
+
+  it('offers no editing, and says why, while a payment is in progress', () => {
+    const wrapper = mount(BookingPanel, {
+      props: {
+        ...BASE,
+        reservation: { ...SELECTION, status: 'temporary', expiresAt: null },
+        paymentInProgress: true,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Tiene un pago en proceso.')
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Editar reserva')).toBe(false)
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Continuar al pago')).toBe(true)
+  })
+
+  it('shows the services while there is no reservation', () => {
+    const wrapper = mount(BookingPanel, {
+      props: BASE,
+      slots: { services: '<p>Lista de servicios</p>' },
+    })
+
+    expect(wrapper.text()).toContain('Lista de servicios')
   })
 
   it('counts 10 minutes when the API brings no deadline', () => {

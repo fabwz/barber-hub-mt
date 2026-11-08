@@ -92,7 +92,7 @@ Lo que cambia entre barberías son parámetros, no reglas. La plataforma demostr
 | Anticipación mínima para reservar | 60 min | DI-03 |
 | Ventana de reserva | 30 días | DI-03 |
 | Tolerancia para marcar ausente | 10 min | CO-05 |
-| Reserva temporal | 10 min desde que inicia el pago | RE-05 |
+| Reserva temporal | 10 min desde que se crea la reserva temporal, que es cuando empieza el cobro | RE-05 |
 | Retraso máximo al expirar reservas temporales | 1 min | NO-04 |
 | Reprogramaciones por reserva | 2 | CA-05 |
 | Redondeo del depósito | Hacia arriba, al colón | PA-06 |
@@ -202,7 +202,7 @@ Lo que cambia entre barberías son parámetros, no reglas. La plataforma demostr
 | RE-02 | Ante dos solicitudes simultáneas por el mismo espacio, una se confirma y la otra recibe el error de tipo estable "espacio-no-disponible" (RNF-17) con hasta 3 espacios alternativos del mismo día y servicio, los de inicio más próximo a la hora pedida. | C |
 | RE-03 | Una reserva tiene un solo servicio y un solo colaborador; los combos son servicios del catálogo. | D |
 | RE-04 | Los estados son temporal, confirmada, completada, ausente, cancelada por cliente, cancelada por la barbería y expirada. Solo se permite temporal → confirmada, expirada o cancelada por cliente, y confirmada → completada, ausente o cancelada; los demás son finales. | D |
-| RE-05 | La reserva temporal dura 10 min desde que inicia el pago; si el pago no se confirma en ese plazo, expira y libera el espacio. | C, D |
+| RE-05 | La reserva temporal dura 10 min desde que se crea, que es cuando empieza el cobro (RF-11); el plazo corre aunque la persona aún no haya elegido el método de pago. Si el pago no se confirma en ese plazo, expira y libera el espacio. | C, D |
 | RE-06 | Un cliente no puede tener dos reservas confirmadas solapadas en una barbería. | D |
 | RE-07 | Una reserva que no requiere pago (bono, barbería sin pago o reserva asistida) se confirma de inmediato. | D |
 | RE-08 | Reprogramar es atómico: si el nuevo espacio no está disponible, la reserva original no cambia. | D |

@@ -17,23 +17,11 @@ import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import type { TimeSlot } from '@/components/TimeSlots.vue'
 import { addDays, dateOf, timeOf, todayInCostaRica } from '@/composables/format'
 import { useAvailability } from '@/composables/useAvailability'
+import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
+import { readStoredPayment } from '@/composables/usePayment'
 import { useBookingStore } from '@/stores/booking'
 import { useSessionStore } from '@/stores/session'
 import { useShopStore } from '@/stores/shop'
-
-/**
- * TEMPORARY, to preview the header of the design: neutral banner and logo blocks, an address and the
- * social links. `BarberiaPublica` brings none of this yet; remove it when the API does. Fictional data.
- */
-const HEADER_EXAMPLE = {
-  preview: true,
-  address: 'Avenida Central, 200 m norte del Parque',
-  email: 'hola@puranavaja.cr',
-  whatsapp: 'https://wa.me/50622223333',
-  instagram: 'https://instagram.com/puranavaja',
-  facebook: 'https://facebook.com/puranavaja',
-  tiktok: 'https://tiktok.com/@puranavaja',
-}
 
 /** Days offered by the date picker: the booking window of DI-03. */
 const WINDOW_DAYS = 30
@@ -181,6 +169,7 @@ const reservation = computed<PanelReservation | null>(() => {
     startTime: timeOf(data.inicio),
     endTime: timeOf(data.fin),
     price: data.precio,
+    durationMinutes: data.duracion_minutos,
     status: data.estado === 'confirmada' ? 'confirmed' : 'temporary',
     expiresAt: data.expira_en,
   }
@@ -213,6 +202,30 @@ function pickAlternative(value: string): void {
 
 function goToLogin() {
   return router.push({ name: 'login', query: { redirect: route.fullPath } })
+}
+
+/** A payment of the reservation was started: cancelling it would leave a charge without reservation. */
+const paymentInProgress = computed(() => {
+  const created = booking.reservation
+  return created !== null && readStoredPayment()?.reserva === created.reservation.id
+})
+
+/** «Editar reserva»: frees the space of the temporary reservation and goes back to the selection. */
+async function editReservation(): Promise<void> {
+  const created = booking.reservation
+  if (created && store.shop && created.reservation.estado === 'temporal') {
+    await booking.release(store.shop.id, created.reservation.id)
+  }
+  booking.clear()
+}
+
+function goToPayment(): void {
+  const created = booking.reservation
+  if (!created) return
+  void router.push({
+    name: 'payment',
+    params: { enlace: String(route.params.enlace), reserva: created.reservation.id },
+  })
 }
 
 async function reserve(): Promise<void> {
@@ -285,7 +298,11 @@ async function reserve(): Promise<void> {
           :reservation="reservation"
           @retry="availability.retry()"
           @reserve="reserve"
+          :payment-in-progress="paymentInProgress"
+          :editing="booking.releasing"
           @restart="booking.clear()"
+          @edit="editReservation"
+          @pay="goToPayment"
           @pick-alternative="pickAlternative"
         >
           <template #services>

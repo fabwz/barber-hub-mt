@@ -33,9 +33,11 @@ cp .env.example .env
 
 Se define en `.env` (copia de `.env.example`). Nunca se escriben secretos en el repositorio.
 
-| Variable       | Valor de ejemplo        | Uso                                           |
-| -------------- | ----------------------- | --------------------------------------------- |
-| `VITE_API_URL` | `http://127.0.0.1:8000` | Destino del proxy de desarrollo hacia la API. |
+| Variable                    | Valor de ejemplo             | Uso                                                                                                                                  |
+| --------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `VITE_API_URL`              | `http://127.0.0.1:8000`      | Destino del proxy de desarrollo hacia la API.                                                                                        |
+| `VITE_ONVO_PUBLISHABLE_KEY` | _(vacía)_                    | Llave pública de pruebas de ONVO Pay (`onvo_test_…`). Con otra llave el cliente no llama a ONVO y muestra un error de configuración. |
+| `VITE_ONVO_API_URL`         | `https://api.onvopay.com/v1` | Dirección base de la API de ONVO, a la que el navegador envía los datos de la tarjeta.                                               |
 
 ## Tipos de la API
 

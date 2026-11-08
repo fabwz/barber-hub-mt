@@ -78,7 +78,9 @@ describe('LoginView', () => {
   it('shows the success notice after registering', async () => {
     const { wrapper } = await mountView(LoginView, '/ingresar?registrado=1')
 
-    expect(wrapper.get('[role="status"]').text()).toContain('Su cuenta quedó creada')
+    expect(wrapper.get('[role="status"]').text()).toContain(
+      'Su cuenta ha sido registrada con éxito',
+    )
   })
 
   it('a credentials error shows one generic message', async () => {

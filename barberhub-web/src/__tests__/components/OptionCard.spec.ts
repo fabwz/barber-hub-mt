@@ -6,7 +6,7 @@ import { defineComponent, ref } from 'vue'
 import OptionCard from '@/components/OptionCard.vue'
 import OptionGroup from '@/components/OptionGroup.vue'
 
-function mountCard(variant: 'row' | 'card', selected: string | null) {
+function mountCard(variant: 'row' | 'card' | 'tile', selected: string | null) {
   const chosen = ref<string | null>(selected)
   const Host = defineComponent({
     components: { OptionGroup, OptionCard },
@@ -19,6 +19,19 @@ function mountCard(variant: 'row' | 'card', selected: string | null) {
   })
   return mount(Host)
 }
+
+describe('OptionCard tile', () => {
+  it('puts the icon over the label, with no radio indicator', () => {
+    const wrapper = mountCard('tile', 'one')
+    const first = wrapper.get('[data-value="one"]')
+
+    expect(first.classes()).toContain('flex-col')
+    expect(first.classes()).toContain('rounded-card')
+    expect(first.attributes('aria-checked')).toBe('true')
+    expect(first.find('svg').classes()).toContain('text-accent')
+    expect(first.findAll('span[aria-hidden="true"]')).toHaveLength(0)
+  })
+})
 
 describe('OptionCard', () => {
   it('is a radio with aria-checked that follows the group value', () => {

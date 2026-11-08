@@ -20,6 +20,51 @@ function stored() {
   return raw === null ? null : JSON.parse(raw)
 }
 
+describe('release', () => {
+  const RESERVED = { ...RESERVATION, id: 'r1', estado: 'temporal' }
+
+  it('cancels the temporary reservation to free its space', async () => {
+    const fetchMock = mockFetch(() =>
+      jsonResponse(200, { data: { estado: 'cancelada_por_cliente' } }),
+    )
+    const booking = useBookingStore()
+
+    await booking.release(SHOP.id, RESERVED.id)
+
+    const request = fetchMock.mock.calls[0]![0] as Request
+    expect(request.method).toBe('POST')
+    expect(new URL(request.url).pathname).toBe(
+      `/api/v1/barberias/${SHOP.id}/reservas/${RESERVED.id}/cancelacion`,
+    )
+    expect(booking.releasing).toBe(false)
+  })
+
+  it('goes on when it cannot cancel (expired, confirmed or no connection)', async () => {
+    mockFetch(() => jsonResponse(409, { type: 'conflicto', title: 'Conflicto' }))
+    const booking = useBookingStore()
+
+    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBeUndefined()
+    expect(booking.releasing).toBe(false)
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBeUndefined()
+  })
+
+  it('does not cancel twice at once', async () => {
+    let release: (response: Response) => void = () => {}
+    const fetchMock = mockFetch(() => new Promise<Response>((resolve) => (release = resolve)))
+    const booking = useBookingStore()
+
+    const first = booking.release(SHOP.id, RESERVED.id)
+    const second = booking.release(SHOP.id, RESERVED.id)
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    release(jsonResponse(200, { data: {} }))
+    await Promise.all([first, second])
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
 function chosen() {
   const booking = useBookingStore()
   booking.enter(SHOP.id)

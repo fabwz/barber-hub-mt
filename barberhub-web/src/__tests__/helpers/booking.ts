@@ -44,6 +44,7 @@ export const RESERVATION = {
 export interface BookingHandlers {
   availability?: (request: Request) => Response | Promise<Response>
   reserve?: (request: Request) => Response | Promise<Response>
+  cancel?: (request: Request) => Response | Promise<Response>
 }
 
 /** The shop plus availability and reservation answers; each test overrides what it needs. */
@@ -57,6 +58,11 @@ export function bookingHandler(handlers: BookingHandlers = {}) {
     }
     if (route === `POST /api/v1/barberias/${SHOP.id}/reservas`) {
       return handlers.reserve ? handlers.reserve(request) : jsonResponse(201, { data: RESERVATION })
+    }
+    if (route === `POST /api/v1/barberias/${SHOP.id}/reservas/${RESERVATION.id}/cancelacion`) {
+      return handlers.cancel
+        ? handlers.cancel(request)
+        : jsonResponse(200, { data: { id: RESERVATION.id, estado: 'cancelada_por_cliente' } })
     }
     return shopHandler(request)
   }

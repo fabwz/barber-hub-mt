@@ -28,6 +28,8 @@ export interface PanelSelection {
 
 /** The reservation that was created. */
 export interface PanelReservation extends PanelSelection {
+  /** Length of the service in minutes. */
+  durationMinutes?: number
   status: 'temporary' | 'confirmed'
   /** ISO 8601 deadline to pay; `null` when the API does not bring it. */
   expiresAt: string | null
@@ -57,6 +59,10 @@ interface Props {
   alternatives?: TimeSlot[]
   notice?: string | null
   reservation?: PanelReservation | null
+  /** A payment of the reservation is under way: it cannot be edited (the reservation is not cancelled). */
+  paymentInProgress?: boolean
+  /** The reservation is being cancelled to edit it. */
+  editing?: boolean
 }
 
 const {
@@ -73,6 +79,8 @@ const {
   alternatives = [],
   notice = null,
   reservation = null,
+  paymentInProgress = false,
+  editing = false,
 } = defineProps<Props>()
 
 /** Chosen barber; the empty string is «Sin preferencia». */
@@ -84,6 +92,10 @@ const emit = defineEmits<{
   retry: []
   reserve: []
   restart: []
+  /** «Continuar al pago» of a temporary reservation. */
+  pay: []
+  /** «Editar reserva»: back to the selection, giving the space up. */
+  edit: []
   'pick-alternative': [value: string]
 }>()
 
@@ -146,9 +158,12 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
-    <div class="mt-8 flex flex-col gap-8 md:mt-6 md:grid md:grid-cols-2">
-      <!-- Left: service and barber -->
-      <div class="flex min-w-0 flex-col gap-8">
+    <div
+      class="mt-8 flex flex-col gap-8 md:mt-6"
+      :class="reservation ? 'md:mx-auto md:w-full md:max-w-110' : 'md:grid md:grid-cols-2'"
+    >
+      <!-- Left: service and barber (gone once there is a reservation) -->
+      <div v-if="!reservation" class="flex min-w-0 flex-col gap-8">
         <div>
           <h3 class="mb-2 text-lg font-medium">Servicio</h3>
           <slot name="services" />
@@ -178,7 +193,10 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
       </div>
 
       <!-- Right: date and hour, the empty state or the reservation created -->
-      <div class="flex min-w-0 flex-col gap-8 md:border-l md:border-line md:pl-8">
+      <div
+        class="flex min-w-0 flex-col gap-8"
+        :class="reservation ? '' : 'md:border-l md:border-line md:pl-8'"
+      >
         <template v-if="reservation">
           <div class="flex flex-col gap-4">
             <h3 class="text-lg font-medium">Su reserva</h3>
@@ -199,17 +217,25 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
                 :end-time="reservation.endTime"
                 :price="reservation.price"
                 :status="reservation.status"
+                :duration-minutes="reservation.durationMinutes"
                 :remaining="countdown.formatted.value"
               />
               <template v-if="reservation.status === 'temporary'">
-                <div>
-                  <BaseButton size="large" disabled>Continuar al pago</BaseButton>
+                <InlineNotice v-if="paymentInProgress" title="Tiene un pago en proceso.">
+                  Continúe al pago para ver su estado.
+                </InlineNotice>
+                <div class="flex flex-wrap gap-3">
+                  <BaseButton size="large" @click="emit('pay')">Continuar al pago</BaseButton>
+                  <BaseButton
+                    v-if="!paymentInProgress"
+                    size="large"
+                    variant="secondary"
+                    :loading="editing"
+                    @click="emit('edit')"
+                  >
+                    Editar reserva
+                  </BaseButton>
                 </div>
-                <!-- Temporary text: the payment arrives with issue #83. -->
-                <p class="text-sm text-fg-muted">
-                  Temporal: el pago llega con el siguiente issue (#83). Su espacio queda apartado
-                  por 10 minutos.
-                </p>
               </template>
             </template>
           </div>

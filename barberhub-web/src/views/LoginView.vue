@@ -79,7 +79,7 @@ async function submit(): Promise<void> {
 
         <div class="mt-6 flex flex-col gap-4" aria-live="polite">
           <NoticeBanner v-if="justRegistered && !countdown.active.value" variant="success">
-            Su cuenta quedó creada. Ingrese con su correo y su contraseña.
+            Su cuenta ha sido registrada con éxito. Ingrese con su correo y su contraseña.
           </NoticeBanner>
           <NoticeBanner v-if="countdown.active.value" variant="error">
             <p class="font-medium">
