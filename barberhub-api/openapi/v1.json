@@ -35,6 +35,10 @@
             "description": "Modalidad de cobro, dep\u00f3sito, pasarela y cancelaci\u00f3n gratuita, a cargo del due\u00f1o."
         },
         {
+            "name": "Datos de la barber\u00eda",
+            "description": "Nombre, ciudad, tel\u00e9fono, direcci\u00f3n, correo de contacto y redes sociales, a cargo del due\u00f1o."
+        },
+        {
             "name": "Enlaces p\u00fablicos",
             "description": "Consulta de una barber\u00eda por su enlace, sin iniciar sesi\u00f3n."
         },
@@ -834,6 +838,110 @@
                     }
                 },
                 "security": []
+            }
+        },
+        "/barberias/{barberia}/administracion/negocio": {
+            "get": {
+                "operationId": "catalog.barbershops.details.show",
+                "description": "Trae `nombre`, `ciudad`, `telefono`, el `enlace` p\u00fablico, la `direccion`, el `correo_contacto` y el objeto `redes` con `whatsapp`, `instagram`, `facebook` y `tiktok`. Lo que no se ha indicado viene como `null`. Solo el due\u00f1o: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Consultar los datos de la barber\u00eda",
+                "tags": [
+                    "Datos de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`DatosDeBarberia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DatosDeBarberia"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "catalog.barbershops.details.update",
+                "description": "Cambia solo los campos que vienen: `nombre`, `ciudad`, `telefono`, `direccion` (hasta 200 caracteres), `correo_contacto` (correo v\u00e1lido de hasta 150; es el del negocio, distinto del correo de la cuenta) y `redes`. Cada red es un enlace de hasta 300 caracteres que empieza por `https://` y es del dominio de su red: `whatsapp` (`wa.me` o `api.whatsapp.com`), `instagram` (`instagram.com`), `facebook` (`facebook.com` o `fb.com`) y `tiktok` (`tiktok.com`), con o sin `www.`. En `direccion`, `correo_contacto` y cada red, `null` o vac\u00edo borra el dato. Un valor inv\u00e1lido responde 422 `datos-invalidos` y `errores` indica el campo (por ejemplo `redes.instagram`). Cambiar el nombre no cambia el `enlace` p\u00fablico (MT-07). Solo el due\u00f1o.",
+                "summary": "Cambiar los datos de la barber\u00eda",
+                "tags": [
+                    "Datos de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActualizarBarberia"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`DatosDeBarberia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DatosDeBarberia"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
             }
         },
         "/barberias/{barberia}/disponibilidad": {
@@ -2192,6 +2300,116 @@
             }
         },
         "schemas": {
+            "ActualizarBarberia": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "description": "Nombre de la barber\u00eda. Cambiarlo no cambia el enlace p\u00fablico.",
+                        "examples": [
+                            "Barber\u00eda Pura Navaja"
+                        ],
+                        "maxLength": 120
+                    },
+                    "ciudad": {
+                        "type": "string",
+                        "description": "Ciudad.",
+                        "examples": [
+                            "Ciudad Quesada"
+                        ],
+                        "maxLength": 80
+                    },
+                    "telefono": {
+                        "type": "string",
+                        "description": "Tel\u00e9fono de contacto.",
+                        "examples": [
+                            "2460-0000"
+                        ],
+                        "maxLength": 30
+                    },
+                    "direccion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Direcci\u00f3n en una sola l\u00ednea, de hasta 200 caracteres. `null` o vac\u00edo la borra.",
+                        "pattern": "^[^\\x00-\\x1F\\x7F]*$",
+                        "examples": [
+                            "100 m norte de la iglesia, Ciudad Quesada"
+                        ],
+                        "maxLength": 200
+                    },
+                    "correo_contacto": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "email",
+                        "description": "Correo del negocio, de hasta 150 caracteres; no es el correo de la cuenta. `null` o vac\u00edo lo borra.",
+                        "examples": [
+                            "contacto@puranavaja.test"
+                        ],
+                        "maxLength": 150
+                    },
+                    "redes": {
+                        "type": "object",
+                        "description": "Redes sociales; solo las que vienen cambian.",
+                        "properties": {
+                            "whatsapp": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Enlace `https://` a `wa.me` o `api.whatsapp.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
+                                "examples": [
+                                    "https://wa.me/50600000000"
+                                ],
+                                "maxLength": 300
+                            },
+                            "instagram": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Enlace `https://` a `instagram.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
+                                "examples": [
+                                    "https://instagram.com/puranavaja"
+                                ],
+                                "maxLength": 300
+                            },
+                            "facebook": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Enlace `https://` a `facebook.com` o `fb.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
+                                "examples": [
+                                    "https://facebook.com/puranavaja"
+                                ],
+                                "maxLength": 300
+                            },
+                            "tiktok": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Enlace `https://` a `tiktok.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
+                                "examples": [
+                                    "https://www.tiktok.com/@puranavaja"
+                                ],
+                                "maxLength": 300
+                            }
+                        },
+                        "required": [
+                            "whatsapp",
+                            "instagram",
+                            "facebook",
+                            "tiktok"
+                        ]
+                    }
+                },
+                "title": "ActualizarBarberia"
+            },
             "ActualizarCobro": {
                 "type": "object",
                 "properties": {
@@ -2288,16 +2506,36 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {}
+                        ]
                     },
                     "nombre": {
-                        "type": "string"
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {}
+                        ]
                     },
                     "ciudad": {
-                        "type": "string"
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {}
+                        ]
                     },
                     "telefono": {
-                        "type": "string"
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {}
+                        ]
                     }
                 },
                 "required": [
@@ -2306,6 +2544,7 @@
                     "ciudad",
                     "telefono"
                 ],
+                "additionalProperties": {},
                 "title": "BarberiaPublica"
             },
             "CambiarEstadoDeColaborador": {
@@ -2662,6 +2901,84 @@
                     "acepta_privacidad"
                 ],
                 "title": "Cuenta"
+            },
+            "DatosDeBarberia": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "ciudad": {
+                        "type": "string"
+                    },
+                    "telefono": {
+                        "type": "string"
+                    },
+                    "enlace": {
+                        "type": "string"
+                    },
+                    "direccion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "correo_contacto": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "redes": {
+                        "type": "object",
+                        "properties": {
+                            "whatsapp": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "instagram": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "facebook": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "tiktok": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "whatsapp",
+                            "instagram",
+                            "facebook",
+                            "tiktok"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "ciudad",
+                    "telefono",
+                    "enlace",
+                    "direccion",
+                    "correo_contacto",
+                    "redes"
+                ],
+                "title": "DatosDeBarberia"
             },
             "Disponibilidad": {
                 "type": "object",
