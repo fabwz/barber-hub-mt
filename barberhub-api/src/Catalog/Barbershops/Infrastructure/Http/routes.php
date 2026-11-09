@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopController;
+use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\MyBarbershopController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PaymentPolicyController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PublicBarbershopController;
 
 Route::post('barberias', [BarbershopController::class, 'store'])
     ->middleware('auth:sanctum')
     ->name('catalog.barbershops.store');
+
+// The barbershops of the person: no {barberia}, because none is in course yet (RD-18, UP-08).
+Route::get('mis-barberias', [MyBarbershopController::class, 'index'])
+    ->middleware('auth:sanctum')
+    ->name('catalog.barbershops.mine');
 
 // Administration: only the owner of the barbershop. There is no public route.
 Route::prefix('barberias/{barberia}/administracion/cobro')
