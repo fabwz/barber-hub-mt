@@ -289,7 +289,6 @@ final class BarbershopDetailsTest extends TestCase
         yield 'address with a line break' => [['direccion' => "Calle 1\nCalle 2"], 'direccion'];
         yield 'empty name' => [['nombre' => ''], 'nombre'];
         yield 'name too long' => [['nombre' => str_repeat('a', 121)], 'nombre'];
-        yield 'unknown network' => [['redes' => ['myspace' => 'https://myspace.com/a']], 'redes'];
         yield 'networks as text' => [['redes' => 'https://instagram.com/a'], 'redes'];
     }
 
@@ -309,6 +308,15 @@ final class BarbershopDetailsTest extends TestCase
             ->assertJsonValidationErrors($field, 'errores');
 
         $this->assertSame([null, null, null, null, null, null], $this->storedOptionalColumns($this->puraNavaja));
+    }
+
+    /** A network that is not one of the four is ignored: nothing is stored for it. */
+    public function test_an_unknown_network_is_ignored(): void
+    {
+        Sanctum::actingAs($this->owner, []);
+
+        $this->patchJson($this->url($this->puraNavaja), ['redes' => ['myspace' => 'https://myspace.com/a']])->assertOk()
+            ->assertJsonPath('data.redes', ['whatsapp' => null, 'instagram' => null, 'facebook' => null, 'tiktok' => null]);
     }
 
     /** Only the owner reads or changes it: a collaborator and a customer get 403, a stranger and another barbershop's owner get the 404 of a missing barbershop. */

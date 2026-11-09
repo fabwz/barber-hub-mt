@@ -57,32 +57,20 @@ final class UpdateBarbershopRequest extends FormRequest
              * @example contacto@puranavaja.test
              */
             'correo_contacto' => ['sometimes', 'nullable', 'string', 'email', 'max:'.ContactEmail::MAX_LENGTH],
-            /** Redes sociales; solo las que vienen cambian. */
-            'redes' => ['sometimes', 'nullable', 'array:'.implode(',', array_column(SocialNetwork::cases(), 'value'))],
             /**
-             * Enlace `https://` a `wa.me` o `api.whatsapp.com`, de hasta 300 caracteres. `null` o vacío lo borra.
+             * Redes sociales; solo las que vienen cambian. Las claves son `whatsapp` (`wa.me` o `api.whatsapp.com`), `instagram` (`instagram.com`), `facebook` (`facebook.com` o `fb.com`) y `tiktok` (`tiktok.com`).
              *
-             * @example https://wa.me/50600000000
+             * @var array{whatsapp?: string|null, instagram?: string|null, facebook?: string|null, tiktok?: string|null}
+             *
+             * @example {"instagram": "https://instagram.com/puranavaja", "whatsapp": "https://wa.me/50600000000"}
              */
-            'redes.whatsapp' => ['nullable', 'string', 'max:'.SocialLink::MAX_LENGTH],
+            'redes' => ['sometimes', 'nullable', 'array'],
             /**
-             * Enlace `https://` a `instagram.com`, de hasta 300 caracteres. `null` o vacío lo borra.
+             * Enlace de una red, de hasta 300 caracteres, que empieza por `https://` y es del dominio de su red. `null` o vacío lo borra.
              *
              * @example https://instagram.com/puranavaja
              */
-            'redes.instagram' => ['nullable', 'string', 'max:'.SocialLink::MAX_LENGTH],
-            /**
-             * Enlace `https://` a `facebook.com` o `fb.com`, de hasta 300 caracteres. `null` o vacío lo borra.
-             *
-             * @example https://facebook.com/puranavaja
-             */
-            'redes.facebook' => ['nullable', 'string', 'max:'.SocialLink::MAX_LENGTH],
-            /**
-             * Enlace `https://` a `tiktok.com`, de hasta 300 caracteres. `null` o vacío lo borra.
-             *
-             * @example https://www.tiktok.com/@puranavaja
-             */
-            'redes.tiktok' => ['nullable', 'string', 'max:'.SocialLink::MAX_LENGTH],
+            'redes.*' => ['nullable', 'string', 'max:'.SocialLink::MAX_LENGTH],
         ];
     }
 
