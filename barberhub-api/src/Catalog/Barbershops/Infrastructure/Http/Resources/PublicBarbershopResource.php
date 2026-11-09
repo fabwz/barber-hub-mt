@@ -22,9 +22,10 @@ final class PublicBarbershopResource extends JsonResource
     }
 
     /**
-     * Expose only what any visitor may know about the barbershop.
+     * Expose only what any visitor may know about the barbershop. The address, the contact email and the networks that are not
+     * set are left out, and `redes` is left out when none is set. Nothing of the owner's account is exposed.
      *
-     * @return array{id: string, nombre: string, ciudad: string, telefono: string}
+     * @return array{id: string, nombre: string, ciudad: string, telefono: string, direccion?: string, correo_contacto?: string, redes?: array{whatsapp?: string, instagram?: string, facebook?: string, tiktok?: string}}
      */
     public function toArray(Request $request): array
     {
@@ -33,6 +34,9 @@ final class PublicBarbershopResource extends JsonResource
             'nombre' => $this->barbershop->name,
             'ciudad' => $this->barbershop->city,
             'telefono' => $this->barbershop->phone,
+            ...($this->barbershop->address === null ? [] : ['direccion' => $this->barbershop->address]),
+            ...($this->barbershop->contactEmail === null ? [] : ['correo_contacto' => $this->barbershop->contactEmail]),
+            ...($this->barbershop->socialLinks === [] ? [] : ['redes' => $this->barbershop->socialLinks]),
         ];
     }
 }
