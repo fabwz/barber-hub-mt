@@ -48,6 +48,8 @@ final class TenantResources
     public const array BARBERSHOP_ROUTES = [
         'GET api/v1/barberias/{barberia}/administracion/cobro',
         'PATCH api/v1/barberias/{barberia}/administracion/cobro',
+        'GET api/v1/barberias/{barberia}/administracion/negocio',
+        'PATCH api/v1/barberias/{barberia}/administracion/negocio',
     ];
 
     /**

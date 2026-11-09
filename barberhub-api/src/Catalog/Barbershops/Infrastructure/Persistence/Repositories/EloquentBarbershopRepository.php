@@ -16,6 +16,8 @@ use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentGateway;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentMode;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentPolicy;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
+use Src\Catalog\Barbershops\Domain\ValueObjects\PublicProfile;
+use Src\Catalog\Barbershops\Domain\ValueObjects\SocialNetwork;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Models\BarbershopModel;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Phone;
@@ -47,6 +49,12 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                     'deposit_percentage' => $barbershop->paymentPolicy->depositPercentage,
                     'cancellation_deadline_hours' => $barbershop->paymentPolicy->cancellationDeadlineHours,
                     'payment_gateway' => $barbershop->paymentPolicy->gateway?->value,
+                    'address' => $barbershop->profile->address?->value,
+                    'contact_email' => $barbershop->profile->contactEmail?->value,
+                    'whatsapp_url' => $barbershop->profile->links[SocialNetwork::Whatsapp->value]->value ?? null,
+                    'instagram_url' => $barbershop->profile->links[SocialNetwork::Instagram->value]->value ?? null,
+                    'facebook_url' => $barbershop->profile->links[SocialNetwork::Facebook->value]->value ?? null,
+                    'tiktok_url' => $barbershop->profile->links[SocialNetwork::Tiktok->value]->value ?? null,
                 ];
                 $model = BarbershopModel::query()->find($barbershop->id->value);
 
@@ -88,6 +96,14 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                 $model->cancellation_deadline_hours,
                 $model->payment_gateway === null ? null : PaymentGateway::from($model->payment_gateway),
             ),
+            PublicProfile::of([
+                'address' => $model->address,
+                'contact_email' => $model->contact_email,
+                SocialNetwork::Whatsapp->value => $model->whatsapp_url,
+                SocialNetwork::Instagram->value => $model->instagram_url,
+                SocialNetwork::Facebook->value => $model->facebook_url,
+                SocialNetwork::Tiktok->value => $model->tiktok_url,
+            ]),
         );
     }
 }

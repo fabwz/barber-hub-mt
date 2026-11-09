@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopController;
+use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopDetailsController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\MyBarbershopController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PaymentPolicyController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PublicBarbershopController;
@@ -22,6 +23,17 @@ Route::prefix('barberias/{barberia}/administracion/cobro')
     ->middleware(['auth:sanctum', 'barbershop', 'role:owner'])
     ->name('catalog.barbershops.payment-policy.')
     ->controller(PaymentPolicyController::class)
+    ->whereUuid('barberia')
+    ->group(function (): void {
+        Route::get('/', 'show')->name('show');
+        Route::patch('/', 'update')->name('update');
+    });
+
+// The data of the barbershop (name, city, phone, address, contact email and social links): only its owner.
+Route::prefix('barberias/{barberia}/administracion/negocio')
+    ->middleware(['auth:sanctum', 'barbershop', 'role:owner'])
+    ->name('catalog.barbershops.details.')
+    ->controller(BarbershopDetailsController::class)
     ->whereUuid('barberia')
     ->group(function (): void {
         Route::get('/', 'show')->name('show');

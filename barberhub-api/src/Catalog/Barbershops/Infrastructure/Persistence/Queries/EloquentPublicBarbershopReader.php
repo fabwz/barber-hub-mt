@@ -7,6 +7,7 @@ namespace Src\Catalog\Barbershops\Infrastructure\Persistence\Queries;
 use Src\Catalog\Barbershops\Application\Contracts\PublicBarbershopReader;
 use Src\Catalog\Barbershops\Application\DTOs\PublicBarbershop;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
+use Src\Catalog\Barbershops\Domain\ValueObjects\SocialNetwork;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Models\BarbershopModel;
 
 final readonly class EloquentPublicBarbershopReader implements PublicBarbershopReader
@@ -16,11 +17,27 @@ final readonly class EloquentPublicBarbershopReader implements PublicBarbershopR
     {
         $barbershop = BarbershopModel::query()->where('public_link', $link->value)->first();
 
-        return $barbershop === null ? null : new PublicBarbershop(
+        if ($barbershop === null) {
+            return null;
+        }
+
+        $socialLinks = [];
+        foreach (SocialNetwork::cases() as $network) {
+            $url = $barbershop->getAttribute($network->value.'_url');
+
+            if (is_string($url) && $url !== '') {
+                $socialLinks[$network->value] = $url;
+            }
+        }
+
+        return new PublicBarbershop(
             $barbershop->id,
             $barbershop->name,
             $barbershop->city,
             $barbershop->phone,
+            $barbershop->address,
+            $barbershop->contact_email,
+            $socialLinks,
         );
     }
 }

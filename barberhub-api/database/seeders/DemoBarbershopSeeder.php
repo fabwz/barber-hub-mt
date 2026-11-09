@@ -26,9 +26,10 @@ final class DemoBarbershopSeeder extends Seeder
      * Fictitious barbershops (CL-08, RNF-23, RL-04). Fixed identifiers and links make a second run update the same rows.
      * The owner is a fictitious account with an active owner membership; the gateway is null for no gateway. The payment policy
      * is the mode ("none", "deposit" or "full"), the percentage of the deposit (null unless it is a deposit) and the
-     * free-cancellation deadline in hours (PA-01, CA-01).
+     * free-cancellation deadline in hours (PA-01, CA-01). The public data (RF-01) is the address, the contact email of the business
+     * (never the owner's login email) and the four social links, all invented; Don Chepe has none, to show both cases.
      *
-     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, payment_mode: string, deposit_percentage: int|null, cancellation_deadline_hours: int, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
+     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, payment_mode: string, deposit_percentage: int|null, cancellation_deadline_hours: int, address: string|null, contact_email: string|null, networks: array{whatsapp: string|null, instagram: string|null, facebook: string|null, tiktok: string|null}, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
      */
     public const array BARBERSHOPS = [
         [
@@ -41,6 +42,14 @@ final class DemoBarbershopSeeder extends Seeder
             'payment_mode' => 'deposit',
             'deposit_percentage' => 30,
             'cancellation_deadline_hours' => 4,
+            'address' => '100 m norte de la iglesia, Ciudad Quesada (dirección de ejemplo)',
+            'contact_email' => 'contacto@puranavaja.test',
+            'networks' => [
+                'whatsapp' => 'https://wa.me/50600000001',
+                'instagram' => 'https://instagram.com/puranavaja.ejemplo',
+                'facebook' => 'https://facebook.com/puranavaja.ejemplo',
+                'tiktok' => 'https://www.tiktok.com/@puranavaja.ejemplo',
+            ],
             'owner' => [
                 'id' => '0192f0c4-0000-7000-8000-00000000a001',
                 'membership' => '0192f0c4-0000-7000-8000-00000000c001',
@@ -59,6 +68,14 @@ final class DemoBarbershopSeeder extends Seeder
             'payment_mode' => 'full',
             'deposit_percentage' => null,
             'cancellation_deadline_hours' => 24,
+            'address' => 'Diagonal al parque central, Fortuna (dirección de ejemplo)',
+            'contact_email' => 'hola@fadelab.test',
+            'networks' => [
+                'whatsapp' => 'https://api.whatsapp.com/send?phone=50600000002',
+                'instagram' => 'https://www.instagram.com/fadelab.ejemplo',
+                'facebook' => null,
+                'tiktok' => null,
+            ],
             'owner' => [
                 'id' => '0192f0c4-0000-7000-8000-00000000a002',
                 'membership' => '0192f0c4-0000-7000-8000-00000000c002',
@@ -77,6 +94,9 @@ final class DemoBarbershopSeeder extends Seeder
             'payment_mode' => 'none',
             'deposit_percentage' => null,
             'cancellation_deadline_hours' => 24,
+            'address' => null,
+            'contact_email' => null,
+            'networks' => ['whatsapp' => null, 'instagram' => null, 'facebook' => null, 'tiktok' => null],
             'owner' => [
                 'id' => '0192f0c4-0000-7000-8000-00000000a003',
                 'membership' => '0192f0c4-0000-7000-8000-00000000c003',
@@ -209,6 +229,12 @@ final class DemoBarbershopSeeder extends Seeder
                     'payment_mode' => $barbershop['payment_mode'],
                     'deposit_percentage' => $barbershop['deposit_percentage'],
                     'cancellation_deadline_hours' => $barbershop['cancellation_deadline_hours'],
+                    'address' => $barbershop['address'],
+                    'contact_email' => $barbershop['contact_email'],
+                    'whatsapp_url' => $barbershop['networks']['whatsapp'],
+                    'instagram_url' => $barbershop['networks']['instagram'],
+                    'facebook_url' => $barbershop['networks']['facebook'],
+                    'tiktok_url' => $barbershop['networks']['tiktok'],
                 ],
             );
 

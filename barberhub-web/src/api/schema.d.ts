@@ -221,6 +221,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/negocio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar los datos de la barbería
+         * @description Trae `nombre`, `ciudad`, `telefono`, el `enlace` público, la `direccion`, el `correo_contacto` y el objeto `redes` con `whatsapp`, `instagram`, `facebook` y `tiktok`. Lo que no se ha indicado viene como `null`. Solo el dueño: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         */
+        get: operations["catalog.barbershops.details.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cambiar los datos de la barbería
+         * @description Cambia solo los campos que vienen: `nombre`, `ciudad`, `telefono`, `direccion` (hasta 200 caracteres), `correo_contacto` (correo válido de hasta 150; es el del negocio, distinto del correo de la cuenta) y `redes`. Cada red es un enlace de hasta 300 caracteres que empieza por `https://` y es del dominio de su red: `whatsapp` (`wa.me` o `api.whatsapp.com`), `instagram` (`instagram.com`), `facebook` (`facebook.com` o `fb.com`) y `tiktok` (`tiktok.com`), con o sin `www.`. En `direccion`, `correo_contacto` y cada red, `null` o vacío borra el dato. Un valor inválido responde 422 `datos-invalidos` y `errores` indica el campo (por ejemplo `redes.instagram`). Cambiar el nombre no cambia el `enlace` público (MT-07). Solo el dueño.
+         */
+        patch: operations["catalog.barbershops.details.update"];
+        trace?: never;
+    };
     "/barberias/{barberia}/disponibilidad": {
         parameters: {
             query?: never;
@@ -622,6 +646,48 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActualizarBarberia */
+        ActualizarBarberia: {
+            /**
+             * @description Nombre de la barbería. Cambiarlo no cambia el enlace público.
+             * @example Barbería Pura Navaja
+             */
+            nombre?: string;
+            /**
+             * @description Ciudad.
+             * @example Ciudad Quesada
+             */
+            ciudad?: string;
+            /**
+             * @description Teléfono de contacto.
+             * @example 2460-0000
+             */
+            telefono?: string;
+            /**
+             * @description Dirección en una sola línea, de hasta 200 caracteres. `null` o vacío la borra.
+             * @example 100 m norte de la iglesia, Ciudad Quesada
+             */
+            direccion?: string | null;
+            /**
+             * Format: email
+             * @description Correo del negocio, de hasta 150 caracteres; no es el correo de la cuenta. `null` o vacío lo borra.
+             * @example contacto@puranavaja.test
+             */
+            correo_contacto?: string | null;
+            /**
+             * @description Redes sociales; solo las que vienen cambian. Las claves son `whatsapp` (`wa.me` o `api.whatsapp.com`), `instagram` (`instagram.com`), `facebook` (`facebook.com` o `fb.com`) y `tiktok` (`tiktok.com`).
+             * @example {
+             *       "instagram": "https://instagram.com/puranavaja",
+             *       "whatsapp": "https://wa.me/50600000000"
+             *     }
+             */
+            redes?: {
+                whatsapp?: string | null;
+                instagram?: string | null;
+                facebook?: string | null;
+                tiktok?: string | null;
+            };
+        };
         /** ActualizarCobro */
         ActualizarCobro: {
             /**
@@ -662,6 +728,11 @@ export interface components {
             nombre: string;
             ciudad: string;
             telefono: string;
+            direccion?: string | null;
+            correo_contacto?: string | null;
+            redes?: {
+                [key: string]: string;
+            };
         };
         /** CambiarEstadoDeColaborador */
         CambiarEstadoDeColaborador: {
@@ -777,6 +848,22 @@ export interface components {
             telefono: string | null;
             acepta_terminos: string | null;
             acepta_privacidad: string | null;
+        };
+        /** DatosDeBarberia */
+        DatosDeBarberia: {
+            id: string;
+            nombre: string;
+            ciudad: string;
+            telefono: string;
+            enlace: string;
+            direccion: string | null;
+            correo_contacto: string | null;
+            redes: {
+                whatsapp: string | null;
+                instagram: string | null;
+                facebook: string | null;
+                tiktok: string | null;
+            };
         };
         /** Disponibilidad */
         Disponibilidad: {
@@ -1602,6 +1689,63 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.barbershops.details.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `DatosDeBarberia` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DatosDeBarberia"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "catalog.barbershops.details.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActualizarBarberia"];
+            };
+        };
+        responses: {
+            /** @description `DatosDeBarberia` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DatosDeBarberia"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
             422: components["responses"]["InvalidData"];
         };
     };
