@@ -2353,59 +2353,39 @@
                     },
                     "redes": {
                         "type": "object",
-                        "description": "Redes sociales; solo las que vienen cambian.",
+                        "description": "Redes sociales; solo las que vienen cambian. Las claves son `whatsapp` (`wa.me` o `api.whatsapp.com`), `instagram` (`instagram.com`), `facebook` (`facebook.com` o `fb.com`) y `tiktok` (`tiktok.com`).",
+                        "examples": [
+                            {
+                                "instagram": "https://instagram.com/puranavaja",
+                                "whatsapp": "https://wa.me/50600000000"
+                            }
+                        ],
                         "properties": {
                             "whatsapp": {
                                 "type": [
                                     "string",
                                     "null"
-                                ],
-                                "description": "Enlace `https://` a `wa.me` o `api.whatsapp.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
-                                "examples": [
-                                    "https://wa.me/50600000000"
-                                ],
-                                "maxLength": 300
+                                ]
                             },
                             "instagram": {
                                 "type": [
                                     "string",
                                     "null"
-                                ],
-                                "description": "Enlace `https://` a `instagram.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
-                                "examples": [
-                                    "https://instagram.com/puranavaja"
-                                ],
-                                "maxLength": 300
+                                ]
                             },
                             "facebook": {
                                 "type": [
                                     "string",
                                     "null"
-                                ],
-                                "description": "Enlace `https://` a `facebook.com` o `fb.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
-                                "examples": [
-                                    "https://facebook.com/puranavaja"
-                                ],
-                                "maxLength": 300
+                                ]
                             },
                             "tiktok": {
                                 "type": [
                                     "string",
                                     "null"
-                                ],
-                                "description": "Enlace `https://` a `tiktok.com`, de hasta 300 caracteres. `null` o vac\u00edo lo borra.",
-                                "examples": [
-                                    "https://www.tiktok.com/@puranavaja"
-                                ],
-                                "maxLength": 300
+                                ]
                             }
-                        },
-                        "required": [
-                            "whatsapp",
-                            "instagram",
-                            "facebook",
-                            "tiktok"
-                        ]
+                        }
                     }
                 },
                 "title": "ActualizarBarberia"
@@ -2506,36 +2486,34 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {}
-                        ]
+                        "type": "string"
                     },
                     "nombre": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {}
-                        ]
+                        "type": "string"
                     },
                     "ciudad": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {}
-                        ]
+                        "type": "string"
                     },
                     "telefono": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {}
+                        "type": "string"
+                    },
+                    "direccion": {
+                        "type": [
+                            "string",
+                            "null"
                         ]
+                    },
+                    "correo_contacto": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "redes": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
@@ -2544,7 +2522,6 @@
                     "ciudad",
                     "telefono"
                 ],
-                "additionalProperties": {},
                 "title": "BarberiaPublica"
             },
             "CambiarEstadoDeColaborador": {
