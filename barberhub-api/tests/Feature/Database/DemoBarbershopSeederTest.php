@@ -194,6 +194,27 @@ final class DemoBarbershopSeederTest extends TestCase
         $this->assertSame(6, DB::table('collaborator_services')->where('collaborator_id', $this->collaboratorId('kevin@puranavaja.test'))->count());
     }
 
+    /** Pura Navaja and Fade Lab have invented public data and Don Chepe has none, so the public page shows both cases (RF-01, RF-02). */
+    public function test_two_barbershops_have_public_data_and_one_has_none(): void
+    {
+        $this->seed(DemoBarbershopSeeder::class);
+        $this->seed(DemoBarbershopSeeder::class);
+
+        $this->getJson('/api/v1/enlaces/pura-navaja')->assertOk()
+            ->assertJsonPath('data.correo_contacto', 'contacto@puranavaja.test')
+            ->assertJsonPath('data.redes.instagram', 'https://instagram.com/puranavaja.ejemplo')
+            ->assertJsonStructure(['data' => ['direccion', 'redes' => ['whatsapp', 'instagram', 'facebook', 'tiktok']]]);
+        $this->getJson('/api/v1/enlaces/fade-lab')->assertOk()
+            ->assertJsonPath('data.correo_contacto', 'hola@fadelab.test')
+            ->assertJsonMissingPath('data.redes.tiktok');
+        $this->getJson('/api/v1/enlaces/don-chepe')->assertOk()->assertExactJson(['data' => [
+            'id' => '0192f0c4-0000-7000-8000-00000000b003',
+            'nombre' => 'Barbería Don Chepe',
+            'ciudad' => 'Aguas Zarcas',
+            'telefono' => '0000-0003',
+        ]]);
+    }
+
     /** The three barbershops have different catalogs, hours and staff (CL-08). */
     public function test_the_catalogs_hours_and_staff_differ_between_barbershops(): void
     {
