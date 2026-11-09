@@ -322,6 +322,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mis-barberias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar mis barberías
+         * @description Devuelve las barberías donde la persona autenticada tiene una membresía activa, ordenadas por `nombre`, con su `id` (el que las demás rutas usan en `{barberia}`), el `enlace` público y el `rol` que tiene en cada una: `dueno`, `colaborador` o `cliente`. Una persona puede tener roles distintos en barberías distintas. Una membresía inactiva, como la de un colaborador desactivado, no aparece, y solo salen las membresías de la propia persona. Sin ninguna, `data` es una lista vacía. No lleva `{barberia}` porque no hay barbería en curso: el cliente guarda la elegida y la envía en las demás rutas, donde el servidor verifica la membresía (404 si no existe). Responde 401 `no-autenticado` sin token.
+         */
+        get: operations["catalog.barbershops.mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pagos/retorno": {
         parameters: {
             query?: never;
@@ -782,6 +802,30 @@ export interface components {
             dia: number;
             abre: string;
             cierra: string;
+        };
+        /** MiBarberia */
+        MiBarberia: {
+            /**
+             * @description Identificador de la barbería, el que las demás rutas usan en `{barberia}`.
+             * @example 0192f0c4-7a10-7c3e-9d21-5b8e4f6a1c02
+             */
+            id: string;
+            /**
+             * @description Nombre de la barbería.
+             * @example Barbería Pura Navaja
+             */
+            nombre: string;
+            /**
+             * @description Enlace público de la barbería.
+             * @example pura-navaja
+             */
+            enlace: string;
+            /**
+             * @description Rol que la persona tiene en esa barbería.
+             * @example dueno
+             * @enum {string}
+             */
+            rol: "dueno" | "colaborador" | "cliente";
         };
         /** PagarReserva */
         PagarReserva: {
@@ -1719,6 +1763,29 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    "catalog.barbershops.mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `MiBarberia` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MiBarberia"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
         };
     };
     "payments.payments.returned": {
