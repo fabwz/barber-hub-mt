@@ -46,6 +46,19 @@ final class InMemoryMembershipRepository implements MembershipRepository
     }
 
     /**
+     * Find the active memberships of a person.
+     *
+     * @return list<Membership>
+     */
+    public function activeOf(UserId $userId): array
+    {
+        return array_values(array_filter(
+            $this->memberships,
+            fn (Membership $membership): bool => $membership->userId->equals($userId) && $membership->active,
+        ));
+    }
+
+    /**
      * Find the accounts behind some memberships of a barbershop, indexed by membership.
      *
      * @param  list<MembershipId>  $ids

@@ -64,6 +64,30 @@ final readonly class EloquentMembershipRepository implements MembershipRepositor
         return $users;
     }
 
+    /**
+     * Read the active memberships of the person with one query. "memberships" has no row-level policy because it is read
+     * before a barbershop is known, so the filter by person is the only barrier and it is never optional.
+     *
+     * @return list<Membership>
+     */
+    public function activeOf(UserId $userId): array
+    {
+        $memberships = MembershipModel::query()
+            ->where('user_id', $userId->value)
+            ->where('is_active', true)
+            ->get()
+            ->map(fn (MembershipModel $model): Membership => Membership::reconstitute(
+                new MembershipId($model->id),
+                new UserId($model->user_id),
+                new BarbershopId($model->barbershop_id),
+                Role::from($model->role),
+                $model->is_active,
+            ))
+            ->all();
+
+        return array_values($memberships);
+    }
+
     /** Find the role of the person in the barbershop. */
     public function findByUserAndBarbershop(UserId $userId, BarbershopId $barbershopId): ?Membership
     {

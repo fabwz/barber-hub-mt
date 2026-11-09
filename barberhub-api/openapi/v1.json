@@ -27,6 +27,10 @@
             "description": "Alta de barber\u00edas y de su due\u00f1o."
         },
         {
+            "name": "Mis barber\u00edas",
+            "description": "Barber\u00edas donde la persona autenticada tiene un rol."
+        },
+        {
             "name": "Cobro de la barber\u00eda",
             "description": "Modalidad de cobro, dep\u00f3sito, pasarela y cancelaci\u00f3n gratuita, a cargo del due\u00f1o."
         },
@@ -1133,6 +1137,42 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/mis-barberias": {
+            "get": {
+                "operationId": "catalog.barbershops.mine",
+                "description": "Devuelve las barber\u00edas donde la persona autenticada tiene una membres\u00eda activa, ordenadas por `nombre`, con su `id` (el que las dem\u00e1s rutas usan en `{barberia}`), el `enlace` p\u00fablico y el `rol` que tiene en cada una: `dueno`, `colaborador` o `cliente`. Una persona puede tener roles distintos en barber\u00edas distintas. Una membres\u00eda inactiva, como la de un colaborador desactivado, no aparece, y solo salen las membres\u00edas de la propia persona. Sin ninguna, `data` es una lista vac\u00eda. No lleva `{barberia}` porque no hay barber\u00eda en curso: el cliente guarda la elegida y la env\u00eda en las dem\u00e1s rutas, donde el servidor verifica la membres\u00eda (404 si no existe). Responde 401 `no-autenticado` sin token.",
+                "summary": "Listar mis barber\u00edas",
+                "tags": [
+                    "Mis barber\u00edas"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `MiBarberia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/MiBarberia"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
                     }
                 }
             }
@@ -2704,6 +2744,51 @@
                     "cierra"
                 ],
                 "title": "Franja"
+            },
+            "MiBarberia": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Identificador de la barber\u00eda, el que las dem\u00e1s rutas usan en `{barberia}`.",
+                        "examples": [
+                            "0192f0c4-7a10-7c3e-9d21-5b8e4f6a1c02"
+                        ]
+                    },
+                    "nombre": {
+                        "type": "string",
+                        "description": "Nombre de la barber\u00eda.",
+                        "examples": [
+                            "Barber\u00eda Pura Navaja"
+                        ]
+                    },
+                    "enlace": {
+                        "type": "string",
+                        "description": "Enlace p\u00fablico de la barber\u00eda.",
+                        "examples": [
+                            "pura-navaja"
+                        ]
+                    },
+                    "rol": {
+                        "type": "string",
+                        "description": "Rol que la persona tiene en esa barber\u00eda.",
+                        "enum": [
+                            "dueno",
+                            "colaborador",
+                            "cliente"
+                        ],
+                        "examples": [
+                            "dueno"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "enlace",
+                    "rol"
+                ],
+                "title": "MiBarberia"
             },
             "PagarReserva": {
                 "type": "object",
