@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { Router } from 'vue-router'
 
 import { api, setTokenProvider, setUnauthorizedHandler } from '@/api'
+import { useActiveShopStore } from '@/stores/activeShop'
 
 /** The token lives in sessionStorage (never localStorage) under this key. */
 export const SESSION_STORAGE_KEY = 'barberhub.session'
@@ -89,6 +90,8 @@ export const useSessionStore = defineStore('session', () => {
     token.value = null
     person.value = null
     writeStored(null)
+    // The chosen shop belongs to the person who is leaving (also on a 401).
+    useActiveShopStore().clear()
   }
 
   /** Revokes the token in the API when possible; the local session is cleared whatever happens. */
