@@ -169,7 +169,7 @@ Como el dueño de las tablas también está sujeto a las políticas, los sembrad
 | `users` | Las cuentas son globales: el ingreso busca a la persona por su correo antes de saber a qué barbería pertenece |
 | `barbershops` | No tiene `barbershop_id`: cada fila es una barbería, y se busca por su enlace público o por el identificador de la ruta |
 | `memberships` | Se lee antes de conocer la barbería: para verificar el rol de la persona en `{barberia}` y para listar sus barberías (UP-08). Se protege por código: toda consulta filtra por `user_id` |
-| `webhook_events` | El aviso de la pasarela llega sin sesión y antes de saber a qué barbería pertenece el pago. **Pendiente, ver abajo**; la tabla no existe todavía porque la etapa actual no usa webhooks |
+| `webhook_events` | El aviso de la pasarela llega sin sesión y antes de saber a qué barbería pertenece el pago. No tiene `barbershop_id`: solo guarda el identificador del evento, su tipo y el pago (#65). Se escribe dentro de la transacción de la barbería del pago, y su única llave `(gateway, event_id)` es la idempotencia del aviso |
 | `personal_access_tokens`, `password_reset_tokens` | Tablas de Laravel y Sanctum asociadas a la cuenta, no a una barbería |
 
 ### Llaves únicas y foráneas
@@ -203,6 +203,16 @@ El dominio, en PHP, decide las reglas del negocio. PostgreSQL garantiza la integ
 
 Todo objeto de la base se usa desde `Infrastructure/Persistence`, detrás de un puerto. El dominio y los casos de uso no saben que existen.
 
+### Procesos sin sesión: los avisos de las pasarelas (#65)
+
+Un aviso de una pasarela no trae sesión ni barbería: trae la referencia del proveedor (el identificador del cobro). Se resuelve así, sin abrir ni debilitar ninguna política y sin un rol privilegiado:
+
+1. **Encontrar el pago.** `DatabasePaymentLocator` llama a la función `locate_payment_of_notice(proveedor, referencia)`: de solo lectura, `SECURITY DEFINER`, con `search_path = pg_catalog, public` fijo, que solo responde `(barbershop_id, payment_id)` y que solo puede ejecutar el rol de la aplicación (se revoca de `PUBLIC`). Como `payments` fuerza su política incluso para el dueño de la tabla, la función no puede leerla directamente: recorre las barberías, fija la de cada una con `set_config(..., true)`, busca allí el pago y, al terminar, restaura el valor que tenía la conexión. Cuesta una búsqueda por índice por barbería, aceptable para este alcance; si crecieran las barberías, el siguiente paso sería una tabla de localización mantenida por un disparador.
+2. **Fijar la barbería.** `RequestBarbershopScope` hace lo que el middleware `barbershop` hace con sesión: deja la barbería en los atributos de la solicitud y ejecuta el resto del procesamiento dentro de `BarbershopTransaction`. A partir de ahí, repositorios y políticas actúan como siempre; el aviso nunca puede tocar datos de otra barbería, y la barbería sale del pago, no del cuerpo del aviso.
+3. **Verificar antes.** Nada se lee ni se localiza antes de verificar el origen (firma de ONVO, verificación de PayPal).
+
+`tests/Feature/Tenancy/PaymentNoticeLocatorTest.php` prueba la función: encuentra el pago desde cualquier contexto, restaura el de la conexión, el rol de la aplicación sigue sin privilegios y la función no es ejecutable por `PUBLIC`.
+
 ## Pendientes
 
-1. **Procesos sin sesión.** Los webhooks de las pasarelas, las tareas en cola (expiración de reservas temporales, recordatorios, ofertas) y las tareas programadas no tienen una persona autenticada ni una barbería en la ruta. Hay que decidir cómo fijan la barbería (por ejemplo, tomándola del pago o de la reserva que procesan) y si recorrer todas las barberías exige un tercer rol de base de datos, de mantenimiento. El proyecto de referencia difiere esta decisión hasta que exista la primera tarea de ese tipo; en BarberHub llega con M08.
+1. **Tareas en cola y programadas.** La expiración de reservas temporales por trabajo, los recordatorios y las ofertas tampoco tienen persona autenticada ni barbería en la ruta. Los avisos de las pasarelas (arriba) resolvieron el caso del pago; para las tareas que recorren todas las barberías sigue pendiente decidir si hace falta un tercer rol de base de datos, de mantenimiento.

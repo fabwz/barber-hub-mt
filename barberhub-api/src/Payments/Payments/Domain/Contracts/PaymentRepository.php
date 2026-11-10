@@ -24,6 +24,9 @@ interface PaymentRepository
     /** Find a payment among those of the current barbershop. */
     public function find(PaymentId $id): ?Payment;
 
+    /** Find a payment among those of the current barbershop and lock its row until the transaction ends, so two settlements of it run in turn. */
+    public function findForUpdate(PaymentId $id): ?Payment;
+
     /** Find the pending or approved payment of a reservation of the current barbershop: the one a repeated press of the pay button must reuse. */
     public function findActiveOfReservation(ReservationId $reservationId): ?Payment;
 

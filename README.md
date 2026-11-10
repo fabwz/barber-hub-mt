@@ -117,8 +117,24 @@ Se copia `.env.example` a `.env` y se completan los valores. El `.env` real no s
 | `PAYPAL_BASE_URL` | URL base de la API. Por defecto `https://api-m.sandbox.paypal.com`. |
 | `PAYPAL_RETURN_URL` y `PAYPAL_CANCEL_URL` | Adónde vuelve la persona tras aprobar o cancelar. Con el cliente web apuntan a su ruta `/pago/retorno` (por ejemplo, `http://localhost:5173/pago/retorno` y `http://localhost:5173/pago/retorno?cancelado=1`). Sin cliente, por ejemplo con Postman, sirve `http://127.0.0.1:8000/api/v1/pagos/retorno`, que solo responde un mensaje. |
 | `PAYPAL_CRC_PER_USD` | Tipo de cambio (colones por dólar) con el que PayPal cobra en USD. Por defecto 500. |
+| `ONVO_WEBHOOK_SECRET` | Secreto de firma (`whsec_…`) del *webhook* registrado en ONVO. Sin él, el aviso de ONVO se rechaza con 503. |
+| `PAYPAL_WEBHOOK_ID` | Identificador del *webhook* registrado en PayPal. Sin él, el aviso de PayPal se rechaza con 503. |
 
 La llave pública de ONVO (`onvo_test_publishable_key_…`) no es una variable de la API: el servidor nunca la lee. La usa quien crea el método de pago de la tarjeta (el navegador, o Postman). En el cliente web se define en `barberhub-web/.env` con `VITE_ONVO_PUBLISHABLE_KEY` (y `VITE_ONVO_API_URL`, por defecto `https://api.onvopay.com/v1`); el cliente solo acepta llaves que empiezan por `onvo_test_` y, con otra, no llama a ONVO y muestra un error de configuración.
+
+### Avisos de las pasarelas (webhooks)
+
+Cada pasarela avisa del resultado de un pago a una dirección pública de la API. El aviso solo es un disparador: el sistema verifica su origen, lo aplica una sola vez, consulta el estado real del pago a la pasarela y, si quedó aprobado, confirma la reserva; si falló, la reserva sigue temporal. La redirección del navegador no confirma nada.
+
+| Pasarela | Dirección que se registra | Dónde se registra | Qué se copia al `.env` |
+| --- | --- | --- | --- |
+| ONVO Pay | `POST {URL pública}/api/v1/pagos/avisos/onvo` | Panel de ONVO, *Developers*, *Webhooks*. Eventos: `payment_intent.succeeded`, `payment_intent.failed` y `payment_intent.canceled`. | El secreto de firma del *webhook* en `ONVO_WEBHOOK_SECRET`. |
+| PayPal | `POST {URL pública}/api/v1/pagos/avisos/paypal` | Panel de PayPal Developer, la aplicación *sandbox*, *Webhooks*. Eventos: `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DECLINED` y `PAYMENT.CAPTURE.DENIED`. | El identificador del *webhook* en `PAYPAL_WEBHOOK_ID`. |
+
+- **Requieren una dirección pública.** Las pasarelas no llegan a `localhost`: para probar en una máquina local hay que exponer la API con un túnel (por ejemplo, ngrok o Cloudflare Tunnel) y registrar esa dirección. ONVO exige HTTPS en el puerto 443 y un nombre de dominio.
+- Sin la variable de su pasarela, el endpoint responde 503 y no acepta nada. Una firma ausente o inválida responde 401 y no cambia ningún estado.
+- ONVO firma cada entrega con `X-Onvo-Signature` y la API la verifica con el cuerpo tal como llegó y una ventana de cinco minutos; PayPal verifica la firma con su propio servicio (`verify-webhook-signature`), con las mismas credenciales que ya usa el adaptador.
+- Un aviso repetido, de un pago desconocido o de un evento que el sistema no usa responde 200. Si la pasarela no responde cuando la API le consulta el pago, la API responde 503 y la pasarela lo reintenta.
 
 ### Cambiar de pasarela
 

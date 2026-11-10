@@ -77,7 +77,7 @@ erDiagram
     }
 ```
 
-El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` (aún no creada) y `audit_log` para mantenerse legible; sus columnas están más abajo.
+El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` (se describe en Pagos) y `audit_log` para mantenerse legible; sus columnas están más abajo.
 
 ## Cuentas y acceso
 
@@ -328,7 +328,7 @@ Restricciones:
 
 - Llaves candidatas: `(id, barbershop_id)` y `(provider, provider_payment_id)`. Esta última es única entre todas las barberías porque el proveedor no las conoce; varias filas sin identificador (cobros aún no creados) conviven, ya que `NULL` no choca consigo mismo.
 - `payments_one_active_per_reservation_idx`: índice único parcial sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved`. Una reserva tiene un solo pago en curso o aprobado; uno rechazado, fallido o reembolsado la libera para un cobro nuevo. Es la idempotencia del botón de pagar: `EloquentPaymentRepository` traduce su violación (`23505`) a `ActivePaymentExistsException`.
-- Esta etapa (Investigación 1) no usa webhooks: el estado se obtiene consultando al proveedor, así que no hay tabla de eventos de la pasarela. El enunciado manda sobre el backlog en este punto, y la tabla `webhook_events` de abajo sigue siendo un diseño previsto.
+- El estado del pago se obtiene siempre consultando al proveedor; el aviso (webhook) solo dispara esa consulta (#65). Los avisos ya aplicados viven en `webhook_events`, más abajo.
 
 ### refunds (complementaria, RF-24)
 
@@ -345,18 +345,18 @@ El «depósito a devolver» de CA-02 es un reembolso en estado `due`.
 
 ### webhook_events
 
-**Prevista; no se crea en la etapa Investigación 1**, que consulta el estado del pago al proveedor en lugar de recibir avisos. El aviso de la pasarela se procesa una sola vez (PA-05).
+Los avisos de la pasarela que ya se aplicaron, una sola vez cada uno (PA-05, #65). La fila se escribe en la misma transacción que su efecto (la liquidación del pago y la confirmación de la reserva): un aviso que falla a medias no queda registrado y la pasarela lo reintenta. Solo se registran los avisos de un pago conocido; uno de un pago desconocido o de un evento que el sistema no usa no deja fila.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
 | `id` | `uuid` | Llave primaria |
 | `gateway` | `varchar(10)` | `CHECK` entre `onvo` y `paypal` |
-| `event_id` | `varchar(255)` | Identificador del evento en la pasarela |
+| `event_id` | `varchar(255)` | Identificador del evento en la pasarela (`id` del evento de ONVO; `id` de la notificación de PayPal) |
 | `event_type` | `varchar(100)` | |
-| `payment_id` | `uuid` | Nula hasta que el evento se asocia a un pago |
-| `received_at`, `processed_at` | `timestamptz` | `processed_at` nula hasta procesarse |
+| `payment_id` | `uuid` | El pago al que se aplicó. No es nula: solo se registra un aviso de un pago conocido. Sin llave foránea: un pago nunca se borra |
+| `received_at`, `processed_at` | `timestamptz` | Ambas se escriben al aplicar el aviso |
 
-Llave candidata: `(gateway, event_id)`. No lleva `barbershop_id`: llega antes de saber a qué barbería pertenece (ver "Pendientes" en [database.md](database.md)).
+Llave candidata: `(gateway, event_id)`; su violación es lo que convierte un aviso repetido en una operación sin efecto (`INSERT ... ON CONFLICT DO NOTHING`). No lleva `barbershop_id` ni política: es una de las excepciones de [database.md](database.md). El caso de uso bloquea el pago (`SELECT ... FOR UPDATE`) antes de insertar la fila, así dos avisos del mismo pago corren por turnos (la prueba `SimultaneousNoticesTest` lo cubre con conexiones paralelas).
 
 ## Bonos
 
@@ -475,7 +475,7 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 1. **Aceptaciones de los colaboradores.** CL-02 exige las dos aceptaciones para crear una cuenta. La cuenta de colaborador que crea el dueño (UP-04) se crea sin ellas (#48): ¿se piden en su primer ingreso, junto con el cambio de contraseña del #42?
 2. **Servicios cubiertos por un bono adquirido.** Se leen de la definición viva. Si el dueño edita los servicios de un bono ya vendido, cambia lo que cubre el que ya compraron los clientes. ¿Se congelan al comprar?
 3. **Nombre de servicio único por barbería.** Los requisitos no lo exigen, así que no hay restricción.
-4. **Búsqueda del pago por webhook sin barbería en curso.** Ver "Pendientes" en [database.md](database.md).
+4. **Búsqueda del pago por webhook sin barbería en curso (resuelto en el #65).** Función `locate_payment_of_notice` de la base de datos; ver "Procesos sin sesión" en [database.md](database.md).
 5. **Corte infantil (resuelto en el #56).** CL-05 pide registrarlo a nombre de una persona adulta responsable. Se cumple por construcción, sin columna nueva: no existen cuentas de menores y la reserva queda a nombre de la cuenta de la sesión, que es de una persona adulta; el cuerpo de la reserva no acepta otro cliente. Si más adelante hace falta distinguir los servicios infantiles, sería un campo del catálogo, no de la reserva.
 
 ## Columnas previstas del perfil público de la barbería (#187 y #46)
