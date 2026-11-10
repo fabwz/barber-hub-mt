@@ -200,6 +200,17 @@ Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas):
 - **Persona adulta responsable (CL-05).** Se cumple por construcción: no existen cuentas de menores, la reserva queda a nombre de la cuenta de la sesión (`request->user()`) y el cuerpo no acepta un cliente, así que quien reserva un corte infantil es siempre una persona adulta con cuenta. No hay columna ni campo nuevo; el catálogo tampoco distingue los servicios infantiles.
 - **Todavía no.** El pago, los bonos y las reservas asistidas, y la agenda del colaborador (RF-36) y la consulta de reservas (#57). La prueba de carrera con conexiones paralelas reales es el #127.
 
+### Avisos de las pasarelas (#65, #130)
+
+Dos endpoints públicos, sin sesión: `POST /api/v1/pagos/avisos/onvo` y `POST /api/v1/pagos/avisos/paypal`. `ReceiveGatewayNotice` verifica el origen con el puerto `GatewayNoticeVerifier` (un adaptador por proveedor) y `ProcessGatewayNotice` lo aplica.
+
+- **Verificación (PA-04).** ONVO: `OnvoNoticeVerifier` comprueba `X-Onvo-Signature` (`t=<segundos>,v1=<HMAC-SHA256 hex de "t.cuerpo">`, con `ONVO_WEBHOOK_SECRET`, `hash_equals` y una ventana de cinco minutos; durante una rotación del secreto acepta cualquiera de los dos `v1`). Es el formato vigente de ONVO: el `X-Webhook-Secret` estático es el formato legado y ya no permite registrar webhooks nuevos. PayPal: `PayPalNoticeVerifier` manda los encabezados `PAYPAL-*`, el identificador del webhook (`PAYPAL_WEBHOOK_ID`) y el evento tal como llegó a `verify-webhook-signature` (por el adaptador `PayPalGateway`, que ya maneja las credenciales y el token) y solo acepta `SUCCESS`. Sin el secreto o el identificador configurado responde 503 y nunca acepta; firma ausente o inválida, 401 sin decir el motivo; nada cambia antes de verificar.
+- **El aviso es un disparador (PA-03).** `ProcessGatewayNotice` localiza el pago, fija su barbería (`BarbershopScope`), bloquea el pago, registra el evento en `webhook_events` y llama a `SyncPaymentWithGateway`, el mismo caso de uso que usa `GetPayment`: consulta el estado real a la pasarela y liquida el pago (`SettlePayment`), que confirma la reserva en la misma transacción (PA-06) o, si la reserva ya venció, deja el pago aprobado y a devolver (PA-07). Un aviso falso o fuera de orden no puede confirmar nada: lo que manda es la respuesta de la pasarela. Un pago fallido deja la reserva temporal.
+- **Idempotencia (PA-05, RNF-07).** Todo ocurre en una transacción; el evento se inserta con `ON CONFLICT (gateway, event_id) DO NOTHING`. El mismo evento diez veces deja un registro, un pago y una reserva confirmada, y los diez responden 200. Un fallo transitorio (la pasarela no responde al consultarla, o PayPal no puede verificar) responde 503 con la transacción revertida: el evento no queda registrado y el reintento de la pasarela lo procesa. `GetPayment` ahora también bloquea el pago antes de liquidarlo, así una consulta y un aviso simultáneos corren por turnos.
+- **Eventos que se procesan.** ONVO: `payment_intent.succeeded`, `payment_intent.failed` y `payment_intent.canceled`, solo en modo `test` (PA-09). PayPal: `CHECKOUT.ORDER.APPROVED` (la orden es el recurso; al consultarla, el adaptador captura la orden aprobada) y `PAYMENT.CAPTURE.COMPLETED`, `.DECLINED` y `.DENIED` (la orden está en `supplementary_data.related_ids.order_id`). Cualquier otro evento, o uno sin los identificadores, responde 200 sin cambiar nada.
+- **Operación.** El cuerpo es JSON de hasta 64 KB (si no, 400), hay un límite de 120 solicitudes por minuto por dirección (429 con `Retry-After`) y el registro solo lleva proveedor, identificador del evento, resultado y correlación: nunca el secreto, la firma ni el cuerpo.
+- **Activación del bono (BO-02)** llega con los bonos (#89): el aviso de un pago de bono se resolverá con el mismo mecanismo.
+
 ### La reserva temporal y su expiración (#66)
 
 Alcance reducido: la Investigación 1 no pide colas ni webhooks, así que no hay cola, planificador ni evento "espacio liberado". La expiración es **perezosa**; el trabajo en cola con reintentos (RNF-09), la lista de espera (RF-31) y la devolución de un pago tardío (PA-07) quedan pendientes.
@@ -327,7 +338,7 @@ El primer recurso con `barbershop_id` es `Services` (#45) y fija el reparto de r
 
 La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada recurso, con el #123) lo comprueba con dos barberías. Un recurso nuevo se registra en `tests/Support/Tenancy/TenantResources.php`: la suite lo prueba contra una segunda barbería y falla si una tabla o una ruta de una barbería no figura allí. Además agrega su caso a la matriz de permisos.
 
-**Pendiente:** los webhooks, las tareas en cola y las tareas programadas no tienen persona autenticada. Cómo fijan la barbería, y si hace falta un tercer rol de base de datos de mantenimiento, se decide antes de M08. Ver "Pendientes" en [database.md](database.md).
+Los webhooks de las pasarelas (#65) fijan la barbería a partir del pago que citan: ver "Procesos sin sesión" en [database.md](database.md) y "Avisos de las pasarelas" más abajo. **Pendiente:** las tareas en cola y las tareas programadas siguen sin una decisión (ver "Pendientes" en [database.md](database.md)).
 
 ### Concurrencia
 
@@ -336,7 +347,7 @@ La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada re
 | Dos solicitudes por el mismo espacio: una gana, la otra recibe `espacio-no-disponible` | `CreateReservation` bloquea la fila del colaborador (`SELECT ... FOR UPDATE`) y revalida la disponibilidad (#56); la restricción `EXCLUDE` de PostgreSQL es la segunda barrera y su violación se traduce a `espacio-no-disponible`. La prueba de carrera con conexiones paralelas es el #127 (RE-01, RE-02) |
 | El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0`) más `CHECK (remaining_sessions >= 0)` (previsto, #89) (BO-03) |
 | Una reserva tiene un solo pago pendiente o aprobado | Índice único parcial `payments_one_active_per_reservation_idx` sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved` (#129); `EloquentPaymentRepository` lo traduce a `ActivePaymentExistsException`. Es la idempotencia del botón de pagar |
-| Un evento de la pasarela se procesa una sola vez | Llave única `(gateway, event_id)` en `webhook_events` (previsto, #65; esta etapa no usa webhooks) (PA-05) |
+| Un evento de la pasarela se procesa una sola vez | Llave única `(gateway, event_id)` en `webhook_events`, escrita en la misma transacción que el efecto del aviso, con el pago y la reserva bloqueados (#65) (PA-05) |
 | Cancelar es idempotente | El caso de uso revisa el estado actual dentro de la transacción (previsto, #60) (CA-06) |
 
 ## Errores
