@@ -96,6 +96,14 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
         return $model === null ? null : $this->toDomain($model);
     }
 
+    /** Find the payment among those of the current barbershop, locking its row. */
+    public function findForUpdate(PaymentId $id): ?Payment
+    {
+        $model = $this->ofBarbershop()->whereKey($id->value)->lockForUpdate()->first();
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     /** Find the pending or approved payment of the reservation among those of the current barbershop. */
     public function findActiveOfReservation(ReservationId $reservationId): ?Payment
     {
