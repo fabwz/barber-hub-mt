@@ -9,6 +9,7 @@ return [
     'charge_not_required' => 'La barbería no cobra por adelantado: no hay nada que pagar.',
     'gateway_unavailable' => 'La pasarela de pago no responde en este momento. Intente de nuevo en unos minutos.',
     'request_rejected' => 'La pasarela no pudo procesar los datos del pago. Revise los datos e intente de nuevo.',
+    'notice_not_verified' => 'No se pudo verificar el origen del aviso.',
     'returned' => 'Regresaste del proveedor de pago: consulta el estado de tu pago.',
     'refund_not_supported' => 'La pasarela con que se cobró este pago no permite reembolsos desde el sistema.',
     'refund_refused' => 'La pasarela no aceptó el reembolso. El pago sigue aprobado.',

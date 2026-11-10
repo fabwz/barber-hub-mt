@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Src\Payments\Payments\Application\DTOs\ChargeRequest;
 use Src\Payments\Payments\Application\DTOs\ChargeResult;
@@ -170,6 +171,31 @@ final readonly class PayPalGateway extends HttpPaymentGateway
     public function refund(string $providerPaymentId, Money $amount, PaymentId $paymentId): RefundResult
     {
         throw RefundNotSupportedException::create();
+    }
+
+    /**
+     * Ask PayPal whether a notice it says it sent is genuine, through its own service `verify-webhook-signature` (the certificate and the
+     * signature are checked by PayPal, not here). The event goes in exactly as it was received: PayPal refuses a body that was parsed and
+     * written again. Only `SUCCESS` is true. An answer of PayPal that is not a success of the call (4xx) is false; one that cannot be had
+     * (no connection, 5xx, refused credentials) is an exception, because nothing is known about the notice.
+     *
+     * @param  array{auth_algo: string, cert_url: string, transmission_id: string, transmission_sig: string, transmission_time: string}  $transmission  The `PAYPAL-*` headers of the notice.
+     *
+     * @throws GatewayUnavailableException When PayPal cannot be reached, answers with a 5xx or refuses our credentials.
+     */
+    public function verifyNotice(array $transmission, string $webhookId, string $rawEvent): bool
+    {
+        // The call has no payment of ours; the identifier only labels the log.
+        $logId = new PaymentId((string) Str::uuid7());
+        $body = '{'.implode(',', array_map(
+            fn (string $key, string $value): string => json_encode($key).':'.json_encode($value, JSON_UNESCAPED_SLASHES),
+            array_keys([...$transmission, 'webhook_id' => $webhookId]),
+            array_values([...$transmission, 'webhook_id' => $webhookId]),
+        )).',"webhook_event":'.$rawEvent.'}';
+        $client = $this->prepare($this->http)->withToken($this->accessToken($logId))->withBody($body, 'application/json');
+        $response = $this->dispatch($client, 'verify_notice', $logId, 'POST', '/v1/notifications/verify-webhook-signature');
+
+        return $response->successful() && $response->json('verification_status') === 'SUCCESS';
     }
 
     /** Capture the approved order. A refusal of the money is a result; an order captured before is read again. */

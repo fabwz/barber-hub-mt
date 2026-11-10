@@ -30,6 +30,8 @@ return [
         'base_url' => env('ONVO_BASE_URL') ?: 'https://api.onvopay.com/v1',
         'return_url' => env('ONVO_RETURN_URL', ''),
         'sinpe_destination' => env('ONVO_SINPE_DESTINATION') ?: '+506 70196686',
+        // Signing secret (whsec_...) of the webhook endpoint registered in the ONVO Pay dashboard (RF-22). Empty: notices are refused with 503.
+        'webhook_secret' => env('ONVO_WEBHOOK_SECRET', ''),
     ],
 
     /*
@@ -44,6 +46,8 @@ return [
         'return_url' => env('PAYPAL_RETURN_URL', ''),
         'cancel_url' => env('PAYPAL_CANCEL_URL', ''),
         'crc_per_usd' => env('PAYPAL_CRC_PER_USD') ?: '500',
+        // Identifier of the webhook registered in the PayPal developer dashboard, which PayPal needs to verify a notice (RF-22). Empty: notices are refused with 503.
+        'webhook_id' => env('PAYPAL_WEBHOOK_ID', ''),
     ],
 
 ];

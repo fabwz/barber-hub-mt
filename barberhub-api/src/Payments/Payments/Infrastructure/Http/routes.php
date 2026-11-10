@@ -4,9 +4,20 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Src\Payments\Payments\Infrastructure\Http\Controllers\PaymentController;
+use Src\Payments\Payments\Infrastructure\Http\Controllers\PaymentNoticeController;
+use Src\Payments\Payments\Infrastructure\Http\Middleware\GuardNoticeBody;
 
 // Where a provider sends the customer back after the payment page. It is public, belongs to no barbershop and changes nothing.
 Route::get('pagos/retorno', [PaymentController::class, 'returned'])->name('payments.payments.returned');
+
+// What the gateways call to tell the result of a payment (RF-22). Public, with no session and no barbershop in the route: the
+// origin is verified by each provider's way, the payment is found from the reference of the provider and the barbershop is its own.
+Route::post('pagos/avisos/onvo', [PaymentNoticeController::class, 'onvo'])
+    ->middleware(['throttle:payment-notices', GuardNoticeBody::class])
+    ->name('payments.notices.onvo');
+Route::post('pagos/avisos/paypal', [PaymentNoticeController::class, 'paypal'])
+    ->middleware(['throttle:payment-notices', GuardNoticeBody::class])
+    ->name('payments.notices.paypal');
 
 // The customer pays their own reservation. The plain mode of the barbershop gives a person without a role the usual 404 (UP-06)
 // and the role filter refuses the owner and a collaborator with 403; the use case finds the reservation among the customer's own.
