@@ -1,5 +1,6 @@
 import type { Router } from 'vue-router'
 
+import { useActiveShopStore } from '@/stores/activeShop'
 import { useSessionStore } from '@/stores/session'
 
 declare module 'vue-router' {
@@ -10,6 +11,8 @@ declare module 'vue-router' {
     public?: boolean
     /** Only for people without a session (login, register). */
     guestOnly?: boolean
+    /** Needs an active owner/collaborator shop; without one the router sends the person to /negocios. */
+    requiresStaffShop?: boolean
   }
 }
 
@@ -25,12 +28,18 @@ export function safeRedirect(value: unknown): string {
 }
 
 export function installGuards(router: Router): void {
-  router.beforeEach((to) => {
+  router.beforeEach(async (to) => {
     const session = useSessionStore()
     if (to.meta.requiresAuth && !session.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
     if (to.meta.guestOnly && session.isAuthenticated) return { path: '/' }
+    if (to.meta.requiresStaffShop) {
+      const shops = useActiveShopStore()
+      // After a reload only the stored id is known: the list confirms it.
+      if (shops.status !== 'ready') await shops.loadStaffShops()
+      if (shops.active === null) return { path: '/negocios' }
+    }
     return true
   })
 }
