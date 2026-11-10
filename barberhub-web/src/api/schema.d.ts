@@ -386,6 +386,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pagos/avisos/onvo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aviso de ONVO Pay
+         * @description Dirección pública, sin sesión, a la que ONVO Pay avisa del resultado de un pago. Se registra en el panel de ONVO Pay (Developers, Webhooks) con los eventos `payment_intent.succeeded`, `payment_intent.failed` y `payment_intent.canceled`, y su secreto de firma va en `ONVO_WEBHOOK_SECRET`. El origen se verifica con el encabezado `X-Onvo-Signature` (HMAC-SHA256 de `t.cuerpo` y ventana de cinco minutos); una firma ausente, mal formada o inválida responde 401 `no-autenticado` sin cambiar ningún estado y sin decir el motivo. Sin el secreto configurado responde 503 `servicio-no-disponible` y nunca acepta. El aviso es solo un disparador: el sistema consulta a ONVO Pay el estado real del pago y, si quedó aprobado, confirma la reserva en la misma transacción; si falló, la reserva sigue temporal. Cada evento se procesa una sola vez: uno repetido, uno de un pago desconocido y uno de un tipo que el sistema no usa responden 200 con `{"recibido": true}`. Si ONVO Pay no responde al consultarlo, responde 503 `servicio-no-disponible`, el evento no queda procesado y ONVO Pay lo reintenta. El cuerpo debe ser JSON de hasta 64 KB; otro tipo de contenido o un cuerpo mayor responde 400 `solicitud-invalida`. Hay un límite de solicitudes por minuto: 429 `demasiadas-solicitudes` con `Retry-After`.
+         */
+        post: operations["payments.notices.onvo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pagos/avisos/paypal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aviso de PayPal
+         * @description Dirección pública, sin sesión, a la que PayPal avisa del resultado de un pago. Se registra en el panel de desarrolladores de PayPal (Webhooks) con los eventos `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DECLINED` y `PAYMENT.CAPTURE.DENIED`, y el identificador de ese webhook va en `PAYPAL_WEBHOOK_ID`. El origen se verifica con el servicio `verify-webhook-signature` de PayPal, que recibe los encabezados `PAYPAL-*` de la transmisión, el identificador del webhook y el evento tal como llegó; solo `SUCCESS` lo acepta. Una transmisión sin encabezados, un cuerpo que no es un evento o una verificación que no es `SUCCESS` responde 401 `no-autenticado` sin cambiar ningún estado y sin decir el motivo. Sin `PAYPAL_WEBHOOK_ID` configurado, o si PayPal no responde a la verificación, responde 503 `servicio-no-disponible` y PayPal reintenta. El aviso es solo un disparador: el sistema consulta a PayPal el estado real de la orden (y la captura si el cliente ya la aprobó) y, si el pago quedó aprobado, confirma la reserva en la misma transacción; si falló, la reserva sigue temporal. Cada evento se procesa una sola vez: uno repetido, uno de un pago desconocido y uno de un tipo que el sistema no usa responden 200 con `{"recibido": true}`. Si PayPal no responde al consultar la orden, responde 503 `servicio-no-disponible` y el evento no queda procesado. El cuerpo debe ser JSON de hasta 64 KB; otro tipo de contenido o un cuerpo mayor responde 400 `solicitud-invalida`. Hay un límite de solicitudes por minuto: 429 `demasiadas-solicitudes` con `Retry-After`.
+         */
+        post: operations["payments.notices.paypal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/reservas/{reserva}/pagos": {
         parameters: {
             query?: never;
@@ -1949,6 +1989,48 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         mensaje: "Regresaste del proveedor de pago: consulta el estado de tu pago.";
+                    };
+                };
+            };
+        };
+    };
+    "payments.notices.onvo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        recibido: boolean;
+                    };
+                };
+            };
+        };
+    };
+    "payments.notices.paypal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        recibido: boolean;
                     };
                 };
             };
