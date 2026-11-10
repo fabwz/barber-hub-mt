@@ -4,6 +4,7 @@ import { flushPromises } from '@vue/test-utils'
 import LoginView from '@/views/LoginView.vue'
 import { jsonResponse, mockFetch, problem } from '../helpers/http'
 import { mountView } from '../helpers/mountView'
+import { CLIENT_SHOP, OWNER_SHOP, STAFF_SHOP, staffHandler } from '../helpers/staff'
 
 beforeEach(() => sessionStorage.clear())
 afterEach(() => {
@@ -51,19 +52,63 @@ describe('LoginView', () => {
   })
 
   it('logs in and returns to the redirect route', async () => {
-    mockFetch(() => jsonResponse(201, { data: { token: 'tok-1', tipo: 'Bearer' } }))
+    const fetchMock = mockFetch(staffHandler([OWNER_SHOP, STAFF_SHOP]))
     const { wrapper, router } = await mountView(LoginView, '/ingresar?redirect=/agenda')
 
     await fillAndSubmit(wrapper)
 
     expect(router.currentRoute.value.path).toBe('/agenda')
     expect(sessionStorage.getItem('barberhub.session')).toContain('tok-1')
+    // A valid redirect is respected as is: the shops are not even asked for.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('without a redirect, several staff shops go to /negocios', async () => {
+    mockFetch(staffHandler([OWNER_SHOP, STAFF_SHOP]))
+    const { wrapper, router } = await mountView(LoginView, '/ingresar')
+
+    await fillAndSubmit(wrapper)
+
+    // The view is loaded lazily: wait for the navigation to finish.
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/negocios'))
+  })
+
+  it('without a redirect, a single staff shop also goes to /negocios (the view enters directly)', async () => {
+    mockFetch(staffHandler([OWNER_SHOP]))
+    const { wrapper, router } = await mountView(LoginView, '/ingresar')
+
+    await fillAndSubmit(wrapper)
+
+    // The view is loaded lazily: wait for the navigation to finish.
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/negocios'))
+  })
+
+  it('without a redirect, a customer with no staff shop goes to «/»', async () => {
+    mockFetch(staffHandler([CLIENT_SHOP]))
+    const { wrapper, router } = await mountView(LoginView, '/ingresar')
+
+    await fillAndSubmit(wrapper)
+
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('if the shops cannot be loaded the login still ends at «/»', async () => {
+    mockFetch((request) =>
+      request.method === 'POST'
+        ? jsonResponse(201, { data: { token: 'tok-1', tipo: 'Bearer' } })
+        : problem(500),
+    )
+    const { wrapper, router } = await mountView(LoginView, '/ingresar')
+
+    await fillAndSubmit(wrapper)
+
+    expect(router.currentRoute.value.path).toBe('/')
   })
 
   it.each(['//evil.com', 'https://evil.com'])(
     'ignores the external redirect %s',
     async (redirect) => {
-      mockFetch(() => jsonResponse(201, { data: { token: 'tok-1', tipo: 'Bearer' } }))
+      mockFetch(staffHandler([]))
       const { wrapper, router } = await mountView(
         LoginView,
         `/ingresar?redirect=${encodeURIComponent(redirect)}`,
@@ -132,9 +177,9 @@ describe('LoginView', () => {
 
   it('a network error shows a notice with a retry action that works', async () => {
     let online = false
-    mockFetch(() => {
+    mockFetch((request) => {
       if (!online) throw new TypeError('offline')
-      return jsonResponse(201, { data: { token: 'tok-1', tipo: 'Bearer' } })
+      return staffHandler([])(request)
     })
     const { wrapper, router } = await mountView(LoginView, '/ingresar')
 
