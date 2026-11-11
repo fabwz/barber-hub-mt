@@ -3230,7 +3230,10 @@
                             "string",
                             "null"
                         ],
-                        "description": "Motivo del rechazo o del fallo; nulo en los dem\u00e1s estados."
+                        "description": "Motivo del rechazo o del fallo, siempre en espa\u00f1ol y con lo que el cliente puede hacer; nulo en los dem\u00e1s estados. Es el mismo con cualquier pasarela y nunca trae el texto del proveedor: un motivo que el sistema no reconoce es una frase gen\u00e9rica.",
+                        "examples": [
+                            "El banco rechaz\u00f3 el pago. Pruebe con otra tarjeta o con otro m\u00e9todo."
+                        ]
                     },
                     "devolucion_pendiente": {
                         "type": "boolean",

@@ -42,7 +42,11 @@ final class PaymentResource extends JsonResource
             'metodo' => PaymentNames::method($this->payment->method),
             /** Colones cobrados: el depósito o el total, según la política de la barbería. */
             'monto' => $this->payment->amount->colones,
-            /** Motivo del rechazo o del fallo; nulo en los demás estados. */
+            /**
+             * Motivo del rechazo o del fallo, siempre en español y con lo que el cliente puede hacer; nulo en los demás estados. Es el mismo con cualquier pasarela y nunca trae el texto del proveedor: un motivo que el sistema no reconoce es una frase genérica.
+             *
+             * @example El banco rechazó el pago. Pruebe con otra tarjeta o con otro método.
+             */
             'motivo' => $this->payment->failureReason,
             /** Verdadero si el pago se aprobó cuando la reserva ya no se podía confirmar y hay que devolverlo (PA-07). */
             'devolucion_pendiente' => $this->payment->refundPending,
