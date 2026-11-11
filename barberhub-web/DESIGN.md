@@ -218,7 +218,7 @@ Barra superior con: Agenda, Reservas, Servicios, Barberos y Pagos. Elemento inac
 ### Aviso
 Tarjeta de 16 px con borde de 1 px, sin sombra. Aparece abajo a la derecha en escritorio y arriba en el celular.
 - **Éxito:** relleno `surface`, borde `line`, check en `accent` y texto `fg`. `role="status"`.
-- **Error:** relleno `danger-surface`, borde `danger-border`, ícono y texto `danger`. `role="alert"`.
+- **Error:** relleno `danger-surface`, **sin borde**, ícono y texto `danger`. `role="alert"`. Ningún panel de error lleva borde (avisos, errores de carga y errores de pago): lo identifican el relleno, el ícono y las palabras. El borde `danger-border` queda solo para campos y casillas con error.
 Los textos nombran el problema y la salida, sin «Error:» doble ni signos de exclamación.
 
 ### Esqueleto de carga

@@ -21,9 +21,7 @@ describe('NoticeBanner', () => {
     const banner = wrapper.find('[role]')
 
     expect(banner.attributes('role')).toBe('alert')
-    expect(banner.classes()).toEqual(
-      expect.arrayContaining(['bg-danger-surface', 'border-danger-border', 'text-danger']),
-    )
+    expect(banner.classes()).toEqual(expect.arrayContaining(['bg-danger-surface', 'text-danger']))
   })
 
   it('renders the action slot only when provided', () => {

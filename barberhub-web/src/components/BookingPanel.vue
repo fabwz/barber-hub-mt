@@ -335,7 +335,7 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
             <TimeSlots v-else v-model="slot" :slots="slots" :show-barber="anyBarber" />
           </div>
 
-          <div v-if="failure" class="rounded-card border border-danger-border bg-danger-surface">
+          <div v-if="failure" class="rounded-card bg-danger-surface">
             <ErrorState
               :message="failure.title"
               :description="failure.description"
