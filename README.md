@@ -32,7 +32,7 @@ Plataforma web multi-inquilino de reservas y cobro para barberías. Proyecto int
 | Fade Lab | `fade-lab` | PayPal | Sofía Araya | `sofia@fadelab.test` |
 | Barbería Don Chepe | `don-chepe` | Ninguna | José Alvarado | `chepe@donchepe.test` |
 
-Todas las cuentas (dueños y colaboradores) usan la contraseña `Demo#Barber2026`, que cumple la política SE-07. Las cuentas de los colaboradores no piden cambiar la contraseña (`must_change_password` en falso), para usarlas sin trámites. Por ejemplo, `GET /api/v1/enlaces/pura-navaja` abre la primera barbería sin necesidad de ingresar.
+Todas las cuentas (dueños y colaboradores) usan la contraseña `Demo#Barber2026`, que cumple la política SE-07. Las cuentas de los colaboradores no piden cambiar la contraseña (`must_change_password` en falso), para usarlas sin trámites. La cuenta de Sofía Araya (`sofia@fadelab.test`) tiene dos roles, para ver el selector de barbería (UP-07, UP-08): **dueña** de Fade Lab y **colaboradora** de Barbería Pura Navaja, y `GET /api/v1/mis-barberias` devuelve las dos. Por ejemplo, `GET /api/v1/enlaces/pura-navaja` abre la primera barbería sin necesidad de ingresar.
 
 ### Barbería Pura Navaja
 
@@ -54,6 +54,7 @@ Horario: lunes a viernes de 9:00 a 19:00 y sábado de 8:00 a 17:00; domingo cerr
 | Daniela Vargas | `daniela@puranavaja.test` | martes a viernes 10:00-19:00; sábado 8:00-17:00 | martes a viernes 13:00-14:00; sábado 12:00-12:30 | ninguno |
 | Kevin Mora | `kevin@puranavaja.test` | lunes a viernes 9:00-17:00; sábado 9:00-15:00 | lunes a viernes 12:30-13:15; sábado 11:00-11:30 | Corte infantil |
 | Esteban Quirós | `esteban@puranavaja.test` | lunes, miércoles y viernes 11:00-19:00; sábado 8:00-17:00 | lunes, miércoles y viernes 15:00-15:30; sábado 12:00-13:00 | Degradado, Corte + barba |
+| Sofía Araya (dueña de Fade Lab) | `sofia@fadelab.test` | lunes, miércoles y viernes 9:00-15:00; sábado 8:00-12:00 | lunes, miércoles y viernes 12:00-12:30 | Corte infantil, Tratamiento capilar |
 
 ### Fade Lab
 
