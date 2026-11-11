@@ -266,7 +266,7 @@ final class PayPalGatewayTest extends TestCase
         $this->assertSame(PaymentStatus::Pending, $waiting->status);
         $voided = $gateway->status('ORDER-1', new PaymentId(self::PAYMENT));
         $this->assertSame(PaymentStatus::Failed, $voided->status);
-        $this->assertSame('voided', $voided->failureReason);
+        $this->assertSame('El pago fue cancelado. Intente de nuevo.', $voided->failureReason);
         Http::assertNotSent(fn (Request $request): bool => str_ends_with($request->url(), '/capture'));
     }
 
@@ -296,7 +296,7 @@ final class PayPalGatewayTest extends TestCase
         $status = $this->gateway()->status('ORDER-1', new PaymentId(self::PAYMENT));
 
         $this->assertSame(PaymentStatus::Rejected, $status->status);
-        $this->assertStringContainsString('declined', (string) $status->failureReason);
+        $this->assertSame('PayPal rechazó el medio de pago. Pruebe con otra tarjeta o con otro método.', $status->failureReason);
         $this->assertNull($status->captureId);
     }
 

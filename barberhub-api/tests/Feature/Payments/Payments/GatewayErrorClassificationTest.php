@@ -16,6 +16,7 @@ use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
+use Src\Payments\Payments\Infrastructure\Gateways\DeclineReasons;
 use Src\Payments\Payments\Infrastructure\Gateways\OnvoGateway;
 use Src\Shared\Domain\ValueObjects\Money;
 use Tests\TestCase;
@@ -125,7 +126,7 @@ final class GatewayErrorClassificationTest extends TestCase
 
         $result = $this->gateway()->charge($this->cardCharge());
 
-        $this->assertSame('Card declined', $result->failureReason);
+        $this->assertSame(DeclineReasons::GENERIC, $result->failureReason);
         $this->assertLogged('warning', 'confirm', 400, 'Card declined');
     }
 
