@@ -12,9 +12,17 @@ use RuntimeException;
  */
 final class GatewayRequestRejectedException extends RuntimeException
 {
-    /** Build the exception; the reason is for the log and never reaches the client. */
-    public static function because(string $reason): self
+    private function __construct(string $message, public readonly ?string $customerReason)
     {
-        return new self("The payment gateway did not accept the request: {$reason}");
+        parent::__construct($message);
+    }
+
+    /**
+     * Build the exception; the reason is for the log and never reaches the client. The customer reason, which the adapter gives
+     * in Spanish, is what the failed payment keeps as its `motivo`.
+     */
+    public static function because(string $reason, ?string $customerReason = null): self
+    {
+        return new self("The payment gateway did not accept the request: {$reason}", $customerReason);
     }
 }
