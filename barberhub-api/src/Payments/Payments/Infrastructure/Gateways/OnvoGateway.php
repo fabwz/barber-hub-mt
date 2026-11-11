@@ -117,10 +117,10 @@ final readonly class OnvoGateway extends HttpPaymentGateway
         }
 
         if ($confirmation->clientError()) {
-            return new ChargeResult($intentId, $providerAmount, PaymentStatus::Rejected, $this->messageOf($confirmation));
+            return new ChargeResult($intentId, $providerAmount, PaymentStatus::Rejected, $this->declineReason('confirm', $request->paymentId, $confirmation->json() ?? []));
         }
 
-        [$status, $reason, $nextAction] = $this->interpret($confirmation->json() ?? []);
+        [$status, $reason, $nextAction] = $this->interpret('confirm', $request->paymentId, $confirmation->json() ?? []);
 
         if ($isSinpe && $status === PaymentStatus::Pending) {
             $nextAction = NextAction::instructions($this->sinpeDestination, $request->amount);
@@ -134,7 +134,7 @@ final readonly class OnvoGateway extends HttpPaymentGateway
     {
         $response = $this->requireSuccess($this->send('status', $paymentId, 'GET', "/payment-intents/{$providerPaymentId}"));
 
-        [$status, $reason] = $this->interpret($response->json() ?? []);
+        [$status, $reason] = $this->interpret('status', $paymentId, $response->json() ?? []);
 
         return new GatewayStatus($status, $reason);
     }
@@ -148,12 +148,10 @@ final readonly class OnvoGateway extends HttpPaymentGateway
         ]);
         $refundId = $response->json('id');
 
-        if ($response->clientError()) {
-            return RefundResult::refused($this->messageOf($response));
-        }
+        if ($response->clientError() || ! $response->successful() || ! is_string($refundId) || in_array($response->json('status'), ['failed', 'canceled'], true)) {
+            $this->logDecline('refund', $paymentId, is_string($response->json('code')) ? $response->json('code') : null, $this->messageOf($response));
 
-        if (! $response->successful() || ! is_string($refundId) || in_array($response->json('status'), ['failed', 'canceled'], true)) {
-            return RefundResult::refused($this->messageOf($response));
+            return RefundResult::refused(DeclineReasons::REFUND_REFUSED);
         }
 
         return RefundResult::accepted($refundId);
@@ -178,10 +176,12 @@ final readonly class OnvoGateway extends HttpPaymentGateway
      * reason); `requires_action` waits for the customer on a page (3DS); `processing` and the rest keep waiting; `canceled`
      * is a failure.
      *
+     * The reason of a refusal or a failure is already the sentence for the customer, never the text of ONVO Pay.
+     *
      * @param  array<mixed>  $intent
      * @return array{PaymentStatus, string|null, NextAction|null}
      */
-    private function interpret(array $intent): array
+    private function interpret(string $operation, PaymentId $paymentId, array $intent): array
     {
         $error = $intent['lastPaymentError'] ?? null;
         $url = $intent['nextAction']['redirectToUrl']['url'] ?? null;
@@ -189,24 +189,46 @@ final readonly class OnvoGateway extends HttpPaymentGateway
         return match ($intent['status'] ?? null) {
             'succeeded' => [PaymentStatus::Approved, null, null],
             'requires_payment_method' => is_array($error)
-                ? [PaymentStatus::Rejected, is_string($error['message'] ?? null) ? $error['message'] : ($error['code'] ?? null), null]
+                ? [PaymentStatus::Rejected, $this->declineReason($operation, $paymentId, $error), null]
                 : [PaymentStatus::Pending, null, null],
             'requires_action' => [PaymentStatus::Pending, null, is_string($url) ? NextAction::redirectTo($url) : null],
-            'canceled' => [PaymentStatus::Failed, 'canceled', null],
+            'canceled' => [PaymentStatus::Failed, (new DeclineReasons)->onvo('canceled', null), null],
             default => [PaymentStatus::Pending, null, null],
+        };
+    }
+
+    /**
+     * The sentence for the customer for a refusal. ONVO Pay gives the code (`code`), a message and, for a card, the structured
+     * `details.card.reason`; the original goes to the log and only the translation leaves the adapter.
+     *
+     * @param  array<mixed>  $error  An error body of ONVO Pay or its `lastPaymentError`.
+     */
+    private function declineReason(string $operation, PaymentId $paymentId, array $error): string
+    {
+        $code = is_string($error['code'] ?? null) ? $error['code'] : null;
+        $message = $this->textOf($error['message'] ?? null);
+        $cardReason = $error['details']['card']['reason'] ?? null;
+        $cardReason = is_string($cardReason) ? $cardReason : null;
+
+        $this->logDecline($operation, $paymentId, $code ?? $cardReason, $message);
+
+        return (new DeclineReasons)->onvo($code, $message, $cardReason);
+    }
+
+    /** The text of a `message`, which ONVO Pay gives as a string or as a list of them. */
+    private function textOf(mixed $message): ?string
+    {
+        return match (true) {
+            is_string($message) => $message,
+            is_array($message) && is_string($message[0] ?? null) => $message[0],
+            default => null,
         };
     }
 
     /** The message ONVO Pay gives for an error, or null. */
     private function messageOf(Response $response): ?string
     {
-        $message = $response->json('message');
-
-        return match (true) {
-            is_string($message) => $message,
-            is_array($message) && is_string($message[0] ?? null) => $message[0],
-            default => null,
-        };
+        return $this->textOf($response->json('message'));
     }
 
     protected function name(): string

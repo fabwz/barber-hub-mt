@@ -164,7 +164,7 @@ final readonly class PayPalGateway extends HttpPaymentGateway
             return $this->capture($providerPaymentId, $paymentId);
         }
 
-        return $this->interpret($order);
+        return $this->interpret('status', $paymentId, $order);
     }
 
     /** Refunds are not implemented in this stage: the endpoint answers that the operation is not supported. */
@@ -204,17 +204,19 @@ final readonly class PayPalGateway extends HttpPaymentGateway
         $response = $this->call('capture', $paymentId, 'POST', "/v2/checkout/orders/{$orderId}/capture", [], ['PayPal-Request-Id' => $this->requestId($paymentId, 'capture')]);
 
         if ($response->successful()) {
-            return $this->interpret($response->json() ?? []);
+            return $this->interpret('capture', $paymentId, $response->json() ?? []);
         }
 
         $issue = $this->issueOf($response);
 
         if ($response->status() === 422 && $issue === 'ORDER_ALREADY_CAPTURED') {
-            return $this->interpret($this->requireSuccess($this->call('status', $paymentId, 'GET', "/v2/checkout/orders/{$orderId}"))->json() ?? []);
+            return $this->interpret('status', $paymentId, $this->requireSuccess($this->call('status', $paymentId, 'GET', "/v2/checkout/orders/{$orderId}"))->json() ?? []);
         }
 
         if ($response->status() === 422 && in_array($issue, self::DECLINE_ISSUES, true)) {
-            return new GatewayStatus(PaymentStatus::Rejected, $this->messageOf($response));
+            $this->logDecline('capture', $paymentId, $issue, $this->messageOf($response));
+
+            return new GatewayStatus(PaymentStatus::Rejected, (new DeclineReasons)->paypal($issue));
         }
 
         $this->requireSuccess($response);
@@ -228,18 +230,24 @@ final readonly class PayPalGateway extends HttpPaymentGateway
      *
      * @param  array<mixed>  $order
      */
-    private function interpret(array $order): GatewayStatus
+    private function interpret(string $operation, PaymentId $paymentId, array $order): GatewayStatus
     {
         $capture = $order['purchase_units'][0]['payments']['captures'][0] ?? null;
         $captureId = is_array($capture) && is_string($capture['id'] ?? null) ? $capture['id'] : null;
 
+        $captureStatus = is_array($capture) ? ($capture['status'] ?? null) : null;
+
+        if ($captureStatus === 'DECLINED' || $captureStatus === 'FAILED') {
+            $this->logDecline($operation, $paymentId, $captureStatus, null);
+        }
+
         return match ($order['status'] ?? null) {
-            'COMPLETED' => match (is_array($capture) ? ($capture['status'] ?? null) : null) {
+            'COMPLETED' => match ($captureStatus) {
                 'PENDING' => new GatewayStatus(PaymentStatus::Pending),
-                'DECLINED', 'FAILED' => new GatewayStatus(PaymentStatus::Rejected, 'declined'),
+                'DECLINED', 'FAILED' => new GatewayStatus(PaymentStatus::Rejected, (new DeclineReasons)->paypal(null)),
                 default => new GatewayStatus(PaymentStatus::Approved, null, $captureId),
             },
-            'VOIDED' => new GatewayStatus(PaymentStatus::Failed, 'voided'),
+            'VOIDED' => new GatewayStatus(PaymentStatus::Failed, (new DeclineReasons)->paypal('voided')),
             default => new GatewayStatus(PaymentStatus::Pending),
         };
     }
