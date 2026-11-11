@@ -16,6 +16,7 @@ use RuntimeException;
 use Src\Availability\Slots\Application\UseCases\ListAvailableSlots;
 use Src\Availability\Slots\Domain\ValueObjects\Slot;
 use Src\Identity\Users\Domain\ValueObjects\PlainPassword;
+use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
 use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Tests\Support\RefreshDatabaseAsOwner;
@@ -42,7 +43,7 @@ final class DemoBarbershopSeederTest extends TestCase
         $this->seed(DemoBarbershopSeeder::class);
 
         $this->assertSame(
-            ['barbershops' => 3, 'users' => 10, 'memberships' => 10, 'services' => 18, 'opening_hours' => 18, 'collaborators' => 8, 'collaborator_services' => 39, 'collaborator_shifts' => 43, 'collaborator_breaks' => 35],
+            ['barbershops' => 3, 'users' => 10, 'memberships' => 11, 'services' => 18, 'opening_hours' => 18, 'collaborators' => 9, 'collaborator_services' => 44, 'collaborator_shifts' => 47, 'collaborator_breaks' => 38],
             $first,
         );
         $this->assertSame($first, $this->counts());
@@ -96,8 +97,25 @@ final class DemoBarbershopSeederTest extends TestCase
             $this->assertSame([true], $memberships->pluck('is_active')->unique()->values()->all());
         }
 
-        $this->assertSame(10, DB::table('memberships')->count());
+        // Sofía owns Fade Lab and collaborates in Pura Navaja: eleven memberships for ten people, one role per barbershop (UP-01, UP-07).
+        $this->assertSame(11, DB::table('memberships')->count());
         $this->assertSame(10, DB::table('memberships')->distinct()->count('user_id'));
+        $this->assertSame(11, DB::query()->fromSub(DB::table('memberships')->select('user_id', 'barbershop_id')->distinct(), 'roles')->count());
+    }
+
+    /** Sofía, owner of Fade Lab, is also a collaborator of Pura Navaja, and "my barbershops" lists both with their role (UP-07, UP-08, RF-43). */
+    public function test_sofia_owns_one_barbershop_and_collaborates_in_another(): void
+    {
+        $this->seed(DemoBarbershopSeeder::class);
+
+        $sofia = UserModel::query()->where('email', 'sofia@fadelab.test')->firstOrFail();
+
+        $this->getJson('/api/v1/mis-barberias', ['Authorization' => 'Bearer '.$sofia->createToken('demo')->plainTextToken])
+            ->assertOk()
+            ->assertExactJson(['data' => [
+                ['id' => self::PURA_NAVAJA, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'colaborador'],
+                ['id' => '0192f0c4-0000-7000-8000-00000000b002', 'nombre' => 'Fade Lab', 'enlace' => 'fade-lab', 'rol' => 'dueno'],
+            ]]);
     }
 
     /** The demo data is fictitious: the emails use the reserved .test domain and the phones are not real numbers (RNF-23, RL-04). */
@@ -156,23 +174,23 @@ final class DemoBarbershopSeederTest extends TestCase
         $this->assertArrayNotHasKey(7, $this->hours(self::PURA_NAVAJA));
     }
 
-    /** Pura Navaja has four collaborators; Mauricio is its owner with his own profile and a break on Tuesdays from 12:00 to 13:00 (CO-01). */
-    public function test_pura_navaja_has_four_collaborators_and_the_owner_is_one(): void
+    /** Pura Navaja has five collaborators; Mauricio is its owner with his own profile and a break on Tuesdays from 12:00 to 13:00 (CO-01). */
+    public function test_pura_navaja_has_five_collaborators_and_the_owner_is_one(): void
     {
         $this->seed(DemoBarbershopSeeder::class);
         $this->scopeQueriesTo(self::PURA_NAVAJA);
 
         $names = DB::table('collaborators')->join('users', 'users.id', '=', 'collaborators.user_id')->orderBy('users.name')->pluck('users.name')->all();
-        $this->assertSame(['Daniela Vargas', 'Esteban Quirós', 'Kevin Mora', 'Mauricio Solano'], $names);
+        $this->assertSame(['Daniela Vargas', 'Esteban Quirós', 'Kevin Mora', 'Mauricio Solano', 'Sofía Araya'], $names);
 
         $mauricio = $this->collaboratorId('mauricio@puranavaja.test');
         $this->assertSame('owner', DB::table('memberships')->join('users', 'users.id', '=', 'memberships.user_id')->where('users.email', 'mauricio@puranavaja.test')->value('role'));
         $this->assertSame(['12:00-13:00'], DB::table('collaborator_breaks')->where('collaborator_id', $mauricio)->where('day_of_week', 2)->get()->map(fn (object $row): string => substr($row->starts_at, 0, 5).'-'.substr($row->ends_at, 0, 5))->all());
         $this->assertSame(0, DB::table('collaborator_breaks')->where('collaborator_id', $mauricio)->where('day_of_week', '!=', 2)->count());
 
-        $this->assertSame(4, DB::table('collaborators')->count());
-        $this->assertSame(4, DB::table('collaborators')->whereIn('id', DB::table('collaborator_breaks')->select('collaborator_id'))->count());
-        $this->assertSame(4, DB::table('collaborators')->whereIn('id', DB::table('collaborator_shifts')->select('collaborator_id'))->count());
+        $this->assertSame(5, DB::table('collaborators')->count());
+        $this->assertSame(5, DB::table('collaborators')->whereIn('id', DB::table('collaborator_breaks')->select('collaborator_id'))->count());
+        $this->assertSame(5, DB::table('collaborators')->whereIn('id', DB::table('collaborator_shifts')->select('collaborator_id'))->count());
     }
 
     /** Kevin does not offer the children's cut, and the other three collaborators do (CO-01). */

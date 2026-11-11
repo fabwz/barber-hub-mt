@@ -111,13 +111,15 @@ final class DemoBarbershopSeeder extends Seeder
      * Fictitious catalog, hours and staff of each barbershop, by public link (CL-08). Prices are whole colones with the 13 % VAT
      * already included (SV-02). Days run from 1 (Monday) to 7 (Sunday); hours, shifts and breaks are [days, from, to], and a day
      * without hours is closed (HO-01). Every shift falls inside the hours of its barbershop (HO-02). A staff member that is "owner"
-     * is the owner's own account with a collaborator profile and keeps the owner role; the others get a collaborator membership.
+     * is the owner's own account with a collaborator profile and keeps the owner role; a member with an "account" is an existing
+     * demo account (the identifier of its user) that owns another barbershop and takes the collaborator role here (UP-01, UP-07);
+     * the others get their own account and a collaborator membership.
      * Services and staff take their fixed identifiers from their position, so a second run updates the same rows.
      *
      * @var array<string, array{
      *     hours: list<array{list<int>, string, string}>,
      *     services: list<array{string, int, int}>,
-     *     staff: list<array{name: string, email: string, phone: string|null, owner: bool, services: list<string>, shifts: list<array{list<int>, string, string}>, breaks: list<array{list<int>, string, string}>}>
+     *     staff: list<array{name: string, email: string, phone: string|null, owner: bool, account?: string, services: list<string>, shifts: list<array{list<int>, string, string}>, breaks: list<array{list<int>, string, string}>}>
      * }>
      */
     public const array CATALOG = [
@@ -156,6 +158,12 @@ final class DemoBarbershopSeeder extends Seeder
                     'services' => ['Corte clásico', 'Corte infantil', 'Barba', 'Perfilado de cejas', 'Tratamiento capilar'],
                     'shifts' => [[[1, 3, 5], '11:00', '19:00'], [[6], '08:00', '17:00']],
                     'breaks' => [[[1, 3, 5], '15:00', '15:30'], [[6], '12:00', '13:00']],
+                ],
+                [
+                    'name' => 'Sofía Araya', 'email' => 'sofia@fadelab.test', 'phone' => null, 'owner' => false, 'account' => '0192f0c4-0000-7000-8000-00000000a002',
+                    'services' => ['Corte clásico', 'Degradado', 'Barba', 'Corte + barba', 'Perfilado de cejas'],
+                    'shifts' => [[[1, 3, 5], '09:00', '15:00'], [[6], '08:00', '12:00']],
+                    'breaks' => [[[1, 3, 5], '12:00', '12:30']],
                 ],
             ],
         ],
@@ -217,7 +225,7 @@ final class DemoBarbershopSeeder extends Seeder
             throw new RuntimeException('The demo barbershops are never seeded in production: their accounts share a known password.');
         }
 
-        foreach (self::BARBERSHOPS as $position => $barbershop) {
+        foreach (self::BARBERSHOPS as $barbershop) {
             BarbershopModel::query()->updateOrCreate(
                 ['id' => $barbershop['id']],
                 [
@@ -262,7 +270,10 @@ final class DemoBarbershopSeeder extends Seeder
                     'is_active' => true,
                 ],
             );
+        }
 
+        // After every owner exists: an owner of one barbershop can be a collaborator of another (UP-07).
+        foreach (self::BARBERSHOPS as $position => $barbershop) {
             $this->seedCatalog($position + 1, $barbershop);
         }
     }
@@ -308,7 +319,7 @@ final class DemoBarbershopSeeder extends Seeder
      * Demo accounts do not ask for a password change, so they can be used right away.
      *
      * @param  array{id: string, owner: array{id: string}}  $barbershop
-     * @param  array{name: string, email: string, phone: string|null, owner: bool, services: list<string>, shifts: list<array{list<int>, string, string}>, breaks: list<array{list<int>, string, string}>}  $member
+     * @param  array{name: string, email: string, phone: string|null, owner: bool, account?: string, services: list<string>, shifts: list<array{list<int>, string, string}>, breaks: list<array{list<int>, string, string}>}  $member
      * @param  array<string, string>  $serviceIds
      */
     private function seedCollaborator(int $number, int $position, array $barbershop, array $member, array $serviceIds): void
@@ -317,6 +328,14 @@ final class DemoBarbershopSeeder extends Seeder
 
         if ($member['owner']) {
             $userId = $barbershop['owner']['id'];
+        } elseif (isset($member['account'])) {
+            // An account that already exists (it owns another barbershop): only her collaborator membership here is new.
+            $userId = $member['account'];
+
+            MembershipModel::query()->updateOrCreate(
+                ['id' => self::identifier('9', $number, $position)],
+                ['user_id' => $userId, 'barbershop_id' => $barbershopId, 'role' => Role::Collaborator->value, 'is_active' => true],
+            );
         } else {
             $userId = self::identifier('f', $number, $position);
 
