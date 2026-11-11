@@ -29,7 +29,7 @@ describe('release', () => {
     )
     const booking = useBookingStore()
 
-    await booking.release(SHOP.id, RESERVED.id)
+    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBe(true)
 
     const request = fetchMock.mock.calls[0]![0] as Request
     expect(request.method).toBe('POST')
@@ -37,17 +37,29 @@ describe('release', () => {
       `/api/v1/barberias/${SHOP.id}/reservas/${RESERVED.id}/cancelacion`,
     )
     expect(booking.releasing).toBe(false)
+    expect(booking.releaseError).toBeNull()
   })
 
-  it('goes on when it cannot cancel (expired, confirmed or no connection)', async () => {
+  it('counts a 409 (already expired) as released, without an error', async () => {
     mockFetch(() => jsonResponse(409, { type: 'conflicto', title: 'Conflicto' }))
     const booking = useBookingStore()
 
-    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBeUndefined()
+    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBe(true)
+    expect(booking.releaseError).toBeNull()
+    expect(booking.releasing).toBe(false)
+  })
+
+  it('keeps the error and answers false when the API fails or there is no connection', async () => {
+    mockFetch(() => jsonResponse(500, { type: 'error-interno', title: 'Error', detail: 'Falló.' }))
+    const booking = useBookingStore()
+
+    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBe(false)
+    expect(booking.releaseError?.status).toBe(500)
     expect(booking.releasing).toBe(false)
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
-    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBeUndefined()
+    await expect(booking.release(SHOP.id, RESERVED.id)).resolves.toBe(false)
+    expect(booking.releaseError).not.toBeNull()
   })
 
   it('does not cancel twice at once', async () => {
@@ -62,6 +74,46 @@ describe('release', () => {
     await Promise.all([first, second])
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('restore', () => {
+  const BACK = { serviceId: SERVICES[0]!.id, barberId: MAURICIO, date: '2030-03-05' }
+
+  it('puts the selection back, forgets the reservation and mirrors it in sessionStorage', async () => {
+    mockFetch(() => jsonResponse(201, { data: RESERVATION }))
+    const booking = chosen()
+    await booking.reserve(LABELS)
+    expect(booking.reservation).not.toBeNull()
+
+    booking.restore({ ...BACK, slot: { start: START, barberId: MAURICIO } })
+
+    expect(booking.reservation).toBeNull()
+    expect(booking.serviceId).toBe(BACK.serviceId)
+    expect(booking.barberId).toBe(MAURICIO)
+    expect(booking.date).toBe('2030-03-05')
+    expect(booking.slot).toEqual({ start: START, barberId: MAURICIO })
+    expect(booking.returned).toBe(true)
+    expect(stored()).toEqual({
+      shopId: SHOP.id,
+      ...BACK,
+      slot: { start: START, barberId: MAURICIO },
+    })
+  })
+
+  it('keeps the suggested hour only if the availability lists it again', () => {
+    const kept = restored()
+    kept.restore({ ...BACK, slot: { start: START, barberId: MAURICIO } })
+    kept.revalidate([{ start: START, barberId: MAURICIO }])
+    expect(kept.slot).toEqual({ start: START, barberId: MAURICIO })
+    expect(kept.notice).toBeNull()
+
+    const taken = restored()
+    taken.restore({ ...BACK, slot: { start: START, barberId: MAURICIO } })
+    taken.revalidate([{ start: '2030-03-05T11:00:00-06:00', barberId: MAURICIO }])
+    expect(taken.slot).toBeNull()
+    expect(taken.notice).toBe(SLOT_GONE_NOTICE)
+    expect(taken.serviceId).toBe(BACK.serviceId)
   })
 })
 
