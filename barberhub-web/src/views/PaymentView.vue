@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowRight,
@@ -29,7 +29,7 @@ import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import { colones, dateOf, secondsUntil, timeOf } from '@/composables/format'
 import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
 import { useCountdown } from '@/composables/useCountdown'
-import { CARD_REJECTED, usePayment, type PaymentMethod } from '@/composables/usePayment'
+import { usePayment, type PaymentMethod } from '@/composables/usePayment'
 import { usePaymentPolling } from '@/composables/usePaymentPolling'
 import { useBookingStore } from '@/stores/booking'
 import { useSessionStore } from '@/stores/session'
@@ -40,6 +40,9 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'error'
 
 /** Two minutes: below this the countdown warns in the page. */
 const WARNING_SECONDS = 120
+
+/** Automatic status checks (3 s apart, so 3 minutes) before the pending payment is left under verification. */
+const MAX_AUTOMATIC_CHECKS = 60
 
 const METHODS: Record<PaymentMethod, { label: string; icon: typeof CreditCard }> = {
   tarjeta: { label: 'Tarjeta', icon: CreditCard },
@@ -71,9 +74,13 @@ const sinpeForm = useTemplateRef<InstanceType<typeof SinpeForm>>('sinpeForm')
 const shopId = computed(() => shopStore.shop?.id ?? '')
 const shopName = computed(() => shopStore.shop?.profile.nombre ?? '')
 
+// The API said the reservation is no longer valid (`plazo-vencido`) before its own clock did.
+const expiredByApi = ref(false)
 const expired = computed(
   () =>
-    reservation.value?.estado === 'expirada' || (counting.value && countdown.remaining.value === 0),
+    expiredByApi.value ||
+    reservation.value?.estado === 'expirada' ||
+    (counting.value && countdown.remaining.value === 0),
 )
 const expiring = computed(
   () =>
@@ -149,7 +156,15 @@ const pending = computed(
 const polling = usePaymentPolling({
   active: () => pending.value && !expired.value,
   check: () => payments.refresh(shopId.value),
+  maxChecks: MAX_AUTOMATIC_CHECKS,
 })
+// The provider did not answer (503) or the wait ran out: the payment stays under verification.
+const unreachable = computed(() => polling.error.value !== null || polling.exhausted.value)
+
+/** Approved with a refund pending (PA-07): the payment came in but the reservation was not confirmed. */
+const refundPending = computed(
+  () => paymentState.value === 'aprobado' && payment.value?.devolucion_pendiente === true,
+)
 
 const instructions = computed(() => {
   const next = payment.value?.accion_siguiente
@@ -160,7 +175,6 @@ const instructions = computed(() => {
 const phase = computed<'approved' | 'expired' | 'payment' | 'free' | 'unavailable' | 'form'>(() => {
   if (paymentState.value === 'aprobado' || paymentState.value === 'reembolsado') return 'approved'
   if (expired.value) return 'expired'
-  if (cardRejected.value) return 'form'
   if (payments.paymentId.value !== null || payment.value !== null) return 'payment'
   if (amountToPay.value === 0) return 'free'
   if (methods.value.length === 0) return 'unavailable'
@@ -179,36 +193,25 @@ const fieldErrors = computed(() => {
   }
 })
 const hasFieldErrors = computed(() => Object.values(fieldErrors.value).some(Boolean))
-// A card ONVO refused is asked for again in the form, with the message of the design.
-const cardRejected = computed(
-  () =>
-    (paymentState.value === 'rechazado' || paymentState.value === 'fallido') &&
-    payment.value?.metodo === 'tarjeta' &&
-    reservation.value?.pasarela === 'onvo',
+// ONVO did not accept the card data before any charge: the form says so with the text of the design.
+const cardError = computed(() =>
+  payments.error.value?.type === 'tarjeta-rechazada' ? payments.error.value.detail : '',
 )
-// After a reload the rejected card comes back from the storage with no method chosen: choose it.
-watch(cardRejected, (rejected) => {
-  if (rejected) method.value = 'tarjeta'
-})
-const cardError = computed(() => {
-  if (payments.error.value?.type === 'tarjeta-rechazada') return payments.error.value.detail
-  return cardRejected.value ? CARD_REJECTED : ''
-})
 const generalError = computed(() => {
   const error = payments.error.value
   if (error === null || error.type === 'tarjeta-rechazada' || hasFieldErrors.value) return ''
   return error.detail
 })
 
+// A refusal, a failure, the refund and the verification are announced by their own alert or status
+// (and take the focus), so they are not repeated here.
 const announcement = computed(() => {
   if (state.value === 'loading') return 'Cargando el resumen.'
   if (phase.value === 'expired') return 'La reserva venció.'
   if (busy.value) return 'Procesando pago.'
-  if (paymentState.value === 'aprobado') return 'Su pago fue aprobado.'
-  if (paymentState.value === 'rechazado' || paymentState.value === 'fallido') {
-    return 'El pago no se pudo completar.'
-  }
-  if (pending.value) return 'Esperando la confirmación del pago.'
+  if (paymentState.value === 'aprobado' && !refundPending.value) return 'Su pago fue aprobado.'
+  if (paymentState.value === 'rechazado' || paymentState.value === 'fallido') return ''
+  if (pending.value && !unreachable.value) return 'Esperando la confirmación del pago.'
   // Changes only when it enters the last two minutes: never once per second.
   if (expiring.value) return 'Quedan menos de dos minutos para pagar.'
   return ''
@@ -295,7 +298,47 @@ async function pay(): Promise<void> {
     billingEmail: session.person?.email ?? null,
     onCardUsed: () => cardForm.value?.reset(),
   })
+  const failure = payments.error.value
+  if (failure !== null && failure.type.endsWith('plazo-vencido')) expiredByApi.value = true
+  else if (failure !== null && failure.status === 409) await rereadReservation()
 }
+
+/** A 409 says the reservation is not temporary and valid any more: read what it is now. */
+async function rereadReservation(): Promise<void> {
+  try {
+    const { data } = await api.GET('/barberias/{barberia}/reservas/{reserva}', {
+      params: { path: { barberia: shopId.value, reserva: reservationId.value } },
+    })
+    const detail = data!.data
+    if (!('monto_a_pagar' in detail)) return
+    reservation.value = detail
+    startCountdown(detail)
+    if (detail.estado === 'confirmada') {
+      void router.replace({
+        name: 'booking-confirmed',
+        params: { enlace: enlace.value, reserva: reservationId.value },
+      })
+    }
+  } catch {
+    // Without the answer the message of the 409 stays and the person can try again.
+  }
+}
+
+/**
+ * The payment was approved and the reservation is confirmed in the same transaction (PA-06): the
+ * confirmation has its own address. One approved with a refund pending stays here (PA-07).
+ */
+watch(
+  () => (paymentState.value === 'aprobado' && !refundPending.value ? payment.value?.id : null),
+  (id) => {
+    if (id) {
+      void router.replace({
+        name: 'booking-confirmed',
+        params: { enlace: enlace.value, reserva: reservationId.value },
+      })
+    }
+  },
+)
 
 /** After a rejection or a cancellation: forget that payment and show the methods again. */
 function chooseAgain(): void {
@@ -325,6 +368,31 @@ function chooseAnotherTime(): void {
   void router.push({ name: 'shop', params: { enlace: enlace.value } })
 }
 
+/**
+ * «Elegir otro espacio» (expired reservation, or paid too late): back to the shop with the service,
+ * the barber and the day of this reservation chosen again. The space itself is gone, so no hour.
+ */
+function chooseAnotherSpace(): void {
+  const detail = reservation.value
+  booking.enter(shopId.value)
+  if (detail !== null) {
+    booking.selectService(detail.servicio)
+    booking.selectBarber(detail.barbero)
+    booking.selectDate(dateOf(detail.inicio))
+  }
+  void router.push({ name: 'shop', params: { enlace: enlace.value } })
+}
+
+// The expired screen takes the focus to its title when the reservation runs out in front of the person.
+const expiredNotice = useTemplateRef<HTMLElement>('expiredNotice')
+watch(
+  () => phase.value === 'expired',
+  (isExpired) => {
+    if (isExpired) void nextTick(() => expiredNotice.value?.focus())
+  },
+  { flush: 'post' },
+)
+
 onMounted(() => void load())
 </script>
 
@@ -347,6 +415,7 @@ onMounted(() => void load())
       <ShopHeader
         class="border-b-0!"
         wide
+        name-tag="p"
         v-bind="HEADER_EXAMPLE"
         :name="shopStore.shop.profile.nombre"
         :city="shopStore.shop.profile.ciudad"
@@ -408,10 +477,7 @@ onMounted(() => void load())
         </template>
 
         <!-- Error -->
-        <div
-          v-else-if="state === 'error'"
-          class="mt-6 rounded-card border border-danger-border bg-danger-surface"
-        >
+        <div v-else-if="state === 'error'" class="mt-6 rounded-card bg-danger-surface">
           <ErrorState message="Error: no pudimos cargar su reserva." @retry="load" />
         </div>
 
@@ -489,17 +555,20 @@ onMounted(() => void load())
           <!-- Right on desktop: how it is paid -->
           <div class="flex min-w-0 flex-col gap-6 md:border-l md:border-line md:pl-8">
             <!-- Expired reservation -->
-            <div v-if="phase === 'expired'" class="border-y border-line">
-              <!-- TEMPORAL hasta el #84: la pantalla final de una reserva vencida. -->
-              <EmptyState
-                title="La reserva temporal venció"
-                description="El espacio volvió a estar disponible. Elija una hora de nuevo."
-              >
-                <template #action>
-                  <BaseButton @click="chooseAnotherTime">Elegir otro horario</BaseButton>
-                </template>
-              </EmptyState>
-            </div>
+            <NoticeBanner v-if="phase === 'expired'" variant="error">
+              <p ref="expiredNotice" tabindex="-1" class="font-medium outline-offset-2">
+                La reserva temporal venció.
+              </p>
+              <p class="mt-1 text-fg-muted">
+                Pasó el plazo para pagar sin que el pago se confirmara, y el espacio se liberó.
+                Elija otro espacio para reservar.
+              </p>
+              <template #action>
+                <BaseButton variant="secondary" @click="chooseAnotherSpace">
+                  Elegir otro espacio
+                </BaseButton>
+              </template>
+            </NoticeBanner>
 
             <!-- Nothing to pay -->
             <div v-else-if="phase === 'free'">
@@ -529,11 +598,13 @@ onMounted(() => void load())
                 :state="paymentState"
                 :amount="payment?.monto ?? amountToPay"
                 :reason="payment?.motivo"
+                :method="payment?.metodo"
                 :refund-pending="payment?.devolucion_pendiente"
-                :unreachable="polling.error.value !== null"
+                :unreachable="unreachable"
                 :checking="polling.checking.value"
                 @check="polling.checkNow()"
                 @retry="chooseAgain"
+                @another-space="chooseAnotherSpace"
               />
             </div>
 
