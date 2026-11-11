@@ -188,7 +188,7 @@ describe('BookingPanel', () => {
     expect(wrapper.get('[role="timer"]').text()).toContain('9:55')
   })
 
-  it('hides the services and the barber once there is a reservation, and offers another time', async () => {
+  it('hides the services and the barber once there is a reservation, and only offers the payment', async () => {
     const wrapper = mount(BookingPanel, {
       props: { ...BASE, reservation: { ...SELECTION, status: 'temporary', expiresAt: null } },
       slots: { services: '<p>Lista de servicios</p>' },
@@ -197,15 +197,48 @@ describe('BookingPanel', () => {
     expect(wrapper.text()).not.toContain('Lista de servicios')
     expect(wrapper.text()).not.toContain('Sin preferencia')
     expect(wrapper.text()).toContain('Su reserva')
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'Editar reserva')!
-      .trigger('click')
-    expect(wrapper.emitted('edit')).toHaveLength(1)
+    expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Continuar al pago'])
     expect(wrapper.emitted('restart')).toBeUndefined()
   })
 
-  it('offers no editing, and says why, while a payment is in progress', () => {
+  it('has no «Editar reserva» or «Cambiar reserva»: changing it belongs to Resumen y pago', () => {
+    const wrapper = mount(BookingPanel, {
+      props: { ...BASE, reservation: { ...SELECTION, status: 'temporary', expiresAt: null } },
+    })
+
+    const labels = wrapper.findAll('button').map((b) => b.text())
+    expect(labels).not.toContain('Editar reserva')
+    expect(labels).not.toContain('Cambiar reserva')
+    expect(wrapper.emitted('edit')).toBeUndefined()
+  })
+
+  it('starts the countdown again with a new reservation, without reusing the old one', async () => {
+    const wrapper = mount(BookingPanel, {
+      props: { ...BASE, reservation: { ...SELECTION, status: 'temporary', expiresAt: null } },
+    })
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(wrapper.get('[role="timer"]').text()).toContain('9:55')
+
+    await wrapper.setProps({ reservation: null })
+    await wrapper.setProps({
+      reservation: { ...SELECTION, status: 'temporary', expiresAt: null },
+    })
+
+    expect(wrapper.get('[role="timer"]').text()).toContain('10:00')
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(wrapper.get('[role="timer"]').text()).toContain('9:58')
+  })
+
+  it('puts the focus on its title when the shop view asks for it', () => {
+    const wrapper = mount(BookingPanel, { props: BASE, attachTo: document.body })
+
+    ;(wrapper.vm as unknown as { focusTitle: () => void }).focusTitle()
+
+    expect(document.activeElement?.id).toBe('booking-title')
+    wrapper.unmount()
+  })
+
+  it('tells a payment is in progress and offers only to continue to it', () => {
     const wrapper = mount(BookingPanel, {
       props: {
         ...BASE,
@@ -215,8 +248,7 @@ describe('BookingPanel', () => {
     })
 
     expect(wrapper.text()).toContain('Tiene un pago en proceso.')
-    expect(wrapper.findAll('button').some((b) => b.text() === 'Editar reserva')).toBe(false)
-    expect(wrapper.findAll('button').some((b) => b.text() === 'Continuar al pago')).toBe(true)
+    expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Continuar al pago'])
   })
 
   it('shows the services while there is no reservation', () => {

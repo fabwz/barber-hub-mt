@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BookingPanel, {
@@ -91,6 +91,18 @@ watch(
       )
     }
   },
+)
+
+// Coming back from «Cambiar reserva», the focus goes to the title of the screen.
+const panel = useTemplateRef<InstanceType<typeof BookingPanel>>('panel')
+watch(
+  () => (booking.returned ? panel.value : null),
+  (current) => {
+    if (current === null) return
+    current.focusTitle()
+    booking.acknowledgeReturn()
+  },
+  { immediate: true, flush: 'post' },
 )
 
 const service = computed(
@@ -210,15 +222,6 @@ const paymentInProgress = computed(() => {
   return created !== null && readStoredPayment()?.reserva === created.reservation.id
 })
 
-/** «Editar reserva»: frees the space of the temporary reservation and goes back to the selection. */
-async function editReservation(): Promise<void> {
-  const created = booking.reservation
-  if (created && store.shop && created.reservation.estado === 'temporal') {
-    await booking.release(store.shop.id, created.reservation.id)
-  }
-  booking.clear()
-}
-
 function goToPayment(): void {
   const created = booking.reservation
   if (!created) return
@@ -280,6 +283,7 @@ async function reserve(): Promise<void> {
       <div class="px-5 pt-6 pb-8 md:px-8 md:pt-8">
         <BookingPanel
           v-if="store.shop.services.length > 0"
+          ref="panel"
           v-model:barber="barberModel"
           v-model:date="dateModel"
           v-model:slot="slotModel"
@@ -299,9 +303,7 @@ async function reserve(): Promise<void> {
           @retry="availability.retry()"
           @reserve="reserve"
           :payment-in-progress="paymentInProgress"
-          :editing="booking.releasing"
           @restart="booking.clear()"
-          @edit="editReservation"
           @pay="goToPayment"
           @pick-alternative="pickAlternative"
         >

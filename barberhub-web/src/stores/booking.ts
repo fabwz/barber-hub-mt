@@ -99,8 +99,12 @@ export const useBookingStore = defineStore('booking', () => {
   const submitting = ref(false)
   const error = ref<ApiError | null>(null)
   const alternatives = ref<SlotAlternative[]>([])
-  /** A temporary reservation is being cancelled to edit it. */
+  /** A temporary reservation is being cancelled to change it. */
   const releasing = ref(false)
+  /** Why the cancellation failed; `null` when it did not. */
+  const releaseError = ref<ApiError | null>(null)
+  /** The person came back from changing a reservation: the shop view puts the focus on its title. */
+  const returned = ref(false)
   // A selection restored from the storage must be checked against the availability once.
   let pendingRevalidation = false
 
@@ -257,21 +261,56 @@ export const useBookingStore = defineStore('booking', () => {
 
   /**
    * Cancels a temporary reservation of the customer so its space is free again (RF-16, RE-04): going
-   * back to edit it must not collide with its own hold. The caller never offers it with a payment in
-   * progress. A failure changes nothing: the reservation expires by itself at its deadline.
+   * back to change it must not collide with its own hold. Answers whether the space is released. A
+   * 409 means it is already out of the way (expired), so it counts as released; any other failure is
+   * kept in `releaseError` and the reservation stays as it was. The caller never offers it with a
+   * payment in progress.
    */
-  async function release(barberia: string, reserva: string): Promise<void> {
-    if (releasing.value) return
+  async function release(barberia: string, reserva: string): Promise<boolean> {
+    if (releasing.value) return false
     releasing.value = true
+    releaseError.value = null
     try {
       await api.POST('/barberias/{barberia}/reservas/{reserva}/cancelacion', {
         params: { path: { barberia, reserva } },
       })
-    } catch {
-      // Expired, already confirmed or no connection: the way back goes on.
+      return true
+    } catch (caught) {
+      const failure = isApiError(caught) ? caught : networkError(caught)
+      if (failure.status === 409) return true
+      releaseError.value = failure
+      return false
     } finally {
       releasing.value = false
     }
+  }
+
+  /**
+   * Puts back the selection of a reservation that was given up: service, barber and day, and the
+   * space as a suggestion that `revalidate` keeps only if the availability still lists it. The
+   * reservation created is forgotten; booking again creates another one with its own countdown.
+   */
+  function restore(selection: {
+    serviceId: string
+    barberId: string | null
+    date: string
+    slot: ChosenSlot
+  }): void {
+    clearSelection()
+    reservation.value = null
+    releaseError.value = null
+    serviceId.value = selection.serviceId
+    barberId.value = selection.barberId
+    date.value = selection.date
+    slot.value = selection.slot
+    pendingRevalidation = true
+    returned.value = true
+    persist()
+  }
+
+  /** The shop view has moved the focus: forget the request. */
+  function acknowledgeReturn(): void {
+    returned.value = false
   }
 
   return {
@@ -286,6 +325,8 @@ export const useBookingStore = defineStore('booking', () => {
     error,
     alternatives,
     releasing,
+    releaseError,
+    returned,
     enter,
     clear,
     selectService,
@@ -296,5 +337,7 @@ export const useBookingStore = defineStore('booking', () => {
     pickAlternative,
     reserve,
     release,
+    restore,
+    acknowledgeReturn,
   }
 })

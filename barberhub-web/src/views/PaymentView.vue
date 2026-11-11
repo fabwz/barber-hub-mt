@@ -208,6 +208,7 @@ const generalError = computed(() => {
 const announcement = computed(() => {
   if (state.value === 'loading') return 'Cargando el resumen.'
   if (phase.value === 'expired') return 'La reserva venció.'
+  if (booking.releasing) return 'Cambiando la reserva.'
   if (busy.value) return 'Procesando pago.'
   if (paymentState.value === 'aprobado' && !refundPending.value) return 'Su pago fue aprobado.'
   if (paymentState.value === 'rechazado' || paymentState.value === 'fallido') return ''
@@ -228,6 +229,7 @@ function startCountdown(detail: CustomerReservation): void {
 
 async function load(): Promise<void> {
   state.value = 'loading'
+  booking.releaseError = null
   await shopStore.load(enlace.value)
   if (shopStore.status === 'not-found') {
     state.value = 'not-found'
@@ -346,21 +348,24 @@ function chooseAgain(): void {
   method.value = methods.value.length === 1 ? methods.value[0]! : null
 }
 
-const editing = ref(false)
-
 /**
- * «Cambiar servicio u hora»: only offered while the reservation is temporary, unpaid and in time. It
- * cancels it first so the space is free again, then goes back to the selection.
+ * «Cambiar reserva»: only offered while the reservation is temporary, unpaid and in time. It cancels
+ * it so the space is free again and goes back to the shop with the service, the barber and the day
+ * chosen, and the hour as a suggestion. If the cancellation fails the error stays here and nothing
+ * moves.
  */
-async function editReservation(): Promise<void> {
-  if (editing.value) return
-  editing.value = true
-  try {
-    await booking.release(shopId.value, reservationId.value)
-  } finally {
-    editing.value = false
-  }
-  chooseAnotherTime()
+async function changeReservation(): Promise<void> {
+  const detail = reservation.value
+  if (booking.releasing || detail === null) return
+  if (!(await booking.release(shopId.value, reservationId.value))) return
+  booking.enter(shopId.value)
+  booking.restore({
+    serviceId: detail.servicio,
+    barberId: detail.barbero,
+    date: dateOf(detail.inicio),
+    slot: { start: detail.inicio, barberId: detail.barbero },
+  })
+  void router.push({ name: 'shop', params: { enlace: enlace.value } })
 }
 
 function chooseAnotherTime(): void {
@@ -533,13 +538,24 @@ onMounted(() => void load())
               <button
                 v-if="phase === 'form'"
                 type="button"
-                :disabled="editing"
+                :disabled="booking.releasing"
+                :aria-busy="booking.releasing ? 'true' : undefined"
                 class="-ml-3 inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-sm font-medium text-fg transition-colors duration-150 ease-out hover:bg-surface disabled:cursor-progress disabled:opacity-50"
-                @click="editReservation"
+                @click="changeReservation"
               >
-                <span>Cambiar servicio u hora</span>
+                <span>Cambiar reserva</span>
                 <ArrowRight :size="16" :stroke-width="1.5" class="flex-none" aria-hidden="true" />
               </button>
+              <div
+                v-if="booking.releaseError && phase === 'form'"
+                class="mt-2 rounded-card bg-danger-surface"
+              >
+                <ErrorState
+                  message="Error: no pudimos cambiar la reserva."
+                  :description="`${booking.releaseError.detail} Su reserva sigue vigente: puede intentarlo de nuevo o continuar con el pago.`"
+                  @retry="changeReservation"
+                />
+              </div>
               <p
                 v-if="reservation.plazo_cancelacion_horas > 0"
                 class="mt-2 max-w-110 text-sm text-fg-subtle"
