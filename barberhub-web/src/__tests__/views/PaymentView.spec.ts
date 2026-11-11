@@ -6,9 +6,11 @@ import {
   readStoredPayment,
   writeStoredPayment,
 } from '@/composables/usePayment'
+import { BOOKING_STORAGE_KEY, useBookingStore } from '@/stores/booking'
 import { SESSION_STORAGE_KEY } from '@/stores/session'
 import PaymentView from '@/views/PaymentView.vue'
 import { jsonResponse, problem } from '../helpers/http'
+import { MAURICIO } from '../helpers/booking'
 import { mountView } from '../helpers/mountView'
 import {
   ONVO_KEY,
@@ -769,10 +771,20 @@ describe('PaymentView: resuming a payment', () => {
   })
 })
 
-describe('PaymentView: editing the reservation', () => {
-  const link = (wrapper: Wrapper) => button(wrapper, 'Cambiar servicio u hora')
+describe('PaymentView: «Cambiar reserva»', () => {
+  const link = (wrapper: Wrapper) => button(wrapper, 'Cambiar reserva')
+  const bookingStore = () => useBookingStore()
 
-  it('cancels the temporary reservation before going back to the selection', async () => {
+  it('offers a single «Cambiar reserva», with no other way to edit', async () => {
+    const { wrapper } = await open()
+
+    const labels = wrapper.findAll('button').map((b) => b.text())
+    expect(labels.filter((text) => text === 'Cambiar reserva')).toHaveLength(1)
+    expect(labels).not.toContain('Cambiar servicio u hora')
+    expect(labels).not.toContain('Editar reserva')
+  })
+
+  it('cancels the temporary reservation and goes back keeping service, barber and day', async () => {
     const { wrapper, router, cancelCalls } = await open()
 
     await link(wrapper)!.trigger('click')
@@ -780,38 +792,129 @@ describe('PaymentView: editing the reservation', () => {
 
     expect(cancelCalls()).toHaveLength(1)
     expect(router.currentRoute.value.path).toBe('/b/pura-navaja')
+    const booking = bookingStore()
+    expect(booking.serviceId).toBe('s2')
+    expect(booking.barberId).toBe(MAURICIO)
+    expect(booking.date).toBe('2030-03-05')
+    // The old hour only travels as a suggestion; the shop view keeps it if it is still free.
+    expect(booking.slot).toEqual({ start: '2030-03-05T10:30:00-06:00', barberId: MAURICIO })
+    expect(booking.reservation).toBeNull()
+    expect(JSON.parse(sessionStorage.getItem(BOOKING_STORAGE_KEY)!)).toMatchObject({
+      serviceId: 's2',
+      barberId: MAURICIO,
+      date: '2030-03-05',
+    })
   })
 
-  it('goes back even when the cancellation fails', async () => {
-    const { wrapper, router, cancelCalls } = await open({ cancel: () => problem(500) })
+  it('shows the error and does not navigate when the cancellation fails', async () => {
+    const { wrapper, router, cancelCalls } = await open({
+      cancel: () => problem(500, { type: 'error-interno', title: 'Error', detail: 'Falló.' }),
+    })
+
+    await link(wrapper)!.trigger('click')
+    await flushPromises()
+
+    expect(cancelCalls()).toHaveLength(1)
+    expect(router.currentRoute.value.name).toBe('payment')
+    expect(wrapper.get('[role="alert"]').text()).toContain('no pudimos cambiar la reserva')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Su reserva sigue vigente')
+    expect(bookingStore().serviceId).toBeNull()
+    expect(link(wrapper)!.attributes('disabled')).toBeUndefined()
+  })
+
+  it('tries again from the error and goes back once it works', async () => {
+    let attempt = 0
+    const { wrapper, router, cancelCalls } = await open({
+      cancel: () =>
+        ++attempt === 1
+          ? problem(500, { type: 'error-interno', title: 'Error', detail: 'Falló.' })
+          : jsonResponse(200, { data: { estado: 'cancelada_por_cliente' } }),
+    })
+
+    await link(wrapper)!.trigger('click')
+    await flushPromises()
+    await button(wrapper, 'Reintentar')!.trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('shop'))
+
+    expect(cancelCalls()).toHaveLength(2)
+  })
+
+  it('treats a 409 (already expired or cancelled) as released, without an error', async () => {
+    const { wrapper, router } = await open({
+      cancel: () => problem(409, { type: 'conflicto', title: 'Conflicto' }),
+    })
 
     await link(wrapper)!.trigger('click')
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('shop'))
 
-    expect(cancelCalls()).toHaveLength(1)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(bookingStore().serviceId).toBe('s2')
   })
 
-  it('cancels once on a double click', async () => {
-    const { wrapper, router, cancelCalls } = await open()
+  it('blocks the button and announces it while the request is under way, and cancels once on a double click', async () => {
+    let finish: (response: Response) => void = () => {}
+    const { wrapper, router, cancelCalls } = await open({
+      cancel: () => new Promise<Response>((resolve) => (finish = resolve)),
+    })
 
     await link(wrapper)!.trigger('click')
     await link(wrapper)!.trigger('click')
+    await flushPromises()
+
+    expect(link(wrapper)!.attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[role="status"]').text()).toBe('Cambiando la reserva.')
+    expect(router.currentRoute.value.name).toBe('payment')
+    expect(cancelCalls()).toHaveLength(1)
+
+    finish(jsonResponse(200, { data: { estado: 'cancelada_por_cliente' } }))
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('shop'))
-
     expect(cancelCalls()).toHaveLength(1)
   })
 
-  it('is not offered with a payment in progress, once expired or with nothing to pay', async () => {
+  it('is not offered while a SINPE payment is pending', async () => {
     writeStoredPayment({
       enlace: 'pura-navaja',
       reserva: RESERVATION_ID,
       pago: PAYMENT_ID,
       metodo: 'sinpe_movil',
     })
-    const inProgress = await open({}, `${PAYMENT_PAGE}?retorno=1`)
-    expect(link(inProgress.wrapper)).toBeUndefined()
+    const { wrapper, cancelCalls } = await open({}, `${PAYMENT_PAGE}?retorno=1`)
 
-    sessionStorage.removeItem(PAYMENT_STORAGE_KEY)
+    expect(link(wrapper)).toBeUndefined()
+    expect(cancelCalls()).toEqual([])
+  })
+
+  it('is not offered while the confirmation of PayPal is awaited', async () => {
+    writeStoredPayment({
+      enlace: 'pura-navaja',
+      reserva: RESERVATION_ID,
+      pago: PAYMENT_ID,
+      metodo: 'tarjeta',
+    })
+    const { wrapper } = await open(
+      { reservation: () => jsonResponse(200, { data: detail({ pasarela: 'paypal' }) }) },
+      `${PAYMENT_PAGE}?retorno=1`,
+    )
+
+    expect(link(wrapper)).toBeUndefined()
+  })
+
+  it('is not offered once the payment is approved', async () => {
+    writeStoredPayment({
+      enlace: 'pura-navaja',
+      reserva: RESERVATION_ID,
+      pago: PAYMENT_ID,
+      metodo: 'tarjeta',
+    })
+    const { wrapper } = await open(
+      { status: () => jsonResponse(200, { data: payment({ estado: 'aprobado' }) }) },
+      `${PAYMENT_PAGE}?retorno=1`,
+    )
+
+    expect(link(wrapper)).toBeUndefined()
+  })
+
+  it('is not offered once expired or with nothing to pay', async () => {
     const expired = await open({
       reservation: () =>
         jsonResponse(200, {
@@ -827,6 +930,18 @@ describe('PaymentView: editing the reservation', () => {
         }),
     })
     expect(link(free.wrapper)).toBeUndefined()
+  })
+
+  it('shows no late-cancellation notice or classification: a temporary has no deposit', async () => {
+    const { wrapper } = await open({
+      cancel: () =>
+        jsonResponse(200, { data: { estado: 'cancelada_por_cliente', clasificacion: 'tardia' } }),
+    })
+
+    await link(wrapper)!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toMatch(/tard[ií]a|a tiempo|clasificaci/i)
   })
 
   it('«Elegir otro espacio» of an expired reservation cancels nothing', async () => {
