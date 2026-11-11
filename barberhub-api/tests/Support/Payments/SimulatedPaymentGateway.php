@@ -180,7 +180,7 @@ final class SimulatedPaymentGateway implements PaymentGateway
     private function failIfUnavailable(): void
     {
         if ($this->requestRejected) {
-            throw GatewayRequestRejectedException::because('simulated rejection');
+            throw GatewayRequestRejectedException::because('simulated rejection', 'No se pudo procesar el pago. Intente de nuevo en unos minutos.');
         }
 
         if ($this->unavailable) {

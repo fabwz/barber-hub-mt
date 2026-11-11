@@ -87,9 +87,9 @@ final readonly class PayReservation
             $result = $gateway->charge(new ChargeRequest($payment->id, $reservationId, $amount, $command->method, $this->detailsOf($command)));
         } catch (GatewayUnavailableException $exception) {
             return $this->afterCommunicationError($payment, $exception, $now);
-        } catch (GatewayRequestRejectedException) {
+        } catch (GatewayRequestRejectedException $exception) {
             // The provider created no charge with our data: the payment fails and the reservation stays temporary to try again.
-            $payment->fail('gateway_request_rejected', $now);
+            $payment->fail($exception->customerReason, $now);
             $this->payments->save($payment);
 
             return new PaymentOutcome($payment, true, null, false, true);

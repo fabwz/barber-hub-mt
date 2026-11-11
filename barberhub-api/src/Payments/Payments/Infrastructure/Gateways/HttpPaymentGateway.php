@@ -108,7 +108,29 @@ abstract readonly class HttpPaymentGateway implements PaymentGateway
      */
     protected function requireSuccess(Response $response): Response
     {
-        return $response->successful() ? $response : throw GatewayRequestRejectedException::because("{$this->name()} answered HTTP {$response->status()}.");
+        return $response->successful() ? $response : throw GatewayRequestRejectedException::because("{$this->name()} answered HTTP {$response->status()}.", DeclineReasons::REQUEST_REJECTED);
+    }
+
+    /**
+     * Keep what the provider said about a refused payment in the log, for diagnosis, since the customer only gets the translated
+     * sentence. The text is cut short and cleaned of the keys of the adapter and of anything that looks like a card number.
+     */
+    protected function logDecline(string $operation, PaymentId $paymentId, ?string $code, ?string $providerText): void
+    {
+        $clean = fn (?string $value): ?string => $value === null ? null : Str::limit(
+            (string) preg_replace('/\b(?:\d[ -]?){12,18}\d\b/', '[redacted]', str_replace($this->secrets(), '[redacted]', $value)),
+            self::LOGGED_BODY_LIMIT,
+            '...',
+        );
+
+        Log::log('info', 'The payment gateway refused the payment.', [
+            'gateway' => $this->name(),
+            'operation' => $operation,
+            'provider_code' => $clean($code),
+            'provider_message' => $clean($providerText),
+            'payment_id' => $paymentId->value,
+            'request_id' => Context::get(AssignRequestId::CONTEXT_KEY),
+        ]);
     }
 
     /** Write one failure of the provider to the log, with no secret in it. */

@@ -19,6 +19,7 @@ use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
+use Src\Payments\Payments\Infrastructure\Gateways\DeclineReasons;
 use Src\Payments\Payments\Infrastructure\Gateways\OnvoGateway;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\Percentage;
@@ -95,7 +96,7 @@ final class OnvoGatewayTest extends TestCase
         $result = $this->gateway()->charge($this->cardCharge(5000));
 
         $this->assertSame(PaymentStatus::Rejected, $result->status);
-        $this->assertSame('Fondos insuficientes', $result->failureReason);
+        $this->assertSame(DeclineReasons::GENERIC, $result->failureReason);
         $this->assertSame('pi_2', $result->providerPaymentId);
     }
 
@@ -219,7 +220,7 @@ final class OnvoGatewayTest extends TestCase
         $this->assertSame(PaymentStatus::Approved, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
         $rejected = $gateway->status('pi_6', new PaymentId(self::PAYMENT));
         $this->assertSame(PaymentStatus::Rejected, $rejected->status);
-        $this->assertSame('Tarjeta vencida', $rejected->failureReason);
+        $this->assertSame(DeclineReasons::GENERIC, $rejected->failureReason);
         $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
         $this->assertSame(PaymentStatus::Failed, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
         $this->assertSame(PaymentStatus::Pending, $gateway->status('pi_6', new PaymentId(self::PAYMENT))->status);
@@ -244,7 +245,7 @@ final class OnvoGatewayTest extends TestCase
 
         $refused = $gateway->refund('pi_1', Money::of(5000), new PaymentId(self::PAYMENT));
         $this->assertFalse($refused->accepted);
-        $this->assertSame('Already refunded', $refused->failureReason);
+        $this->assertSame(DeclineReasons::REFUND_REFUSED, $refused->failureReason);
 
         $this->expectException(GatewayUnavailableException::class);
         $gateway->refund('pi_1', Money::of(5000), new PaymentId(self::PAYMENT));

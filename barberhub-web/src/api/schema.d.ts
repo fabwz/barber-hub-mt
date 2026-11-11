@@ -983,7 +983,10 @@ export interface components {
             metodo: string;
             /** @description Colones cobrados: el depósito o el total, según la política de la barbería. */
             monto: number;
-            /** @description Motivo del rechazo o del fallo; nulo en los demás estados. */
+            /**
+             * @description Motivo del rechazo o del fallo, siempre en español y con lo que el cliente puede hacer; nulo en los demás estados. Es el mismo con cualquier pasarela y nunca trae el texto del proveedor: un motivo que el sistema no reconoce es una frase genérica.
+             * @example El banco rechazó el pago. Pruebe con otra tarjeta o con otro método.
+             */
             motivo: string | null;
             /** @description Verdadero si el pago se aprobó cuando la reserva ya no se podía confirmar y hay que devolverlo (PA-07). */
             devolucion_pendiente: boolean;

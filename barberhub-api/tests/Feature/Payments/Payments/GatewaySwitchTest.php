@@ -144,7 +144,7 @@ final class GatewaySwitchTest extends TestCase
         $reservation = $this->bookAs($this->ana);
         $id = $this->pay($reservation)->assertCreated()->json('data.id');
 
-        $this->getJson($this->paymentUrl($id))->assertOk()->assertJsonPath('data.estado', 'rechazado')->assertJsonPath('data.motivo', 'The instrument presented was declined.');
+        $this->getJson($this->paymentUrl($id))->assertOk()->assertJsonPath('data.estado', 'rechazado')->assertJsonPath('data.motivo', 'PayPal rechazó el medio de pago. Pruebe con otra tarjeta o con otro método.');
 
         $this->assertSame('temporary', $this->reservationStatus($reservation));
     }

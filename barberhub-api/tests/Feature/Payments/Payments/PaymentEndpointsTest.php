@@ -144,6 +144,7 @@ final class PaymentEndpointsTest extends TestCase
             ->assertJsonPath('type', fn (string $type): bool => str_ends_with($type, '/problemas/datos-invalidos'))
             ->assertJsonPath('detail', 'La pasarela no pudo procesar los datos del pago. Revise los datos e intente de nuevo.');
         $this->assertSame('failed', $this->onlyPaymentOf($reservation)->status);
+        $this->assertSame('No se pudo procesar el pago. Intente de nuevo en unos minutos.', DB::table('payments')->where('reservation_id', $reservation)->value('failure_reason'));
         $this->assertSame('temporary', $this->reservationStatus($reservation));
     }
 
