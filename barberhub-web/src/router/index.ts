@@ -18,6 +18,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/b/:enlace/reserva/:reserva/confirmada',
+    name: 'booking-confirmed',
+    component: () => import('@/views/BookingConfirmedView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/pago/retorno',
     name: 'payment-return',
     component: () => import('@/views/PaymentReturnView.vue'),
