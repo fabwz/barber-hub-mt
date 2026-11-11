@@ -12,18 +12,29 @@ interface Options {
   /** Reads the payment status once. */
   check: () => Promise<Payment | null>
   intervalMs?: number
+  /** Automatic checks to make before giving up the wait; without it the wait has no limit. */
+  maxChecks?: number
 }
 
 /**
  * Asks for the payment status every 3 seconds while `active()` holds. It stops by itself on a final
- * state, on an error (the person asks again) and when the owner is disposed, so no timer leaks.
- * Requests never overlap, and a timer tick never asks once `active()` turns false.
+ * state, on an error (the person asks again), when `maxChecks` automatic checks found it still
+ * pending (`exhausted`) and when the owner is disposed, so no timer leaks. Requests never overlap,
+ * and a timer tick never asks once `active()` turns false.
  */
-export function usePaymentPolling({ active, check, intervalMs = POLLING_INTERVAL_MS }: Options) {
+export function usePaymentPolling({
+  active,
+  check,
+  intervalMs = POLLING_INTERVAL_MS,
+  maxChecks,
+}: Options) {
   const checking = ref(false)
   const error = ref<ApiError | null>(null)
+  /** The wait ran out and the payment is still pending: it stays under verification. */
+  const exhausted = ref(false)
   let timer: ReturnType<typeof setInterval> | null = null
   let inFlight = false
+  let automatic = 0
 
   function stop(): void {
     if (timer !== null) clearInterval(timer)
@@ -42,6 +53,10 @@ export function usePaymentPolling({ active, check, intervalMs = POLLING_INTERVAL
       const result = await check()
       error.value = null
       if (result !== null && result.estado !== 'pendiente') stop()
+      else if (!manual) {
+        automatic += 1
+        if (maxChecks !== undefined && automatic >= maxChecks) exhausted.value = true
+      }
     } catch (caught) {
       error.value = isApiError(caught) ? caught : networkError(caught)
       stop()
@@ -51,7 +66,15 @@ export function usePaymentPolling({ active, check, intervalMs = POLLING_INTERVAL
     }
   }
 
-  const running = computed(() => active() && error.value === null)
+  const running = computed(() => active() && error.value === null && !exhausted.value)
+
+  // Another payment starts a new wait.
+  watch(active, (on) => {
+    if (!on) {
+      automatic = 0
+      exhausted.value = false
+    }
+  })
 
   watch(
     running,
@@ -73,5 +96,5 @@ export function usePaymentPolling({ active, check, intervalMs = POLLING_INTERVAL
 
   onScopeDispose(stop)
 
-  return { checking, error, checkNow, stop }
+  return { checking, error, exhausted, checkNow, stop }
 }

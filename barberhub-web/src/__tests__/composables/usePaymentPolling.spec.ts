@@ -130,4 +130,41 @@ describe('usePaymentPolling', () => {
 
     expect(check).toHaveBeenCalledTimes(1)
   })
+
+  it('gives up the wait after `maxChecks` automatic checks with the payment still pending', async () => {
+    const check = vi.fn().mockResolvedValue(pending)
+    const { polling } = host({ active: () => true, check, maxChecks: 3 })
+
+    await vi.advanceTimersByTimeAsync(9000)
+    expect(check).toHaveBeenCalledTimes(3)
+    expect(polling.exhausted.value).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
+
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(check).toHaveBeenCalledTimes(3)
+  })
+
+  it('after giving up, «Verificar ahora» asks once more without waiting again', async () => {
+    const check = vi.fn().mockResolvedValue(pending)
+    const { polling } = host({ active: () => true, check, maxChecks: 1 })
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(polling.exhausted.value).toBe(true)
+
+    await polling.checkNow()
+
+    expect(check).toHaveBeenCalledTimes(2)
+    expect(polling.exhausted.value).toBe(true)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(check).toHaveBeenCalledTimes(2)
+  })
+
+  it('never gives up without `maxChecks`', async () => {
+    const check = vi.fn().mockResolvedValue(pending)
+    const { polling } = host({ active: () => true, check })
+
+    await vi.advanceTimersByTimeAsync(300_000)
+
+    expect(check).toHaveBeenCalledTimes(100)
+    expect(polling.exhausted.value).toBe(false)
+  })
 })
