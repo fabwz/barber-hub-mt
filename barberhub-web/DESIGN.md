@@ -218,7 +218,7 @@ Barra superior con: Agenda, Reservas, Servicios, Barberos y Pagos. Elemento inac
 ### Aviso
 Tarjeta de 16 px con borde de 1 px, sin sombra. Aparece abajo a la derecha en escritorio y arriba en el celular.
 - **Éxito:** relleno `surface`, borde `line`, check en `accent` y texto `fg`. `role="status"`.
-- **Error:** relleno `danger-surface`, borde `danger-border`, ícono y texto `danger`. `role="alert"`.
+- **Error:** relleno `danger-surface`, **sin borde**, ícono y texto `danger`. `role="alert"`. Ningún panel de error lleva borde (avisos, errores de carga y errores de pago): lo identifican el relleno, el ícono y las palabras. El borde `danger-border` queda solo para campos y casillas con error.
 Los textos nombran el problema y la salida, sin «Error:» doble ni signos de exclamación.
 
 ### Esqueleto de carga
@@ -268,12 +268,11 @@ Ruta `/b/:enlace/pago/:reserva`. Diseño de origen: 6n a 6q (celular) y 9a a 9d 
   - **Vacío:** «No tiene una cita en curso» y «Elija servicio, barbero, fecha y hora. El resumen y el pago aparecen aquí.» con el botón «Reservar cita». En escritorio va centrado con el círculo de 56 px y el ícono de calendario; en celular, a la izquierda entre dos líneas.
   - **Error:** «Error: no pudimos cargar su reserva.» y «Reintentar».
   - **Esperando:** punto amarillo y «Pago pendiente», «Esperando la confirmación de su pago…» y el botón «Verificar ahora». La página consulta sola cada 3 segundos. Con SINPE Móvil se muestran antes las instrucciones: número de destino y monto exacto, cada uno con su botón «Copiar» (que pasa a «Copiado» con un check).
-  - **Tarjeta rechazada:** vuelve el formulario, con el mensaje «Su tarjeta ha sido rechazada. Por favor, pruebe con otra tarjeta o pague con SINPE Móvil.» bajo el número (borde `danger-border`, ícono y texto `danger`). El motivo que devuelve la API no se muestra en este caso.
-  - **SINPE Móvil o PayPal rechazados:** un aviso de error con el motivo de la API y «Elegir otro método».
-  - **Proveedor sin respuesta:** aviso de error («El proveedor de pago no responde. Su pago queda en verificación y no se cobrará dos veces.») y «Verificar ahora».
-  - **Vencida:** «La reserva temporal venció» y «Elegir otro horario».
+  - **Pago rechazado (tarjeta, SINPE Móvil o PayPal):** aviso de error sin borde con el título «No pudimos cobrar su pago.», «Motivo: …» y «Su reserva se mantiene; elija otro método para pagarla.», y el botón «Elegir otro método», que no pierde la reserva. Con tarjeta el motivo es siempre «su tarjeta fue rechazada» (el texto de la pasarela viene en su idioma y no se muestra); con SINPE Móvil o PayPal es el de la API, o una frase genérica si no viene. La cuenta regresiva sigue a la vista mientras la reserva esté vigente. Un pago fallido (no rechazado) dice «No se pudo procesar su pago.» y ofrece «Intentar de nuevo». El mensaje «Su tarjeta ha sido rechazada. Por favor, pruebe con otra tarjeta o pague con SINPE Móvil.» queda solo para cuando la pasarela no acepta los datos de la tarjeta antes del cobro (en el formulario, bajo el número, con borde `danger-border` de campo).
+  - **Estamos verificando su pago:** panel `surface` con borde `line` (no es un error), ícono de reloj, título en peso 500 y «El proveedor de pago no ha respondido. Su pago queda en verificación y no se cobrará dos veces. Puede consultarlo de nuevo cuando quiera.», con «Verificar ahora». Aparece con un 503 al consultar el estado o con el pago aún pendiente tras agotarse la espera del sondeo (3 minutos). Mientras haya un pago pendiente no se puede iniciar otro cobro.
+  - **Reserva vencida:** aviso de error sin borde con «La reserva temporal venció.», «Pasó el plazo para pagar sin que el pago se confirmara, y el espacio se liberó. Elija otro espacio para reservar.» y «Elegir otro espacio», que vuelve a la barbería con el servicio, el barbero y el día elegidos. Si el pago se aprobó pero la reserva ya había vencido (devolución pendiente) no se presenta como éxito: «Recibimos su pago, pero la reserva no pudo confirmarse.», con la devolución a cargo de la barbería, y también «Elegir otro espacio».
   - **Cancelada en PayPal:** aviso informativo «El pago se canceló. Puede intentarlo de nuevo o elegir otro método.»
-- **Temporal hasta el issue #84:** los avisos de pago aprobado, rechazado y vencida son el mínimo para cerrar el pago; la confirmación y sus pantallas finales se diseñan aparte.
+- **Pago aprobado:** la página pasa a «Reserva confirmada» en `/b/:enlace/reserva/:reserva/confirmada`: marca de check en `accent` y un único `h1` «Reserva confirmada» (24 px, peso 400, con el foco), la línea «Su pago de ₡X fue aprobado y el espacio es suyo.» (solo si se conoce el pago) y «Revise los datos de su cita aquí.» (no se promete correo). En escritorio, dos columnas: «Su cita» (el resumen, sin etiqueta de estado) y «Pago» con «Depósito pagado» y «Saldo en el local» (el monto del pago aprobado y el precio menos ese monto), la nota del plazo con el plazo real de la reserva y, abajo, «Volver a la barbería» y «Ver mis reservas» (este último solo cuando exista esa pantalla).
 
 ## Páginas de acceso y de lectura
 

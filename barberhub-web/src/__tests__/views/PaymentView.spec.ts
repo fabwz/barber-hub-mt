@@ -212,7 +212,7 @@ describe('PaymentView: countdown', () => {
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.find('[role="timer"]').exists()).toBe(false)
     expect(live.text()).toBe('La reserva venció.')
-    expect(button(wrapper, 'Elegir otro horario')).toBeDefined()
+    expect(button(wrapper, 'Elegir otro espacio')).toBeDefined()
   })
 
   it('shows an expired reservation at once when vence_en already passed', async () => {
@@ -471,7 +471,7 @@ describe('PaymentView: SINPE Móvil', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
     vi.setSystemTime(new Date('2030-03-05T10:00:00-06:00'))
     let answers = 0
-    const { wrapper, statusCalls } = await paySinpe({
+    const { wrapper, statusCalls, router } = await paySinpe({
       status: () => {
         answers += 1
         return jsonResponse(200, {
@@ -487,7 +487,8 @@ describe('PaymentView: SINPE Móvil', () => {
 
     await vi.advanceTimersByTimeAsync(3000)
     expect(statusCalls()).toHaveLength(2)
-    expect(wrapper.text()).toContain('Su pago de ₡3.333 fue aprobado.')
+    // The confirmation is a lazy route: its chunk loads asynchronously, so it is awaited.
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('booking-confirmed'))
 
     await vi.advanceTimersByTimeAsync(30_000)
     expect(statusCalls()).toHaveLength(2)
@@ -628,19 +629,19 @@ describe('PaymentView: resuming a payment', () => {
     expect(wrapper.find('form').exists()).toBe(false)
   })
 
-  it('shows the approved payment after the return', async () => {
+  it('goes to the confirmed reservation after the return of an approved payment', async () => {
     writeStoredPayment(stored)
-    const { wrapper } = await open(
+    const { router } = await open(
       { status: () => jsonResponse(200, { data: payment({ estado: 'aprobado' }) }) },
       `${PAYMENT_PAGE}?retorno=1`,
     )
 
-    expect(wrapper.text()).toContain('Su pago de ₡3.333 fue aprobado.')
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('booking-confirmed'))
   })
 
-  it('tells that the payment was approved when it can no longer confirm the reservation', async () => {
+  it('does not present as a success a payment that came in when it could no longer confirm the reservation', async () => {
     writeStoredPayment(stored)
-    const { wrapper } = await open(
+    const { wrapper, router } = await open(
       {
         status: () =>
           jsonResponse(200, { data: payment({ estado: 'aprobado', devolucion_pendiente: true }) }),
@@ -650,8 +651,10 @@ describe('PaymentView: resuming a payment', () => {
       `${PAYMENT_PAGE}?retorno=1`,
     )
 
-    expect(wrapper.text()).toContain('Su pago de ₡3.333 fue aprobado.')
-    expect(wrapper.text()).toContain('el pago se le devolverá')
+    expect(router.currentRoute.value.name).toBe('payment')
+    expect(wrapper.text()).toContain('Recibimos su pago, pero la reserva no pudo confirmarse.')
+    expect(wrapper.text()).toContain('pendiente de devolución')
+    expect(wrapper.text()).not.toContain('fue aprobado')
   })
 
   it('ignores a payment stored for another reservation', async () => {
@@ -662,26 +665,28 @@ describe('PaymentView: resuming a payment', () => {
     expect(wrapper.find('form').exists()).toBe(true)
   })
 
-  it('asks for the card again, with the message of the design, when ONVO rejected it', async () => {
+  it('says a card was rejected in Spanish, not with the text of the provider, and lets the person pay again', async () => {
     writeStoredPayment(stored)
     const { wrapper, posts, onvo } = await open(
       {
         status: () =>
           jsonResponse(200, {
-            data: payment({ estado: 'rechazado', motivo: 'Fondos insuficientes.' }),
+            data: payment({ estado: 'rechazado', motivo: 'Transaction declined (test)' }),
           }),
       },
       `${PAYMENT_PAGE}?retorno=1`,
     )
 
-    expect(wrapper.text()).toContain(
-      'Su tarjeta ha sido rechazada. Por favor, pruebe con otra tarjeta o pague con SINPE Móvil.',
-    )
+    expect(wrapper.text()).toContain('No pudimos cobrar su pago.')
+    expect(wrapper.text()).toContain('Motivo: su tarjeta fue rechazada.')
+    expect(wrapper.text()).not.toContain('Transaction declined')
     expect(readStoredPayment()).toBeNull()
-    expect(wrapper.find('form').exists()).toBe(true)
-    expect(input(wrapper, 'cc-number').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.find('form').exists()).toBe(false)
 
-    // Another card makes a new payment.
+    // The reservation is kept and the form is back: another card makes a new payment.
+    await button(wrapper, 'Elegir otro método')!.trigger('click')
+    await flushPromises()
+    await chooseMethod(wrapper, 'tarjeta')
     await fillCard(wrapper)
     await submit(wrapper)
     expect(onvo).toHaveLength(1)
@@ -696,6 +701,8 @@ describe('PaymentView: resuming a payment', () => {
       `${PAYMENT_PAGE}?retorno=1`,
     )
 
+    await button(wrapper, 'Elegir otro método')!.trigger('click')
+    await flushPromises()
     await chooseMethod(wrapper, 'sinpe_movil')
     await fillSinpe(wrapper)
     await submit(wrapper)
@@ -730,7 +737,7 @@ describe('PaymentView: resuming a payment', () => {
   it('keeps the payment under verification when the provider does not answer, and asks again', async () => {
     writeStoredPayment(stored)
     let calls = 0
-    const { wrapper, statusCalls } = await open(
+    const { wrapper, statusCalls, router } = await open(
       {
         status: () => {
           calls += 1
@@ -741,13 +748,13 @@ describe('PaymentView: resuming a payment', () => {
       },
       `${PAYMENT_PAGE}?retorno=1`,
     )
-    await vi.waitFor(() => expect(wrapper.text()).toContain('El proveedor de pago no responde.'))
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Estamos verificando su pago'))
 
     await button(wrapper, 'Verificar ahora')!.trigger('click')
     await flushPromises()
 
     expect(statusCalls()).toHaveLength(2)
-    expect(wrapper.text()).toContain('Su pago de ₡3.333 fue aprobado.')
+    expect(router.currentRoute.value.name).toBe('booking-confirmed')
   })
 
   it('shows that the payment was cancelled and lets the person choose again', async () => {
@@ -822,7 +829,7 @@ describe('PaymentView: editing the reservation', () => {
     expect(link(free.wrapper)).toBeUndefined()
   })
 
-  it('«Elegir otro horario» of an expired reservation cancels nothing', async () => {
+  it('«Elegir otro espacio» of an expired reservation cancels nothing', async () => {
     const { wrapper, router, cancelCalls } = await open({
       reservation: () =>
         jsonResponse(200, {
@@ -830,7 +837,7 @@ describe('PaymentView: editing the reservation', () => {
         }),
     })
 
-    await button(wrapper, 'Elegir otro horario')!.trigger('click')
+    await button(wrapper, 'Elegir otro espacio')!.trigger('click')
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('shop'))
 
     expect(cancelCalls()).toEqual([])

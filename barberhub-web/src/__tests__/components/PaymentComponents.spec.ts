@@ -351,34 +351,79 @@ describe('PaymentStatus', () => {
     expect(wrapper.emitted('check')).toHaveLength(1)
   })
 
-  it('says an approved payment and the refund when it cannot confirm the reservation', () => {
+  it('does not present as a success a payment that came in too late to confirm the reservation (PA-07)', async () => {
     const wrapper = mount(PaymentStatus, {
       props: { state: 'aprobado', amount: 3333, refundPending: true },
     })
 
-    expect(wrapper.text()).toContain('Su pago de ₡3.333 fue aprobado.')
-    expect(wrapper.text()).toContain('el pago se le devolverá')
-    // The banner already says it: no extra label with a dot that cannot be told from the text.
-    expect(wrapper.text()).not.toContain('Pago aprobado')
+    const alert = wrapper.get('[role="alert"]')
+    expect(alert.text()).toContain('Recibimos su pago, pero la reserva no pudo confirmarse.')
+    expect(alert.text()).toContain('pendiente de devolución')
+    expect(wrapper.text()).not.toContain('fue aprobado')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('anotherSpace')).toHaveLength(1)
   })
 
-  it.each(['rechazado', 'fallido'] as const)(
-    'shows the reason of a %s payment and offers another method',
-    async (state) => {
-      const wrapper = mount(PaymentStatus, { props: { state, reason: 'Fondos insuficientes.' } })
+  it('says the payment was approved while the confirmed reservation opens', () => {
+    const wrapper = mount(PaymentStatus, { props: { state: 'aprobado', amount: 3333 } })
 
-      expect(wrapper.get('[role="alert"]').text()).toContain('Fondos insuficientes.')
-      await wrapper.get('button').trigger('click')
-      expect(wrapper.emitted('retry')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Su pago de ₡3.333 fue aprobado.')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('shows the reason of a rejected payment, keeps the reservation and offers another method', async () => {
+    const wrapper = mount(PaymentStatus, {
+      props: { state: 'rechazado', reason: 'El banco no autorizó el cobro' },
+    })
+
+    const alert = wrapper.get('[role="alert"]')
+    expect(alert.text()).toContain('No pudimos cobrar su pago.')
+    expect(alert.text()).toContain('Motivo: El banco no autorizó el cobro.')
+    expect(alert.text()).toContain('Su reserva se mantiene')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+  })
+
+  it.each([null, '', '   '])(
+    'uses a generic message when the API gives no reason (%j)',
+    (reason) => {
+      const wrapper = mount(PaymentStatus, { props: { state: 'rechazado', reason } })
+
+      expect(wrapper.text()).toContain('El pago no se procesó y no se le cobró.')
+      expect(wrapper.text()).not.toContain('Motivo:')
     },
   )
 
-  it('says what happens when the provider does not answer', async () => {
+  it('treats a failed payment as a retryable error, not as a rejection', async () => {
+    const wrapper = mount(PaymentStatus, { props: { state: 'fallido', reason: null } })
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('No se pudo procesar su pago.')
+    expect(wrapper.text()).not.toContain('No pudimos cobrar su pago.')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+  })
+
+  it('says the payment stays under verification when the provider does not answer', async () => {
     const wrapper = mount(PaymentStatus, { props: { state: 'pendiente', unreachable: true } })
 
-    expect(wrapper.text()).toContain('El proveedor de pago no responde.')
-    expect(wrapper.text()).toContain('no se cobrará dos veces')
+    const status = wrapper.get('[role="status"]')
+    expect(status.text()).toContain('Estamos verificando su pago')
+    expect(status.text()).toContain('no se cobrará dos veces')
+    expect(wrapper.text()).not.toContain('Esta página vuelve a consultar sola')
     await wrapper.get('button').trigger('click')
     expect(wrapper.emitted('check')).toHaveLength(1)
+  })
+
+  it('takes the focus to the title when it moves to a final screen', async () => {
+    const wrapper = mount(PaymentStatus, {
+      props: { state: 'pendiente' },
+      attachTo: document.body,
+    })
+
+    await wrapper.setProps({ state: 'rechazado', reason: 'Sin fondos' })
+    await flushPromises()
+
+    expect(document.activeElement?.textContent).toContain('No pudimos cobrar su pago.')
+    wrapper.unmount()
   })
 })

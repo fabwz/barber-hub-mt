@@ -22,6 +22,8 @@ interface Props {
   preview?: boolean
   /** Wide page (1280 px): the banner is 4:1 on desktop. */
   wide?: boolean
+  /** Tag of the shop name. It is the page title (`h1`) unless the page has its own: then `p`, since a screen has one `h1`. */
+  nameTag?: 'h1' | 'p'
 }
 
 const {
@@ -38,6 +40,7 @@ const {
   email,
   preview = false,
   wide = false,
+  nameTag = 'h1',
 } = defineProps<Props>()
 
 // An image that fails to load falls back to the monogram / the compact header.
@@ -146,7 +149,9 @@ const logoSize = computed(() => (showBanner.value ? 'size-18 md:size-22' : 'size
           <span v-else role="img" :aria-label="`Monograma de ${name}`">{{ initials }}</span>
         </div>
         <div class="flex w-full min-w-0 flex-col md:items-center">
-          <h1 class="text-4xl text-balance md:text-center">{{ name }}</h1>
+          <component :is="nameTag" class="text-4xl text-balance md:text-center">{{
+            name
+          }}</component>
           <!-- Desktop: phone, address and social links in one centered row (phone and links share the free space). -->
           <div
             v-if="hasAddress || showCity || hasPhone || hasSocials"

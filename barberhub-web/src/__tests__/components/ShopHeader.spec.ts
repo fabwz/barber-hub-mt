@@ -61,6 +61,14 @@ describe('ShopHeader', () => {
     expect(wrapper.find('[role="img"]').exists()).toBe(false)
   })
 
+  it('the name is the h1 of the page, or a paragraph when the page has its own title', () => {
+    const own = mount(ShopHeader, { props: { ...FULL, nameTag: 'p' } })
+    expect(own.find('h1').exists()).toBe(false)
+    expect(own.text()).toContain('Pura Navaja')
+
+    expect(make(FULL).get('h1').text()).toBe('Pura Navaja')
+  })
+
   it('with logo only: compact header, logo to the left of the name, no banner', () => {
     const wrapper = make({ ...FULL, bannerUrl: undefined })
 

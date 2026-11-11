@@ -12,10 +12,9 @@ const { variant = 'success', visible = true } = defineProps<Props>()
 const isError = computed(() => variant === 'error')
 
 const classes = computed(() => [
-  'flex items-start gap-2 rounded-card border p-4 text-sm',
-  isError.value
-    ? 'border-danger-border bg-danger-surface text-danger'
-    : 'border-line bg-surface text-fg',
+  'flex items-start gap-2 rounded-card p-4 text-sm',
+  // An error has no border (the success notice does): its surface and its icon carry it.
+  isError.value ? 'bg-danger-surface text-danger' : 'border border-line bg-surface text-fg',
 ])
 </script>
 
