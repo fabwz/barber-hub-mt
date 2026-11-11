@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue'
+import { computed, ref, useId, useTemplateRef, watch } from 'vue'
 import { ArrowRight, Calendar, ChevronDown, CircleAlert } from 'lucide-vue-next'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -59,10 +59,8 @@ interface Props {
   alternatives?: TimeSlot[]
   notice?: string | null
   reservation?: PanelReservation | null
-  /** A payment of the reservation is under way: it cannot be edited (the reservation is not cancelled). */
+  /** A payment of the reservation is under way: the person is told to continue to the payment. */
   paymentInProgress?: boolean
-  /** The reservation is being cancelled to edit it. */
-  editing?: boolean
 }
 
 const {
@@ -80,7 +78,6 @@ const {
   notice = null,
   reservation = null,
   paymentInProgress = false,
-  editing = false,
 } = defineProps<Props>()
 
 /** Chosen barber; the empty string is «Sin preferencia». */
@@ -94,10 +91,12 @@ const emit = defineEmits<{
   restart: []
   /** «Continuar al pago» of a temporary reservation. */
   pay: []
-  /** «Editar reserva»: back to the selection, giving the space up. */
-  edit: []
   'pick-alternative': [value: string]
 }>()
+
+const title = useTemplateRef<HTMLElement>('title')
+// The shop view calls it when the person comes back to change a reservation.
+defineExpose({ focusTitle: () => title.value?.focus() })
 
 const barberLabelId = useId()
 const hourLabelId = useId()
@@ -154,7 +153,9 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
     :aria-busy="hasService && hoursState === 'loading'"
   >
     <div class="md:border-b md:border-line md:pb-6">
-      <h2 id="booking-title" class="text-2xl">Reservar cita</h2>
+      <h2 id="booking-title" ref="title" tabindex="-1" class="text-2xl outline-offset-2">
+        Reservar cita
+      </h2>
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
@@ -226,15 +227,6 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
                 </InlineNotice>
                 <div class="flex flex-wrap gap-3">
                   <BaseButton size="large" @click="emit('pay')">Continuar al pago</BaseButton>
-                  <BaseButton
-                    v-if="!paymentInProgress"
-                    size="large"
-                    variant="secondary"
-                    :loading="editing"
-                    @click="emit('edit')"
-                  >
-                    Editar reserva
-                  </BaseButton>
                 </div>
               </template>
             </template>

@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils'
 
 import { todayInCostaRica, addDays } from '@/composables/format'
 import { SESSION_STORAGE_KEY } from '@/stores/session'
-import { BOOKING_STORAGE_KEY } from '@/stores/booking'
+import { BOOKING_STORAGE_KEY, SLOT_GONE_NOTICE, useBookingStore } from '@/stores/booking'
 import ShopView from '@/views/ShopView.vue'
 import { jsonResponse, mockFetch } from '../helpers/http'
 import {
@@ -392,7 +392,7 @@ describe('ShopView · booking', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/b/pura-navaja')
   })
 
-  it('«Editar reserva» cancels the temporary reservation and brings the services back', async () => {
+  it('offers only «Continuar al pago» once the temporary reservation is created', async () => {
     signIn()
     const { wrapper, fetchMock } = await open({
       reserve: () =>
@@ -404,17 +404,16 @@ describe('ShopView · booking', () => {
     await chip(wrapper, '09:00').trigger('click')
     await button(wrapper, 'Reservar').trigger('click')
     await flushPromises()
+
     expect(wrapper.findAll('[role="radio"]')).toHaveLength(0)
-
-    await button(wrapper, 'Editar reserva').trigger('click')
-    await flushPromises()
-
-    expect(requests(fetchMock, 'POST', '/cancelacion')).toHaveLength(1)
-    expect(wrapper.text()).not.toContain('Su reserva')
-    expect(wrapper.findAll('[role="radio"]').length).toBeGreaterThan(0)
+    const labels = wrapper.findAll('button').map((b) => b.text())
+    expect(labels).toContain('Continuar al pago')
+    expect(labels).not.toContain('Editar reserva')
+    expect(labels).not.toContain('Cambiar reserva')
+    expect(requests(fetchMock, 'POST', '/cancelacion')).toHaveLength(0)
   })
 
-  it('does not offer «Editar reserva» while a payment of the reservation is in progress', async () => {
+  it('tells a payment is in progress and cancels nothing', async () => {
     signIn()
     const { wrapper, fetchMock } = await open({
       reserve: () =>
@@ -437,7 +436,7 @@ describe('ShopView · booking', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Tiene un pago en proceso.')
-    expect(wrapper.findAll('button').some((b) => b.text() === 'Editar reserva')).toBe(false)
+    expect(wrapper.findAll('button').map((b) => b.text())).not.toContain('Cambiar reserva')
     expect(requests(fetchMock, 'POST', '/cancelacion')).toHaveLength(0)
   })
 
@@ -457,5 +456,74 @@ describe('ShopView · booking', () => {
 
     expect(wrapper.text()).toContain('Confirmada')
     expect(wrapper.find('[role="timer"]').exists()).toBe(false)
+  })
+})
+
+describe('ShopView · back from «Cambiar reserva»', () => {
+  /** What PaymentView hands over once the temporary reservation is cancelled. */
+  function comeBack(time: string, barberId = MAURICIO) {
+    const booking = useBookingStore()
+    booking.restore({
+      serviceId: SERVICES[0]!.id,
+      barberId,
+      date: TODAY,
+      slot: { start: at(time), barberId },
+    })
+  }
+
+  it('keeps the service, the barber and the day, and suggests the hour while it is still free', async () => {
+    const { wrapper } = await open()
+    comeBack('09:00')
+    await flushPromises()
+
+    expect(wrapper.findAll('[role="radio"]')[0]!.attributes('aria-checked')).toBe('true')
+    expect(wrapper.get('select').element.value).toBe(MAURICIO)
+    expect(chip(wrapper, '09:00').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.text()).not.toContain(SLOT_GONE_NOTICE)
+    expect(button(wrapper, 'Reservar').attributes('disabled')).toBeUndefined()
+  })
+
+  it('leaves the hour for the person to choose when the availability no longer lists it', async () => {
+    const { wrapper } = await open()
+    comeBack('11:00')
+    await flushPromises()
+
+    expect(wrapper.findAll('[role="radio"]')[0]!.attributes('aria-checked')).toBe('true')
+    const pressedHours = wrapper
+      .findAll('button[aria-pressed="true"]')
+      .filter((b) => /^\d\d:\d\d/.test(b.text()))
+    expect(pressedHours).toHaveLength(0)
+    expect(wrapper.text()).toContain(SLOT_GONE_NOTICE)
+    expect(button(wrapper, 'Reservar').attributes('disabled')).toBeDefined()
+  })
+
+  it('puts the focus on the title of the screen and asks for it only once', async () => {
+    const { wrapper } = await open()
+    comeBack('09:00')
+    await flushPromises()
+
+    expect(document.activeElement?.id).toBe('booking-title')
+    expect(useBookingStore().returned).toBe(false)
+    expect(wrapper.get('#booking-title').text()).toBe('Reservar cita')
+  })
+
+  it('creates another reservation with its own countdown when the person books again', async () => {
+    signIn()
+    const { wrapper, fetchMock } = await open({
+      reserve: () =>
+        jsonResponse(201, {
+          data: { ...RESERVATION, id: 'r2', inicio: at('09:00'), fin: at('09:30') },
+        }),
+    })
+    comeBack('09:00')
+    await flushPromises()
+
+    await button(wrapper, 'Reservar').trigger('click')
+    await flushPromises()
+
+    expect(requests(fetchMock, 'POST', '/reservas')).toHaveLength(1)
+    expect(useBookingStore().reservation?.reservation.id).toBe('r2')
+    expect(wrapper.get('[role="timer"]').text()).toContain('10:00')
+    expect(wrapper.text()).toContain('Su reserva')
   })
 })
