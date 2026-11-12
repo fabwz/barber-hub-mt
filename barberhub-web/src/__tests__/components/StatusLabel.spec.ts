@@ -48,4 +48,11 @@ describe('StatusLabel', () => {
     expect(dot.attributes('aria-hidden')).toBe('true')
     expect(dot.classes()).toContain('size-2')
   })
+
+  it('shows only the text, with no dot, when it is plain', () => {
+    const wrapper = mount(StatusLabel, { props: { status: 'confirmed', plain: true } })
+
+    expect(wrapper.text()).toBe('Confirmada')
+    expect(wrapper.find('span > span').exists()).toBe(false)
+  })
 })
