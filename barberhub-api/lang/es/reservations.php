@@ -17,6 +17,19 @@ return [
     'price_invalid' => 'El precio de la reserva debe ser de al menos ₡1.',
     'reschedule_deadline_expired' => 'Ya pasó el plazo para reprogramar esta reserva sin penalización.',
     'reschedule_limit_reached' => 'La reserva ya se reprogramó el máximo de 2 veces.',
+    'proposal' => [
+        'ambiguous' => [
+            'servicio' => 'Hay varios servicios que encajan. ¿Cuál desea reservar?',
+            'barbero' => 'Hay varios barberos que encajan o libres a esa hora. ¿Con cuál desea reservar?',
+        ],
+        'unrecognized' => [
+            'servicio' => 'No encontramos ese servicio en esta barbería. ¿Cuál desea reservar?',
+            'barbero' => 'No encontramos a ese barbero en esta barbería para ese servicio. ¿Con cuál desea reservar?',
+        ],
+        'unavailable' => [
+            'hora' => 'No hay un espacio disponible a esa hora. Puede elegir uno de los más cercanos, si los hay, o probar con otro día.',
+        ],
+    ],
     'slot_unavailable' => 'El espacio ya no está disponible. Elija uno de los espacios alternativos.',
     'start_invalid' => 'El inicio debe escribirse como fecha y hora ISO 8601 con desfase, por ejemplo 2030-03-05T10:00:00-06:00.',
     'transition_not_allowed' => 'La reserva no puede pasar a ese estado.',
