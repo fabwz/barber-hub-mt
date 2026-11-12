@@ -510,6 +510,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/reservas/propuesta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Proponer una reserva a partir de una frase
+         * @description Convierte una `frase` libre (hasta 300 caracteres), por ejemplo «quiero un corte mañana a las 3 con Kevin», en una propuesta estructurada: `servicio`, `barbero`, `fecha` (`AAAA-MM-DD`, con «hoy», «mañana» o «el viernes» resueltos con la fecha de hoy en Costa Rica; una fecha pasada se descarta), `hora` (`HH:MM`) o `franja` (mañana 6:00 a 11:59, tarde 12:00 a 17:59, noche 18:00 a 23:59), `campos_faltantes` (`servicio`, `fecha` u `hora`; el barbero es opcional y nunca falta) y una `aclaracion` corta para pedir lo primero que falta. La propuesta NO está validada (`validada` es siempre `false`): el servicio y el barbero son el texto que dijo la persona, no se contrastan con el catálogo ni con la disponibilidad real, y no se crea ninguna reserva; para reservar se sigue con `POST /reservas`. La frase nunca se guarda y al proveedor solo viajan la frase, la fecha de hoy y los nombres de los servicios y barberos activos de esa barbería. Ejemplo, con hoy miércoles 7 de octubre de 2026: `{"frase": "corte y barba el sábado en la tarde con Kevin"}` responde `{"data": {"servicio": "corte y barba", "barbero": "Kevin", "fecha": "2026-10-10", "hora": null, "franja": {"nombre": "tarde", "desde": "12:00", "hasta": "17:59"}, "campos_faltantes": [], "aclaracion": null, "validada": false}}`. Con `{"frase": "quiero un corte mañana"}` responde `servicio: "corte"`, `fecha: "2026-10-08"`, `hora: null`, `campos_faltantes: ["hora"]` y `aclaracion: "¿A qué hora le gustaría?"`. Está limitada a 10 peticiones por minuto por persona: la siguiente responde 429 `demasiadas-solicitudes` con `Retry-After`. Si el proveedor de IA no responde a tiempo, está caído, no está configurado o devuelve algo inválido, responde 503 `servicio-no-disponible` y se debe reservar con el formulario normal. Una frase vacía o de más de 300 caracteres responde 422 `datos-invalidos`. El dueño o un colaborador de esa barbería recibe 403 `prohibido`; una barbería inexistente, 404 `no-encontrado`.
+         */
+        post: operations["reservations.reservations.propose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/mis-reservas": {
         parameters: {
             query?: never;
@@ -1008,6 +1028,37 @@ export interface components {
          * @enum {string}
          */
         PaymentGateway: "onvo" | "paypal";
+        /** ProponerReserva */
+        ProponerReserva: {
+            /** @description Frase libre del cliente, por ejemplo `quiero un corte mañana a las 3 con Kevin`. Hasta 300 caracteres; no se guarda. */
+            frase: string;
+        };
+        /** PropuestaDeReserva */
+        PropuestaDeReserva: {
+            /** @description Servicio como lo dijo la persona, sin comprobar contra el catálogo; `null` si no lo mencionó. */
+            servicio: string | null;
+            /** @description Barbero como lo dijo la persona, sin comprobar; `null` si no lo mencionó (es opcional). */
+            barbero: string | null;
+            /** @description Día `AAAA-MM-DD` en la zona horaria de Costa Rica, con «hoy», «mañana» o «el viernes» ya resueltos; `null` si no lo mencionó o ya pasó. */
+            fecha: string | null;
+            /** @description Hora `HH:MM` de 24 horas; `null` si la frase no dio una hora exacta. */
+            hora: string | null;
+            /** @description Franja del día cuando la frase dio una en vez de una hora: `manana` (6:00 a 11:59), `tarde` (12:00 a 17:59) o `noche` (18:00 a 23:59). */
+            franja: {
+                /** @enum {string} */
+                nombre: "manana" | "tarde" | "noche";
+                /** @enum {string} */
+                desde: "06:00" | "12:00" | "18:00";
+                /** @enum {string} */
+                hasta: "11:59" | "17:59" | "23:59";
+            } | null;
+            /** @description Lo que falta para poder reservar: `servicio`, `fecha` y `hora` (la franja cuenta como hora). El barbero nunca falta. */
+            campos_faltantes: unknown[];
+            /** @description Pregunta corta para pedir lo primero que falta; `null` si no falta nada. */
+            aclaracion: string | null;
+            /** @description Siempre `false`: la propuesta no se contrastó con el catálogo ni con la disponibilidad real, y no creó ninguna reserva. */
+            validada: boolean;
+        };
         /** RegistrarCierre */
         RegistrarCierre: {
             /**
@@ -2188,6 +2239,37 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ReservaCreada"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "reservations.reservations.propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProponerReserva"];
+            };
+        };
+        responses: {
+            /** @description `PropuestaDeReserva` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PropuestaDeReserva"];
                     };
                 };
             };
