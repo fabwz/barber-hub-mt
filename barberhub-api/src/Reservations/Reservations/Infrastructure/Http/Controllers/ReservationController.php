@@ -17,15 +17,18 @@ use Src\Reservations\Reservations\Application\UseCases\GetCustomerReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetStaffReservation;
 use Src\Reservations\Reservations\Application\UseCases\ListCustomerReservations;
 use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
+use Src\Reservations\Reservations\Application\UseCases\ProposeReservation;
 use Src\Reservations\Reservations\Application\UseCases\RescheduleReservation;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CreateReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Requests\ProposeReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\RescheduleReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CancelledReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CreatedReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationDetailResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationListItemResource;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationProposalResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\ReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\StaffReservationDetailResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\StaffReservationListItemResource;
@@ -52,6 +55,16 @@ final readonly class ReservationController
         return new CreatedReservationResource($reservation, $quote->one($reservation, $now))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /** Understand a phrase and propose a reservation without creating it. */
+    #[Endpoint(
+        title: 'Proponer una reserva a partir de una frase',
+        description: 'Convierte una `frase` libre (hasta 300 caracteres), por ejemplo «quiero un corte mañana a las 3 con Kevin», en una propuesta estructurada: `servicio`, `barbero`, `fecha` (`AAAA-MM-DD`, con «hoy», «mañana» o «el viernes» resueltos con la fecha de hoy en Costa Rica; una fecha pasada se descarta), `hora` (`HH:MM`) o `franja` (mañana 6:00 a 11:59, tarde 12:00 a 17:59, noche 18:00 a 23:59), `campos_faltantes` (`servicio`, `fecha` u `hora`; el barbero es opcional y nunca falta) y una `aclaracion` corta para pedir lo primero que falta. La propuesta NO está validada (`validada` es siempre `false`): el servicio y el barbero son el texto que dijo la persona, no se contrastan con el catálogo ni con la disponibilidad real, y no se crea ninguna reserva; para reservar se sigue con `POST /reservas`. La frase nunca se guarda y al proveedor solo viajan la frase, la fecha de hoy y los nombres de los servicios y barberos activos de esa barbería. Ejemplo, con hoy miércoles 7 de octubre de 2026: `{"frase": "corte y barba el sábado en la tarde con Kevin"}` responde `{"data": {"servicio": "corte y barba", "barbero": "Kevin", "fecha": "2026-10-10", "hora": null, "franja": {"nombre": "tarde", "desde": "12:00", "hasta": "17:59"}, "campos_faltantes": [], "aclaracion": null, "validada": false}}`. Con `{"frase": "quiero un corte mañana"}` responde `servicio: "corte"`, `fecha: "2026-10-08"`, `hora: null`, `campos_faltantes: ["hora"]` y `aclaracion: "¿A qué hora le gustaría?"`. Está limitada a 10 peticiones por minuto por persona: la siguiente responde 429 `demasiadas-solicitudes` con `Retry-After`. Si el proveedor de IA no responde a tiempo, está caído, no está configurado o devuelve algo inválido, responde 503 `servicio-no-disponible` y se debe reservar con el formulario normal. Una frase vacía o de más de 300 caracteres responde 422 `datos-invalidos`. El dueño o un colaborador de esa barbería recibe 403 `prohibido`; una barbería inexistente, 404 `no-encontrado`.',
+    )]
+    public function propose(ProposeReservationRequest $request, ProposeReservation $proposeReservation): ReservationProposalResource
+    {
+        return new ReservationProposalResource($proposeReservation->execute($request->phrase(), $this->clock->now()));
     }
 
     /** List the reservations the person made in the barbershop. */

@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 return [
 
+    'assistant_unavailable' => 'El asistente de reservas no está disponible en este momento. Puede reservar con el formulario normal.',
     'author_system' => 'sistema',
     'cancellation_deadline_invalid' => 'El plazo de cancelación no puede ser negativo.',
+    'clarification' => [
+        'servicio' => '¿Qué servicio le gustaría reservar?',
+        'fecha' => '¿Para qué día le gustaría reservar?',
+        'hora' => '¿A qué hora le gustaría?',
+    ],
     'customer_overlap' => 'Ya tiene una reserva confirmada que se solapa con ese horario en esta barbería.',
     'payment_window_expired' => 'El plazo para pagar esta reserva venció y su espacio fue liberado.',
     'price_invalid' => 'El precio de la reserva debe ser de al menos ₡1.',

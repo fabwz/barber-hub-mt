@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Infrastructure;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Src\Reservations\Reservations\Application\Contracts\ActiveCollaboratorNames;
+use Src\Reservations\Reservations\Application\Contracts\ActiveServiceNames;
 use Src\Reservations\Reservations\Application\Contracts\AuthorDirectory;
+use Src\Reservations\Reservations\Application\Contracts\BarbershopPresence;
 use Src\Reservations\Reservations\Application\Contracts\BlockedIntervalReader;
 use Src\Reservations\Reservations\Application\Contracts\BookableServices;
 use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
@@ -26,16 +32,20 @@ use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Infrastructure\Accounts\UsersAuthorDirectory;
 use Src\Reservations\Reservations\Infrastructure\Ai\GeminiReservationExtractor;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityFreeSlots;
+use Src\Reservations\Reservations\Infrastructure\Barbershops\BarbershopsBarbershopPresence;
 use Src\Reservations\Reservations\Infrastructure\Barbershops\BarbershopsCancellationDeadlines;
 use Src\Reservations\Reservations\Infrastructure\Barbershops\BarbershopsPaymentRequirement;
+use Src\Reservations\Reservations\Infrastructure\Collaborators\CollaboratorsActiveCollaboratorNames;
 use Src\Reservations\Reservations\Infrastructure\Collaborators\CollaboratorsCollaboratorDirectory;
 use Src\Reservations\Reservations\Infrastructure\Collaborators\CollaboratorsCollaboratorLock;
+use Src\Reservations\Reservations\Infrastructure\Console\ExtractReservationCommand;
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerDirectory;
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerMemberships;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentAmounts;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentChannels;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentBlockedIntervalReader;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
+use Src\Reservations\Reservations\Infrastructure\Services\ServicesActiveServiceNames;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesBookableServices;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesServiceNames;
 
@@ -61,7 +71,20 @@ final class ReservationsServiceProvider extends ServiceProvider
         CustomerDirectory::class => MembershipsCustomerDirectory::class,
         ServiceNames::class => ServicesServiceNames::class,
         AuthorDirectory::class => UsersAuthorDirectory::class,
+        BarbershopPresence::class => BarbershopsBarbershopPresence::class,
+        ActiveServiceNames::class => ServicesActiveServiceNames::class,
+        ActiveCollaboratorNames::class => CollaboratorsActiveCollaboratorNames::class,
     ];
+
+    /** Limit the proposals by phrase to 10 a minute per person (RF-37): each one spends a call of the free tier of the provider. */
+    public function boot(): void
+    {
+        RateLimiter::for('reservation-proposals', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->user()?->getAuthIdentifier()));
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([ExtractReservationCommand::class]);
+        }
+    }
 
     /** Bind the Gemini adapter with its configuration and the extraction port with the provider chosen in config/ai.php. */
     public function register(): void
