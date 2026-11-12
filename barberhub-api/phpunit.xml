@@ -36,6 +36,8 @@
         <env name="GEMINI_API_KEY" value="" force="true"/>
         <env name="GEMINI_MODEL" value="" force="true"/>
         <env name="GEMINI_BASE_URL" value="" force="true"/>
+        <!-- The circuit of the provider keeps its state in memory in the tests, never in storage/. -->
+        <env name="AI_CIRCUIT_CACHE_STORE" value="array" force="true"/>
         <!-- Only for tests: the real queue driver is still pending (RD-11). -->
         <env name="QUEUE_CONNECTION" value="sync"/>
     </php>

@@ -13,6 +13,7 @@ use Src\Shared\Domain\Exceptions\BusinessRuleException;
 use Src\Shared\Domain\Exceptions\DomainException;
 use Src\Shared\Domain\Exceptions\HasInvalidField;
 use Src\Shared\Domain\Exceptions\HasProblemMembers;
+use Src\Shared\Domain\Exceptions\HasRetryAfter;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\Exceptions\NotFoundException;
 use Src\Shared\Domain\Exceptions\TooManyRequestsException;
@@ -64,7 +65,14 @@ final readonly class ProblemDetailsRenderer
             $extensions['errores'] = [$exception->field() => [$detail]];
         }
 
-        return $this->respond($this->typeOfDomainException($exception), $detail, extensions: $extensions);
+        $retryAfter = $exception instanceof HasRetryAfter ? $exception->retryAfterSeconds() : null;
+
+        return $this->respond(
+            $this->typeOfDomainException($exception),
+            $detail,
+            extensions: $extensions,
+            headers: $retryAfter === null ? [] : ['Retry-After' => (string) max(1, $retryAfter)],
+        );
     }
 
     /** Classify a domain exception into a problem type. */

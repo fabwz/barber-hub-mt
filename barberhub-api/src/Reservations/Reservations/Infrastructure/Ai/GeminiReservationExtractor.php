@@ -21,8 +21,9 @@ use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
  * The reservation extractor with Google Gemini (`models/{model}:generateContent`). One call, 10 s in total and 5 s to connect
  * (IA-05, RNF-11), no retries.
  *
- * - A timeout, a lost connection, a 429 or a 5xx is `ExtractorUnavailableException`. So is a 401 or a 403 (our key), logged as an
- *   error, and so is having no key: the provider is never called without one.
+ * - A timeout, a lost connection, a 429 (keeping its `Retry-After`) or a 5xx is `ExtractorUnavailableException`. So is a 401 or a 403
+ *   (our key), logged as an error, and so is having no key: the provider is never called without one. The circuit breaker around
+ *   this adapter (`CircuitBreakerReservationExtractor`) reads the cause of each one.
  * - Any other 4xx, or having no model, is our configuration (`ExtractorMisconfiguredException`).
  * - A 2xx whose content is not the expected shape is `ExtractionInvalidException` (see `GeminiExtractionParser`).
  *
@@ -83,7 +84,7 @@ final readonly class GeminiReservationExtractor implements ReservationExtractor
         if ($this->apiKey === '') {
             $this->record('warning', 'unavailable', $started, $length, null, 'no_key');
 
-            throw ExtractorUnavailableException::because('no key is configured (GEMINI_API_KEY).');
+            throw ExtractorUnavailableException::notConfigured();
         }
 
         try {
@@ -126,10 +127,16 @@ final readonly class GeminiReservationExtractor implements ReservationExtractor
         if ($status === 401 || $status === 403) {
             $this->record('error', 'unavailable', $started, $length, $status, 'credentials_refused');
 
-            throw ExtractorUnavailableException::because("the provider refused the credentials (HTTP {$status}).");
+            throw ExtractorUnavailableException::credentialsRefused($status);
         }
 
-        if ($status === 429 || $response->serverError()) {
+        if ($status === 429) {
+            $this->record('warning', 'unavailable', $started, $length, $status, 'provider_error');
+
+            throw ExtractorUnavailableException::rateLimited($this->retryAfter($response));
+        }
+
+        if ($response->serverError()) {
             $this->record('warning', 'unavailable', $started, $length, $status, 'provider_error');
 
             throw ExtractorUnavailableException::because("the provider answered HTTP {$status}.");
@@ -138,6 +145,14 @@ final readonly class GeminiReservationExtractor implements ReservationExtractor
         $this->record('error', 'misconfigured', $started, $length, $status, 'request_rejected');
 
         throw ExtractorMisconfiguredException::because("the provider rejected the request (HTTP {$status}).");
+    }
+
+    /** The seconds the provider asks to wait (`Retry-After` as a number), within one hour; null when it says nothing usable. */
+    private function retryAfter(Response $response): ?int
+    {
+        $value = trim($response->header('Retry-After'));
+
+        return $value !== '' && ctype_digit($value) ? min((int) $value, 3600) : null;
     }
 
     /**

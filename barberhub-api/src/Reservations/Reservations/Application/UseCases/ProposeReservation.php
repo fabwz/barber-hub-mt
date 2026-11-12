@@ -51,7 +51,9 @@ final readonly class ProposeReservation
 
         try {
             $extracted = $this->extractor->extract($phrase, new ExtractionContext($this->services->all(), $this->collaborators->all(), $now));
-        } catch (ExtractorUnavailableException|ExtractionInvalidException|ExtractorMisconfiguredException) {
+        } catch (ExtractorUnavailableException $exception) {
+            throw ReservationAssistantUnavailableException::create($exception->retryAfterSeconds);
+        } catch (ExtractionInvalidException|ExtractorMisconfiguredException) {
             throw ReservationAssistantUnavailableException::create();
         }
 
