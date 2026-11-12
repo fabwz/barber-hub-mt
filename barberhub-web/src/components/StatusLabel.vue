@@ -16,6 +16,8 @@ type Tone = 'warning' | 'accent' | 'danger' | 'ring'
 
 interface Props {
   status: ReservationStatus | PaymentStatus
+  /** Only the text, with no dot (the reservation screens of «Mis reservas»). */
+  plain?: boolean
 }
 
 // Texts and dots from the two status tables in DESIGN.md.
@@ -34,7 +36,7 @@ const STATUSES: Record<ReservationStatus | PaymentStatus, { text: string; tone: 
   refunded: { text: 'Reembolsado', tone: 'ring' },
 }
 
-const { status } = defineProps<Props>()
+const { status, plain = false } = defineProps<Props>()
 
 const current = computed(() => STATUSES[status])
 
@@ -51,10 +53,10 @@ const dotClass = computed(
 
 <template>
   <span
-    class="inline-flex items-center gap-2 text-xs font-medium"
-    :class="current.tone === 'ring' ? 'text-fg-muted' : 'text-fg'"
+    class="inline-flex items-center gap-2 font-medium"
+    :class="[plain ? 'text-sm' : 'text-xs', current.tone === 'ring' ? 'text-fg-muted' : 'text-fg']"
   >
-    <span class="size-2 shrink-0 rounded-full" :class="dotClass" aria-hidden="true" />
+    <span v-if="!plain" class="size-2 shrink-0 rounded-full" :class="dotClass" aria-hidden="true" />
     {{ current.text }}
   </span>
 </template>

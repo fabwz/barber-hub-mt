@@ -13,9 +13,11 @@ export interface PickerDay {
 
 interface Props {
   days: PickerDay[]
+  /** Desktop: the days wrap onto several lines instead of scrolling sideways (a wide column). */
+  wrap?: boolean
 }
 
-const { days } = defineProps<Props>()
+const { days, wrap = false } = defineProps<Props>()
 const selected = defineModel<string | null>({ default: null })
 
 const calendarId = useId()
@@ -128,6 +130,7 @@ function cellClasses(cell: { value: string; off: boolean }): string[] {
       role="group"
       aria-label="Fecha. Use las flechas del teclado o deslice"
       class="scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5 pt-0.5 pb-1 md:mx-0 md:mt-4 md:px-0"
+      :class="wrap ? 'md:flex-wrap md:overflow-visible' : ''"
       @keydown="onKeydown"
     >
       <button
