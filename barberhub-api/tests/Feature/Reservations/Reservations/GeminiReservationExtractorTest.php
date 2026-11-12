@@ -19,6 +19,7 @@ use Src\Reservations\Reservations\Application\DTOs\ExtractionContext;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractionInvalidException;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorMisconfiguredException;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorUnavailableException;
+use Src\Reservations\Reservations\Infrastructure\Ai\CircuitBreakerReservationExtractor;
 use Src\Reservations\Reservations\Infrastructure\Ai\GeminiReservationExtractor;
 use Tests\Support\Reservations\FakeReservationExtractor;
 use Tests\TestCase;
@@ -246,7 +247,7 @@ final class GeminiReservationExtractorTest extends TestCase
         }
     }
 
-    /** The port is bound to the adapter of the provider named in config/ai.php, with its key, model and base URL. */
+    /** The port is bound to the adapter of the provider named in config/ai.php, with its key, model and base URL, behind the circuit breaker (#72). */
     public function test_the_port_resolves_to_the_adapter_of_the_configuration(): void
     {
         config([
@@ -258,7 +259,7 @@ final class GeminiReservationExtractorTest extends TestCase
 
         $extractor = $this->app->make(ReservationExtractor::class);
 
-        $this->assertInstanceOf(GeminiReservationExtractor::class, $extractor);
+        $this->assertInstanceOf(CircuitBreakerReservationExtractor::class, $extractor);
         $this->assertSame('corte', $extractor->extract('un corte', $this->context())->service);
         Http::assertSent(fn (Request $request): bool => $request->header('x-goog-api-key') === [self::KEY]);
     }

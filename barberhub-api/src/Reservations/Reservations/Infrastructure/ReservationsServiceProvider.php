@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Infrastructure;
 
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Request;
@@ -33,7 +34,10 @@ use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorMisconfiguredException;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Infrastructure\Accounts\UsersAuthorDirectory;
+use Src\Reservations\Reservations\Infrastructure\Ai\AiCircuitStore;
+use Src\Reservations\Reservations\Infrastructure\Ai\CircuitBreakerReservationExtractor;
 use Src\Reservations\Reservations\Infrastructure\Ai\GeminiReservationExtractor;
+use Src\Reservations\Reservations\Infrastructure\Ai\ReservationAssistantStatus;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityFreeSlots;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityProposalAvailability;
 use Src\Reservations\Reservations\Infrastructure\Barbershops\BarbershopsBarbershopPresence;
@@ -54,6 +58,8 @@ use Src\Reservations\Reservations\Infrastructure\Services\ServicesActiveServiceN
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesBookableServices;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesProposableServices;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesServiceNames;
+use Src\Shared\Domain\Contracts\AiAvailability;
+use Src\Shared\Domain\Contracts\Clock;
 
 final class ReservationsServiceProvider extends ServiceProvider
 {
@@ -95,7 +101,11 @@ final class ReservationsServiceProvider extends ServiceProvider
         }
     }
 
-    /** Bind the Gemini adapter with its configuration and the extraction port with the provider chosen in config/ai.php. */
+    /**
+     * Bind the Gemini adapter with its configuration and the extraction port with the provider chosen in config/ai.php, behind the
+     * circuit breaker (IA-05): the use cases and the `ai:extract` command get the same path. Also bind the state of the provider for
+     * the health route.
+     */
     public function register(): void
     {
         $this->app->bind(GeminiReservationExtractor::class, fn (Application $app): GeminiReservationExtractor => new GeminiReservationExtractor(
@@ -105,11 +115,34 @@ final class ReservationsServiceProvider extends ServiceProvider
             (string) config('ai.gemini.base_url'),
         ));
 
+        $this->app->bind(AiCircuitStore::class, fn (Application $app): AiCircuitStore => new AiCircuitStore(
+            $app->make(CacheFactory::class),
+            is_string(config('ai.circuit.store')) ? config('ai.circuit.store') : null,
+            (string) config('ai.provider'),
+        ));
+
         $this->app->bind(ReservationExtractor::class, function (Application $app): ReservationExtractor {
             $class = config('ai.providers.'.config('ai.provider'));
             $extractor = is_string($class) ? $app->make($class) : null;
 
-            return $extractor instanceof ReservationExtractor ? $extractor : throw ExtractorMisconfiguredException::because('the provider in config/ai.php has no adapter.');
+            if (! $extractor instanceof ReservationExtractor) {
+                throw ExtractorMisconfiguredException::because('the provider in config/ai.php has no adapter.');
+            }
+
+            return new CircuitBreakerReservationExtractor(
+                $extractor,
+                $app->make(AiCircuitStore::class),
+                $app->make(Clock::class),
+                (string) config('ai.provider'),
+                max(1, (int) config('ai.circuit.failures')),
+                max(1, (int) config('ai.circuit.window_seconds')),
+                max(1, (int) config('ai.circuit.open_seconds')),
+            );
         });
+
+        $this->app->bind(AiAvailability::class, fn (Application $app): AiAvailability => new ReservationAssistantStatus(
+            $app->make(AiCircuitStore::class),
+            (string) config('ai.'.config('ai.provider').'.api_key') !== '' && (string) config('ai.'.config('ai.provider').'.model') !== '',
+        ));
     }
 }
