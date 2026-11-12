@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { CalendarDays } from 'lucide-vue-next'
 
 import BookingPanel, {
   type PanelFailure,
@@ -281,6 +282,15 @@ async function reserve(): Promise<void> {
         />
       </div>
       <div class="px-5 pt-6 pb-8 md:px-8 md:pt-8">
+        <div v-if="session.isAuthenticated" class="mb-4 flex justify-end">
+          <RouterLink
+            :to="{ name: 'my-bookings', params: { enlace: link } }"
+            class="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:border-line-hover"
+          >
+            <CalendarDays :size="16" :stroke-width="1.5" aria-hidden="true" />
+            Mis reservas
+          </RouterLink>
+        </div>
         <BookingPanel
           v-if="store.shop.services.length > 0"
           ref="panel"

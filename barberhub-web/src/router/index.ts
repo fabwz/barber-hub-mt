@@ -24,6 +24,18 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/b/:enlace/mis-reservas',
+    name: 'my-bookings',
+    component: () => import('@/views/MyBookingsView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/b/:enlace/mis-reservas/:reserva',
+    name: 'booking-detail',
+    component: () => import('@/views/BookingDetailView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/pago/retorno',
     name: 'payment-return',
     component: () => import('@/views/PaymentReturnView.vue'),
