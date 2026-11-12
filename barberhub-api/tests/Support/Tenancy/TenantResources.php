@@ -36,6 +36,7 @@ final class TenantResources
     public const array CUSTOMER_ROUTES = [
         'POST api/v1/barberias/{barberia}/reservas',
         'GET api/v1/barberias/{barberia}/mis-reservas',
+        'POST api/v1/barberias/{barberia}/reservas/propuesta',
     ];
 
     /**

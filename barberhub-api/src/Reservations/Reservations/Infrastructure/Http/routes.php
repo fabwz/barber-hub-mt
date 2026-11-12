@@ -11,6 +11,15 @@ Route::post('barberias/{barberia}/reservas', [ReservationController::class, 'sto
     ->name('reservations.reservations.store')
     ->whereUuid('barberia');
 
+// A customer asks for a proposal from a phrase (RF-37). Like booking, it is an exception of RD-18: a person without a role goes
+// through and the owner or a collaborator of the barbershop gets 403. It creates nothing and calls an external provider, so each
+// person may ask 10 times a minute; the limiter comes after the barbershop so a request refused there costs no turn. It is
+// declared before the detail so that "propuesta" is never read as a reservation.
+Route::post('barberias/{barberia}/reservas/propuesta', [ReservationController::class, 'propose'])
+    ->middleware(['auth:sanctum', 'barbershop:customer', 'throttle:reservation-proposals'])
+    ->name('reservations.reservations.propose')
+    ->whereUuid('barberia');
+
 // A customer reads their own reservations: a person without a role gets an empty list, not a 404 (RD-18, CL-04). The
 // owner or a collaborator of the barbershop is refused with 403 by the same mode.
 Route::get('barberias/{barberia}/mis-reservas', [ReservationController::class, 'mine'])

@@ -35,8 +35,8 @@ final readonly class ScopeRequestToBarbershop
      * for the operations that create the first membership: a person without a role goes through (the operation creates
      * the membership in its own transaction, UP-09), a customer too, and an owner or collaborator of the barbershop is
      * refused with 403 (UP-07). The reads of the person's own data (my reservations, #57) use the same mode: without a
-     * role the page is empty because the use case finds no customer role, and nothing is created. The AI proposal is not
-     * a mode yet.
+     * role the page is empty because the use case finds no customer role, and nothing is created. The AI proposal (RF-37) uses it too: it
+     * creates nothing and the use case answers 404 itself when the barbershop does not exist.
      */
     public function handle(Request $request, Closure $next, string $mode = self::FROM_MEMBERSHIP): Response
     {
