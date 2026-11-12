@@ -1738,6 +1738,66 @@
                 }
             }
         },
+        "/barberias/{barberia}/reservas/propuesta": {
+            "post": {
+                "operationId": "reservations.reservations.propose",
+                "description": "Convierte una `frase` libre (hasta 300 caracteres), por ejemplo \u00abquiero un corte ma\u00f1ana a las 3 con Kevin\u00bb, en una propuesta estructurada: `servicio`, `barbero`, `fecha` (`AAAA-MM-DD`, con \u00abhoy\u00bb, \u00abma\u00f1ana\u00bb o \u00abel viernes\u00bb resueltos con la fecha de hoy en Costa Rica; una fecha pasada se descarta), `hora` (`HH:MM`) o `franja` (ma\u00f1ana 6:00 a 11:59, tarde 12:00 a 17:59, noche 18:00 a 23:59), `campos_faltantes` (`servicio`, `fecha` u `hora`; el barbero es opcional y nunca falta) y una `aclaracion` corta para pedir lo primero que falta. La propuesta NO est\u00e1 validada (`validada` es siempre `false`): el servicio y el barbero son el texto que dijo la persona, no se contrastan con el cat\u00e1logo ni con la disponibilidad real, y no se crea ninguna reserva; para reservar se sigue con `POST /reservas`. La frase nunca se guarda y al proveedor solo viajan la frase, la fecha de hoy y los nombres de los servicios y barberos activos de esa barber\u00eda. Ejemplo, con hoy mi\u00e9rcoles 7 de octubre de 2026: `{\"frase\": \"corte y barba el s\u00e1bado en la tarde con Kevin\"}` responde `{\"data\": {\"servicio\": \"corte y barba\", \"barbero\": \"Kevin\", \"fecha\": \"2026-10-10\", \"hora\": null, \"franja\": {\"nombre\": \"tarde\", \"desde\": \"12:00\", \"hasta\": \"17:59\"}, \"campos_faltantes\": [], \"aclaracion\": null, \"validada\": false}}`. Con `{\"frase\": \"quiero un corte ma\u00f1ana\"}` responde `servicio: \"corte\"`, `fecha: \"2026-10-08\"`, `hora: null`, `campos_faltantes: [\"hora\"]` y `aclaracion: \"\u00bfA qu\u00e9 hora le gustar\u00eda?\"`. Est\u00e1 limitada a 10 peticiones por minuto por persona: la siguiente responde 429 `demasiadas-solicitudes` con `Retry-After`. Si el proveedor de IA no responde a tiempo, est\u00e1 ca\u00eddo, no est\u00e1 configurado o devuelve algo inv\u00e1lido, responde 503 `servicio-no-disponible` y se debe reservar con el formulario normal. Una frase vac\u00eda o de m\u00e1s de 300 caracteres responde 422 `datos-invalidos`. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`; una barber\u00eda inexistente, 404 `no-encontrado`.",
+                "summary": "Proponer una reserva a partir de una frase",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProponerReserva"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`PropuestaDeReserva`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/PropuestaDeReserva"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/mis-reservas": {
             "get": {
                 "operationId": "reservations.reservations.mine",
@@ -3307,6 +3367,118 @@
                     "paypal"
                 ],
                 "title": "PaymentGateway"
+            },
+            "ProponerReserva": {
+                "type": "object",
+                "properties": {
+                    "frase": {
+                        "type": "string",
+                        "description": "Frase libre del cliente, por ejemplo `quiero un corte ma\u00f1ana a las 3 con Kevin`. Hasta 300 caracteres; no se guarda.",
+                        "maxLength": 300
+                    }
+                },
+                "required": [
+                    "frase"
+                ],
+                "title": "ProponerReserva"
+            },
+            "PropuestaDeReserva": {
+                "type": "object",
+                "properties": {
+                    "servicio": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Servicio como lo dijo la persona, sin comprobar contra el cat\u00e1logo; `null` si no lo mencion\u00f3."
+                    },
+                    "barbero": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Barbero como lo dijo la persona, sin comprobar; `null` si no lo mencion\u00f3 (es opcional)."
+                    },
+                    "fecha": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "D\u00eda `AAAA-MM-DD` en la zona horaria de Costa Rica, con \u00abhoy\u00bb, \u00abma\u00f1ana\u00bb o \u00abel viernes\u00bb ya resueltos; `null` si no lo mencion\u00f3 o ya pas\u00f3."
+                    },
+                    "hora": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora `HH:MM` de 24 horas; `null` si la frase no dio una hora exacta."
+                    },
+                    "franja": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Franja del d\u00eda cuando la frase dio una en vez de una hora: `manana` (6:00 a 11:59), `tarde` (12:00 a 17:59) o `noche` (18:00 a 23:59).",
+                        "properties": {
+                            "nombre": {
+                                "type": "string",
+                                "enum": [
+                                    "manana",
+                                    "tarde",
+                                    "noche"
+                                ]
+                            },
+                            "desde": {
+                                "type": "string",
+                                "enum": [
+                                    "06:00",
+                                    "12:00",
+                                    "18:00"
+                                ]
+                            },
+                            "hasta": {
+                                "type": "string",
+                                "enum": [
+                                    "11:59",
+                                    "17:59",
+                                    "23:59"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "nombre",
+                            "desde",
+                            "hasta"
+                        ]
+                    },
+                    "campos_faltantes": {
+                        "type": "array",
+                        "description": "Lo que falta para poder reservar: `servicio`, `fecha` y `hora` (la franja cuenta como hora). El barbero nunca falta.",
+                        "items": {}
+                    },
+                    "aclaracion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Pregunta corta para pedir lo primero que falta; `null` si no falta nada."
+                    },
+                    "validada": {
+                        "type": "boolean",
+                        "description": "Siempre `false`: la propuesta no se contrast\u00f3 con el cat\u00e1logo ni con la disponibilidad real, y no cre\u00f3 ninguna reserva."
+                    }
+                },
+                "required": [
+                    "servicio",
+                    "barbero",
+                    "fecha",
+                    "hora",
+                    "franja",
+                    "campos_faltantes",
+                    "aclaracion",
+                    "validada"
+                ],
+                "title": "PropuestaDeReserva"
             },
             "RegistrarCierre": {
                 "type": "object",
