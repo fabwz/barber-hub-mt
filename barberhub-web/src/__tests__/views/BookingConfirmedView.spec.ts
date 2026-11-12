@@ -1,5 +1,4 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { writeStoredPayment } from '@/composables/usePayment'
@@ -156,19 +155,16 @@ describe('BookingConfirmedView', () => {
     )
   })
 
-  it('offers «Volver a la barbería» and «Ver mis reservas» only once that screen exists', async () => {
-    const without = await open()
-    const back = without.wrapper.findAll('a').find((a) => a.text() === 'Volver a la barbería')
+  it('offers «Volver a la barbería» and, now that the route my-bookings exists, «Ver mis reservas»', async () => {
+    const { wrapper, router } = await open()
+    const back = wrapper.findAll('a').find((a) => a.text() === 'Volver a la barbería')
     expect(back?.attributes('href')).toBe('/b/pura-navaja')
-    expect(without.wrapper.text()).not.toContain('Ver mis reservas')
+    expect(router.hasRoute('my-bookings')).toBe(true)
 
-    const bookings = defineComponent({ render: () => h('p', 'mis reservas') })
-    const withRoute = await open({}, [
-      { path: '/mis-reservas', name: 'my-bookings', component: bookings },
-    ])
-    const button = withRoute.wrapper.findAll('button').find((b) => b.text() === 'Ver mis reservas')
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Ver mis reservas')
     await button!.trigger('click')
-    await vi.waitFor(() => expect(withRoute.router.currentRoute.value.name).toBe('my-bookings'))
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('my-bookings'))
+    expect(router.currentRoute.value.path).toBe('/b/pura-navaja/mis-reservas')
   })
 
   it.each([

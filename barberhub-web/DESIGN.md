@@ -120,6 +120,7 @@ Texto `fg` con subrayado. Hover: `accent-hover`. Nunca se resalta con hueso en r
 ### Chip de espacio horario y de fecha
 **Hora.** Botón de 44 px de alto con radio de campo (8 px), ancho mínimo de 72 px, padding horizontal de 16 px y texto de 14 px con cifras tabulares.
 - **Disposición (escritorio):** agrupados por turno (Mañana, Tarde y Noche, con la etiqueta en 14 px `fg-muted`). Cada turno va en **una sola línea** con desplazamiento horizontal, sin barra visible, igual que la franja de fechas.
+- **Excepción en Reprogramar (escritorio):** como usa media tarjeta ancha, los chips de cada turno y la franja de fechas **se ajustan en varias líneas** y no se desplazan hacia el lado.
 - **Disposición (celular):** en lugar de chips, un `select` de 52 px (radio 8 px, borde `field`, chevron de 18 px) con la opción inicial «Elija una hora». Los espacios ocupados salen deshabilitados con el sufijo «ocupada» y, si hay alguno, una nota de 14 px en `fg-subtle`: «Las horas marcadas como ocupadas no se pueden elegir.»
 - **Con «Sin preferencia»:** cada chip lleva debajo, en 12 px `fg-muted`, «con {barbero}» (una sola vez por hora).
 - **Libre:** transparente, borde 1 px `line-strong`, texto `fg`. Hover: borde `line-hover`.
@@ -187,6 +188,8 @@ Una fila con un ícono de información de 16 px y texto, sin color de estado, de
 
 ### Etiqueta de estado
 Un punto de 8 px y el texto, sin relleno. Nunca solo color.
+
+**Variante solo texto.** En «Mis reservas» y en el detalle de una reserva el estado se muestra **solo con el texto**, sin punto, en 14 px y peso 500 (`fg-muted` en «Expirada»). En el detalle va bajo el título, a la izquierda, y no a la derecha. Así el estado nunca depende del color, porque lo dice la palabra. La tabla de abajo sigue valiendo para la confirmación, el pago y la agenda, que mantienen el punto.
 
 | Estado de la reserva | Texto | Punto |
 |---|---|---|
@@ -297,6 +300,18 @@ Las páginas de texto largo (términos y política de privacidad) usan un ancho 
 - El banner y el logo son **del negocio** y se muestran dentro de su marco. BarberHub no agrega fotografías de stock ni ilustraciones decorativas.
 - **Logotipo:** el de BarberHub vive en `src/assets/images/bh-logo-bone.png` (versión hueso, para el tema oscuro) y se muestra con el componente `BrandLogo`, con `alt="BarberHub"`, dimensiones explícitas y un alto mínimo de 24 px (por defecto, 56 × 35 px). `BrandLogo` recorta el margen transparente del archivo para que el logotipo quede completo y pegado al margen de la pantalla. Se usa solo en el encabezado de las pantallas de acceso, de lectura y de la aplicación. No se recolorea ni se deforma. Las versiones negra y azul grisáceo se suman con el tema claro.
 
+## Mis reservas, detalle y Reprogramar
+
+Rutas `/b/:enlace/mis-reservas` y `/b/:enlace/mis-reservas/:reserva`. Diseño de origen: el artefacto de la v7 (Mis reservas, detalle y Reprogramar).
+
+- **Escritorio:** una tarjeta de 16 px con borde `line` y 32 px de padding que ocupa **todo el ancho** disponible (no una columna de 440 px). Título de 24 px con una línea `line` debajo y, bajo él, dos columnas separadas por una línea vertical de 1 px y 32 px de espacio. Nada se arma «como en celular».
+  - **Mis reservas:** «Próximas» a la izquierda y «Pasadas» a la derecha. Cada fila lleva a la izquierda servicio, barbero, estado y monto, y a la derecha el día y el rango de hora.
+  - **Detalle:** «Su cita» (resumen) a la izquierda y «Cambios y cancelación» a la derecha, con «Reprogramar» y «Cancelar» de 200 px. La confirmación de cancelar va en la misma columna. Si la reserva ya no admite cambios, la columna dice «Esta reserva ya no admite cambios ni cancelación.»
+  - **Reprogramar:** «Fecha» a la izquierda, «Hora» a la derecha y, abajo, la barra con «Nueva cita…», «Volver a la reserva» y «Confirmar nuevo horario» (280 px).
+- **Volver:** en escritorio hay un botón «Volver» sobre la tarjeta (en el detalle, «Mis reservas»). En «Mis reservas» regresa a la pantalla anterior del navegador (la reserva confirmada, la barbería…) y, si no hay ninguna, a la barbería.
+- **Acceso desde la barbería:** con sesión iniciada, «Mis reservas» es un botón secundario (borde `line-strong`, ícono de calendario de 16 px) arriba a la derecha de «Reservar cita».
+- **Celular:** una sola columna, igual que antes.
+
 ## Voz del texto
 
 - Español de Costa Rica, «usted».
@@ -311,7 +326,7 @@ Las páginas de texto largo (términos y política de privacidad) usan un ancho 
 
 - WCAG 2.2 AA: texto de al menos 4,5:1, componentes y foco de al menos 3:1.
 - Objetivos de 44 px como mínimo.
-- Ningún estado depende solo del color o del tono: la selección lleva check o indicador, y los estados llevan punto y texto. Excepción decidida: los chips de hora y de fecha (relleno, peso 500 y `aria-pressed`, sin check).
+- Ningún estado depende solo del color o del tono: la selección lleva check o indicador, y los estados llevan texto (con punto, salvo en «Mis reservas» y en el detalle de una reserva, donde va solo el texto). Excepción decidida: los chips de hora y de fecha (relleno, peso 500 y `aria-pressed`, sin check).
 - `<html lang="es-CR">`. Un solo `h1` por pantalla.
 - Chips como `aria-pressed`; servicios y métodos de pago como `radiogroup`; página activa con `aria-current="page"`; avisos con `role="status"` o `role="alert"`; zonas que cargan con `aria-busy`.
 - Todo funciona con teclado y respeta `prefers-reduced-motion`.

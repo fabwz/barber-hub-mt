@@ -19,9 +19,11 @@ interface Props {
   showBarber?: boolean
   /** Accessible name of the group. */
   label?: string
+  /** Desktop: each period wraps onto several lines instead of scrolling sideways. */
+  wrap?: boolean
 }
 
-const { slots, showBarber = false, label = 'Hora' } = defineProps<Props>()
+const { slots, showBarber = false, label = 'Hora', wrap = false } = defineProps<Props>()
 const selected = defineModel<string | null>({ default: null })
 
 const noteId = useId()
@@ -120,7 +122,10 @@ function onSelect(event: Event): void {
         class="flex flex-col gap-2"
       >
         <span class="text-sm text-fg-muted">{{ period.name }}</span>
-        <div class="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <div
+          class="scrollbar-none -mx-1 flex gap-2 px-1 pb-1"
+          :class="wrap ? 'flex-wrap' : 'overflow-x-auto'"
+        >
           <button
             v-for="slot in period.slots"
             :key="slot.value"
