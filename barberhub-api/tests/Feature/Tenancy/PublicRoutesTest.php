@@ -37,8 +37,9 @@ final class PublicRoutesTest extends TestCase
             'GET api/v1/enlaces/{enlace}' => ['GET', 'api/v1/enlaces/pura-navaja', [], [200]],
             'GET api/v1/barberias/{barberia}/servicios' => ['GET', 'api/v1/barberias/{barberia}/servicios', [], [200]],
             'GET api/v1/barberias/{barberia}/disponibilidad' => ['GET', 'api/v1/barberias/{barberia}/disponibilidad', [], [200, 422]],
-            'POST api/v1/pagos/avisos/onvo' => ['POST', 'api/v1/pagos/avisos/onvo', [], [400, 401, 403, 422]],
-            // PayPal answers 503 while its credentials are not configured, as in the tests; any of these refuses what cannot be verified.
+            // Without its signing secret (as in the CI) a notice answers 503 and is never accepted; with it, 401.
+            'POST api/v1/pagos/avisos/onvo' => ['POST', 'api/v1/pagos/avisos/onvo', [], [400, 401, 403, 422, 503]],
+            // Same for PayPal while its webhook identifier is not configured; any of these refuses what cannot be verified.
             'POST api/v1/pagos/avisos/paypal' => ['POST', 'api/v1/pagos/avisos/paypal', [], [400, 401, 403, 422, 503]],
             'GET api/v1/pagos/retorno' => ['GET', 'api/v1/pagos/retorno', [], [200]],
             'GET salud' => ['GET', 'salud', [], [200]],
