@@ -12,9 +12,9 @@ use Src\Reservations\Reservations\Application\Contracts\ReservationExtractor;
 use Src\Reservations\Reservations\Application\DTOs\ExtractedDayPart;
 use Src\Reservations\Reservations\Application\DTOs\ExtractedReservation;
 use Tests\Support\RefreshDatabaseAsOwner;
+use Tests\Support\Reservations\AiTestCase;
 use Tests\Support\Reservations\FakeReservationExtractor;
 use Tests\Support\Reservations\SeedsBookableBarbershops;
-use Tests\TestCase;
 
 /**
  * The proposal is checked against the real catalog and availability of the barbershop before anyone uses it (RF-37, IA-02, DI-01):
@@ -22,7 +22,7 @@ use Tests\TestCase;
  * Monday to Saturday from 9:00 to 19:00, Daniela works on Tuesdays from 9:00 to 19:00 with a break from 12:00 to 13:00 and Kevin from
  * 9:00 to 12:00, and the first Tuesday after today is 5 March.
  */
-final class ValidateProposalTest extends TestCase
+final class ValidateProposalTest extends AiTestCase
 {
     use RefreshDatabaseAsOwner;
     use SeedsBookableBarbershops;
