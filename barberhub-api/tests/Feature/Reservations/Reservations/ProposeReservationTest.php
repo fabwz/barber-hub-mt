@@ -16,16 +16,16 @@ use Src\Reservations\Reservations\Application\Exceptions\ExtractionInvalidExcept
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorMisconfiguredException;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorUnavailableException;
 use Tests\Support\RefreshDatabaseAsOwner;
+use Tests\Support\Reservations\AiTestCase;
 use Tests\Support\Reservations\FakeReservationExtractor;
 use Tests\Support\Reservations\SeedsBookableBarbershops;
-use Tests\TestCase;
 use Throwable;
 
 /**
  * A customer sends a phrase and receives a structured proposal (RF-37, IA-01, IA-03): the provider is simulated
  * with a fake extractor, so no test calls Gemini. Today is Friday 1 March 2030 (SeedsBookableBarbershops).
  */
-final class ProposeReservationTest extends TestCase
+final class ProposeReservationTest extends AiTestCase
 {
     use RefreshDatabaseAsOwner;
     use SeedsBookableBarbershops;
