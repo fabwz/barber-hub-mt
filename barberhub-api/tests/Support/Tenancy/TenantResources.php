@@ -213,6 +213,32 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/pagos',
                 [TenantResource::SHOW, TenantResource::REFUND],
             ),
+            // The vouchers (#132). Their routes arrive with #87 to #90, so the operations are empty for now: the audit still proves what the
+            // database hides. The definition and its covered services belong to the owner, the purchased voucher and its record to the customer.
+            new TenantResource(
+                'voucher_definitions',
+                fn (string $barbershopId): string => self::createVoucherDefinition($barbershopId)[0],
+                'api/v1/barberias/{barberia}/bonos',
+                [],
+            ),
+            new TenantResource(
+                'voucher_definition_services',
+                fn (string $barbershopId): string => self::createVoucherDefinition($barbershopId)[1],
+                'api/v1/barberias/{barberia}/bonos',
+                [],
+            ),
+            new TenantResource(
+                'purchased_vouchers',
+                fn (string $barbershopId): string => self::createPurchasedVoucher($barbershopId)[0],
+                'api/v1/barberias/{barberia}/mis-bonos',
+                [],
+            ),
+            new TenantResource(
+                'voucher_movements',
+                fn (string $barbershopId): string => self::createPurchasedVoucher($barbershopId)[1],
+                'api/v1/barberias/{barberia}/mis-bonos',
+                [],
+            ),
         ];
     }
 
@@ -272,5 +298,46 @@ final class TenantResources
         DB::table('collaborators')->insert(['id' => $collaboratorId, 'barbershop_id' => $barbershopId, 'user_id' => $userId]);
 
         return $collaboratorId;
+    }
+
+    /**
+     * Insert a voucher definition with its own service and the row that makes the service covered, in a barbershop.
+     *
+     * @return array{string, string} The identifiers of the definition and of the covered service.
+     */
+    private static function createVoucherDefinition(string $barbershopId): array
+    {
+        $serviceId = (string) Str::uuid7();
+        $definitionId = (string) Str::uuid7();
+        $coveredId = (string) Str::uuid7();
+        DB::table('services')->insert(['id' => $serviceId, 'barbershop_id' => $barbershopId, 'name' => 'Corte clásico', 'duration_minutes' => 30, 'price' => 6000]);
+        DB::table('voucher_definitions')->insert(['id' => $definitionId, 'barbershop_id' => $barbershopId, 'name' => 'Bono 5 cortes', 'sessions_count' => 5, 'price' => 30000, 'validity_days' => 90]);
+        DB::table('voucher_definition_services')->insert(['id' => $coveredId, 'barbershop_id' => $barbershopId, 'voucher_definition_id' => $definitionId, 'service_id' => $serviceId]);
+
+        return [$definitionId, $coveredId];
+    }
+
+    /**
+     * Insert an active voucher, bought by its own customer from its own definition, with the purchase in its record.
+     *
+     * @return array{string, string} The identifiers of the voucher and of the entry of its record.
+     */
+    private static function createPurchasedVoucher(string $barbershopId): array
+    {
+        $userId = (string) Str::uuid7();
+        $membershipId = (string) Str::uuid7();
+        $voucherId = (string) Str::uuid7();
+        $movementId = (string) Str::uuid7();
+        DB::table('users')->insert(['id' => $userId, 'name' => 'Ana Rojas', 'email' => "{$userId}@barberhub.test", 'password' => 'hash']);
+        DB::table('memberships')->insert(['id' => $membershipId, 'user_id' => $userId, 'barbershop_id' => $barbershopId, 'role' => 'customer']);
+        $definitionId = self::createVoucherDefinition($barbershopId)[0];
+        DB::table('purchased_vouchers')->insert([
+            'id' => $voucherId, 'barbershop_id' => $barbershopId, 'customer_membership_id' => $membershipId, 'voucher_definition_id' => $definitionId,
+            'name' => 'Bono 5 cortes', 'price' => 30000, 'sessions_count' => 5, 'validity_days' => 90, 'status' => 'active',
+            'activated_at' => '2030-03-01 08:00:00-06', 'expires_at' => '2030-05-30 08:00:00-06', 'remaining_sessions' => 5,
+        ]);
+        DB::table('voucher_movements')->insert(['id' => $movementId, 'barbershop_id' => $barbershopId, 'purchased_voucher_id' => $voucherId, 'type' => 'purchase', 'sessions_delta' => 5]);
+
+        return [$voucherId, $movementId];
     }
 }

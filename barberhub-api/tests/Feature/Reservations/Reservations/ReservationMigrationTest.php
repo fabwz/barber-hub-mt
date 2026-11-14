@@ -28,6 +28,11 @@ final class ReservationMigrationTest extends TestCase
     // The exchange rate and the capture are columns of the payments too: they go before the mark when rolling back and after it when applying again.
     private const string EXCHANGE_RATE = '2026_10_28_100000_add_exchange_rate_and_capture_to_payments_table';
 
+    // The vouchers point at the reservations (the record of their balances), so they go before them when rolling back and after them when applying again.
+    private const string VOUCHER_DEFINITIONS = '2026_11_13_100000_create_voucher_definitions_tables';
+
+    private const string PURCHASED_VOUCHERS = '2026_11_13_110000_create_purchased_vouchers_tables';
+
     /** Rolling back drops both tables with their constraints and policies and keeps the extension; applying again brings them back. */
     public function test_migration_rolls_back_and_applies_again_without_leftovers(): void
     {
@@ -38,10 +43,14 @@ final class ReservationMigrationTest extends TestCase
         $expiresAt = require base_path('database/migrations/'.self::EXPIRES_AT.'.php');
         $refundPending = require base_path('database/migrations/'.self::REFUND_PENDING.'.php');
         $exchangeRate = require base_path('database/migrations/'.self::EXCHANGE_RATE.'.php');
+        $voucherDefinitions = require base_path('database/migrations/'.self::VOUCHER_DEFINITIONS.'.php');
+        $purchasedVouchers = require base_path('database/migrations/'.self::PURCHASED_VOUCHERS.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $purchasedVouchers->down();
+            $voucherDefinitions->down();
             $expiresAt->down();
             $exchangeRate->down();
             $refundPending->down();
@@ -59,6 +68,8 @@ final class ReservationMigrationTest extends TestCase
             $refundPending->up();
             $exchangeRate->up();
             $expiresAt->up();
+            $voucherDefinitions->up();
+            $purchasedVouchers->up();
 
             $this->assertTrue($schema->hasTable('reservations'));
             $this->assertTrue($schema->hasTable('reservation_status_history'));
