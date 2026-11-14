@@ -37,7 +37,7 @@ final class PaymentTest extends TestCase
         $this->assertSame(PaymentProvider::Onvo, $payment->provider);
         $this->assertSame(PaymentMethod::SinpeMovil, $payment->method);
         $this->assertSame(2550, $payment->amount->colones);
-        $this->assertSame(self::RESERVATION_ID, $payment->reservationId->value);
+        $this->assertSame(self::RESERVATION_ID, $payment->reservationId?->value);
         $this->assertNull($payment->providerPaymentId);
         $this->assertNull($payment->providerAmount);
         $this->assertNull($payment->failureReason);
