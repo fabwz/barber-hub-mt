@@ -12,6 +12,7 @@ use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\Reservations\SeedsBookableBarbershops;
 use Tests\Support\Reservations\SeedsReservations;
+use Tests\Support\Vouchers\SeedsVouchers;
 
 /**
  * The two barbershops and the people of the permission tests (RF-42). Pura Navaja has its owner, the collaborators Daniela
@@ -23,6 +24,7 @@ trait BuildsAccessScenario
 {
     use SeedsBookableBarbershops;
     use SeedsReservations;
+    use SeedsVouchers;
 
     /** @var array<string, string> Account of each actor of AccessMatrix::ACTORS, but the anonymous one. */
     private array $accounts = [];
@@ -63,6 +65,7 @@ trait BuildsAccessScenario
             'colaborador' => $this->daniela,
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->puraNavaja),
+            'bono' => $this->insertVoucherDefinition($this->puraNavaja, [$this->degradado]),
         ];
         $danielaAccount = (string) DB::table('collaborators')->where('id', $this->daniela)->value('user_id');
         $kevinAccount = (string) DB::table('collaborators')->where('id', $this->kevin)->value('user_id');
@@ -79,6 +82,7 @@ trait BuildsAccessScenario
             'colaborador' => $this->mauricio,
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->fadeLab),
+            'bono' => $this->insertVoucherDefinition($this->fadeLab, [$this->corte]),
         ];
         $mauricioAccount = (string) DB::table('collaborators')->where('id', $this->mauricio)->value('user_id');
         $this->scopeQueriesTo(null);

@@ -131,6 +131,10 @@ final class AccessMatrix
             "PATCH {$base}/administracion/colaboradores/{colaborador}" => $admin(),
             "PUT {$base}/administracion/colaboradores/{colaborador}/servicios" => $admin(),
             "PUT {$base}/administracion/colaboradores/{colaborador}/horario" => $admin(),
+            "GET {$base}/administracion/bonos" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
+            "POST {$base}/administracion/bonos" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
+            "GET {$base}/administracion/bonos/{bono}" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
+            "PATCH {$base}/administracion/bonos/{bono}" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26). Editar, retirar o reactivar.'),
         ];
     }
 

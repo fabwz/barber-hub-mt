@@ -12,3 +12,4 @@ require base_path('src/Catalog/Collaborators/Infrastructure/Http/routes.php');
 require base_path('src/Availability/Slots/Infrastructure/Http/routes.php');
 require base_path('src/Reservations/Reservations/Infrastructure/Http/routes.php');
 require base_path('src/Payments/Payments/Infrastructure/Http/routes.php');
+require base_path('src/Vouchers/VoucherDefinitions/Infrastructure/Http/routes.php');
