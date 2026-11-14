@@ -52,6 +52,10 @@ return [
         'title' => 'Oferta vencida',
         'detail' => 'La oferta caducó antes de recibir su respuesta.',
     ],
+    'bono-con-ventas' => [
+        'title' => 'Bono con ventas',
+        'detail' => 'El bono ya tiene ventas: solo se pueden cambiar su nombre y su precio, o retirarlo de la venta.',
+    ],
     'datos-invalidos' => [
         'title' => 'Datos inválidos',
         'detail' => 'Los datos enviados no son válidos.',

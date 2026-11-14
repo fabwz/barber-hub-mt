@@ -19,6 +19,7 @@ enum ProblemType: string
     case DeadlineExpired = 'plazo-vencido';
     case VoucherExpired = 'bono-vencido';
     case OfferExpired = 'oferta-vencida';
+    case VoucherWithSales = 'bono-con-ventas';
     case InvalidData = 'datos-invalidos';
     case TooManyRequests = 'demasiadas-solicitudes';
     case InternalError = 'error-interno';
@@ -33,7 +34,7 @@ enum ProblemType: string
             self::Forbidden => 403,
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
-            self::Conflict, self::SlotUnavailable, self::InsufficientBalance, self::DeadlineExpired, self::VoucherExpired, self::OfferExpired => 409,
+            self::Conflict, self::SlotUnavailable, self::InsufficientBalance, self::DeadlineExpired, self::VoucherExpired, self::OfferExpired, self::VoucherWithSales => 409,
             self::InvalidData => 422,
             self::TooManyRequests => 429,
             self::InternalError => 500,
