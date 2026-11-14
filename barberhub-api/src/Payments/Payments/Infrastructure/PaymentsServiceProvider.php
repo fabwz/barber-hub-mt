@@ -16,11 +16,13 @@ use Src\Payments\Payments\Application\Contracts\BarbershopPaymentProvider;
 use Src\Payments\Payments\Application\Contracts\BarbershopScope;
 use Src\Payments\Payments\Application\Contracts\GatewayNoticeVerifiers;
 use Src\Payments\Payments\Application\Contracts\PayableReservations;
+use Src\Payments\Payments\Application\Contracts\PayableVouchers;
 use Src\Payments\Payments\Application\Contracts\PayerAccounts;
 use Src\Payments\Payments\Application\Contracts\PaymentGatewayRegistry;
 use Src\Payments\Payments\Application\Contracts\PaymentLocator;
 use Src\Payments\Payments\Application\Contracts\ProcessedNotices;
 use Src\Payments\Payments\Application\Contracts\ReservationConfirmation;
+use Src\Payments\Payments\Application\Contracts\VoucherActivation;
 use Src\Payments\Payments\Application\PaymentGatewayResolver;
 use Src\Payments\Payments\Domain\Contracts\PaymentRepository;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
@@ -39,6 +41,8 @@ use Src\Payments\Payments\Infrastructure\Notices\RequestBarbershopScope;
 use Src\Payments\Payments\Infrastructure\Persistence\Repositories\EloquentPaymentRepository;
 use Src\Payments\Payments\Infrastructure\Reservations\ReservationsPayableReservations;
 use Src\Payments\Payments\Infrastructure\Reservations\ReservationsReservationConfirmation;
+use Src\Payments\Payments\Infrastructure\Vouchers\VouchersPayableVouchers;
+use Src\Payments\Payments\Infrastructure\Vouchers\VouchersVoucherActivation;
 use Src\Shared\Domain\Contracts\Clock;
 
 final class PaymentsServiceProvider extends ServiceProvider
@@ -55,6 +59,8 @@ final class PaymentsServiceProvider extends ServiceProvider
         PaymentGatewayRegistry::class => ConfiguredPaymentGatewayRegistry::class,
         PayableReservations::class => ReservationsPayableReservations::class,
         ReservationConfirmation::class => ReservationsReservationConfirmation::class,
+        PayableVouchers::class => VouchersPayableVouchers::class,
+        VoucherActivation::class => VouchersVoucherActivation::class,
         PayerAccounts::class => UsersPayerAccounts::class,
         PaymentLocator::class => DatabasePaymentLocator::class,
         ProcessedNotices::class => DatabaseProcessedNotices::class,

@@ -16,6 +16,7 @@ use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
 use Src\Payments\Payments\Domain\ValueObjects\ProviderAmount;
+use Src\Payments\Payments\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
 use Src\Payments\Payments\Infrastructure\Persistence\Models\PaymentModel;
 use Src\Shared\Domain\Contracts\BarbershopContext;
@@ -29,7 +30,8 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
     /** The exchange rate is stored as an integer of ten-thousandths of a colon per unit of the currency of the provider. */
     private const int RATE_SCALE = 10000;
 
-    private const string ACTIVE_PAYMENT_INDEX = 'payments_one_active_per_reservation_idx';
+    /** The unique indexes that let a reservation or a voucher have one payment pending or approved at a time. */
+    private const array ACTIVE_PAYMENT_INDEXES = ['payments_one_active_per_reservation_idx', 'payments_one_active_per_voucher_idx'];
 
     /** Receive the port that tells which barbershop the operation belongs to. */
     public function __construct(private BarbershopContext $context) {}
@@ -42,8 +44,8 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
 
     /**
      * Insert the payment once; afterwards the charge in the provider, the status and the reason of a failure change. A
-     * second payment pending or approved for the same reservation is rejected by the unique index of the table and
-     * translated here, so a repeated press of the pay button never creates two.
+     * second payment pending or approved for the same reservation or voucher is rejected by the unique index of the table and
+     * translated here, so a repeated press of the pay or buy button never creates two.
      */
     public function save(Payment $payment): void
     {
@@ -68,7 +70,8 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
                     PaymentModel::query()->create([
                         'id' => $payment->id->value,
                         'barbershop_id' => $this->context->current()->value,
-                        'reservation_id' => $payment->reservationId->value,
+                        'reservation_id' => $payment->reservationId?->value,
+                        'purchased_voucher_id' => $payment->purchasedVoucherId?->value,
                         'provider' => $payment->provider->value,
                         'method' => $payment->method->value,
                         'amount' => $payment->amount->colones,
@@ -80,7 +83,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
                 }
             });
         } catch (QueryException $exception) {
-            if ($exception->getCode() === self::UNIQUE_VIOLATION && str_contains($exception->getMessage(), self::ACTIVE_PAYMENT_INDEX)) {
+            if ($exception->getCode() === self::UNIQUE_VIOLATION && array_any(self::ACTIVE_PAYMENT_INDEXES, fn (string $index): bool => str_contains($exception->getMessage(), $index))) {
                 throw ActivePaymentExistsException::create();
             }
 
@@ -115,6 +118,17 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
         return $model === null ? null : $this->toDomain($model);
     }
 
+    /** Find the pending or approved payment of the purchased voucher among those of the current barbershop. */
+    public function findActiveOfVoucher(PurchasedVoucherId $voucherId): ?Payment
+    {
+        $model = $this->ofBarbershop()
+            ->where('purchased_voucher_id', $voucherId->value)
+            ->whereIn('status', array_map(fn (PaymentStatus $status): string => $status->value, array_filter(PaymentStatus::cases(), fn (PaymentStatus $status): bool => $status->isActive())))
+            ->first();
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     /** Find the pending or approved payments of the reservations among those of the current barbershop. */
     public function findActiveOfReservations(array $reservationIds): array
     {
@@ -125,7 +139,9 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
             ->get();
 
         foreach ($models as $model) {
-            $payments[$model->reservation_id] = $this->toDomain($model);
+            if ($model->reservation_id !== null) {
+                $payments[$model->reservation_id] = $this->toDomain($model);
+            }
         }
 
         return $payments;
@@ -147,7 +163,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
         return Payment::reconstitute(
             new PaymentId($model->id),
             new BarbershopId($model->barbershop_id),
-            new ReservationId($model->reservation_id),
+            $model->reservation_id === null ? null : new ReservationId($model->reservation_id),
             PaymentProvider::from($model->provider),
             PaymentMethod::from($model->method),
             Money::of($model->amount),
@@ -159,6 +175,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
             $model->updated_at,
             $model->refund_pending,
             $model->provider_capture_id,
+            $model->purchased_voucher_id === null ? null : new PurchasedVoucherId($model->purchased_voucher_id),
         );
     }
 }
