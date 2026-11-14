@@ -70,6 +70,7 @@ erDiagram
         uuid id PK
         uuid barbershop_id FK
         uuid reservation_id FK
+        uuid purchased_voucher_id FK
         varchar provider
         varchar method
         varchar status
@@ -306,12 +307,13 @@ Llave candidata: `(reservation_id, kind)`.
 
 ### payments
 
-El cobro de una reserva (RF-20). La tabla existe desde el issue #129 con las columnas marcadas como creadas. Tiene la política de fila `payments_barbershop_isolation` (ver [database.md](database.md)). La compra de un bono (`purchased_voucher_id`) llega con el milestone de los bonos, con una migración que agrega la columna y la regla de que un pago es de una reserva o de un bono, nunca de ambos.
+El cobro de una reserva (RF-20). La tabla existe desde el issue #129 con las columnas marcadas como creadas. Tiene la política de fila `payments_barbershop_isolation` (ver [database.md](database.md)). Desde el #88 también es el cobro de la compra de un bono (RF-27): la migración `add_purchased_voucher_to_payments_table` agrega `purchased_voucher_id`, vuelve opcional `reservation_id` y exige que el pago sea de una reserva o de un bono, nunca de ambos ni de ninguno.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
 | `id`, `barbershop_id` | `uuid` | Llave primaria (`DEFAULT uuidv7()`) y llave foránea a `barbershops`, en cascada |
-| `reservation_id` | `uuid` | Obligatoria por ahora. Llave foránea compuesta `(reservation_id, barbershop_id)` a `reservations`, sin cascada: una reserva con pagos no se borra |
+| `reservation_id` | `uuid` | Opcional desde el #88 (nula si el pago es de un bono). Llave foránea compuesta `(reservation_id, barbershop_id)` a `reservations`, sin cascada: una reserva con pagos no se borra |
+| `purchased_voucher_id` | `uuid` | Migración del #88. Nula si el pago es de una reserva. Llave foránea compuesta `(purchased_voucher_id, barbershop_id)` a `purchased_vouchers`, sin cascada: un bono con pagos no se borra, así que un pago nunca apunta a un bono de otra barbería (MT-04). `CHECK` `payments_one_subject_check`: exactamente una de las dos, `reservation_id` o `purchased_voucher_id` |
 | `provider` | `varchar(10)` | `CHECK` `payments_provider_check` entre `onvo` y `paypal`; el proveedor vigente al crear el cobro, que no cambia aunque el dueño cambie la pasarela (PA-02, RF-23) |
 | `method` | `varchar(20)` | `CHECK` `payments_method_check` entre `card` y `sinpe_movil` |
 | `status` | `varchar(10)` | `CHECK` `payments_status_check` entre `pending`, `approved`, `rejected`, `failed` y `refunded` |
@@ -328,6 +330,7 @@ Restricciones:
 
 - Llaves candidatas: `(id, barbershop_id)` y `(provider, provider_payment_id)`. Esta última es única entre todas las barberías porque el proveedor no las conoce; varias filas sin identificador (cobros aún no creados) conviven, ya que `NULL` no choca consigo mismo.
 - `payments_one_active_per_reservation_idx`: índice único parcial sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved`. Una reserva tiene un solo pago en curso o aprobado; uno rechazado, fallido o reembolsado la libera para un cobro nuevo. Es la idempotencia del botón de pagar: `EloquentPaymentRepository` traduce su violación (`23505`) a `ActivePaymentExistsException`.
+- `payments_one_active_per_voucher_idx`: índice único parcial sobre `(barbershop_id, purchased_voucher_id)` donde `status` es `pending` o `approved` (#88). Un bono comprado tiene un solo pago en curso o aprobado, y uno rechazado o fallido lo libera para reintentar: es la idempotencia del botón de comprar, igual que la de la reserva. `EloquentPaymentRepository` traduce su violación a `ActivePaymentExistsException` como la del índice de reservas. El bono se activa una sola vez por el índice único `voucher_movements_one_purchase_idx` de su registro.
 - El estado del pago se obtiene siempre consultando al proveedor; el aviso (webhook) solo dispara esa consulta (#65). Los avisos ya aplicados viven en `webhook_events`, más abajo.
 
 ### refunds (complementaria, RF-24)

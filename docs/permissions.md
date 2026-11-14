@@ -68,6 +68,7 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `POST api/v1/barberias/{barberia}/reservas` | Reservar crea el rol de cliente; dueño y colaborador reciben 403. |
 | `POST api/v1/barberias/{barberia}/reservas/propuesta` | Propuesta de IA (RF-37): no crea nada; dueño y colaborador reciben 403. |
 | `GET api/v1/barberias/{barberia}/mis-reservas` | Lectura de lo propio (CL-04): sin rol, lista vacía. |
+| `POST api/v1/barberias/{barberia}/bonos/{bono}/compras` | Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403 `prohibido` y no se crea nada. Un bono que no existe, está retirado o es de otra barbería responde 404. |
 
 ## Rutas con rol (y propiedad del recurso)
 
@@ -78,8 +79,8 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `PATCH api/v1/barberias/{barberia}/reservas/{reserva}` | Rol y propiedad | dueño, cliente | El cliente reprograma la suya; el dueño, cualquiera de su barbería. |
 | `POST api/v1/barberias/{barberia}/reservas/{reserva}/cancelacion` | Rol y propiedad | dueño, cliente | El cliente cancela la suya; el dueño, cualquiera de su barbería. |
 | `POST api/v1/barberias/{barberia}/reservas/{reserva}/pagos` | Rol y propiedad | cliente | Solo el cliente paga su propia reserva. |
-| `GET api/v1/barberias/{barberia}/pagos/{pago}` | Rol y propiedad | dueño, cliente | El cliente lee los pagos de sus reservas; el dueño, cualquiera de su barbería; el colaborador no (CO-04). |
-| `POST api/v1/barberias/{barberia}/pagos/{pago}/reembolsos` | Rol | dueño | Solo el dueño devuelve dinero (PA-08). |
+| `GET api/v1/barberias/{barberia}/pagos/{pago}` | Rol y propiedad | dueño, cliente | El cliente lee los pagos de sus reservas y de sus bonos; el dueño, cualquiera de su barbería; el colaborador no (CO-04). |
+| `POST api/v1/barberias/{barberia}/pagos/{pago}/reembolsos` | Rol | dueño | Solo el dueño devuelve dinero (PA-08). El pago de un bono no se reembolsa: responde 409 `conflicto` (BO-07). |
 | `GET api/v1/barberias/{barberia}/administracion/cobro` | Rol | dueño | Política de cobro: solo el dueño (UP-03). |
 | `PATCH api/v1/barberias/{barberia}/administracion/cobro` | Rol | dueño | Política de cobro: solo el dueño (UP-03). |
 | `GET api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
