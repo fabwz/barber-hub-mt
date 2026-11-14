@@ -11,8 +11,10 @@ use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\InsufficientBalanceExceptio
 use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\VoucherExpiredException;
 use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\VoucherNotActiveException;
 use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\VoucherNotFoundException;
+use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\CustomerMembershipId;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\ReservationId;
+use Src\Vouchers\Shared\Domain\ValueObjects\VoucherDefinitionId;
 
 interface PurchasedVoucherRepository
 {
@@ -30,6 +32,9 @@ interface PurchasedVoucherRepository
 
     /** Find a voucher among those of the current barbershop and lock its row until the transaction ends, so two changes of it run in turn. */
     public function findForUpdate(PurchasedVoucherId $id): ?PurchasedVoucher;
+
+    /** Find the voucher of a customer of the current barbershop that is bought from the definition and still waits for its payment, if there is one. */
+    public function findPendingOfCustomer(CustomerMembershipId $customer, VoucherDefinitionId $definition): ?PurchasedVoucher;
 
     /**
      * The record of the balance of a voucher of the current barbershop, in the order it was written.

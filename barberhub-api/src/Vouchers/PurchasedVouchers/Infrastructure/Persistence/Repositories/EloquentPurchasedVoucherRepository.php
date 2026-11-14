@@ -98,6 +98,20 @@ final readonly class EloquentPurchasedVoucherRepository implements PurchasedVouc
         return $model === null ? null : $this->toDomain($model);
     }
 
+    /** Find the unpaid voucher of the customer for the definition among those of the current barbershop. */
+    public function findPendingOfCustomer(CustomerMembershipId $customer, VoucherDefinitionId $definition): ?PurchasedVoucher
+    {
+        $model = $this->ofBarbershop()
+            ->where('customer_membership_id', $customer->value)
+            ->where('voucher_definition_id', $definition->value)
+            ->where('status', VoucherStatus::Pending->value)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->first();
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     /**
      * Read the record of the voucher in the order it was written. The identifiers are time-ordered UUIDs, so they break the
      * tie between two entries of the same instant.
