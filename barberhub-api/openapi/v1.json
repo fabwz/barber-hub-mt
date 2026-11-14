@@ -73,6 +73,10 @@
         {
             "name": "Pagos",
             "description": "Cobro del dep\u00f3sito o del total de una reserva, consulta del estado del pago y reembolso."
+        },
+        {
+            "name": "Bonos de la barber\u00eda",
+            "description": "Administraci\u00f3n de los bonos que vende la barber\u00eda, por su due\u00f1o."
         }
     ],
     "security": [
@@ -123,6 +127,236 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/bonos": {
+            "get": {
+                "operationId": "vouchers.definitions.index",
+                "description": "Trae todos los bonos, a la venta o retirados, ordenados por nombre, con sus sesiones, su precio con el IVA de 13 % incluido, su vigencia en d\u00edas y los servicios que cubren. Solo el due\u00f1o: un colaborador o un cliente reciben 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Listar los bonos de la barber\u00eda",
+                "tags": [
+                    "Bonos de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `Bono`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Bono"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "vouchers.definitions.store",
+                "description": "Crea un bono a la venta con nombre, sesiones (al menos 1), precio en colones enteros mayores que cero con el IVA incluido, vigencia en d\u00edas (al menos 1) y los servicios que cubre: al menos uno, sin repetir y todos de esta barber\u00eda. Un valor fuera de rango, una lista vac\u00eda o repetida, o un servicio que no existe en la barber\u00eda responde 422 `datos-invalidos` y `errores` indica el campo (`servicios.N` para el servicio). Solo el due\u00f1o.",
+                "summary": "Crear un bono",
+                "tags": [
+                    "Bonos de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CrearBono"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Bono`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Bono"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/bonos/{bono}": {
+            "get": {
+                "operationId": "vouchers.definitions.show",
+                "description": "Trae el bono con los servicios que cubre, est\u00e9 a la venta o retirado. Responde 404 `no-encontrado` si no existe en la barber\u00eda. Solo el due\u00f1o.",
+                "summary": "Ver un bono",
+                "tags": [
+                    "Bonos de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "bono",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`Bono`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Bono"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "vouchers.definitions.update",
+                "description": "Cambia solo los campos que vienen. `activo: false` retira el bono de la venta y `activo: true` lo vuelve a poner; retirarlo o cambiarle el precio no toca los bonos que los clientes ya compraron, que conservan su saldo, su vigencia y lo que pagaron (BO-01). Si el bono ya tiene ventas, sus `sesiones`, su `vigencia_dias` y sus `servicios` no se cambian: pedir un valor distinto responde 409 `bono-con-ventas`, y solo se pueden editar `nombre` y `precio` o retirarlo. Sin ventas se puede editar todo. Un servicio que no existe en la barber\u00eda responde 422 `datos-invalidos`, y un bono que no existe en ella, 404 `no-encontrado`. Solo el due\u00f1o.",
+                "summary": "Editar, retirar o reactivar un bono",
+                "tags": [
+                    "Bonos de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "bono",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActualizarBono"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Bono`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Bono"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             }
@@ -2512,6 +2746,48 @@
                 },
                 "title": "ActualizarBarberia"
             },
+            "ActualizarBono": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "sesiones": {
+                        "type": "integer",
+                        "description": "De 1 a 32767. Un bono ya vendido no cambia de sesiones.",
+                        "minimum": 1,
+                        "maximum": 32767
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones enteros con el IVA de 13 % incluido, mayores que cero.",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                    },
+                    "vigencia_dias": {
+                        "type": "integer",
+                        "description": "De 1 a 32767. Un bono ya vendido no cambia de vigencia.",
+                        "minimum": 1,
+                        "maximum": 32767
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "description": "Lista completa de los servicios que cubre: al menos uno, de esta barber\u00eda y sin repetir. Un bono ya vendido no cambia de servicios.",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                    },
+                    "activo": {
+                        "type": "boolean",
+                        "description": "`false` retira el bono de la venta y `true` lo vuelve a poner."
+                    }
+                },
+                "title": "ActualizarBono"
+            },
             "ActualizarCobro": {
                 "type": "object",
                 "properties": {
@@ -2645,6 +2921,46 @@
                     "telefono"
                 ],
                 "title": "BarberiaPublica"
+            },
+            "Bono": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "sesiones": {
+                        "type": "integer"
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido."
+                    },
+                    "vigencia_dias": {
+                        "type": "integer"
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "description": "Identificadores de los servicios que cubre.",
+                        "items": {}
+                    },
+                    "activo": {
+                        "type": "boolean",
+                        "description": "`false` si est\u00e1 retirado de la venta."
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "sesiones",
+                    "precio",
+                    "vigencia_dias",
+                    "servicios",
+                    "activo"
+                ],
+                "title": "Bono"
             },
             "CambiarEstadoDeColaborador": {
                 "type": "object",
@@ -2834,6 +3150,51 @@
                     "pausas"
                 ],
                 "title": "Colaborador"
+            },
+            "CrearBono": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "sesiones": {
+                        "type": "integer",
+                        "description": "N\u00famero de sesiones del bono: de 1 a 32767.",
+                        "minimum": 1,
+                        "maximum": 32767
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones enteros con el IVA de 13 % incluido, mayores que cero.",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                    },
+                    "vigencia_dias": {
+                        "type": "integer",
+                        "description": "D\u00edas de vigencia desde la activaci\u00f3n: de 1 a 32767.",
+                        "minimum": 1,
+                        "maximum": 32767
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "description": "Identificadores de los servicios que cubre: al menos uno, de esta barber\u00eda y sin repetir.",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "sesiones",
+                    "precio",
+                    "vigencia_dias",
+                    "servicios"
+                ],
+                "title": "CrearBono"
             },
             "CrearColaborador": {
                 "type": "object",

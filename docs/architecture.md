@@ -377,7 +377,7 @@ Los webhooks de las pasarelas (#65) fijan la barbería a partir del pago que cit
 
 ### Los bonos (#132)
 
-El contexto `Vouchers` tiene dos módulos, como el mapa de contextos: `VoucherDefinitions` (lo que la barbería vende: nombre, sesiones, precio, vigencia y servicios cubiertos) y `PurchasedVouchers` (lo que compró cada persona), más `Vouchers\Shared` con los objetos de valor comunes (`SessionCount`, `ValidityDays`, `VoucherName`, `VoucherDefinitionId`). Este issue solo trae el dominio, el esquema y los repositorios: sin rutas, controladores ni casos de uso de entrada, que llegan con el #87 (definir), #88 (comprar), #89 (consumir) y #90 (consultar).
+El contexto `Vouchers` tiene dos módulos, como el mapa de contextos: `VoucherDefinitions` (lo que la barbería vende: nombre, sesiones, precio, vigencia y servicios cubiertos) y `PurchasedVouchers` (lo que compró cada persona), más `Vouchers\Shared` con los objetos de valor comunes (`SessionCount`, `ValidityDays`, `VoucherName`, `VoucherDefinitionId`). El #132 solo trajo el dominio, el esquema y los repositorios; las rutas y los casos de uso llegan con el #87 (definir, ver más abajo), #88 (comprar), #89 (consumir) y #90 (consultar).
 
 - **`PurchasedVoucher` es el agregado.** Nace `pending` sin sesiones ni fechas con la copia de lo que dijo la definición (BO-01); `activate()` le da sus sesiones y cuenta la vigencia desde ese instante (BO-02, RF-27); `hold()`, `release()` y `consume()` cambian el saldo y dejan su entrada en el registro, que el repositorio recoge con `pullMovements()`. El saldo es un `SessionBalance`, que no se puede construir negativo y no baja de cero (BO-03).
 - **`VoucherDefinition` no es un agregado** (CRUD simple, sin invariantes entre filas): su `CoveredServices` exige al menos un servicio y su precio es positivo.
@@ -385,6 +385,15 @@ El contexto `Vouchers` tiene dos módulos, como el mapa de contextos: `VoucherDe
 - **Errores de negocio.** `InsufficientBalanceException` (`saldo-insuficiente`) y `VoucherExpiredException` (`bono-vencido`) usan los tipos estables; el resto (`VoucherNotActiveException`, `VoucherAlreadyActiveException`, `BalanceAboveTotalException`) responde el 409 `conflicto`, y `VoucherNotFoundException`, el 404 de siempre.
 - **Persistencia.** Los modelos Eloquent solo guardan y leen (sin lógica ni casts de fecha: los instantes viajan como texto con su desfase). El consumo concurrente es `PurchasedVoucherRepository::holdSession()`, descrito en [database.md](database.md); el caso de uso que lo llama es el #89.
 - **Colaboración con otros contextos.** `ReservationId` y `CustomerMembershipId` son identificadores propios del módulo; no importa el dominio de `Reservations` ni de `Identity`. El aviso de pago que activa el bono (`PaymentConfirmed`) y la reserva que consume la sesión llegarán por puerto o evento en el #88 y el #89.
+
+### Definir y retirar bonos (#87)
+
+`VoucherDefinitions` trae los casos de uso del dueño y sus rutas, con el mismo reparto que `Services`: `GET` y `POST /barberias/{barberia}/administracion/bonos`, y `GET` y `PATCH /barberias/{barberia}/administracion/bonos/{bono}` (`auth:sanctum`, `barbershop`, `role:owner`; colaborador y cliente reciben 403, y quien no tiene rol en la barbería o un bono de otra barbería, 404). Los casos de uso son `CreateVoucherDefinition`, `UpdateVoucherDefinition`, `GetVoucherDefinition` y `ListVoucherDefinitions`; retirar y reactivar son el `PATCH` con `activo: false` o `true`, como en los servicios. Un bono nunca se borra.
+
+- **Servicios cubiertos.** Cada identificador debe existir en la barbería, activo o no: el puerto `CatalogServices` lo comprueba por el caso de uso `ListServices` del catálogo, y uno que no existe (o que es de otra barbería) responde 422 en `servicios.N`, igual que uno inventado, así no se revela su existencia. Una lista vacía o con un servicio repetido también responde 422.
+- **Con ventas, los términos son inmutables.** Si hay al menos un bono adquirido de la definición (pagado o no), pedir otras `sesiones`, otra `vigencia_dias` u otros `servicios` responde 409 `bono-con-ventas` y no escribe nada; repetir el mismo valor no cuenta como cambio. Siempre se pueden editar `nombre` y `precio`, y retirar o reactivar el bono. Sin ventas se edita todo. La consulta es `VoucherDefinitionRepository::hasPurchases()`.
+- **Retirar o cambiar el precio no toca lo comprado.** `purchased_vouchers` guarda su propia copia de nombre, precio, sesiones y vigencia (BO-01) y solo apunta a la definición por su llave; ni el saldo, ni las fechas, ni su registro de movimientos dependen de la definición.
+- **Precondición de RF-09.** Todavía no existe la activación de bonos de la barbería (`vouchers_enabled`, prevista en el #49), así que las rutas no la comprueban; cuando llegue, la lee `CreateVoucherDefinition` por un puerto.
 
 ### Concurrencia
 
@@ -415,6 +424,7 @@ Toda respuesta de error sigue RFC 9457 (`application/problem+json`). `ProblemDet
 | Cancelación o reprogramación fuera del plazo | `plazo-vencido` | 409 |
 | Bono vencido | `bono-vencido` | 409 |
 | Oferta vencida | `oferta-vencida` | 409 |
+| Cambiar las sesiones, la vigencia o los servicios de un bono que ya se vendió (RF-26) | `bono-con-ventas` | 409 |
 | Cualquier otra | `error-interno`, sin detalles técnicos | 500 |
 
 **Miembros adicionales (extensión de la referencia).** La referencia solo agrega `errores` a la validación. Para un error de dominio con datos propios, como las alternativas de `espacio-no-disponible` (RE-02), la excepción implementa `Src\Shared\Domain\Exceptions\HasProblemMembers` y devuelve en `problemMembers()` los miembros extra con nombre en español y valores simples; `ProblemDetailsRenderer` los agrega al documento sin dejar que reemplacen `type`, `title`, `status`, `detail` ni `instance`. `Shared` no conoce la excepción concreta, y el dominio no conoce HTTP.

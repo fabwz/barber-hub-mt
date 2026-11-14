@@ -360,7 +360,7 @@ Llave candidata: `(gateway, event_id)`; su violación es lo que convierte un avi
 
 ## Bonos
 
-Las cuatro tablas existen desde el issue #132, con la seguridad a nivel de fila de [database.md](database.md). Las rutas y los casos de uso llegan con el #87 al #90.
+Las cuatro tablas existen desde el issue #132, con la seguridad a nivel de fila de [database.md](database.md). Las rutas de definir bonos llegan con el #87; las de comprar, consumir y consultar, con el #88 al #90.
 
 ### voucher_definitions y voucher_definition_services
 

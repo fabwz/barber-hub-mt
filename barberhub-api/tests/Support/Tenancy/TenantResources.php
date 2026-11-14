@@ -213,18 +213,20 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/pagos',
                 [TenantResource::SHOW, TenantResource::REFUND],
             ),
-            // The vouchers (#132). Their routes arrive with #87 to #90, so the operations are empty for now: the audit still proves what the
-            // database hides. The definition and its covered services belong to the owner, the purchased voucher and its record to the customer.
+            // The vouchers (#132). The owner administers the definitions (#87); the routes of the purchased voucher arrive with #88 to
+            // #90, so its operations are empty for now: the audit still proves what the database hides. The covered services are served
+            // inside the definition. The withdrawal (`activo: false`) is the UPDATE, and the isolation test tries it against Fade Lab.
             new TenantResource(
                 'voucher_definitions',
                 fn (string $barbershopId): string => self::createVoucherDefinition($barbershopId)[0],
-                'api/v1/barberias/{barberia}/bonos',
-                [],
+                'api/v1/barberias/{barberia}/administracion/bonos',
+                [TenantResource::LIST, TenantResource::SHOW, TenantResource::UPDATE],
+                ['activo' => false],
             ),
             new TenantResource(
                 'voucher_definition_services',
                 fn (string $barbershopId): string => self::createVoucherDefinition($barbershopId)[1],
-                'api/v1/barberias/{barberia}/bonos',
+                'api/v1/barberias/{barberia}/administracion/bonos',
                 [],
             ),
             new TenantResource(

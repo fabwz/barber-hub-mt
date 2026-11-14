@@ -46,9 +46,7 @@ final class VoucherDefinition
         CoveredServices $services,
         DateTimeImmutable $at,
     ): self {
-        if ($price->colones <= 0) {
-            throw new InvalidValueException('vouchers.price_invalid');
-        }
+        self::assertPrice($price);
 
         return new self($id, $barbershopId, $name, $sessionsCount, $price, $validityDays, $services, true, $at, $at);
     }
@@ -69,6 +67,47 @@ final class VoucherDefinition
         return new self($id, $barbershopId, $name, $sessionsCount, $price, $validityDays, $services, $isActive, $createdAt, $updatedAt);
     }
 
+    /** Change the name and the price. Vouchers already purchased keep what they were sold for (RF-26). */
+    public function revise(VoucherName $name, Money $price, DateTimeImmutable $at): void
+    {
+        self::assertPrice($price);
+
+        if ($name->equals($this->name) && $price->equals($this->price)) {
+            return;
+        }
+
+        $this->name = $name;
+        $this->price = $price;
+        $this->updatedAt = $at;
+    }
+
+    /**
+     * Change what the voucher gives: the sessions, the validity and the services it covers. The caller decides whether it may,
+     * because it depends on whether the voucher was sold, which the definition does not know.
+     */
+    public function reconfigure(SessionCount $sessionsCount, ValidityDays $validityDays, CoveredServices $services, DateTimeImmutable $at): void
+    {
+        if ($sessionsCount->equals($this->sessionsCount) && $validityDays->equals($this->validityDays) && $services->sameAs($this->services)) {
+            return;
+        }
+
+        $this->sessionsCount = $sessionsCount;
+        $this->validityDays = $validityDays;
+        $this->services = $services;
+        $this->updatedAt = $at;
+    }
+
+    /** Put it back on sale. Reactivating one that is on sale changes nothing. */
+    public function reactivate(DateTimeImmutable $at): void
+    {
+        if ($this->isActive) {
+            return;
+        }
+
+        $this->isActive = true;
+        $this->updatedAt = $at;
+    }
+
     /** Take it off sale; vouchers already purchased keep their balance (RF-26). Withdrawing twice changes nothing. */
     public function withdraw(DateTimeImmutable $at): void
     {
@@ -84,5 +123,13 @@ final class VoucherDefinition
     public function covers(ServiceId $service): bool
     {
         return $this->services->covers($service);
+    }
+
+    /** A voucher is sold at a price above zero. */
+    private static function assertPrice(Money $price): void
+    {
+        if ($price->colones <= 0) {
+            throw new InvalidValueException('vouchers.price_invalid');
+        }
     }
 }

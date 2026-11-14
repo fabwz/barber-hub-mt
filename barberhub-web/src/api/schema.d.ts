@@ -25,6 +25,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/bonos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar los bonos de la barbería
+         * @description Trae todos los bonos, a la venta o retirados, ordenados por nombre, con sus sesiones, su precio con el IVA de 13 % incluido, su vigencia en días y los servicios que cubren. Solo el dueño: un colaborador o un cliente reciben 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         */
+        get: operations["vouchers.definitions.index"];
+        put?: never;
+        /**
+         * Crear un bono
+         * @description Crea un bono a la venta con nombre, sesiones (al menos 1), precio en colones enteros mayores que cero con el IVA incluido, vigencia en días (al menos 1) y los servicios que cubre: al menos uno, sin repetir y todos de esta barbería. Un valor fuera de rango, una lista vacía o repetida, o un servicio que no existe en la barbería responde 422 `datos-invalidos` y `errores` indica el campo (`servicios.N` para el servicio). Solo el dueño.
+         */
+        post: operations["vouchers.definitions.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/barberias/{barberia}/administracion/bonos/{bono}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver un bono
+         * @description Trae el bono con los servicios que cubre, esté a la venta o retirado. Responde 404 `no-encontrado` si no existe en la barbería. Solo el dueño.
+         */
+        get: operations["vouchers.definitions.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar, retirar o reactivar un bono
+         * @description Cambia solo los campos que vienen. `activo: false` retira el bono de la venta y `activo: true` lo vuelve a poner; retirarlo o cambiarle el precio no toca los bonos que los clientes ya compraron, que conservan su saldo, su vigencia y lo que pagaron (BO-01). Si el bono ya tiene ventas, sus `sesiones`, su `vigencia_dias` y sus `servicios` no se cambian: pedir un valor distinto responde 409 `bono-con-ventas`, y solo se pueden editar `nombre` y `precio` o retirarlo. Sin ventas se puede editar todo. Un servicio que no existe en la barbería responde 422 `datos-invalidos`, y un bono que no existe en ella, 404 `no-encontrado`. Solo el dueño.
+         */
+        patch: operations["vouchers.definitions.update"];
+        trace?: never;
+    };
     "/barberias/{barberia}/administracion/cierres": {
         parameters: {
             query?: never;
@@ -748,6 +796,20 @@ export interface components {
                 tiktok?: string | null;
             };
         };
+        /** ActualizarBono */
+        ActualizarBono: {
+            nombre?: string;
+            /** @description De 1 a 32767. Un bono ya vendido no cambia de sesiones. */
+            sesiones?: number;
+            /** @description Colones enteros con el IVA de 13 % incluido, mayores que cero. */
+            precio?: number;
+            /** @description De 1 a 32767. Un bono ya vendido no cambia de vigencia. */
+            vigencia_dias?: number;
+            /** @description Lista completa de los servicios que cubre: al menos uno, de esta barbería y sin repetir. Un bono ya vendido no cambia de servicios. */
+            servicios?: string[];
+            /** @description `false` retira el bono de la venta y `true` lo vuelve a poner. */
+            activo?: boolean;
+        };
         /** ActualizarCobro */
         ActualizarCobro: {
             /**
@@ -793,6 +855,19 @@ export interface components {
             redes?: {
                 [key: string]: string;
             };
+        };
+        /** Bono */
+        Bono: {
+            id: string;
+            nombre: string;
+            sesiones: number;
+            /** @description Colones con el IVA incluido. */
+            precio: number;
+            vigencia_dias: number;
+            /** @description Identificadores de los servicios que cubre. */
+            servicios: unknown[];
+            /** @description `false` si está retirado de la venta. */
+            activo: boolean;
         };
         /** CambiarEstadoDeColaborador */
         CambiarEstadoDeColaborador: {
@@ -848,6 +923,18 @@ export interface components {
             servicios: unknown[];
             turnos: unknown[];
             pausas: unknown[];
+        };
+        /** CrearBono */
+        CrearBono: {
+            nombre: string;
+            /** @description Número de sesiones del bono: de 1 a 32767. */
+            sesiones: number;
+            /** @description Colones enteros con el IVA de 13 % incluido, mayores que cero. */
+            precio: number;
+            /** @description Días de vigencia desde la activación: de 1 a 32767. */
+            vigencia_dias: number;
+            /** @description Identificadores de los servicios que cubre: al menos uno, de esta barbería y sin repetir. */
+            servicios: string[];
         };
         /** CrearColaborador */
         CrearColaborador: {
@@ -1439,6 +1526,122 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "vouchers.definitions.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `Bono` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Bono"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "vouchers.definitions.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrearBono"];
+            };
+        };
+        responses: {
+            /** @description `Bono` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Bono"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "vouchers.definitions.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                bono: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `Bono` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Bono"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "vouchers.definitions.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                bono: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActualizarBono"];
+            };
+        };
+        responses: {
+            /** @description `Bono` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Bono"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
             422: components["responses"]["InvalidData"];
         };
     };

@@ -206,6 +206,7 @@ Un **tipo de error estable** es un tipo fijo de error RFC 9457 que el cliente we
 | `plazo-vencido` | La cancelación o reprogramación llegó fuera de plazo |
 | `bono-vencido` | El bono ya no está vigente (BO-06) |
 | `oferta-vencida` | La oferta caducó antes de la respuesta (LE-05) |
+| `bono-con-ventas` | El bono ya se vendió: sus sesiones, su vigencia y sus servicios no se cambian (RF-26) |
 | `demasiadas-solicitudes` | Se superó el límite de solicitudes |
 | `error-interno` | Cualquier otro fallo, sin detalles técnicos |
 | `servicio-no-disponible` | El servicio no está disponible en este momento |

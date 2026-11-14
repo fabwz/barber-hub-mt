@@ -32,6 +32,13 @@ final readonly class CoveredServices
         return new self(array_values($unique));
     }
 
+    /** Tell whether both sets hold the same services, whatever their order. */
+    public function sameAs(self $other): bool
+    {
+        return count($this->ids) === count($other->ids)
+            && array_all($this->ids, fn (ServiceId $id): bool => $other->covers($id));
+    }
+
     /** Tell whether the voucher covers the service. */
     public function covers(ServiceId $service): bool
     {

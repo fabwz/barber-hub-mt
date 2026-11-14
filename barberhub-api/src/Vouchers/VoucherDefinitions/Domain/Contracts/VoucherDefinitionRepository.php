@@ -17,4 +17,14 @@ interface VoucherDefinitionRepository
 
     /** Find a definition among those of the current barbershop. */
     public function find(VoucherDefinitionId $id): ?VoucherDefinition;
+
+    /**
+     * List every definition of the current barbershop, on sale or withdrawn, ordered by name.
+     *
+     * @return list<VoucherDefinition>
+     */
+    public function all(): array;
+
+    /** Tell whether a customer of the current barbershop has bought the voucher, paid or not (RF-26). */
+    public function hasPurchases(VoucherDefinitionId $id): bool;
 }

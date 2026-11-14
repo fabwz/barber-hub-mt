@@ -13,7 +13,9 @@ use Src\Vouchers\VoucherDefinitions\Domain\ValueObjects\CoveredServices;
 use Src\Vouchers\VoucherDefinitions\Domain\ValueObjects\ServiceId;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Reservations\SeedsBookableBarbershops;
+use Tests\Support\Reservations\SeedsReservations;
 use Tests\Support\Shared\FixedBarbershopContext;
+use Tests\Support\Vouchers\SeedsVouchers;
 use Tests\Support\Vouchers\VoucherFactory;
 use Tests\TestCase;
 
@@ -22,6 +24,8 @@ final class EloquentVoucherDefinitionRepositoryTest extends TestCase
 {
     use RefreshDatabaseAsOwner;
     use SeedsBookableBarbershops;
+    use SeedsReservations;
+    use SeedsVouchers;
 
     private VoucherDefinitionRepository $definitions;
 
@@ -80,6 +84,50 @@ final class EloquentVoucherDefinitionRepositoryTest extends TestCase
         $this->workAs($this->fadeLab);
 
         $this->assertNull($this->definitions->find($definition->id));
+    }
+
+    /** The list brings the definitions of the barbershop by name, withdrawn ones too, each with its services, and none of another barbershop. */
+    public function test_all_lists_the_definitions_of_the_barbershop_by_name_with_their_services(): void
+    {
+        $classic = $this->insertService($this->puraNavaja, 'Corte clásico', 30, 6000);
+        $this->definitions->save(VoucherFactory::definition(
+            name: 'Bono B', services: CoveredServices::of([new ServiceId($classic)]), id: $this->definitions->nextId()->value, barbershop: $this->puraNavaja,
+        ));
+        $withdrawn = VoucherFactory::definition(
+            name: 'Bono A', services: CoveredServices::of([new ServiceId($this->degradado), new ServiceId($classic)]), id: $this->definitions->nextId()->value, barbershop: $this->puraNavaja,
+        );
+        $withdrawn->withdraw(VoucherFactory::now()->modify('+1 day'));
+        $this->definitions->save($withdrawn);
+        $this->insertVoucherDefinition($this->fadeLab, []);
+        $this->workAs($this->puraNavaja);
+
+        $all = $this->definitions->all();
+
+        $this->assertSame(['Bono A', 'Bono B'], array_map(fn (VoucherDefinition $definition): string => $definition->name->value, $all));
+        $this->assertSame([false, true], array_map(fn (VoucherDefinition $definition): bool => $definition->isActive, $all));
+        $this->assertEqualsCanonicalizing([$this->degradado, $classic], array_map(fn (ServiceId $service): string => $service->value, $all[0]->services->ids));
+        $this->assertSame([$classic], array_map(fn (ServiceId $service): string => $service->value, $all[1]->services->ids));
+    }
+
+    /** A definition has purchases once a customer bought it, paid or not, and only the ones of its own barbershop count. */
+    public function test_has_purchases_tells_whether_a_customer_bought_the_voucher(): void
+    {
+        $sold = $this->definition([$this->degradado]);
+        $unsold = $this->definition([$this->degradado]);
+        $this->definitions->save($sold);
+        $this->definitions->save($unsold);
+        [, $membership] = $this->insertCustomer($this->puraNavaja, 'Ana Rojas');
+
+        $this->assertFalse($this->definitions->hasPurchases($sold->id));
+
+        $this->insertPurchasedVoucher($this->puraNavaja, $membership, $sold->id->value, 'pending');
+
+        $this->assertTrue($this->definitions->hasPurchases($sold->id));
+        $this->assertFalse($this->definitions->hasPurchases($unsold->id));
+
+        $this->workAs($this->fadeLab);
+
+        $this->assertFalse($this->definitions->hasPurchases($sold->id));
     }
 
     /**
