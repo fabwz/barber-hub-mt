@@ -100,6 +100,10 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `PATCH api/v1/barberias/{barberia}/administracion/colaboradores/{colaborador}` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PUT api/v1/barberias/{barberia}/administracion/colaboradores/{colaborador}/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PUT api/v1/barberias/{barberia}/administracion/colaboradores/{colaborador}/horario` | Rol | dueño | Administración de la barbería: solo su dueño. |
+| `GET api/v1/barberias/{barberia}/administracion/bonos` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
+| `POST api/v1/barberias/{barberia}/administracion/bonos` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
+| `GET api/v1/barberias/{barberia}/administracion/bonos/{bono}` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
+| `PATCH api/v1/barberias/{barberia}/administracion/bonos/{bono}` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). Editar, retirar o reactivar. |
 
 ## Cómo agregar una ruta
 
