@@ -32,7 +32,8 @@ final readonly class UpdateVoucherDefinition
      * Apply the requested changes to a definition of the current barbershop, including withdrawing it from sale or putting it back
      * (RF-26). Once a customer has bought it, its sessions, validity and services stay as they were sold: asking for another value
      * is a conflict, and asking for the same one changes nothing. Name, price and the sale flag are free in any case, and the
-     * vouchers already bought keep their own copy of what they paid (BO-01).
+     * vouchers already bought keep their own copy of what they paid (BO-01). It locks the definition first and reads the sales after, so a
+     * purchase in flight either lands before the check and blocks the change, or waits and copies the new terms (RF-27).
      *
      * @throws VoucherDefinitionNotFoundException
      * @throws VoucherDefinitionHasSalesException
@@ -41,7 +42,8 @@ final readonly class UpdateVoucherDefinition
     public function execute(UpdateVoucherDefinitionCommand $command): VoucherDefinition
     {
         $id = new VoucherDefinitionId($command->definitionId);
-        $definition = $this->definitions->find($id) ?? throw VoucherDefinitionNotFoundException::create();
+        // The row is locked until the end of the request, so a purchase that is copying its terms waits and one that comes later finds the new ones.
+        $definition = $this->definitions->findForUpdate($id) ?? throw VoucherDefinitionNotFoundException::create();
         $now = $this->clock->now();
 
         $sessions = $command->sessionsCount === null ? $definition->sessionsCount : SessionCount::of($command->sessionsCount);

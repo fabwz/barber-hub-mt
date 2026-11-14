@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
 
-    'active_payment_exists' => 'La reserva ya tiene un pago en curso o aprobado.',
+    'active_payment_exists' => 'La reserva o el bono ya tiene un pago en curso o aprobado.',
     'amount_invalid' => 'El monto del pago debe ser de al menos ₡1.',
     'charge_not_required' => 'La barbería no cobra por adelantado: no hay nada que pagar.',
     'gateway_unavailable' => 'La pasarela de pago no responde en este momento. Intente de nuevo en unos minutos.',
@@ -19,6 +19,8 @@ return [
     'method_not_supported' => 'La pasarela de la barbería no admite el medio de pago :method.',
     'provider_amount_invalid' => 'El monto del proveedor debe ser de al menos una unidad mínima.',
     'provider_payment_id_invalid' => 'El identificador del pago en el proveedor no puede estar vacío.',
+    'subject_invalid' => 'Un pago es de una reserva o de un bono comprado, no de ambos ni de ninguno.',
     'transition_not_allowed' => 'El pago no puede pasar a ese estado.',
+    'voucher_not_refundable' => 'El pago de un bono no se reembolsa: el bono no es reembolsable ni transferible.',
 
 ];

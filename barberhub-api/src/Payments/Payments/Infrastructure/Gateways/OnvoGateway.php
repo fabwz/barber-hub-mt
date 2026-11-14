@@ -97,7 +97,7 @@ final readonly class OnvoGateway extends HttpPaymentGateway
             'amount' => $minorUnits,
             'currency' => self::CURRENCY,
             'description' => 'BarberHub',
-            'metadata' => ['paymentId' => $request->paymentId->value, 'reservationId' => $request->reservationId->value],
+            'metadata' => ['paymentId' => $request->paymentId->value, ...($request->reservationId === null ? ['voucherId' => $request->subjectId()] : ['reservationId' => $request->subjectId()])],
         ]);
         $intentId = $this->requireSuccess($intent)->json('id');
 

@@ -47,7 +47,7 @@ final class PaymentSchemaTest extends TestCase
     public function test_the_table_has_only_the_columns_of_this_issue(): void
     {
         $this->assertEqualsCanonicalizing([
-            'id', 'barbershop_id', 'reservation_id', 'provider', 'method', 'status', 'amount', 'provider_currency', 'provider_amount',
+            'id', 'barbershop_id', 'reservation_id', 'purchased_voucher_id', 'provider', 'method', 'status', 'amount', 'provider_currency', 'provider_amount',
             'provider_exchange_rate', 'provider_payment_id', 'provider_capture_id', 'failure_reason', 'refund_pending', 'created_at', 'updated_at',
         ], Schema::connection('pgsql_admin')->getColumnListing('payments'));
         $this->assertFalse(Schema::connection('pgsql_admin')->hasTable('gateway_events'));

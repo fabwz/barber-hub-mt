@@ -15,7 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property string $id
  * @property string $barbershop_id
- * @property string $reservation_id
+ * @property string|null $reservation_id
+ * @property string|null $purchased_voucher_id
  * @property string $provider
  * @property string $method
  * @property string $status
@@ -35,6 +36,7 @@ use Illuminate\Database\Eloquent\Model;
     'id',
     'barbershop_id',
     'reservation_id',
+    'purchased_voucher_id',
     'provider',
     'method',
     'status',

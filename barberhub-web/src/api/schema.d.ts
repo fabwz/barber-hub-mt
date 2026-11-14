@@ -249,6 +249,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/bonos/{bono}/compras": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Comprar un bono
+         * @description El cliente compra un bono que está a la venta en la barbería con `metodo` `tarjeta` o `sinpe_movil`. El cuerpo es el mismo de `POST /reservas/{reserva}/pagos`: además de `metodo`, lleva solo los campos que la pasarela configurada para la barbería exige para ese medio, y el número de la tarjeta nunca llega a este servidor. El monto es siempre el precio completo del bono con el IVA de 13 % incluido, tal como estaba a la venta al comprar; nunca viene del cuerpo (un `monto` que llegue se ignora) y la modalidad de cobro de las reservas (depósito) no se aplica. En una sola transacción se registra el bono comprado como pendiente de pago, sin sesiones y sin vencimiento, y se crea el pago ligado a él; si la persona no tenía rol en la barbería, queda como cliente en esa misma transacción y, si algo falla, no queda ninguna membresía. Responde 201 con el pago, con el mismo formato que `POST /reservas/{reserva}/pagos` (`accion_siguiente` dice qué hace el cliente), y `bono_comprado` trae el id del bono comprado. El bono NO se activa con esta respuesta ni con lo que informe el navegador: se activa solo cuando el aviso verificado de la pasarela (o la lectura de su estado con `GET /pagos/{pago}`) confirma el pago; entonces el pago queda `aprobado`, el bono queda activo con todas sus sesiones y su vigencia en días cuenta desde ese momento, en la misma transacción. Un pago `rechazado` o `fallido` deja el bono sin activar y sin sesiones; la persona puede volver a intentarlo y se reutiliza el mismo bono pendiente. Si la persona ya tiene un pago `pendiente` o `aprobado` de ese bono, lo devuelve con 200 y no cobra otra vez. El bono no es reembolsable ni transferible. Si la pasarela no responde responde 503 `servicio-no-disponible` y si no acepta los datos, 422 `datos-invalidos`, igual que el pago de una reserva. Un bono inexistente, retirado de la venta o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; el dueño o un colaborador de esa barbería recibe 403 `prohibido` y no se crea nada; sin sesión, 401.
+         */
+        post: operations["payments.vouchers.purchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cuentas": {
         parameters: {
             query?: never;
@@ -924,6 +944,25 @@ export interface components {
             turnos: unknown[];
             pausas: unknown[];
         };
+        /** ComprarBono */
+        ComprarBono: {
+            /**
+             * @description Medio de pago: `tarjeta` o `sinpe_movil`.
+             * @enum {string}
+             */
+            metodo: "tarjeta" | "sinpe_movil";
+            /** @description Obligatorio según la pasarela configurada para la barbería: identificador del método de pago que el navegador creó con la llave pública de la pasarela. Nunca el número de la tarjeta. */
+            token?: string | null;
+            /** @description Obligatorio según la pasarela configurada para la barbería: teléfono desde el que se hace la transferencia, por ejemplo `+50688888888`. */
+            telefono?: string | null;
+            /** @description Obligatorio según la pasarela configurada para la barbería: identificación de la persona, con los guiones de su tipo, por ejemplo `01-1393-1919`. */
+            identificacion?: string | null;
+            /**
+             * @description Obligatorio según la pasarela configurada para la barbería: tipo de identificación, como `"0"` o `0`: `0` nacional, `1` residente, `2` entidad estatal, `3` jurídica, `4` institución autónoma, `5` diplomático o `9` extranjero.
+             * @enum {string|null}
+             */
+            tipo_identificacion?: "0" | "1" | "2" | "3" | "4" | "5" | "9" | null;
+        };
         /** CrearBono */
         CrearBono: {
             nombre: string;
@@ -1083,19 +1122,22 @@ export interface components {
         /** Pago */
         Pago: {
             id: string;
-            reserva: string;
+            /** @description Reserva que paga este pago; nulo si paga un bono. */
+            reserva: string | null;
+            /** @description Bono comprado que paga este pago; nulo si paga una reserva. El bono se activa cuando el pago queda `aprobado` por el aviso verificado de la pasarela. */
+            bono_comprado: string | null;
             /** @description Estado del pago: `pendiente`, `aprobado`, `rechazado`, `fallido` o `reembolsado`. La reserva se confirma solo cuando el pago queda `aprobado`. */
             estado: string;
             /** @description Medio de pago: `tarjeta` o `sinpe_movil`. */
             metodo: string;
-            /** @description Colones cobrados: el depósito o el total, según la política de la barbería. */
+            /** @description Colones cobrados: el depósito o el total de la reserva según la política de la barbería, o el precio completo del bono. */
             monto: number;
             /**
              * @description Motivo del rechazo o del fallo, siempre en español y con lo que el cliente puede hacer; nulo en los demás estados. Es el mismo con cualquier pasarela y nunca trae el texto del proveedor: un motivo que el sistema no reconoce es una frase genérica.
              * @example El banco rechazó el pago. Pruebe con otra tarjeta o con otro método.
              */
             motivo: string | null;
-            /** @description Verdadero si el pago se aprobó cuando la reserva ya no se podía confirmar y hay que devolverlo (PA-07). */
+            /** @description Verdadero si el pago se aprobó cuando la reserva ya no se podía confirmar (o el bono no se pudo activar) y hay que devolverlo (PA-07). */
             devolucion_pendiente: boolean;
             /** @description Solo al crear el pago: `redireccion` con la `url` a la que va el cliente a pagar o a verificar su tarjeta, o `instrucciones` con el `numero_destino` y el `monto` exacto de la transferencia SINPE Móvil. */
             accion_siguiente: null | {
@@ -1980,6 +2022,49 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["Colaborador"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "payments.vouchers.purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                bono: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComprarBono"];
+            };
+        };
+        responses: {
+            /** @description La persona ya tenía un pago pendiente o aprobado de ese bono: se devuelve el mismo y no se cobra otra vez. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Pago"];
+                    };
+                };
+            };
+            /** @description El pago de la compra, pendiente hasta que el aviso verificado de la pasarela lo confirme. `accion_siguiente` dice qué hace el cliente; `bono_comprado` es el bono pendiente de activación. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Pago"];
                     };
                 };
             };

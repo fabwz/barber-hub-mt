@@ -18,6 +18,8 @@ final class VoucherMigrationTest extends TestCase
 
     private const string PURCHASED = '2026_11_13_110000_create_purchased_vouchers_tables';
 
+    private const string VOUCHER_PAYMENTS = '2026_11_13_120000_add_purchased_voucher_to_payments_table';
+
     private const array TABLES = ['voucher_definitions', 'voucher_definition_services', 'purchased_vouchers', 'voucher_movements'];
 
     /** Rolling back drops the four tables with their constraints, indexes, policies, trigger and function; applying again brings them back. */
@@ -27,10 +29,12 @@ final class VoucherMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
         $definitions = require base_path('database/migrations/'.self::DEFINITIONS.'.php');
         $purchased = require base_path('database/migrations/'.self::PURCHASED.'.php');
+        $voucherPayments = require base_path('database/migrations/'.self::VOUCHER_PAYMENTS.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $voucherPayments->down();
             $purchased->down();
 
             $this->assertFalse($schema->hasTable('purchased_vouchers'));
@@ -54,6 +58,7 @@ final class VoucherMigrationTest extends TestCase
 
             $definitions->up();
             $purchased->up();
+            $voucherPayments->up();
 
             foreach (self::TABLES as $table) {
                 $this->assertTrue($schema->hasTable($table), $table);

@@ -7,6 +7,7 @@ namespace Src\Payments\Payments\Domain\Contracts;
 use Src\Payments\Payments\Domain\Entities\Payment;
 use Src\Payments\Payments\Domain\Exceptions\ActivePaymentExistsException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
+use Src\Payments\Payments\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
 
 interface PaymentRepository
@@ -17,7 +18,7 @@ interface PaymentRepository
     /**
      * Persist a new payment, or the changes of an existing one.
      *
-     * @throws ActivePaymentExistsException When the reservation already has a payment pending or approved.
+     * @throws ActivePaymentExistsException When the reservation or the voucher already has a payment pending or approved.
      */
     public function save(Payment $payment): void;
 
@@ -29,6 +30,9 @@ interface PaymentRepository
 
     /** Find the pending or approved payment of a reservation of the current barbershop: the one a repeated press of the pay button must reuse. */
     public function findActiveOfReservation(ReservationId $reservationId): ?Payment;
+
+    /** Find the pending or approved payment of a purchased voucher of the current barbershop: the one a repeated press of the buy button must reuse. */
+    public function findActiveOfVoucher(PurchasedVoucherId $voucherId): ?Payment;
 
     /**
      * Find the pending or approved payments of several reservations of the current barbershop, in one query.

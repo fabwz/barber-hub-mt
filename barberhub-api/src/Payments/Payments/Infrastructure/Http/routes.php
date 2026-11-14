@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Src\Payments\Payments\Infrastructure\Http\Controllers\PaymentController;
 use Src\Payments\Payments\Infrastructure\Http\Controllers\PaymentNoticeController;
+use Src\Payments\Payments\Infrastructure\Http\Controllers\VoucherPurchaseController;
 use Src\Payments\Payments\Infrastructure\Http\Middleware\GuardNoticeBody;
 
 // Where a provider sends the customer back after the payment page. It is public, belongs to no barbershop and changes nothing.
@@ -26,7 +27,14 @@ Route::post('barberias/{barberia}/reservas/{reserva}/pagos', [PaymentController:
     ->name('payments.payments.store')
     ->whereUuid(['barberia', 'reserva']);
 
-// The customer reads the payments of their own reservations and the owner any of the barbershop; a collaborator is refused.
+// A customer buys a voucher (RF-27): the first purchase creates their role in the barbershop, so a person without one goes through
+// (RD-18, UP-09) and the owner or a collaborator of the barbershop gets 403 `prohibido` (UP-07). The voucher is the one on sale of the URL.
+Route::post('barberias/{barberia}/bonos/{bono}/compras', [VoucherPurchaseController::class, 'store'])
+    ->middleware(['auth:sanctum', 'barbershop:customer'])
+    ->name('payments.vouchers.purchase')
+    ->whereUuid(['barberia', 'bono']);
+
+// The customer reads the payments of their own reservations or vouchers and the owner any of the barbershop; a collaborator is refused.
 Route::get('barberias/{barberia}/pagos/{pago}', [PaymentController::class, 'show'])
     ->middleware(['auth:sanctum', 'barbershop', 'role:owner,customer'])
     ->name('payments.payments.show')

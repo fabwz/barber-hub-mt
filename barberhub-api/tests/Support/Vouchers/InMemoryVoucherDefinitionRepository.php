@@ -36,6 +36,12 @@ final class InMemoryVoucherDefinitionRepository implements VoucherDefinitionRepo
         return $this->definitions[$id->value] ?? null;
     }
 
+    /** Find a definition by its identity; there is no concurrency to lock against in memory. */
+    public function findForUpdate(VoucherDefinitionId $id): ?VoucherDefinition
+    {
+        return $this->find($id);
+    }
+
     /**
      * List the stored definitions ordered by name.
      *

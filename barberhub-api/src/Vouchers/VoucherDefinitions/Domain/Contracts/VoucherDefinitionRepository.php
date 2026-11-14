@@ -19,6 +19,12 @@ interface VoucherDefinitionRepository
     public function find(VoucherDefinitionId $id): ?VoucherDefinition;
 
     /**
+     * Find a definition among those of the current barbershop and lock its row until the transaction ends. The sale of a voucher and
+     * the edit of its terms both take this lock first, so a purchase never copies terms that an edit is changing (RF-26, RF-27).
+     */
+    public function findForUpdate(VoucherDefinitionId $id): ?VoucherDefinition;
+
+    /**
      * List every definition of the current barbershop, on sale or withdrawn, ordered by name.
      *
      * @return list<VoucherDefinition>

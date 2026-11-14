@@ -13,6 +13,7 @@ use Src\Payments\Payments\Domain\Contracts\PaymentRepository;
 use Src\Payments\Payments\Domain\Entities\Payment;
 use Src\Payments\Payments\Domain\Exceptions\PaymentNotFoundException;
 use Src\Payments\Payments\Domain\Exceptions\PaymentTransitionNotAllowedException;
+use Src\Payments\Payments\Domain\Exceptions\VoucherPaymentNotRefundableException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
 
@@ -28,12 +29,17 @@ final readonly class RefundPayment
      *
      * @throws PaymentNotFoundException
      * @throws PaymentTransitionNotAllowedException when the payment is not approved
+     * @throws VoucherPaymentNotRefundableException when the payment is of a voucher, which is not refundable (BO-07)
      * @throws RefundRefusedException
      * @throws PaymentServiceUnavailableException
      */
     public function execute(string $paymentId, DateTimeImmutable $now): Payment
     {
         $payment = $this->payments->find(new PaymentId($paymentId)) ?? throw PaymentNotFoundException::create();
+
+        if ($payment->isOfVoucher()) {
+            throw VoucherPaymentNotRefundableException::create();
+        }
 
         if (! $payment->status->canChangeTo(PaymentStatus::Refunded) || $payment->providerPaymentId === null) {
             throw PaymentTransitionNotAllowedException::create();

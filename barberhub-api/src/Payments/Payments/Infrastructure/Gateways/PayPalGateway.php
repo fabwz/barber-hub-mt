@@ -122,7 +122,7 @@ final readonly class PayPalGateway extends HttpPaymentGateway
             'intent' => 'CAPTURE',
             'purchase_units' => [[
                 'reference_id' => $request->paymentId->value,
-                'custom_id' => $request->reservationId->value,
+                'custom_id' => $request->subjectId(),
                 'description' => 'BarberHub',
                 'amount' => ['currency_code' => self::CURRENCY, 'value' => $this->decimal($cents)],
             ]],

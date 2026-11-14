@@ -42,6 +42,9 @@ final class OpeningHoursMigrationTest extends TestCase
 
     private const string PURCHASED_VOUCHERS = '2026_11_13_110000_create_purchased_vouchers_tables';
 
+    // The payment of a voucher is a column of the payments that points at the vouchers: it goes first when rolling back and last when applying again.
+    private const string VOUCHER_PAYMENTS = '2026_11_13_120000_add_purchased_voucher_to_payments_table';
+
     /** Rolling back drops both tables, the range type and the extension; applying again brings them back. */
     public function test_migrations_roll_back_and_apply_again_without_leftovers(): void
     {
@@ -49,6 +52,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         $this->asOwner(function (): void {
+            $this->apply(self::VOUCHER_PAYMENTS, 'down');
             $this->apply(self::PURCHASED_VOUCHERS, 'down');
             $this->apply(self::VOUCHER_DEFINITIONS, 'down');
             $this->apply(self::EXPIRES_AT, 'down');
@@ -77,6 +81,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::EXPIRES_AT, 'up');
             $this->apply(self::VOUCHER_DEFINITIONS, 'up');
             $this->apply(self::PURCHASED_VOUCHERS, 'up');
+            $this->apply(self::VOUCHER_PAYMENTS, 'up');
         });
 
         $this->assertTrue($schema->hasTable('opening_hours'));
@@ -91,6 +96,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
 
         $this->asOwner(function () use ($admin): void {
+            $this->apply(self::VOUCHER_PAYMENTS, 'down');
             $this->apply(self::PURCHASED_VOUCHERS, 'down');
             $this->apply(self::VOUCHER_DEFINITIONS, 'down');
             $this->apply(self::EXPIRES_AT, 'down');
@@ -113,6 +119,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::EXPIRES_AT, 'up');
             $this->apply(self::VOUCHER_DEFINITIONS, 'up');
             $this->apply(self::PURCHASED_VOUCHERS, 'up');
+            $this->apply(self::VOUCHER_PAYMENTS, 'up');
         });
 
         $this->assertSame(1, $admin->table('pg_type')->where('typname', 'timerange')->count());

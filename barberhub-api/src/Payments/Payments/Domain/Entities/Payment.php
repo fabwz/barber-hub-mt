@@ -12,6 +12,7 @@ use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
 use Src\Payments\Payments\Domain\ValueObjects\ProviderAmount;
+use Src\Payments\Payments\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
@@ -26,7 +27,8 @@ final class Payment
     private function __construct(
         public readonly PaymentId $id,
         public readonly BarbershopId $barbershopId,
-        public readonly ReservationId $reservationId,
+        public readonly ?ReservationId $reservationId,
+        public readonly ?PurchasedVoucherId $purchasedVoucherId,
         public readonly PaymentProvider $provider,
         public readonly PaymentMethod $method,
         public readonly Money $amount,
@@ -41,7 +43,7 @@ final class Payment
     ) {}
 
     /**
-     * Create a payment. It starts pending with the provider and the amount fixed now: the provider the barbershop has at this
+     * Create the payment of a reservation. It starts pending with the provider and the amount fixed now: the provider the barbershop has at this
      * moment completes it, even if the owner changes it later (PA-02). The provider does not know the payment yet.
      */
     public static function create(
@@ -53,18 +55,44 @@ final class Payment
         Money $amount,
         DateTimeImmutable $at,
     ): self {
+        return self::start($id, $barbershopId, $reservationId, null, $provider, $method, $amount, $at);
+    }
+
+    /** Create the payment of a purchased voucher (RF-27). It starts pending, with the same rules as the one of a reservation: the amount is the price of the voucher, fixed now. */
+    public static function createForVoucher(
+        PaymentId $id,
+        BarbershopId $barbershopId,
+        PurchasedVoucherId $purchasedVoucherId,
+        PaymentProvider $provider,
+        PaymentMethod $method,
+        Money $amount,
+        DateTimeImmutable $at,
+    ): self {
+        return self::start($id, $barbershopId, null, $purchasedVoucherId, $provider, $method, $amount, $at);
+    }
+
+    private static function start(
+        PaymentId $id,
+        BarbershopId $barbershopId,
+        ?ReservationId $reservationId,
+        ?PurchasedVoucherId $purchasedVoucherId,
+        PaymentProvider $provider,
+        PaymentMethod $method,
+        Money $amount,
+        DateTimeImmutable $at,
+    ): self {
         if ($amount->colones <= 0) {
             throw new InvalidValueException('payments.amount_invalid');
         }
 
-        return new self($id, $barbershopId, $reservationId, $provider, $method, $amount, null, null, PaymentStatus::Pending, null, $at, $at);
+        return new self($id, $barbershopId, $reservationId, $purchasedVoucherId, $provider, $method, $amount, null, null, PaymentStatus::Pending, null, $at, $at);
     }
 
-    /** Rebuild a payment from its stored state. */
+    /** Rebuild a payment from its stored state: it pays for a reservation or for a purchased voucher, never both nor none. */
     public static function reconstitute(
         PaymentId $id,
         BarbershopId $barbershopId,
-        ReservationId $reservationId,
+        ?ReservationId $reservationId,
         PaymentProvider $provider,
         PaymentMethod $method,
         Money $amount,
@@ -76,8 +104,19 @@ final class Payment
         DateTimeImmutable $updatedAt,
         bool $refundPending = false,
         ?string $providerCaptureId = null,
+        ?PurchasedVoucherId $purchasedVoucherId = null,
     ): self {
-        return new self($id, $barbershopId, $reservationId, $provider, $method, $amount, $providerPaymentId, $providerAmount, $status, $failureReason, $createdAt, $updatedAt, $refundPending, $providerCaptureId);
+        if (($reservationId === null) === ($purchasedVoucherId === null)) {
+            throw new InvalidValueException('payments.subject_invalid');
+        }
+
+        return new self($id, $barbershopId, $reservationId, $purchasedVoucherId, $provider, $method, $amount, $providerPaymentId, $providerAmount, $status, $failureReason, $createdAt, $updatedAt, $refundPending, $providerCaptureId);
+    }
+
+    /** Tell whether the payment is for a purchased voucher instead of a reservation. */
+    public function isOfVoucher(): bool
+    {
+        return $this->purchasedVoucherId !== null;
     }
 
     /**

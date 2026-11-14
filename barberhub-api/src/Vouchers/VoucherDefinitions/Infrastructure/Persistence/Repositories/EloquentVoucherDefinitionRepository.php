@@ -70,7 +70,20 @@ final readonly class EloquentVoucherDefinitionRepository implements VoucherDefin
     /** Find the definition among those of the current barbershop, with its services. */
     public function find(VoucherDefinitionId $id): ?VoucherDefinition
     {
-        $model = $this->ofBarbershop()->find($id->value);
+        return $this->read($id, false);
+    }
+
+    /** Find the definition among those of the current barbershop, locking its row until the transaction ends. */
+    public function findForUpdate(VoucherDefinitionId $id): ?VoucherDefinition
+    {
+        return $this->read($id, true);
+    }
+
+    /** Read the definition with its services, locking the row first when asked. */
+    private function read(VoucherDefinitionId $id, bool $lock): ?VoucherDefinition
+    {
+        $query = $this->ofBarbershop();
+        $model = ($lock ? $query->lockForUpdate() : $query)->find($id->value);
 
         if ($model === null) {
             return null;

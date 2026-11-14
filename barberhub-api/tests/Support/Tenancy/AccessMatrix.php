@@ -98,6 +98,7 @@ final class AccessMatrix
             "POST {$base}/reservas" => RouteRule::firstUse(self::FIRST_USE, 'Reservar crea el rol de cliente; dueño y colaborador reciben 403.'),
             "POST {$base}/reservas/propuesta" => RouteRule::firstUse(self::FIRST_USE, 'Propuesta de IA (RF-37): no crea nada; dueño y colaborador reciben 403.'),
             "GET {$base}/mis-reservas" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (CL-04): sin rol, lista vacía.'),
+            "POST {$base}/bonos/{bono}/compras" => RouteRule::firstUse(self::FIRST_USE, 'Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403.'),
 
             // Reservations.
             "GET {$base}/reservas" => RouteRule::owned(['owner', 'collaborator'], self::STAFF_AGENDA, 'El dueño ve la agenda de todos; un colaborador solo la suya (CO-04).'),
@@ -107,8 +108,8 @@ final class AccessMatrix
 
             // Payments.
             "POST {$base}/reservas/{reserva}/pagos" => RouteRule::owned(['customer'], self::CUSTOMER_OWN, 'Solo el cliente paga su propia reserva.'),
-            "GET {$base}/pagos/{pago}" => RouteRule::owned(['owner', 'customer'], self::OWNER_OR_CUSTOMER_OWN, 'El cliente lee los pagos de sus reservas; el dueño, cualquiera de su barbería; el colaborador no (CO-04).'),
-            "POST {$base}/pagos/{pago}/reembolsos" => RouteRule::role(['owner'], self::OWNER_ONLY, 'Solo el dueño devuelve dinero (PA-08).'),
+            "GET {$base}/pagos/{pago}" => RouteRule::owned(['owner', 'customer'], self::OWNER_OR_CUSTOMER_OWN, 'El cliente lee los pagos de sus reservas y de sus bonos; el dueño, cualquiera de su barbería; el colaborador no (CO-04).'),
+            "POST {$base}/pagos/{pago}/reembolsos" => RouteRule::role(['owner'], self::OWNER_ONLY, 'Solo el dueño devuelve dinero (PA-08). El pago de un bono no se reembolsa (BO-07).'),
 
             // Administration of the barbershop: only its owner.
             "GET {$base}/administracion/cobro" => $admin('Política de cobro: solo el dueño (UP-03).'),

@@ -20,6 +20,8 @@ final class PaymentMigrationTest extends TestCase
 
     private const string EXCHANGE_RATE_MIGRATION = '2026_10_28_100000_add_exchange_rate_and_capture_to_payments_table';
 
+    private const string VOUCHER_MIGRATION = '2026_11_13_120000_add_purchased_voucher_to_payments_table';
+
     /** Rolling back drops the table with its constraints, index and policy; applying again brings them back. */
     public function test_migration_rolls_back_and_applies_again_without_leftovers(): void
     {
@@ -28,10 +30,15 @@ final class PaymentMigrationTest extends TestCase
         $migration = require base_path('database/migrations/'.self::MIGRATION.'.php');
         $refundPending = require base_path('database/migrations/'.self::REFUND_PENDING_MIGRATION.'.php');
         $exchangeRate = require base_path('database/migrations/'.self::EXCHANGE_RATE_MIGRATION.'.php');
+        $voucher = require base_path('database/migrations/'.self::VOUCHER_MIGRATION.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $voucher->down();
+            $this->assertFalse($schema->hasColumn('payments', 'purchased_voucher_id'));
+            $this->assertSame(0, $admin->table('pg_constraint')->where('conname', 'payments_one_subject_check')->count());
+            $this->assertSame(0, $admin->table('pg_indexes')->where('indexname', 'payments_one_active_per_voucher_idx')->count());
             $exchangeRate->down();
             $this->assertFalse($schema->hasColumn('payments', 'provider_exchange_rate'));
             $this->assertFalse($schema->hasColumn('payments', 'provider_capture_id'));
@@ -48,9 +55,13 @@ final class PaymentMigrationTest extends TestCase
             $migration->up();
             $refundPending->up();
             $exchangeRate->up();
+            $voucher->up();
 
             $this->assertTrue($schema->hasColumn('payments', 'provider_exchange_rate'));
             $this->assertTrue($schema->hasColumn('payments', 'provider_capture_id'));
+            $this->assertTrue($schema->hasColumn('payments', 'purchased_voucher_id'));
+            $this->assertSame(1, $admin->table('pg_constraint')->where('conname', 'payments_one_subject_check')->count());
+            $this->assertSame(1, $admin->table('pg_indexes')->where('indexname', 'payments_one_active_per_voucher_idx')->count());
             $this->assertTrue($schema->hasTable('payments'));
             $this->assertTrue($schema->hasColumn('payments', 'refund_pending'));
             $this->assertSame(1, $admin->table('pg_policies')->where('tablename', 'payments')->count());
