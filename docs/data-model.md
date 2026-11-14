@@ -360,14 +360,16 @@ Llave candidata: `(gateway, event_id)`; su violación es lo que convierte un avi
 
 ## Bonos
 
+Las cuatro tablas existen desde el issue #132, con la seguridad a nivel de fila de [database.md](database.md). Las rutas y los casos de uso llegan con el #87 al #90.
+
 ### voucher_definitions y voucher_definition_services
 
 El bono que la barbería vende (BO-01) y los servicios que cubre.
 
 | Tabla | Columnas | Regla |
 | --- | --- | --- |
-| `voucher_definitions` | `id`, `barbershop_id`, `name`, `sessions_count`, `price`, `validity_days`, `is_active` | `sessions_count`, `price` y `validity_days` mayores que 0; `is_active = false` lo retira de la venta (RF-26) |
-| `voucher_definition_services` | `barbershop_id`, `voucher_definition_id`, `service_id` | Llave primaria `(voucher_definition_id, service_id)`; llaves foráneas compuestas |
+| `voucher_definitions` | `id`, `barbershop_id`, `name` (`varchar(120)`), `sessions_count` (`smallint`), `price` (`integer`, colones con IVA), `validity_days` (`smallint`), `is_active`, `created_at`, `updated_at` | `CHECK` de `sessions_count`, `price` y `validity_days` mayores que 0 y de `name` no vacío; `is_active = false` lo retira de la venta (RF-26) |
+| `voucher_definition_services` | `id`, `barbershop_id`, `voucher_definition_id`, `service_id`, `created_at` | Única `(barbershop_id, voucher_definition_id, service_id)`; llaves foráneas compuestas a `voucher_definitions` (se borra con él) y a `services`; índice `(barbershop_id, service_id)` para saber qué bonos cubren un servicio (BO-06) |
 
 ### purchased_vouchers
 
@@ -376,27 +378,32 @@ El bono adquirido por un cliente: un agregado con su saldo en sesiones.
 | Columna | Tipo | Regla |
 | --- | --- | --- |
 | `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` |
-| `customer_membership_id` | `uuid` | Llave foránea compuesta a `memberships` |
-| `voucher_definition_id` | `uuid` | Llave foránea compuesta a `voucher_definitions` |
-| `name`, `price`, `sessions_count` | `varchar`, `integer`, `smallint` | Copiados de la definición al comprar |
+| `customer_membership_id` | `uuid` | Llave foránea compuesta `(customer_membership_id, barbershop_id)` a `memberships` |
+| `voucher_definition_id` | `uuid` | Llave foránea compuesta `(voucher_definition_id, barbershop_id)` a `voucher_definitions` |
+| `name`, `price`, `sessions_count`, `validity_days` | `varchar(120)`, `integer`, `smallint`, `smallint` | Copiados de la definición al comprar, todos con `CHECK` (nombre no vacío y números mayores que 0) |
 | `status` | `varchar(10)` | `CHECK` entre `pending` y `active`; pasa a `active` solo cuando el webhook confirma el pago (BO-02) |
-| `activated_at`, `expires_at` | `timestamptz` | Nulas hasta la activación; `expires_at` es `activated_at` más la vigencia |
-| `remaining_sessions` | `smallint` | `CHECK (remaining_sessions >= 0)` (BO-03) |
+| `activated_at`, `expires_at` | `timestamptz` | Nulas hasta la activación; `expires_at` es `activated_at` más `validity_days` días |
+| `remaining_sessions` | `smallint` | Por defecto 0. `CHECK (remaining_sessions >= 0)` (BO-03) y `CHECK (remaining_sessions <= sessions_count)` |
 | `created_at`, `updated_at` | `timestamptz` | |
+
+Una cuarta restricción, `purchased_vouchers_activation_check`, une el estado con las fechas: un bono `pending` no tiene fechas ni sesiones, y uno `active` tiene las dos fechas y `expires_at > activated_at`. Índices: `purchased_vouchers_customer_idx` sobre `(barbershop_id, customer_membership_id, expires_at)` para los bonos de una persona, el que vence antes primero (BO-08), y el parcial `purchased_vouchers_expiring_idx` sobre `(barbershop_id, expires_at)` para los activos con sesiones, que son los que están por vencer.
 
 Un bono vencido no cambia de estado: la vigencia se valida al reservar y al consultar el saldo (BO-07).
 
 ### voucher_movements
 
-El registro de cada movimiento de saldo, ligado a su reserva (BO-09).
+El registro de cada movimiento de saldo, ligado a su reserva (BO-09). Solo se agrega: nunca se edita ni se borra una fila.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id`, `barbershop_id`, `purchased_voucher_id` | `uuid` | Llave primaria y llaves foráneas compuestas |
-| `reservation_id` | `uuid` | Opcional; la reserva que lo originó |
+| `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` |
+| `purchased_voucher_id` | `uuid` | Llave foránea compuesta `(purchased_voucher_id, barbershop_id)` |
+| `reservation_id` | `uuid` | Nula solo en la compra; llave foránea compuesta `(reservation_id, barbershop_id)` a `reservations` |
 | `type` | `varchar(10)` | `CHECK` entre `purchase`, `hold`, `consume` y `release` |
-| `sessions_delta` | `smallint` | `purchase` suma sesiones, `hold` resta una, `release` devuelve una y `consume` confirma el uso con 0 |
+| `sessions_delta` | `smallint` | `purchase` suma las sesiones compradas, `hold` resta una, `release` devuelve una y `consume` confirma el uso con 0 |
 | `created_at` | `timestamptz` | |
+
+`voucher_movements_shape_check` obliga a que cada tipo lleve su monto y que solo la compra no tenga reserva, así que la suma de los movimientos de un bono es su saldo. Tres índices únicos parciales dan la idempotencia: una sola compra por bono, un solo `hold` por bono y reserva, y una sola salida (`release` o `consume`) por bono y reserva. Los índices `voucher_movements_voucher_idx` `(barbershop_id, purchased_voucher_id, created_at)` y `voucher_movements_reservation_idx` `(barbershop_id, reservation_id)` sirven para sumar y para leer el registro. Que nunca se edite ni se borre lo garantizan los permisos y un disparador (ver [database.md](database.md)).
 
 ## Lista de espera
 
@@ -465,8 +472,8 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 | `barbershop_id` se repite en toda tabla hija aunque el padre ya lo implica | El aislamiento no depende del código. Las llaves foráneas compuestas `(x_id, barbershop_id)` impiden que los dos valores discrepen |
 | La reserva guarda `price`, `duration_minutes`, `cancellation_deadline_hours` y `deposit_amount` | No son datos derivados: son el hecho de a cuánto, por cuánto tiempo y con qué plazo se reservó. Cambiar el catálogo o las políticas no debe alterar reservas existentes (SV-03, CA-01) |
 | `reservations.blocked_until` es `ends_at` más 5 minutos | Una expresión de índice debe ser inmutable y sumar un intervalo a un `timestamptz` no lo es; guardarlo permite la restricción `EXCLUDE` que impide el solape |
-| `purchased_vouchers.remaining_sessions` se puede calcular desde `voucher_movements` | Se mantiene para decrementarlo de forma atómica y condicional, con `CHECK (>= 0)`, sin leer el registro completo (BO-03). Una prueba verifica que ambos coincidan |
-| `purchased_vouchers` copia `name`, `price` y `sessions_count` de la definición | Es lo que se compró: editar o retirar la definición no cambia el bono adquirido ni el reporte de ingresos |
+| `purchased_vouchers.remaining_sessions` se puede calcular desde `voucher_movements` | Se mantiene para decrementarlo de forma atómica y condicional, con `CHECK (>= 0)`, sin leer el registro completo (BO-03). Las pruebas `EloquentPurchasedVoucherRepositoryTest` y `SimultaneousVoucherHoldsTest` verifican que ambos coincidan |
+| `purchased_vouchers` copia `name`, `price`, `sessions_count` y `validity_days` de la definición | Es lo que se compró: editar o retirar la definición no cambia el bono adquirido ni el reporte de ingresos, y la vigencia se cuenta desde la activación con los días que tenía al comprar |
 | `personal_access_tokens.id` es `bigint` y no `uuid` | La tabla pertenece a Sanctum: el token que recibe el cliente tiene la forma `<id>\|<secreto>` y Sanctum busca la fila por ese número |
 | `personal_access_tokens` no tiene llave foránea a `users` | Sanctum define una relación polimórfica; un token cuya cuenta ya no existe no autentica a nadie |
 

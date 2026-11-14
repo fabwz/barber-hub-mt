@@ -14,6 +14,8 @@ use Src\Identity\Users\Infrastructure\UsersServiceProvider;
 use Src\Payments\Payments\Infrastructure\PaymentsServiceProvider;
 use Src\Reservations\Reservations\Infrastructure\ReservationsServiceProvider;
 use Src\Shared\Infrastructure\SharedServiceProvider;
+use Src\Vouchers\PurchasedVouchers\Infrastructure\PurchasedVouchersServiceProvider;
+use Src\Vouchers\VoucherDefinitions\Infrastructure\VoucherDefinitionsServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -28,4 +30,6 @@ return [
     SlotsServiceProvider::class,
     ReservationsServiceProvider::class,
     PaymentsServiceProvider::class,
+    VoucherDefinitionsServiceProvider::class,
+    PurchasedVouchersServiceProvider::class,
 ];

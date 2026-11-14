@@ -39,8 +39,9 @@ Hoy existen cuatro contextos, cada uno con sus módulos y las tres capas (las su
 | Availability | `Slots` |
 | Reservations | `Reservations` |
 | Payments | `Payments` |
+| Vouchers | `VoucherDefinitions`, `PurchasedVouchers` |
 
-`Payments` existe desde el #62 con el módulo `Payments`; `Vouchers`, `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` ya existe; los `Shared` de cada contexto (previsto, #22) aún no existen.
+`Payments` existe desde el #62 con el módulo `Payments`, y `Vouchers` desde el #132 (dominio y esquema, sin rutas); `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` ya existe, y el `Shared` de `Vouchers` (los números y el nombre que comparten la definición y el bono comprado); los demás `Shared` de contexto (previsto, #22) aún no existen.
 
 Un módulo corresponde a un agregado, no a una tabla.
 
@@ -243,7 +244,7 @@ Dos endpoints públicos, sin sesión: `POST /api/v1/pagos/avisos/onvo` y `POST /
 - **Idempotencia (PA-05, RNF-07).** Todo ocurre en una transacción; el evento se inserta con `ON CONFLICT (gateway, event_id) DO NOTHING`. El mismo evento diez veces deja un registro, un pago y una reserva confirmada, y los diez responden 200. Un fallo transitorio (la pasarela no responde al consultarla, o PayPal no puede verificar) responde 503 con la transacción revertida: el evento no queda registrado y el reintento de la pasarela lo procesa. `GetPayment` ahora también bloquea el pago antes de liquidarlo, así una consulta y un aviso simultáneos corren por turnos.
 - **Eventos que se procesan.** ONVO: `payment_intent.succeeded`, `payment_intent.failed` y `payment_intent.canceled`, solo en modo `test` (PA-09). PayPal: `CHECKOUT.ORDER.APPROVED` (la orden es el recurso; al consultarla, el adaptador captura la orden aprobada) y `PAYMENT.CAPTURE.COMPLETED`, `.DECLINED` y `.DENIED` (la orden está en `supplementary_data.related_ids.order_id`). Cualquier otro evento, o uno sin los identificadores, responde 200 sin cambiar nada.
 - **Operación.** El cuerpo es JSON de hasta 64 KB (si no, 400), hay un límite de 120 solicitudes por minuto por dirección (429 con `Retry-After`) y el registro solo lleva proveedor, identificador del evento, resultado y correlación: nunca el secreto, la firma ni el cuerpo.
-- **Activación del bono (BO-02)** llega con los bonos (#89): el aviso de un pago de bono se resolverá con el mismo mecanismo.
+- **Activación del bono (BO-02)** llega con la compra del bono (#88): el aviso de un pago de bono se resolverá con el mismo mecanismo.
 
 ### La reserva temporal y su expiración (#66)
 
@@ -374,12 +375,23 @@ La suite `tests/Feature/Tenancy` (el mecanismo desde el #38; un caso por cada re
 
 Los webhooks de las pasarelas (#65) fijan la barbería a partir del pago que citan: ver "Procesos sin sesión" en [database.md](database.md) y "Avisos de las pasarelas" más abajo. **Pendiente:** las tareas en cola y las tareas programadas siguen sin una decisión (ver "Pendientes" en [database.md](database.md)).
 
+### Los bonos (#132)
+
+El contexto `Vouchers` tiene dos módulos, como el mapa de contextos: `VoucherDefinitions` (lo que la barbería vende: nombre, sesiones, precio, vigencia y servicios cubiertos) y `PurchasedVouchers` (lo que compró cada persona), más `Vouchers\Shared` con los objetos de valor comunes (`SessionCount`, `ValidityDays`, `VoucherName`, `VoucherDefinitionId`). Este issue solo trae el dominio, el esquema y los repositorios: sin rutas, controladores ni casos de uso de entrada, que llegan con el #87 (definir), #88 (comprar), #89 (consumir) y #90 (consultar).
+
+- **`PurchasedVoucher` es el agregado.** Nace `pending` sin sesiones ni fechas con la copia de lo que dijo la definición (BO-01); `activate()` le da sus sesiones y cuenta la vigencia desde ese instante (BO-02, RF-27); `hold()`, `release()` y `consume()` cambian el saldo y dejan su entrada en el registro, que el repositorio recoge con `pullMovements()`. El saldo es un `SessionBalance`, que no se puede construir negativo y no baja de cero (BO-03).
+- **`VoucherDefinition` no es un agregado** (CRUD simple, sin invariantes entre filas): su `CoveredServices` exige al menos un servicio y su precio es positivo.
+- **El registro de movimientos** (`VoucherMovement`, tipos `purchase`, `hold`, `consume` y `release`) solo crece, y su suma es el saldo (BO-09). No hay movimiento de vencimiento: la vigencia se valida al reservar y al consultar, sin proceso de vencimiento (BO-07), con `isValidAt()` y `balanceAt()` en el agregado.
+- **Errores de negocio.** `InsufficientBalanceException` (`saldo-insuficiente`) y `VoucherExpiredException` (`bono-vencido`) usan los tipos estables; el resto (`VoucherNotActiveException`, `VoucherAlreadyActiveException`, `BalanceAboveTotalException`) responde el 409 `conflicto`, y `VoucherNotFoundException`, el 404 de siempre.
+- **Persistencia.** Los modelos Eloquent solo guardan y leen (sin lógica ni casts de fecha: los instantes viajan como texto con su desfase). El consumo concurrente es `PurchasedVoucherRepository::holdSession()`, descrito en [database.md](database.md); el caso de uso que lo llama es el #89.
+- **Colaboración con otros contextos.** `ReservationId` y `CustomerMembershipId` son identificadores propios del módulo; no importa el dominio de `Reservations` ni de `Identity`. El aviso de pago que activa el bono (`PaymentConfirmed`) y la reserva que consume la sesión llegarán por puerto o evento en el #88 y el #89.
+
 ### Concurrencia
 
 | Garantía | Dónde se cumple |
 | --- | --- |
 | Dos solicitudes por el mismo espacio: una gana, la otra recibe `espacio-no-disponible` | `CreateReservation` bloquea la fila del colaborador (`SELECT ... FOR UPDATE`) y revalida la disponibilidad (#56); la restricción `EXCLUDE` de PostgreSQL es la segunda barrera y su violación se traduce a `espacio-no-disponible`. La prueba de carrera con conexiones paralelas es el #127 (RE-01, RE-02) |
-| El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0`) más `CHECK (remaining_sessions >= 0)` (previsto, #89) (BO-03) |
+| El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0 ...`) en `PurchasedVoucherRepository::holdSession()` más `CHECK (remaining_sessions >= 0)`, ambos del #132 (BO-03). La prueba con conexiones paralelas de la operación es `SimultaneousVoucherHoldsTest` (#132); el caso de uso de consumo es el #89 y la prueba amplia, el #133 |
 | Una reserva tiene un solo pago pendiente o aprobado | Índice único parcial `payments_one_active_per_reservation_idx` sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved` (#129); `EloquentPaymentRepository` lo traduce a `ActivePaymentExistsException`. Es la idempotencia del botón de pagar |
 | Un evento de la pasarela se procesa una sola vez | Llave única `(gateway, event_id)` en `webhook_events`, escrita en la misma transacción que el efecto del aviso, con el pago y la reserva bloqueados (#65) (PA-05) |
 | Cancelar es idempotente | El caso de uso revisa el estado actual dentro de la transacción (previsto, #60) (CA-06) |

@@ -37,6 +37,11 @@ final class OpeningHoursMigrationTest extends TestCase
     // The expiry column is added to the reservations, so it goes before them when rolling back and after them when applying again.
     private const string EXPIRES_AT = '2026_10_26_120000_add_expires_at_to_reservations_table';
 
+    // The vouchers point at the reservations (the record of their balances), so they go before them when rolling back and after them when applying again.
+    private const string VOUCHER_DEFINITIONS = '2026_11_13_100000_create_voucher_definitions_tables';
+
+    private const string PURCHASED_VOUCHERS = '2026_11_13_110000_create_purchased_vouchers_tables';
+
     /** Rolling back drops both tables, the range type and the extension; applying again brings them back. */
     public function test_migrations_roll_back_and_apply_again_without_leftovers(): void
     {
@@ -44,6 +49,8 @@ final class OpeningHoursMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         $this->asOwner(function (): void {
+            $this->apply(self::PURCHASED_VOUCHERS, 'down');
+            $this->apply(self::VOUCHER_DEFINITIONS, 'down');
             $this->apply(self::EXPIRES_AT, 'down');
             $this->apply(self::EXCHANGE_RATE, 'down');
             $this->apply(self::REFUND_PENDING, 'down');
@@ -68,6 +75,8 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::REFUND_PENDING, 'up');
             $this->apply(self::EXCHANGE_RATE, 'up');
             $this->apply(self::EXPIRES_AT, 'up');
+            $this->apply(self::VOUCHER_DEFINITIONS, 'up');
+            $this->apply(self::PURCHASED_VOUCHERS, 'up');
         });
 
         $this->assertTrue($schema->hasTable('opening_hours'));
@@ -82,6 +91,8 @@ final class OpeningHoursMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
 
         $this->asOwner(function () use ($admin): void {
+            $this->apply(self::PURCHASED_VOUCHERS, 'down');
+            $this->apply(self::VOUCHER_DEFINITIONS, 'down');
             $this->apply(self::EXPIRES_AT, 'down');
             $this->apply(self::EXCHANGE_RATE, 'down');
             $this->apply(self::REFUND_PENDING, 'down');
@@ -100,6 +111,8 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::REFUND_PENDING, 'up');
             $this->apply(self::EXCHANGE_RATE, 'up');
             $this->apply(self::EXPIRES_AT, 'up');
+            $this->apply(self::VOUCHER_DEFINITIONS, 'up');
+            $this->apply(self::PURCHASED_VOUCHERS, 'up');
         });
 
         $this->assertSame(1, $admin->table('pg_type')->where('typname', 'timerange')->count());
