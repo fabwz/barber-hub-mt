@@ -6,6 +6,7 @@ namespace Src\Vouchers\VoucherDefinitions\Infrastructure\Persistence\Repositorie
 
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Src\Shared\Domain\Contracts\BarbershopContext;
@@ -82,6 +83,44 @@ final readonly class EloquentVoucherDefinitionRepository implements VoucherDefin
             ->pluck('service_id')
             ->all();
 
+        return $this->toDomain($model, $services);
+    }
+
+    /** List the definitions of the current barbershop by name, with their services read in one query. */
+    public function all(): array
+    {
+        $servicesByDefinition = VoucherDefinitionServiceModel::query()
+            ->where('barbershop_id', $this->context->current()->value)
+            ->orderBy('id')
+            ->get(['voucher_definition_id', 'service_id'])
+            ->groupBy('voucher_definition_id')
+            ->map(fn (Collection $rows): array => $rows->pluck('service_id')->all())
+            ->all();
+
+        return array_values($this->ofBarbershop()
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (VoucherDefinitionModel $model): VoucherDefinition => $this->toDomain($model, $servicesByDefinition[$model->id] ?? []))
+            ->all());
+    }
+
+    /** Look for a purchased voucher of the definition among those of the current barbershop. */
+    public function hasPurchases(VoucherDefinitionId $id): bool
+    {
+        return DB::table('purchased_vouchers')
+            ->where('barbershop_id', $this->context->current()->value)
+            ->where('voucher_definition_id', $id->value)
+            ->exists();
+    }
+
+    /**
+     * Rebuild the definition from its row and the services it covers.
+     *
+     * @param  array<array-key, string>  $services
+     */
+    private function toDomain(VoucherDefinitionModel $model, array $services): VoucherDefinition
+    {
         return VoucherDefinition::reconstitute(
             new VoucherDefinitionId($model->id),
             new BarbershopId($model->barbershop_id),
