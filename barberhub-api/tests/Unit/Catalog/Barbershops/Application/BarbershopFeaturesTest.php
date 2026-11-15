@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Catalog\Barbershops\Application;
 
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Src\Catalog\Barbershops\Application\DTOs\UpdateBarbershopFeaturesCommand;
 use Src\Catalog\Barbershops\Application\UseCases\GetBarbershopFeatures;
@@ -15,17 +16,26 @@ use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentPolicy;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
+use Src\Shared\Domain\ValueObjects\AuditAction;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Phone;
 use Tests\Support\Catalog\InMemoryBarbershopRepository;
 use Tests\Support\Shared\FixedBarbershopContext;
+use Tests\Support\Shared\InMemoryAuditLog;
+use Tests\Support\Shared\RecordingTransactionRunner;
 
 /** The owner reads and changes the switches of the vouchers and of the waitlist (RF-09). */
 final class BarbershopFeaturesTest extends TestCase
 {
     private const string BARBERSHOP = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d22';
 
+    private const string OWNER = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d48';
+
+    private const string NOW = '2030-03-01 08:00:00-06:00';
+
     private InMemoryBarbershopRepository $barbershops;
+
+    private InMemoryAuditLog $audit;
 
     private GetBarbershopFeatures $get;
 
@@ -38,7 +48,8 @@ final class BarbershopFeaturesTest extends TestCase
         $this->barbershops->save(Barbershop::create(new BarbershopId(self::BARBERSHOP), new BarbershopName('Pura Navaja'), new City('San Carlos'), new Phone('2460-0000'), new PublicLink('pura-navaja')));
         $context = new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP));
         $this->get = new GetBarbershopFeatures($this->barbershops, $context);
-        $this->update = new UpdateBarbershopFeatures($this->barbershops, $context);
+        $this->audit = new InMemoryAuditLog;
+        $this->update = new UpdateBarbershopFeatures($this->barbershops, $context, $this->audit, new RecordingTransactionRunner);
     }
 
     /** A new barbershop has the vouchers and the waitlist off. */
@@ -61,11 +72,11 @@ final class BarbershopFeaturesTest extends TestCase
     /** Each switch changes alone and the other keeps its value. */
     public function test_a_field_that_does_not_come_keeps_its_value(): void
     {
-        $this->update->execute(new UpdateBarbershopFeaturesCommand(true, null));
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(true, null), self::OWNER, new DateTimeImmutable(self::NOW));
         $afterVouchers = $this->get->execute();
-        $this->update->execute(new UpdateBarbershopFeaturesCommand(null, true));
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(null, true), self::OWNER, new DateTimeImmutable(self::NOW));
         $afterWaitlist = $this->get->execute();
-        $this->update->execute(new UpdateBarbershopFeaturesCommand(false, null));
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(false, null), self::OWNER, new DateTimeImmutable(self::NOW));
 
         $this->assertSame([true, false], [$afterVouchers->vouchersEnabled, $afterVouchers->waitlistEnabled]);
         $this->assertSame([true, true], [$afterWaitlist->vouchersEnabled, $afterWaitlist->waitlistEnabled]);
@@ -77,10 +88,31 @@ final class BarbershopFeaturesTest extends TestCase
     {
         $before = $this->barbershops->find(new BarbershopId(self::BARBERSHOP));
 
-        $this->update->execute(new UpdateBarbershopFeaturesCommand(true, true));
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(true, true), self::OWNER, new DateTimeImmutable(self::NOW));
 
         $after = $this->barbershops->find(new BarbershopId(self::BARBERSHOP));
         $this->assertEquals([$before?->name, $before?->city, $before?->phone, $before?->link, $before?->paymentPolicy, $before?->profile], [$after?->name, $after?->city, $after?->phone, $after?->link, $after?->paymentPolicy, $after?->profile]);
+    }
+
+    /** Each change leaves one entry with the author, the instant and the previous and new value of the switch that changed (SE-04). */
+    public function test_a_change_leaves_an_entry_with_the_author_the_instant_and_both_values(): void
+    {
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(true, null), self::OWNER, new DateTimeImmutable(self::NOW));
+
+        $entries = $this->audit->entries();
+        $this->assertCount(1, $entries);
+        $this->assertSame([AuditAction::FeaturesUpdated, self::OWNER, 'barbershop', self::BARBERSHOP], [$entries[0]->action, $entries[0]->actor->value, $entries[0]->subjectType, $entries[0]->subjectId]);
+        $this->assertEquals(new DateTimeImmutable(self::NOW), $entries[0]->at);
+        $this->assertSame(['vouchers_enabled' => ['previous' => false, 'new' => true]], $entries[0]->changes);
+    }
+
+    /** A change that leaves the switches as they were is not a change: it leaves no entry. */
+    public function test_a_change_that_changes_nothing_leaves_no_entry(): void
+    {
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(false, null), self::OWNER, new DateTimeImmutable(self::NOW));
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(null, null), self::OWNER, new DateTimeImmutable(self::NOW));
+
+        $this->assertSame([], $this->audit->entries());
     }
 
     /** A barbershop that does not exist cannot be read or changed. */

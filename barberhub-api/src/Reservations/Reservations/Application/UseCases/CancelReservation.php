@@ -13,16 +13,21 @@ use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
+use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
+use Src\Shared\Domain\Contracts\AuditLog;
 use Src\Shared\Domain\Contracts\TransactionRunner;
+use Src\Shared\Domain\ValueObjects\AuditAction;
+use Src\Shared\Domain\ValueObjects\AuditEntry;
 use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CancelReservation
 {
-    /** Receive the reservation repository, the port that finds the customer role and the transaction port. */
+    /** Receive the reservation repository, the port that finds the customer role, the transaction port and the technical record. */
     public function __construct(
         private ReservationRepository $reservations,
         private CustomerDirectory $customers,
         private TransactionRunner $transaction,
+        private AuditLog $audit,
     ) {}
 
     /**
@@ -31,7 +36,8 @@ final readonly class CancelReservation
      * the owner any of the barbershop; another customer's reads like a missing one (UP-06). The row is locked, so two
      * simultaneous cancellations run in turn and the second finds it cancelled. Cancelling again changes nothing and adds
      * no entry to the history (CA-06); a repeat keeps the class of the first one, measured at the instant it was made.
-     * A reservation in a final status that is not a cancellation cannot be cancelled (RE-04).
+     * A reservation in a final status that is not a cancellation cannot be cancelled (RE-04). A cancellation by the barbershop
+     * leaves its entry in the technical record, in the same transaction (SE-04); the cancellation by the customer does not.
      *
      * @throws ReservationNotFoundException
      * @throws TransitionNotAllowedException
@@ -51,11 +57,34 @@ final readonly class CancelReservation
             }
 
             $author = Author::person(new UserId($userId));
+            $previous = $reservation->status;
             $isOwner ? $reservation->cancelByBarbershop($now, $author) : $reservation->cancelByCustomer($now, $author);
             $this->reservations->save($reservation);
 
+            if ($isOwner) {
+                $this->recordCancellation($reservation, $previous, $userId, $now);
+            }
+
             return new CancelledReservation($reservation, $reservation->classifyCancellation($now));
         });
+    }
+
+    /** Leave the status change of a cancellation by the barbershop in the technical record (SE-04). */
+    private function recordCancellation(Reservation $reservation, ReservationStatus $previous, string $userId, DateTimeImmutable $now): void
+    {
+        $entry = AuditEntry::of(
+            new UserId($userId),
+            AuditAction::ReservationCancelledByBarbershop,
+            'reservation',
+            $reservation->id->value,
+            ['status' => $previous->value],
+            ['status' => $reservation->status->value],
+            $now,
+        );
+
+        if ($entry !== null) {
+            $this->audit->record($entry);
+        }
     }
 
     /** Tell whether the reservation is the customer's own. */

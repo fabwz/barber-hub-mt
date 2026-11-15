@@ -10,10 +10,14 @@ use Src\Catalog\Barbershops\Application\UseCases\GetBarbershopFeatures;
 use Src\Catalog\Barbershops\Application\UseCases\UpdateBarbershopFeatures;
 use Src\Catalog\Barbershops\Infrastructure\Http\Requests\UpdateBarbershopFeaturesRequest;
 use Src\Catalog\Barbershops\Infrastructure\Http\Resources\BarbershopFeaturesResource;
+use Src\Shared\Domain\Contracts\Clock;
 
 #[Group('Funciones de la barbería', 'Activar o desactivar los bonos y la lista de espera, a cargo del dueño.')]
 final readonly class BarbershopFeaturesController
 {
+    /** Receive the clock that gives the instant of the change. */
+    public function __construct(private Clock $clock) {}
+
     /** Show the switches of the barbershop. */
     #[Endpoint(
         title: 'Consultar las funciones',
@@ -31,6 +35,6 @@ final readonly class BarbershopFeaturesController
     )]
     public function update(UpdateBarbershopFeaturesRequest $request, UpdateBarbershopFeatures $updateBarbershopFeatures): BarbershopFeaturesResource
     {
-        return new BarbershopFeaturesResource($updateBarbershopFeatures->execute($request->toCommand()));
+        return new BarbershopFeaturesResource($updateBarbershopFeatures->execute($request->toCommand(), (string) $request->user()?->getAuthIdentifier(), $this->clock->now()));
     }
 }
