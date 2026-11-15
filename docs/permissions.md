@@ -23,7 +23,7 @@ La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin
 | Dueño o cliente dueño | 401 | pasa | 404 | 403 | 403 | pasa | 404 | 404 |
 | Solo el cliente dueño | 401 | pasa | 404 | 403 | 403 | 403 | 404 | 404 |
 | Cliente de primer uso (RD-18, UP-09) | 401 | pasa | pasa | 403 | 403 | 403 | pasa | pasa |
-| Mis reservas | 401 | pasa | pasa | 403 | 403 | 403 | lista vacía | lista vacía |
+| Mis reservas y mis bonos | 401 | pasa | pasa | 403 | 403 | 403 | lista vacía | lista vacía |
 | Solo con sesión | 401 | pasa | pasa | pasa | pasa | pasa | pasa | pasa |
 
 «Pasa» significa que la autorización deja pasar la petición; después puede fallar por el cuerpo o por el estado del recurso (422, 409).
@@ -68,6 +68,7 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `POST api/v1/barberias/{barberia}/reservas` | Reservar crea el rol de cliente; dueño y colaborador reciben 403. |
 | `POST api/v1/barberias/{barberia}/reservas/propuesta` | Propuesta de IA (RF-37): no crea nada; dueño y colaborador reciben 403. |
 | `GET api/v1/barberias/{barberia}/mis-reservas` | Lectura de lo propio (CL-04): sin rol, lista vacía. |
+| `GET api/v1/barberias/{barberia}/mis-bonos` | Lectura de lo propio (RF-29, CL-04): sin rol, lista vacía; dueño y colaborador reciben 403 `prohibido`. Solo trae los bonos ya pagados de la persona. |
 | `POST api/v1/barberias/{barberia}/bonos/{bono}/compras` | Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403 `prohibido` y no se crea nada. Un bono que no existe, está retirado o es de otra barbería responde 404. |
 
 ## Rutas con rol (y propiedad del recurso)
@@ -106,6 +107,7 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `GET api/v1/barberias/{barberia}/administracion/bonos` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
 | `POST api/v1/barberias/{barberia}/administracion/bonos` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
 | `GET api/v1/barberias/{barberia}/administracion/bonos/{bono}` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
+| `GET api/v1/barberias/{barberia}/administracion/bonos-vendidos` | Rol | dueño | Bonos vendidos en la barbería, con el nombre del cliente, saldo y vigencia: solo su dueño (RF-29, MT-02). Colaborador y cliente reciben 403. |
 | `PATCH api/v1/barberias/{barberia}/administracion/bonos/{bono}` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). Editar, retirar o reactivar. |
 
 ## Cómo agregar una ruta
