@@ -37,6 +37,8 @@ final class PublicBarbershopResource extends JsonResource
             'direccion' => $this->when($this->barbershop->address !== null, $this->barbershop->address),
             'correo_contacto' => $this->when($this->barbershop->contactEmail !== null, $this->barbershop->contactEmail),
             'redes' => $this->when($this->barbershop->socialLinks !== [], $this->barbershop->socialLinks),
+            /** Si la barbería tiene lista de espera; con `false` el cliente no ve la opción de anotarse (RF-09, LE-01). */
+            'lista_espera_activa' => $this->barbershop->waitlistEnabled,
         ];
     }
 }

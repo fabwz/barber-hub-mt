@@ -6,7 +6,9 @@ namespace Src\Vouchers\VoucherDefinitions\Infrastructure;
 
 use Illuminate\Support\ServiceProvider;
 use Src\Vouchers\VoucherDefinitions\Application\Contracts\CatalogServices;
+use Src\Vouchers\VoucherDefinitions\Application\Contracts\VoucherSales;
 use Src\Vouchers\VoucherDefinitions\Domain\Contracts\VoucherDefinitionRepository;
+use Src\Vouchers\VoucherDefinitions\Infrastructure\Barbershops\BarbershopsVoucherSales;
 use Src\Vouchers\VoucherDefinitions\Infrastructure\Persistence\Repositories\EloquentVoucherDefinitionRepository;
 use Src\Vouchers\VoucherDefinitions\Infrastructure\Services\CatalogServicesAdapter;
 
@@ -20,5 +22,6 @@ final class VoucherDefinitionsServiceProvider extends ServiceProvider
     public array $bindings = [
         VoucherDefinitionRepository::class => EloquentVoucherDefinitionRepository::class,
         CatalogServices::class => CatalogServicesAdapter::class,
+        VoucherSales::class => BarbershopsVoucherSales::class,
     ];
 }

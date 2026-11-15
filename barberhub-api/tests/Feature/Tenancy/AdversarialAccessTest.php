@@ -220,6 +220,7 @@ final class AdversarialAccessTest extends TestCase
             $this->sendAs($actor, 'GET', $this->addressOf('api/v1/barberias/{barberia}/pagos/{pago}', $this->puraNavaja, $this->resources))->assertForbidden();
             $this->sendAs($actor, 'PATCH', $this->addressOf('api/v1/barberias/{barberia}/administracion/cobro', $this->puraNavaja, []), ['modalidad' => 'total'])->assertForbidden();
             $this->sendAs($actor, 'PATCH', $this->addressOf('api/v1/barberias/{barberia}/administracion/negocio', $this->puraNavaja, []), ['nombre' => 'Mía'])->assertForbidden();
+            $this->sendAs($actor, 'PATCH', $this->addressOf('api/v1/barberias/{barberia}/administracion/funciones', $this->puraNavaja, []), ['bonos_activos' => true])->assertForbidden();
             $this->sendAs($actor, 'POST', $this->addressOf('api/v1/barberias/{barberia}/reservas/{reserva}/cancelacion', $this->puraNavaja, $this->resources))->assertForbidden();
         }
 

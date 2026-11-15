@@ -136,7 +136,7 @@ Las crean Laravel y Sanctum. `personal_access_tokens` (migración del #41) guard
 
 ### barbershops
 
-Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36, el #37 le agregó `public_link`, el #39 `payment_gateway` y el #49 la política de cobro; las columnas marcadas como previstas y las agrega el issue que se indica, con una migración posterior. No tiene política de fila: cada fila es una barbería y no lleva `barbershop_id` (ver [database.md](database.md)).
+Cada fila es un inquilino. La política de cobro y la pasarela son parámetros de cada barbería (MT-04), por eso viven aquí. La tabla existe desde el issue #36, el #37 le agregó `public_link`, el #39 `payment_gateway`, el #49 la política de cobro y el #50 los indicadores de bonos y lista de espera; las columnas marcadas como previstas y las agrega el issue que se indica, con una migración posterior. No tiene política de fila: cada fila es una barbería y no lleva `barbershop_id` (ver [database.md](database.md)).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -150,7 +150,7 @@ Cada fila es un inquilino. La política de cobro y la pasarela son parámetros d
 | `deposit_percentage` | `smallint` | Creada en el #49. Nula salvo en depósito. `CHECK` `barbershops_deposit_percentage_check` entre 10 y 100 y `CHECK` `barbershops_deposit_percentage_mode_check`: tiene valor si y solo si `payment_mode` es `deposit` (PA-01) |
 | `cancellation_deadline_hours` | `smallint` | Creada en el #49. Obligatoria, por defecto 24. `CHECK` `barbershops_cancellation_deadline_check` entre 0 y 720 (CA-01). Cambiarla no toca las reservas ya creadas, que guardan su copia |
 | `payment_gateway` | `varchar(10)` | Creada en el #39. Admite nulos (barbería sin pasarela) y tiene el `CHECK` `barbershops_payment_gateway_check` entre `onvo` y `paypal` (PA-02). Desde el #49 el `CHECK` `barbershops_payment_gateway_required_check` exige una pasarela cuando `payment_mode` es `deposit` o `full`. Cambiarla aplica a los cobros nuevos (PA-02) |
-| `vouchers_enabled`, `waitlist_enabled` | `boolean` | Prevista, #49. Por defecto `false` (RF-09) |
+| `vouchers_enabled`, `waitlist_enabled` | `boolean` | Creadas en el #50. Obligatorias, por defecto `false` (RF-09). Con `vouchers_enabled` en `false` no se compran ni se definen bonos nuevos (BO-01); con `waitlist_enabled` en `false` el cliente no ve la opción de anotarse (LE-01). Cambiarlas aplica a las operaciones nuevas: nunca toca los bonos comprados ni las ofertas en curso |
 | `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
 Las credenciales de las pasarelas no se guardan aquí: viven en variables de entorno. Si cada barbería necesita su propia cuenta de cobro, queda por definir en PD-07.

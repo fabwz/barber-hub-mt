@@ -35,6 +35,10 @@
             "description": "Modalidad de cobro, dep\u00f3sito, pasarela y cancelaci\u00f3n gratuita, a cargo del due\u00f1o."
         },
         {
+            "name": "Funciones de la barber\u00eda",
+            "description": "Activar o desactivar los bonos y la lista de espera, a cargo del due\u00f1o."
+        },
+        {
             "name": "Datos de la barber\u00eda",
             "description": "Nombre, ciudad, tel\u00e9fono, direcci\u00f3n, correo de contacto y redes sociales, a cargo del due\u00f1o."
         },
@@ -1388,6 +1392,110 @@
                     }
                 },
                 "security": []
+            }
+        },
+        "/barberias/{barberia}/administracion/funciones": {
+            "get": {
+                "operationId": "catalog.barbershops.features.show",
+                "description": "Trae `bonos_activos` (venta de bonos nuevos) y `lista_espera_activa`. Una barber\u00eda nueva los tiene en `false`. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Consultar las funciones",
+                "tags": [
+                    "Funciones de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`Funciones`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Funciones"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "catalog.barbershops.features.update",
+                "description": "Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opci\u00f3n de anotarse; las ofertas en curso no se cancelan. El cambio aplica a las operaciones nuevas. Solo el due\u00f1o.",
+                "summary": "Activar o desactivar las funciones",
+                "tags": [
+                    "Funciones de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActualizarFunciones"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Funciones`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Funciones"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
             }
         },
         "/": {
@@ -2913,6 +3021,20 @@
                 },
                 "title": "ActualizarCobro"
             },
+            "ActualizarFunciones": {
+                "type": "object",
+                "properties": {
+                    "bonos_activos": {
+                        "type": "boolean",
+                        "description": "Activa o desactiva la venta de bonos nuevos."
+                    },
+                    "lista_espera_activa": {
+                        "type": "boolean",
+                        "description": "Activa o desactiva la lista de espera."
+                    }
+                },
+                "title": "ActualizarFunciones"
+            },
             "ActualizarServicio": {
                 "type": "object",
                 "properties": {
@@ -3003,13 +3125,18 @@
                         "additionalProperties": {
                             "type": "string"
                         }
+                    },
+                    "lista_espera_activa": {
+                        "type": "boolean",
+                        "description": "Si la barber\u00eda tiene lista de espera; con `false` el cliente no ve la opci\u00f3n de anotarse (RF-09, LE-01)."
                     }
                 },
                 "required": [
                     "id",
                     "nombre",
                     "ciudad",
-                    "telefono"
+                    "telefono",
+                    "lista_espera_activa"
                 ],
                 "title": "BarberiaPublica"
             },
@@ -3670,6 +3797,22 @@
                     "cierra"
                 ],
                 "title": "Franja"
+            },
+            "Funciones": {
+                "type": "object",
+                "properties": {
+                    "bonos_activos": {
+                        "type": "boolean"
+                    },
+                    "lista_espera_activa": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "bonos_activos",
+                    "lista_espera_activa"
+                ],
+                "title": "Funciones"
             },
             "MiBarberia": {
                 "type": "object",

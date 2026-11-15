@@ -85,6 +85,8 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `PATCH api/v1/barberias/{barberia}/administracion/cobro` | Rol | dueño | Política de cobro: solo el dueño (UP-03). |
 | `GET api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
 | `PATCH api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
+| `GET api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos y lista de espera: solo el dueño (RF-09, UP-03). |
+| `PATCH api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos y lista de espera: solo el dueño (RF-09, UP-03). Con los bonos desactivados, comprar o definir un bono nuevo responde 409 `conflicto`. |
 | `GET api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PATCH api/v1/barberias/{barberia}/administracion/servicios/{servicio}` | Rol | dueño | Administración de la barbería: solo su dueño. |

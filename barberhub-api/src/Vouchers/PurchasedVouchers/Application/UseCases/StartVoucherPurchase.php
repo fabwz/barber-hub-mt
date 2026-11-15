@@ -8,10 +8,12 @@ use DateTimeImmutable;
 use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Vouchers\PurchasedVouchers\Application\Contracts\CustomerMemberships;
 use Src\Vouchers\PurchasedVouchers\Application\Contracts\SellableVouchers;
+use Src\Vouchers\PurchasedVouchers\Application\Contracts\VoucherSales;
 use Src\Vouchers\PurchasedVouchers\Domain\Contracts\PurchasedVoucherRepository;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\PurchasedVoucher;
 use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\VoucherNotFoundException;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\CustomerMembershipId;
+use Src\Vouchers\Shared\Domain\Exceptions\VoucherSalesDisabledException;
 
 final readonly class StartVoucherPurchase
 {
@@ -21,6 +23,7 @@ final readonly class StartVoucherPurchase
         private SellableVouchers $sellable,
         private CustomerMemberships $customers,
         private BarbershopContext $context,
+        private VoucherSales $sales,
     ) {}
 
     /**
@@ -31,10 +34,18 @@ final readonly class StartVoucherPurchase
      * does not pile up unpaid vouchers; the lock on the voucher on sale makes two presses at once run in turn. Nothing opens a
      * transaction here: the caller does, so a failure after this point takes the role and the voucher with it.
      *
+     * It starts by checking the vouchers are switched on in the barbershop: with them off nothing is locked or created (RF-09, BO-01).
+     * Vouchers already bought are not touched.
+     *
+     * @throws VoucherSalesDisabledException when the barbershop has the vouchers switched off
      * @throws VoucherNotFoundException when the voucher is not on sale in the barbershop
      */
     public function execute(string $userId, string $voucherDefinitionId, DateTimeImmutable $now): PurchasedVoucher
     {
+        if (! $this->sales->isEnabled()) {
+            throw VoucherSalesDisabledException::create();
+        }
+
         $onSale = $this->sellable->lockOnSale($voucherDefinitionId);
         $customer = new CustomerMembershipId($this->customers->ensure($userId));
 

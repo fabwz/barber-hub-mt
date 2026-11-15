@@ -57,6 +57,23 @@ final class DemoBarbershopSeederTest extends TestCase
         $this->assertSame(3, DB::table('barbershops')->count());
     }
 
+    /** Pura Navaja sells vouchers, the other two do not, and none of them has the waitlist (RF-09). */
+    public function test_only_pura_navaja_has_the_vouchers_switched_on(): void
+    {
+        $this->seed(DemoBarbershopSeeder::class);
+        $this->seed(DemoBarbershopSeeder::class);
+
+        $switches = DB::table('barbershops')->orderBy('public_link')->get()->mapWithKeys(fn (object $row): array => [
+            $row->public_link => [(bool) $row->vouchers_enabled, (bool) $row->waitlist_enabled],
+        ])->all();
+
+        $this->assertSame([
+            'don-chepe' => [false, false],
+            'fade-lab' => [false, false],
+            'pura-navaja' => [true, false],
+        ], $switches);
+    }
+
     /** Pura Navaja takes a 30 % deposit with a 4-hour deadline, Fade Lab full payment and Don Chepe no payment (PA-01, CA-01). */
     public function test_each_barbershop_has_its_payment_policy(): void
     {
@@ -230,6 +247,7 @@ final class DemoBarbershopSeederTest extends TestCase
             'nombre' => 'Barbería Don Chepe',
             'ciudad' => 'Aguas Zarcas',
             'telefono' => '0000-0003',
+            'lista_espera_activa' => false,
         ]]);
     }
 

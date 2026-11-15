@@ -15,10 +15,12 @@ use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\VoucherNotFoundException;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\VoucherMovementType;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\VoucherStatus;
+use Src\Vouchers\Shared\Domain\Exceptions\VoucherSalesDisabledException;
 use Tests\Support\Shared\FixedBarbershopContext;
 use Tests\Support\Vouchers\InMemoryCustomerMemberships;
 use Tests\Support\Vouchers\InMemoryPurchasedVoucherRepository;
 use Tests\Support\Vouchers\InMemorySellableVouchers;
+use Tests\Support\Vouchers\InMemoryVoucherSales;
 use Tests\Support\Vouchers\VoucherFactory;
 
 /** The use cases of the purchase of a voucher and of its activation (RF-27, BO-02, UP-07, UP-09, BO-09). */
@@ -34,6 +36,8 @@ final class PurchaseVoucherUseCasesTest extends TestCase
 
     private InMemoryCustomerMemberships $customers;
 
+    private InMemoryVoucherSales $sales;
+
     private StartVoucherPurchase $start;
 
     /** "Bono 5 cortes" on sale in the barbershop of the fixtures. */
@@ -43,7 +47,8 @@ final class PurchaseVoucherUseCasesTest extends TestCase
         $this->sellable = new InMemorySellableVouchers;
         $this->sellable->add(VoucherFactory::definition());
         $this->customers = new InMemoryCustomerMemberships;
-        $this->start = new StartVoucherPurchase($this->vouchers, $this->sellable, $this->customers, new FixedBarbershopContext(new BarbershopId(VoucherFactory::BARBERSHOP)));
+        $this->sales = new InMemoryVoucherSales;
+        $this->start = new StartVoucherPurchase($this->vouchers, $this->sellable, $this->customers, new FixedBarbershopContext(new BarbershopId(VoucherFactory::BARBERSHOP)), $this->sales);
     }
 
     /** The purchase copies what was on sale and waits for its payment: no sessions, no dates, nothing in the record (BO-02). */
@@ -59,6 +64,23 @@ final class PurchaseVoucherUseCasesTest extends TestCase
         $this->assertSame([], $this->vouchers->movementsOf($voucher->id));
         $this->assertSame(VoucherFactory::BARBERSHOP, $voucher->barbershopId->value);
         $this->assertSame(VoucherFactory::DEFINITION, $voucher->voucherDefinitionId->value);
+    }
+
+    /** With the vouchers switched off nothing is locked, no role is created and no voucher is stored (RF-09, BO-01). */
+    public function test_a_purchase_is_refused_when_the_vouchers_are_switched_off(): void
+    {
+        $this->sales->switchTo(false);
+
+        try {
+            $this->start->execute(self::ANA, VoucherFactory::DEFINITION, VoucherFactory::now());
+            $this->fail('The purchase should have been refused.');
+        } catch (VoucherSalesDisabledException $exception) {
+            $this->assertSame('conflicto', $exception->rule());
+        }
+
+        $this->assertSame([], $this->sellable->locked);
+        $this->assertSame(0, $this->customers->created());
+        $this->assertNull($this->customers->find(self::ANA));
     }
 
     /** The definition is locked before anything is copied, so an edit cannot cross with the sale (RF-26, RF-27). */

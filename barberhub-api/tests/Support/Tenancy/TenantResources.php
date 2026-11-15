@@ -43,7 +43,7 @@ final class TenantResources
     /**
      * The routes of the owner that act on the barbershop itself, whose row is the barbershop (it has no barbershop_id), so
      * no resource in the registry stands for them. They use the "barbershop" middleware and the owner role, and their
-     * isolation is proved in their own test (PaymentPolicyTest).
+     * isolation is proved in their own tests (PaymentPolicyTest, BarbershopFeaturesTest).
      *
      * @var list<string>
      */
@@ -52,6 +52,8 @@ final class TenantResources
         'PATCH api/v1/barberias/{barberia}/administracion/cobro',
         'GET api/v1/barberias/{barberia}/administracion/negocio',
         'PATCH api/v1/barberias/{barberia}/administracion/negocio',
+        'GET api/v1/barberias/{barberia}/administracion/funciones',
+        'PATCH api/v1/barberias/{barberia}/administracion/funciones',
     ];
 
     /**

@@ -116,6 +116,8 @@ final class AccessMatrix
             "PATCH {$base}/administracion/cobro" => $admin('Política de cobro: solo el dueño (UP-03).'),
             "GET {$base}/administracion/negocio" => $admin('Datos del negocio: solo el dueño (MT-09).'),
             "PATCH {$base}/administracion/negocio" => $admin('Datos del negocio: solo el dueño (MT-09).'),
+            "GET {$base}/administracion/funciones" => $admin('Activación de bonos y lista de espera: solo el dueño (RF-09, UP-03).'),
+            "PATCH {$base}/administracion/funciones" => $admin('Activación de bonos y lista de espera: solo el dueño (RF-09, UP-03).'),
             "GET {$base}/administracion/servicios" => $admin(),
             "POST {$base}/administracion/servicios" => $admin(),
             "PATCH {$base}/administracion/servicios/{servicio}" => $admin(),

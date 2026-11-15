@@ -26,10 +26,11 @@ final class DemoBarbershopSeeder extends Seeder
      * Fictitious barbershops (CL-08, RNF-23, RL-04). Fixed identifiers and links make a second run update the same rows.
      * The owner is a fictitious account with an active owner membership; the gateway is null for no gateway. The payment policy
      * is the mode ("none", "deposit" or "full"), the percentage of the deposit (null unless it is a deposit) and the
-     * free-cancellation deadline in hours (PA-01, CA-01). The public data (RF-01) is the address, the contact email of the business
+     * free-cancellation deadline in hours (PA-01, CA-01). The vouchers and the waitlist are switched on or off (RF-09): Pura Navaja
+     * sells vouchers, the others do not. The public data (RF-01) is the address, the contact email of the business
      * (never the owner's login email) and the four social links, all invented; Don Chepe has none, to show both cases.
      *
-     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, payment_mode: string, deposit_percentage: int|null, cancellation_deadline_hours: int, address: string|null, contact_email: string|null, networks: array{whatsapp: string|null, instagram: string|null, facebook: string|null, tiktok: string|null}, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
+     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, payment_mode: string, deposit_percentage: int|null, cancellation_deadline_hours: int, vouchers_enabled: bool, waitlist_enabled: bool, address: string|null, contact_email: string|null, networks: array{whatsapp: string|null, instagram: string|null, facebook: string|null, tiktok: string|null}, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
      */
     public const array BARBERSHOPS = [
         [
@@ -42,6 +43,8 @@ final class DemoBarbershopSeeder extends Seeder
             'payment_mode' => 'deposit',
             'deposit_percentage' => 30,
             'cancellation_deadline_hours' => 4,
+            'vouchers_enabled' => true,
+            'waitlist_enabled' => false,
             'address' => '100 m norte de la iglesia, Ciudad Quesada (dirección de ejemplo)',
             'contact_email' => 'contacto@puranavaja.test',
             'networks' => [
@@ -68,6 +71,8 @@ final class DemoBarbershopSeeder extends Seeder
             'payment_mode' => 'full',
             'deposit_percentage' => null,
             'cancellation_deadline_hours' => 24,
+            'vouchers_enabled' => false,
+            'waitlist_enabled' => false,
             'address' => 'Diagonal al parque central, Fortuna (dirección de ejemplo)',
             'contact_email' => 'hola@fadelab.test',
             'networks' => [
@@ -94,6 +99,8 @@ final class DemoBarbershopSeeder extends Seeder
             'payment_mode' => 'none',
             'deposit_percentage' => null,
             'cancellation_deadline_hours' => 24,
+            'vouchers_enabled' => false,
+            'waitlist_enabled' => false,
             'address' => null,
             'contact_email' => null,
             'networks' => ['whatsapp' => null, 'instagram' => null, 'facebook' => null, 'tiktok' => null],
@@ -237,6 +244,8 @@ final class DemoBarbershopSeeder extends Seeder
                     'payment_mode' => $barbershop['payment_mode'],
                     'deposit_percentage' => $barbershop['deposit_percentage'],
                     'cancellation_deadline_hours' => $barbershop['cancellation_deadline_hours'],
+                    'vouchers_enabled' => $barbershop['vouchers_enabled'],
+                    'waitlist_enabled' => $barbershop['waitlist_enabled'],
                     'address' => $barbershop['address'],
                     'contact_email' => $barbershop['contact_email'],
                     'whatsapp_url' => $barbershop['networks']['whatsapp'],

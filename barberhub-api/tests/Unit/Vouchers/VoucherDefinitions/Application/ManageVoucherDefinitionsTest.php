@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
+use Src\Vouchers\Shared\Domain\Exceptions\VoucherSalesDisabledException;
 use Src\Vouchers\VoucherDefinitions\Application\DTOs\CreateVoucherDefinitionCommand;
 use Src\Vouchers\VoucherDefinitions\Application\DTOs\UpdateVoucherDefinitionCommand;
 use Src\Vouchers\VoucherDefinitions\Application\ResolveCoveredServices;
@@ -22,6 +23,7 @@ use Tests\Support\Shared\FixedBarbershopContext;
 use Tests\Support\Shared\MutableClock;
 use Tests\Support\Vouchers\InMemoryCatalogServices;
 use Tests\Support\Vouchers\InMemoryVoucherDefinitionRepository;
+use Tests\Support\Vouchers\InMemoryVoucherSales;
 use Tests\Support\Vouchers\VoucherFactory;
 
 /** The use cases of the owner over the vouchers of the barbershop (RF-26, BO-01). */
@@ -32,6 +34,8 @@ final class ManageVoucherDefinitionsTest extends TestCase
     private InMemoryCatalogServices $catalog;
 
     private MutableClock $clock;
+
+    private InMemoryVoucherSales $sales;
 
     private CreateVoucherDefinition $create;
 
@@ -45,8 +49,9 @@ final class ManageVoucherDefinitionsTest extends TestCase
         $this->catalog->add(VoucherFactory::CLASSIC_CUT);
         $this->catalog->add(VoucherFactory::FADE);
         $this->clock = new MutableClock(VoucherFactory::now());
+        $this->sales = new InMemoryVoucherSales;
         $coveredServices = new ResolveCoveredServices($this->catalog);
-        $this->create = new CreateVoucherDefinition($this->definitions, $coveredServices, new FixedBarbershopContext(new BarbershopId(VoucherFactory::BARBERSHOP)), $this->clock);
+        $this->create = new CreateVoucherDefinition($this->definitions, $coveredServices, new FixedBarbershopContext(new BarbershopId(VoucherFactory::BARBERSHOP)), $this->clock, $this->sales);
         $this->update = new UpdateVoucherDefinition($this->definitions, $coveredServices, $this->clock);
     }
 
@@ -60,6 +65,24 @@ final class ManageVoucherDefinitionsTest extends TestCase
         ]);
         $this->assertEqualsCanonicalizing([VoucherFactory::CLASSIC_CUT, VoucherFactory::FADE], array_map(fn ($service): string => $service->value, $definition->services->ids));
         $this->assertSame($definition, $this->definitions->find($definition->id));
+    }
+
+    /** With the vouchers switched off a new definition is refused and nothing is stored; the ones that exist still change (RF-09). */
+    public function test_a_new_voucher_is_refused_when_the_vouchers_are_switched_off(): void
+    {
+        $existing = $this->create->execute($this->command());
+        $this->sales->switchTo(false);
+
+        try {
+            $this->create->execute($this->command());
+            $this->fail('The definition should have been refused.');
+        } catch (VoucherSalesDisabledException $exception) {
+            $this->assertSame('conflicto', $exception->rule());
+        }
+
+        $this->assertCount(1, $this->definitions->all());
+        $this->update->execute(new UpdateVoucherDefinitionCommand($existing->id->value, price: 35000, active: false));
+        $this->assertFalse($this->definitions->find($existing->id)?->isActive);
     }
 
     /**

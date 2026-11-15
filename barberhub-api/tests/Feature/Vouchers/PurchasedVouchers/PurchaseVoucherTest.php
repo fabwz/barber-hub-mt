@@ -345,6 +345,62 @@ final class PurchaseVoucherTest extends TestCase
         $this->assertSame('active', $this->theVoucher()->status);
     }
 
+    /** With the vouchers switched off a purchase is refused with a conflict and nothing is created: no role, no voucher, no payment, no charge (RF-09, BO-01). */
+    public function test_with_the_vouchers_switched_off_a_purchase_is_refused_and_nothing_is_created(): void
+    {
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['vouchers_enabled' => false]);
+        $stranger = $this->insertUser('Dani Mora');
+        $this->actAs($stranger);
+
+        $this->buy()->assertStatus(Response::HTTP_CONFLICT)
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('type', 'http://localhost/problemas/conflicto');
+
+        $this->assertSame(0, DB::table('memberships')->where('user_id', $stranger)->count());
+        $this->scopeQueriesTo($this->puraNavaja);
+        $this->assertSame(0, DB::table('purchased_vouchers')->count());
+        $this->assertSame(0, DB::table('payments')->count());
+        $this->assertSame([], $this->gateway->charges);
+    }
+
+    /** Switching the vouchers off leaves the vouchers already bought as they were, and the pending one that is paid afterwards still activates (RF-09). */
+    public function test_switching_the_vouchers_off_does_not_touch_what_was_already_bought(): void
+    {
+        $this->gateway->leavesPending();
+        $this->actAs($this->ana);
+        $this->buy()->assertCreated();
+        $pendingId = $this->theVoucher()->id;
+        $membership = $this->theVoucher()->customer_membership_id;
+        $active = $this->insertPurchasedVoucher($this->puraNavaja, $membership, $this->voucher, 'active', 5);
+        $this->scopeQueriesTo($this->puraNavaja);
+        DB::table('purchased_vouchers')->where('id', $active)->update(['remaining_sessions' => 3]);
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['vouchers_enabled' => false]);
+
+        $this->buy()->assertStatus(Response::HTTP_CONFLICT);
+        $this->gateway->approves();
+        $this->notice($this->event('evt_1', 'payment_intent.succeeded', $this->reference()))->assertOk();
+
+        $this->scopeQueriesTo($this->puraNavaja);
+        $kept = DB::table('purchased_vouchers')->where('id', $active)->first();
+        $this->assertSame(['active', 3], [$kept?->status, (int) $kept?->remaining_sessions]);
+        $paid = DB::table('purchased_vouchers')->where('id', $pendingId)->first();
+        $this->assertSame(['active', 5], [$paid?->status, (int) $paid?->remaining_sessions]);
+        $this->assertSame(2, DB::table('purchased_vouchers')->count());
+    }
+
+    /** Switching the vouchers on again lets the customer buy once more. */
+    public function test_switching_the_vouchers_on_again_lets_the_customer_buy(): void
+    {
+        $this->gateway->leavesPending();
+        $this->actAs($this->ana);
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['vouchers_enabled' => false]);
+        $this->buy()->assertStatus(Response::HTTP_CONFLICT);
+
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['vouchers_enabled' => true]);
+
+        $this->buy()->assertCreated();
+    }
+
     /**
      * Buy the voucher with the card, as the person of the session.
      *
