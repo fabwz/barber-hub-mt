@@ -17,8 +17,8 @@ use Src\Vouchers\PurchasedVouchers\Infrastructure\Persistence\Repositories\Eloqu
 final class PurchasedVouchersServiceProvider extends ServiceProvider
 {
     /**
-     * Ports of the module bound to their adapters. The module has no routes of its own: the purchase is paid and so it is exposed by
-     * Payments (#88); the use and the query of vouchers arrive with #89 and #90.
+     * Ports of the module bound to their adapters. The purchase is paid and so it is exposed by Payments (#88); the module's own routes read
+     * the balance and the validity (#90, in Http/routes.php); the use of vouchers arrives with #89.
      *
      * @var array<class-string, class-string>
      */

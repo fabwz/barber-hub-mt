@@ -98,6 +98,7 @@ final class AccessMatrix
             "POST {$base}/reservas" => RouteRule::firstUse(self::FIRST_USE, 'Reservar crea el rol de cliente; dueño y colaborador reciben 403.'),
             "POST {$base}/reservas/propuesta" => RouteRule::firstUse(self::FIRST_USE, 'Propuesta de IA (RF-37): no crea nada; dueño y colaborador reciben 403.'),
             "GET {$base}/mis-reservas" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (CL-04): sin rol, lista vacía.'),
+            "GET {$base}/mis-bonos" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (RF-29, CL-04): sin rol, lista vacía.'),
             "POST {$base}/bonos/{bono}/compras" => RouteRule::firstUse(self::FIRST_USE, 'Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403.'),
 
             // Reservations.
@@ -137,6 +138,7 @@ final class AccessMatrix
             "GET {$base}/administracion/bonos" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
             "POST {$base}/administracion/bonos" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
             "GET {$base}/administracion/bonos/{bono}" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
+            "GET {$base}/administracion/bonos-vendidos" => $admin('Bonos vendidos en la barbería, con saldo y vigencia: solo su dueño (RF-29, MT-02).'),
             "PATCH {$base}/administracion/bonos/{bono}" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26). Editar, retirar o reactivar.'),
         ];
     }
