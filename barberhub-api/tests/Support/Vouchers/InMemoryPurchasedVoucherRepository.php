@@ -6,6 +6,8 @@ namespace Tests\Support\Vouchers;
 
 use DateTimeImmutable;
 use LogicException;
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Vouchers\PurchasedVouchers\Domain\Contracts\PurchasedVoucherRepository;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\PurchasedVoucher;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\VoucherMovement;
@@ -72,10 +74,59 @@ final class InMemoryPurchasedVoucherRepository implements PurchasedVoucherReposi
         return $this->record[$id->value] ?? [];
     }
 
+    /**
+     * The record of each voucher of the list.
+     *
+     * @param  list<PurchasedVoucherId>  $ids
+     * @return array<string, list<VoucherMovement>>
+     */
+    public function movementsOfMany(array $ids): array
+    {
+        $record = [];
+
+        foreach ($ids as $id) {
+            $record[$id->value] = $this->movementsOf($id);
+        }
+
+        return $record;
+    }
+
+    /**
+     * One page of the paid vouchers of a customer, the latest activated first.
+     *
+     * @return Page<PurchasedVoucher>
+     */
+    public function pageOfCustomer(CustomerMembershipId $customer, PageRequest $page): Page
+    {
+        return $this->page(fn (PurchasedVoucher $voucher): bool => $voucher->customerMembershipId->equals($customer), $page);
+    }
+
+    /**
+     * One page of the paid vouchers of the barbershop, the latest activated first.
+     *
+     * @return Page<PurchasedVoucher>
+     */
+    public function pageOfBarbershop(PageRequest $page): Page
+    {
+        return $this->page(fn (PurchasedVoucher $voucher): bool => true, $page);
+    }
+
     /** Not used by the tests of the purchase. */
     public function holdSession(PurchasedVoucherId $id, ReservationId $reservation, DateTimeImmutable $at): void
     {
         throw new LogicException('The tests of the purchase never hold a session.');
+    }
+
+    /**
+     * @param  callable(PurchasedVoucher): bool  $wanted
+     * @return Page<PurchasedVoucher>
+     */
+    private function page(callable $wanted, PageRequest $page): Page
+    {
+        $paid = array_values(array_filter($this->vouchers, fn (PurchasedVoucher $voucher): bool => $voucher->status === VoucherStatus::Active && $wanted($voucher)));
+        usort($paid, fn (PurchasedVoucher $a, PurchasedVoucher $b): int => [$b->activatedAt, $b->id->value] <=> [$a->activatedAt, $a->id->value]);
+
+        return new Page(array_slice($paid, $page->offset(), $page->size), count($paid), $page);
     }
 
     /** How many vouchers are stored. */

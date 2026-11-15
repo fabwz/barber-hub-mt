@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Src\Vouchers\PurchasedVouchers\Domain\Contracts;
 
 use DateTimeImmutable;
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\PurchasedVoucher;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\VoucherMovement;
 use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\InsufficientBalanceException;
@@ -42,6 +44,31 @@ interface PurchasedVoucherRepository
      * @return list<VoucherMovement>
      */
     public function movementsOf(PurchasedVoucherId $id): array;
+
+    /**
+     * The record of each voucher of the list, in the order it was written, indexed by the identifier of the voucher; a voucher without
+     * entries has an empty list. One read for all of them, so a page of vouchers does not read the record once per voucher.
+     *
+     * @param  list<PurchasedVoucherId>  $ids
+     * @return array<string, list<VoucherMovement>>
+     */
+    public function movementsOfMany(array $ids): array;
+
+    /**
+     * One page of the paid vouchers a customer bought in the current barbershop, the latest activated first. A voucher that
+     * still waits for its payment is not listed: it is not a voucher yet (BO-02).
+     *
+     * @return Page<PurchasedVoucher>
+     */
+    public function pageOfCustomer(CustomerMembershipId $customer, PageRequest $page): Page;
+
+    /**
+     * One page of the paid vouchers sold in the current barbershop to any customer, the latest activated first. A voucher that
+     * still waits for its payment is not listed (BO-02).
+     *
+     * @return Page<PurchasedVoucher>
+     */
+    public function pageOfBarbershop(PageRequest $page): Page;
 
     /**
      * Set a session aside for a reservation, atomically: the balance goes down by one only if the voucher is active, valid at
