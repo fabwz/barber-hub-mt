@@ -13,7 +13,9 @@ use RuntimeException;
 use Src\Payments\Payments\Application\Contracts\ReservationConfirmation;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
+use Src\Shared\Domain\Contracts\AuditLog;
 use Src\Shared\Domain\Contracts\Clock;
+use Src\Shared\Domain\ValueObjects\AuditEntry;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\Payments\SimulatedPaymentGateway;
 use Tests\Support\RefreshDatabaseAsOwner;
@@ -300,6 +302,95 @@ final class PaymentEndpointsTest extends TestCase
         $this->assertSame([[$this->onlyPaymentOf($reservation)->provider_payment_id, 2100]], array_map(fn (array $refund): array => [$refund[0], $refund[1]->colones], $this->gateway->refunds));
 
         $this->postJson($this->paymentUrl($id).'/reembolsos')->assertStatus(409);
+    }
+
+    /** The refund leaves one entry with the author, the date, the status before and after and the amount; a refusal or a repeat leaves none (SE-04). */
+    public function test_the_refund_is_in_the_technical_record(): void
+    {
+        $reservation = $this->bookAs($this->ana);
+        $id = $this->pay($reservation)->assertCreated()->json('data.id');
+        $this->actAs($this->owner);
+
+        $this->gateway->refusesRefunds('Saldo del comercio insuficiente');
+        $this->postJson($this->paymentUrl($id).'/reembolsos')->assertStatus(409);
+        $this->assertSame([], $this->recordEntries($this->puraNavaja));
+
+        $this->gateway = new SimulatedPaymentGateway(PaymentProvider::Onvo, [PaymentMethod::Card, PaymentMethod::SinpeMovil]);
+        $this->app->instance('tests.gateway.onvo', $this->gateway);
+        $this->postJson($this->paymentUrl($id).'/reembolsos')->assertOk();
+        $this->postJson($this->paymentUrl($id).'/reembolsos')->assertStatus(409);
+
+        $entries = $this->recordEntries($this->puraNavaja);
+        $this->assertCount(1, $entries);
+        $this->assertSame(['payment.refunded', $this->owner, 'payment', $id], [$entries[0]['action'], $entries[0]['actor_user_id'], $entries[0]['subject_type'], $entries[0]['subject_id']]);
+        $this->assertEquals(['status' => ['previous' => 'approved', 'new' => 'refunded'], 'refunded_amount' => ['previous' => null, 'new' => 2100]], json_decode((string) $entries[0]['changes'], true));
+        $this->assertSame($this->clock->now()->getTimestamp(), (new DateTimeImmutable((string) $entries[0]['created_at']))->getTimestamp());
+    }
+
+    /** The entry holds no contact data and nothing of the gateway: not the provider reference, the method or the customer. */
+    public function test_the_refund_entry_holds_no_contact_or_gateway_data(): void
+    {
+        $reservation = $this->bookAs($this->ana);
+        $id = $this->pay($reservation)->assertCreated()->json('data.id');
+        $providerReference = (string) $this->onlyPaymentOf($reservation)->provider_payment_id;
+        $this->actAs($this->owner);
+        $this->postJson($this->paymentUrl($id).'/reembolsos')->assertOk();
+
+        $text = json_encode($this->recordEntries($this->puraNavaja), JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString($providerReference, $text);
+        foreach (['onvo', 'card', 'token', 'secret', '@', 'Ana', '2460-'] as $forbidden) {
+            $this->assertStringNotContainsString($forbidden, $text);
+        }
+    }
+
+    /** If the entry cannot be written the refund is not kept either: the payment stays approved. */
+    public function test_an_entry_that_fails_undoes_the_refund(): void
+    {
+        $reservation = $this->bookAs($this->ana);
+        $id = $this->pay($reservation)->assertCreated()->json('data.id');
+        $this->app->instance(AuditLog::class, new class implements AuditLog
+        {
+            public function record(AuditEntry $entry): void
+            {
+                throw new RuntimeException('The record is not available.');
+            }
+        });
+        $this->actAs($this->owner);
+        $this->withoutExceptionHandling();
+
+        try {
+            $this->postJson($this->paymentUrl($id).'/reembolsos');
+            $this->fail('The refund was kept without its entry.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('The record is not available.', $exception->getMessage());
+        }
+
+        $this->assertSame('approved', $this->onlyPaymentOf($reservation)->status);
+        $this->assertSame([], $this->recordEntries($this->puraNavaja));
+    }
+
+    /** The entry of a barbershop is not visible from another one (MT-04). */
+    public function test_the_refund_entry_is_not_visible_from_another_barbershop(): void
+    {
+        $reservation = $this->bookAs($this->ana);
+        $id = $this->pay($reservation)->assertCreated()->json('data.id');
+        $this->actAs($this->owner);
+        $this->postJson($this->paymentUrl($id).'/reembolsos')->assertOk();
+
+        $this->assertCount(1, $this->recordEntries($this->puraNavaja));
+        $this->assertSame([], $this->recordEntries($this->fadeLab));
+    }
+
+    /**
+     * The technical record of a barbershop, read as that barbershop.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function recordEntries(string $barbershopId): array
+    {
+        $this->scopeQueriesTo($barbershopId);
+
+        return array_values(DB::table('audit_log')->orderBy('id')->get()->map(fn (object $row): array => (array) $row)->all());
     }
 
     /** Who may do what: a customer of another reservation or a stranger gets 404, a collaborator 403, and only the owner refunds. */

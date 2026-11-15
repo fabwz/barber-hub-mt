@@ -74,8 +74,8 @@ final readonly class PaymentController
         title: 'Reembolsar un pago',
         description: 'El dueño devuelve el monto completo de un pago `aprobado` por la misma pasarela con que se cobró. Si la pasarela acepta, el pago queda `reembolsado`. Si la rechaza, el pago sigue `aprobado` y la respuesta es 409 `conflicto` con el `motivo`. Un pago que no está aprobado, o cobrado con una pasarela que no implementa reembolsos, responde 409 `conflicto`; si la pasarela no responde, 503 `servicio-no-disponible`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido`; un pago inexistente o de otra barbería, 404 `no-encontrado`.',
     )]
-    public function refund(string $barberia, string $pago, RefundPayment $refundPayment): PaymentResource
+    public function refund(Request $request, string $barberia, string $pago, RefundPayment $refundPayment): PaymentResource
     {
-        return new PaymentResource($refundPayment->execute($pago, $this->clock->now()));
+        return new PaymentResource($refundPayment->execute($pago, (string) $request->user()?->getAuthIdentifier(), $this->clock->now()));
     }
 }

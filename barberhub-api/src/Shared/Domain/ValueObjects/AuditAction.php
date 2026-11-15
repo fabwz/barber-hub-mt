@@ -15,6 +15,7 @@ enum AuditAction: string
     case PaymentGatewayUpdated = 'barbershop.payment_gateway.updated';
     case FeaturesUpdated = 'barbershop.features.updated';
     case ReservationCancelledByBarbershop = 'reservation.cancelled_by_barbershop';
+    case PaymentRefunded = 'payment.refunded';
 
     /**
      * The fields whose previous and new values are kept.
@@ -28,6 +29,7 @@ enum AuditAction: string
             self::PaymentGatewayUpdated => ['gateway'],
             self::FeaturesUpdated => ['vouchers_enabled', 'waitlist_enabled'],
             self::ReservationCancelledByBarbershop => ['status'],
+            self::PaymentRefunded => ['status', 'refunded_amount'],
         };
     }
 
