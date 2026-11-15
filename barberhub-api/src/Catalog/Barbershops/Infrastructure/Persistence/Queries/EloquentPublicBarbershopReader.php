@@ -38,6 +38,7 @@ final readonly class EloquentPublicBarbershopReader implements PublicBarbershopR
             $barbershop->address,
             $barbershop->contact_email,
             $socialLinks,
+            $barbershop->waitlist_enabled,
         );
     }
 }

@@ -132,7 +132,7 @@ trait SeedsBookableBarbershops
     private function insertBarbershop(string $link): string
     {
         $id = (string) Str::uuid7();
-        DB::table('barbershops')->insert(['id' => $id, 'name' => $link, 'city' => 'San Carlos', 'phone' => '2460-0000', 'public_link' => $link]);
+        DB::table('barbershops')->insert(['id' => $id, 'name' => $link, 'city' => 'San Carlos', 'phone' => '2460-0000', 'public_link' => $link, 'vouchers_enabled' => true]);
 
         return $id;
     }

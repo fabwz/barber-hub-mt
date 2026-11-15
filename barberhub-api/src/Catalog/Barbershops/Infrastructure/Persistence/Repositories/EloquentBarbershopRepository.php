@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Src\Catalog\Barbershops\Domain\Contracts\BarbershopRepository;
 use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
 use Src\Catalog\Barbershops\Domain\Exceptions\PublicLinkTakenException;
+use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopFeatures;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentGateway;
@@ -49,6 +50,8 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                     'deposit_percentage' => $barbershop->paymentPolicy->depositPercentage,
                     'cancellation_deadline_hours' => $barbershop->paymentPolicy->cancellationDeadlineHours,
                     'payment_gateway' => $barbershop->paymentPolicy->gateway?->value,
+                    'vouchers_enabled' => $barbershop->features->vouchersEnabled,
+                    'waitlist_enabled' => $barbershop->features->waitlistEnabled,
                     'address' => $barbershop->profile->address?->value,
                     'contact_email' => $barbershop->profile->contactEmail?->value,
                     'whatsapp_url' => $barbershop->profile->links[SocialNetwork::Whatsapp->value]->value ?? null,
@@ -104,6 +107,7 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                 SocialNetwork::Facebook->value => $model->facebook_url,
                 SocialNetwork::Tiktok->value => $model->tiktok_url,
             ]),
+            BarbershopFeatures::of($model->vouchers_enabled, $model->waitlist_enabled),
         );
     }
 }

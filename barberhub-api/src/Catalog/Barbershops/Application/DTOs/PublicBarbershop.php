@@ -9,6 +9,7 @@ final readonly class PublicBarbershop
     /**
      * Carry what any visitor may know about a barbershop. The address and the contact email are null when not set, and the
      * social links hold only the networks that have one, by network name.
+     * The waitlist switch tells the customer whether to offer joining the waitlist (RF-09).
      *
      * @param  array<string, string>  $socialLinks
      */
@@ -20,5 +21,6 @@ final readonly class PublicBarbershop
         public ?string $address = null,
         public ?string $contactEmail = null,
         public array $socialLinks = [],
+        public bool $waitlistEnabled = false,
     ) {}
 }

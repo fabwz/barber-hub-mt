@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopDetailsController;
+use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopFeaturesController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\MyBarbershopController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PaymentPolicyController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PublicBarbershopController;
@@ -23,6 +24,17 @@ Route::prefix('barberias/{barberia}/administracion/cobro')
     ->middleware(['auth:sanctum', 'barbershop', 'role:owner'])
     ->name('catalog.barbershops.payment-policy.')
     ->controller(PaymentPolicyController::class)
+    ->whereUuid('barberia')
+    ->group(function (): void {
+        Route::get('/', 'show')->name('show');
+        Route::patch('/', 'update')->name('update');
+    });
+
+// The switches of the vouchers and of the waitlist (RF-09): only its owner.
+Route::prefix('barberias/{barberia}/administracion/funciones')
+    ->middleware(['auth:sanctum', 'barbershop', 'role:owner'])
+    ->name('catalog.barbershops.features.')
+    ->controller(BarbershopFeaturesController::class)
     ->whereUuid('barberia')
     ->group(function (): void {
         Route::get('/', 'show')->name('show');

@@ -103,6 +103,7 @@ final class BarbershopDetailsTest extends TestCase
                 'facebook' => 'https://fb.com/puranavaja',
                 'tiktok' => 'https://tiktok.com/@puranavaja',
             ],
+            'lista_espera_activa' => false,
         ]]);
     }
 
@@ -114,6 +115,7 @@ final class BarbershopDetailsTest extends TestCase
             'nombre' => 'Barbería Pura Navaja',
             'ciudad' => 'San Carlos',
             'telefono' => '2460-0000',
+            'lista_espera_activa' => false,
         ]]);
 
         Sanctum::actingAs($this->owner, []);
@@ -125,6 +127,7 @@ final class BarbershopDetailsTest extends TestCase
             'ciudad' => 'San Carlos',
             'telefono' => '2460-0000',
             'redes' => ['instagram' => 'https://instagram.com/puranavaja'],
+            'lista_espera_activa' => false,
         ]]);
     }
 
@@ -175,6 +178,7 @@ final class BarbershopDetailsTest extends TestCase
             'nombre' => 'Barbería Pura Navaja',
             'ciudad' => 'San Carlos',
             'telefono' => '2460-0000',
+            'lista_espera_activa' => false,
         ]]);
         $this->assertSame([null, null, null, null, null, null], $this->storedOptionalColumns($this->puraNavaja));
     }

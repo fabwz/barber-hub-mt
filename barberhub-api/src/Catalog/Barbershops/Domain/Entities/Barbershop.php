@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Catalog\Barbershops\Domain\Entities;
 
+use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopFeatures;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentPolicy;
@@ -23,38 +24,45 @@ final readonly class Barbershop
         public PublicLink $link,
         public PaymentPolicy $paymentPolicy,
         public PublicProfile $profile,
+        public BarbershopFeatures $features,
     ) {}
 
     /**
      * Register a barbershop with its name, city, contact phone and the public link it keeps for good (RF-01, RF-02). It
-     * starts charging nothing (PA-01) and with no address, contact email or social links.
+     * starts charging nothing (PA-01), with no address, contact email or social links, and with the vouchers and the waitlist off (RF-09).
      */
     public static function create(BarbershopId $id, BarbershopName $name, City $city, Phone $phone, PublicLink $link): self
     {
-        return new self($id, $name, $city, $phone, $link, PaymentPolicy::initial(), PublicProfile::empty());
+        return new self($id, $name, $city, $phone, $link, PaymentPolicy::initial(), PublicProfile::empty(), BarbershopFeatures::initial());
     }
 
-    /** Rebuild a barbershop from its stored state; one stored without a profile has none. */
-    public static function reconstitute(BarbershopId $id, BarbershopName $name, City $city, Phone $phone, PublicLink $link, PaymentPolicy $paymentPolicy, ?PublicProfile $profile = null): self
+    /** Rebuild a barbershop from its stored state; one stored without a profile has none and one without features has them off. */
+    public static function reconstitute(BarbershopId $id, BarbershopName $name, City $city, Phone $phone, PublicLink $link, PaymentPolicy $paymentPolicy, ?PublicProfile $profile = null, ?BarbershopFeatures $features = null): self
     {
-        return new self($id, $name, $city, $phone, $link, $paymentPolicy, $profile ?? PublicProfile::empty());
+        return new self($id, $name, $city, $phone, $link, $paymentPolicy, $profile ?? PublicProfile::empty(), $features ?? BarbershopFeatures::initial());
     }
 
     /** The same barbershop with another payment policy, which applies to the reservations and charges made from now on (RF-08). */
     public function withPaymentPolicy(PaymentPolicy $paymentPolicy): self
     {
-        return new self($this->id, $this->name, $this->city, $this->phone, $this->link, $paymentPolicy, $this->profile);
+        return new self($this->id, $this->name, $this->city, $this->phone, $this->link, $paymentPolicy, $this->profile, $this->features);
     }
 
     /** The same barbershop with another name, city and phone. The public link stays as it is, whatever the name (MT-07). */
     public function withDetails(BarbershopName $name, City $city, Phone $phone): self
     {
-        return new self($this->id, $name, $city, $phone, $this->link, $this->paymentPolicy, $this->profile);
+        return new self($this->id, $name, $city, $phone, $this->link, $this->paymentPolicy, $this->profile, $this->features);
     }
 
     /** The same barbershop with another public profile: address, contact email and social links. */
     public function withProfile(PublicProfile $profile): self
     {
-        return new self($this->id, $this->name, $this->city, $this->phone, $this->link, $this->paymentPolicy, $profile);
+        return new self($this->id, $this->name, $this->city, $this->phone, $this->link, $this->paymentPolicy, $profile, $this->features);
+    }
+
+    /** The same barbershop with the vouchers and the waitlist switched on or off; what is already bought or offered is not touched (RF-09). */
+    public function withFeatures(BarbershopFeatures $features): self
+    {
+        return new self($this->id, $this->name, $this->city, $this->phone, $this->link, $this->paymentPolicy, $this->profile, $features);
     }
 }

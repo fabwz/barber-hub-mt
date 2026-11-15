@@ -37,6 +37,7 @@ final class PublicBarbershopLinkTest extends TestCase
                     'nombre' => 'Barbería Pura Navaja',
                     'ciudad' => 'San Carlos',
                     'telefono' => '2460-0000',
+                    'lista_espera_activa' => false,
                 ],
             ]);
     }
