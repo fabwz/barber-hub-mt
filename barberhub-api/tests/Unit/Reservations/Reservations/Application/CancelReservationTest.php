@@ -19,10 +19,12 @@ use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
+use Src\Shared\Domain\ValueObjects\AuditAction;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Shared\InMemoryAuditLog;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
 /** Who may cancel which reservation, how the cancellation is classified and why repeating it changes nothing (RF-16, CA-01, CA-04, CA-06). */
@@ -40,6 +42,8 @@ final class CancelReservationTest extends TestCase
 
     private RecordingTransactionRunner $transaction;
 
+    private InMemoryAuditLog $audit;
+
     private string $reservationId;
 
     /** Ana has a confirmed reservation on 5 March at 10:00 with a deadline of 24 hours. */
@@ -49,6 +53,7 @@ final class CancelReservationTest extends TestCase
 
         $this->reservations = new InMemoryReservationRepository;
         $this->transaction = new RecordingTransactionRunner;
+        $this->audit = new InMemoryAuditLog;
         $reservation = Reservation::create(
             $this->reservations->nextId(),
             new CollaboratorId('0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d55'),
@@ -147,6 +152,32 @@ final class CancelReservationTest extends TestCase
         $this->assertSame(1, $this->transaction->committed());
     }
 
+    /** The cancellation by the barbershop leaves one entry with the author, the instant and the status before and after (SE-04). */
+    public function test_a_cancellation_by_the_barbershop_leaves_an_entry(): void
+    {
+        $now = self::at('2030-03-02 09:00');
+
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, $now);
+
+        $entries = $this->audit->entries();
+        $this->assertCount(1, $entries);
+        $this->assertSame([AuditAction::ReservationCancelledByBarbershop, self::OWNER_USER, 'reservation', $this->reservationId], [$entries[0]->action, $entries[0]->actor->value, $entries[0]->subjectType, $entries[0]->subjectId]);
+        $this->assertEquals($now, $entries[0]->at);
+        $this->assertSame(['status' => ['previous' => 'confirmed', 'new' => 'cancelled_by_barbershop']], $entries[0]->changes);
+    }
+
+    /** The cancellation by the customer is not one of the sensitive actions, and repeating the one of the barbershop adds no second entry. */
+    public function test_a_cancellation_by_the_customer_and_a_repeat_leave_no_entry(): void
+    {
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-02 09:00'));
+        $this->assertSame([], $this->audit->entries());
+
+        $this->setUp();
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, self::at('2030-03-02 09:00'));
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, self::at('2030-03-03 09:00'));
+        $this->assertCount(1, $this->audit->entries());
+    }
+
     private function useCase(): CancelReservation
     {
         $customers = new class implements CustomerDirectory
@@ -162,7 +193,7 @@ final class CancelReservationTest extends TestCase
             }
         };
 
-        return new CancelReservation($this->reservations, $customers, $this->transaction);
+        return new CancelReservation($this->reservations, $customers, $this->transaction, $this->audit);
     }
 
     private static function at(string $moment): DateTimeImmutable

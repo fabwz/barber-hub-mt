@@ -6,7 +6,7 @@ BarberHub se divide en ocho contextos (RD-05). El diseño es guiado por el domin
 
 ## Mapa
 
-Los objetos de valor `Money`, `Duration`, `Percentage`, `TimeInterval` e `Identifier` ya existen en `Src\Shared\Domain` (#22). `DayOfWeek`, `TimeOfDay` y `TimeRange` llegaron con el #47 al mismo lugar, porque los comparten el horario de la barbería, el de los colaboradores (#48) y la disponibilidad (#53).
+Los objetos de valor `Money`, `Duration`, `Percentage`, `TimeInterval` e `Identifier` ya existen en `Src\Shared\Domain` (#22). El registro técnico (SE-04, #51) es común a todos los contextos: su puerto `AuditLog` y sus objetos de valor `AuditEntry` y `AuditAction` viven también en `Shared`, y su adaptador `DatabaseAuditLog` escribe la tabla `audit_log`. `DayOfWeek`, `TimeOfDay` y `TimeRange` llegaron con el #47 al mismo lugar, porque los comparten el horario de la barbería, el de los colaboradores (#48) y la disponibilidad (#53).
 
 | Contexto | Módulos | Agregados | Objetos de valor | Eventos que publica | Carpeta |
 | --- | --- | --- | --- | --- | --- |

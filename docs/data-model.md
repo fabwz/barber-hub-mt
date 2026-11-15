@@ -445,16 +445,20 @@ Mientras una oferta está `pending`, su espacio no aparece disponible para otras
 
 ### audit_log
 
-Acciones sensibles con autor, fecha y cambio, sin pantalla de consulta (SE-04).
+Acciones sensibles con autor, fecha y cambio, sin pantalla de consulta (SE-04). Creada por el #51.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` |
-| `actor_user_id` | `uuid` | Quién actuó |
-| `action` | `varchar(60)` | Por ejemplo `reservation.cancelled_by_barbershop` |
-| `subject_type`, `subject_id` | `varchar(60)`, `uuid` | Sobre qué |
-| `changes` | `jsonb` | Valores anteriores y nuevos; nunca contraseñas ni tokens |
-| `created_at` | `timestamptz` | |
+| `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops`; `(id, barbershop_id)` es única |
+| `actor_user_id` | `uuid` | Quién actuó; llave foránea a `users` |
+| `action` | `varchar(60)` | Por ejemplo `barbershop.payment_policy.updated`; `CHECK` no vacía |
+| `subject_type`, `subject_id` | `varchar(60)`, `uuid` | Sobre qué: `barbershop` (la barbería misma), `reservation` o `payment` |
+| `changes` | `jsonb` | `CHECK` de que es un objeto. Un campo por cambio, `{"previous": ..., "new": ...}`; un campo secreto lleva solo `{"changed": true}`. Nunca contraseñas, tokens, credenciales ni datos de contacto |
+| `created_at` | `timestamptz` | El instante del cambio, que entra como parámetro |
+
+Acciones que existen hoy: `barbershop.payment_policy.updated` (modalidad, porcentaje del depósito y plazo de cancelación), `barbershop.payment_gateway.updated` (pasarela), `barbershop.features.updated` (bonos y lista de espera) `reservation.cancelled_by_barbershop` (estado de la reserva) y `payment.refunded` (estado del pago y `refunded_amount`, el monto devuelto en colones). Una lista permitida por acción, en `AuditAction`, decide qué campos entran: lo que no figura nunca se guarda.
+
+Solo crece: el rol de la aplicación puede insertar y leer, pero no tiene `UPDATE` ni `DELETE`, y el disparador `trg_audit_log_append_only` los rechaza para cualquier rol, el dueño de la tabla incluido (el mismo enfoque que `voucher_movements`). Tiene seguridad a nivel de fila con la política `audit_log_barbershop_isolation`. Los índices `audit_log_barbershop_idx` `(barbershop_id, created_at)` y `audit_log_subject_idx` `(barbershop_id, subject_type, subject_id)` sirven para leerla cuando una consulta exista. No tiene columna de correlación: el identificador del #119 todavía no existe.
 
 ## Tablas de infraestructura de Laravel
 

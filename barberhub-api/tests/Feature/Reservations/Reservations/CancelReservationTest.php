@@ -117,6 +117,31 @@ final class CancelReservationTest extends TestCase
         $this->assertSame([['confirmed', 'cancelled_by_barbershop', $this->owner]], $this->entriesOf($this->late));
     }
 
+    /** The cancellation by the barbershop leaves one entry in the technical record with the author and the status before and after; a repeat adds none (SE-04). */
+    public function test_the_cancellation_by_the_barbershop_is_in_the_technical_record(): void
+    {
+        $this->actAs($this->owner);
+
+        $this->postJson($this->cancelUrl($this->late))->assertOk();
+        $this->postJson($this->cancelUrl($this->late))->assertOk();
+
+        $entries = $this->recordEntries();
+        $this->assertCount(1, $entries);
+        $this->assertSame(['reservation.cancelled_by_barbershop', $this->owner, 'reservation', $this->late], [$entries[0]['action'], $entries[0]['actor_user_id'], $entries[0]['subject_type'], $entries[0]['subject_id']]);
+        $this->assertEquals(['status' => ['previous' => 'confirmed', 'new' => 'cancelled_by_barbershop']], json_decode((string) $entries[0]['changes'], true));
+        $this->assertNotNull($entries[0]['created_at']);
+    }
+
+    /** The cancellation by the customer is not a sensitive action of the barbershop: it leaves nothing in the record. */
+    public function test_the_cancellation_by_the_customer_is_not_in_the_technical_record(): void
+    {
+        $this->actAs($this->ana);
+
+        $this->postJson($this->cancelUrl($this->onTime))->assertOk();
+
+        $this->assertSame([], $this->recordEntries());
+    }
+
     /** A temporary reservation is not on the diagram of the barbershop's cancellation, so the owner gets a conflict (RE-04). */
     public function test_the_owner_cannot_cancel_a_temporary_reservation(): void
     {
@@ -245,6 +270,18 @@ final class CancelReservationTest extends TestCase
         $this->actAs($this->owner);
 
         $this->postJson($this->cancelUrl('no-es-un-uuid'))->assertNotFound();
+    }
+
+    /**
+     * The entries of the technical record of Pura Navaja.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function recordEntries(): array
+    {
+        $this->scopeQueriesTo($this->puraNavaja);
+
+        return array_values(DB::table('audit_log')->orderBy('id')->get()->map(fn (object $row): array => (array) $row)->all());
     }
 
     private function cancelUrl(string $reservationId): string

@@ -10,10 +10,14 @@ use Src\Catalog\Barbershops\Application\UseCases\GetPaymentPolicy;
 use Src\Catalog\Barbershops\Application\UseCases\UpdatePaymentPolicy;
 use Src\Catalog\Barbershops\Infrastructure\Http\Requests\UpdatePaymentPolicyRequest;
 use Src\Catalog\Barbershops\Infrastructure\Http\Resources\PaymentPolicyResource;
+use Src\Shared\Domain\Contracts\Clock;
 
 #[Group('Cobro de la barbería', 'Modalidad de cobro, depósito, pasarela y cancelación gratuita, a cargo del dueño.')]
 final readonly class PaymentPolicyController
 {
+    /** Receive the clock that gives the instant of the change. */
+    public function __construct(private Clock $clock) {}
+
     /** Show the payment policy of the barbershop. */
     #[Endpoint(
         title: 'Consultar la política de cobro',
@@ -31,6 +35,6 @@ final readonly class PaymentPolicyController
     )]
     public function update(UpdatePaymentPolicyRequest $request, UpdatePaymentPolicy $updatePaymentPolicy): PaymentPolicyResource
     {
-        return new PaymentPolicyResource($updatePaymentPolicy->execute($request->toCommand()));
+        return new PaymentPolicyResource($updatePaymentPolicy->execute($request->toCommand(), (string) $request->user()?->getAuthIdentifier(), $this->clock->now()));
     }
 }

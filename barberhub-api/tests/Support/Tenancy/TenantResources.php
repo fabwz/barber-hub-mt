@@ -248,6 +248,29 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/administracion/bonos-vendidos',
                 [],
             ),
+            // The technical record (#51, SE-04). It has no route: nothing reads it, so the isolation test only proves that the database
+            // hides the entries of the other barbershop. The path is where a read would be, and no route answers there.
+            new TenantResource(
+                'audit_log',
+                function (string $barbershopId): string {
+                    $userId = (string) Str::uuid7();
+                    $id = (string) Str::uuid7();
+                    DB::table('users')->insert(['id' => $userId, 'name' => 'Ana Rojas', 'email' => "{$userId}@barberhub.test", 'password' => 'hash']);
+                    DB::table('audit_log')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'actor_user_id' => $userId,
+                        'action' => 'barbershop.features.updated',
+                        'subject_type' => 'barbershop',
+                        'subject_id' => $barbershopId,
+                        'changes' => '{"vouchers_enabled": {"previous": false, "new": true}}',
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/administracion/auditoria',
+                [],
+            ),
         ];
     }
 
