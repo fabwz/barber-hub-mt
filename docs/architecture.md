@@ -140,6 +140,15 @@ Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas):
 - **Aislamiento.** La tabla `barbershops` no lleva `barbershop_id` ni política de fila: la barbería es el inquilino. La ruta pasa por el middleware `barbershop` (404 sin rol, 403 a un colaborador) y los casos de uso leen la barbería de `BarbershopContext`, nunca de la petición. Como no hay un recurso con tabla que registrar, la ruta está en `TenantResources::BARBERSHOP_ROUTES` y su aislamiento lo prueba `PaymentPolicyTest`.
 - **Pendiente.** El registro técnico del cambio (autor, fecha, valor anterior y nuevo) es el #51.
 
+### Bonos y lista de espera (#50)
+
+`Barbershops` guarda en la fila de la barbería dos indicadores, `vouchers_enabled` y `waitlist_enabled` (RF-09, ambos `false` al nacer), que lleva `Barbershop` como el objeto de valor `BarbershopFeatures` (`withFeatures()`). La API es `GET` y `PATCH /api/v1/barberias/{barberia}/administracion/funciones`, solo para el dueño (`auth:sanctum`, `barbershop`, `role:owner`), con `bonos_activos` y `lista_espera_activa`; el `PATCH` es parcial y un valor que no es booleano responde 422 `datos-invalidos`. Los casos de uso son `GetBarbershopFeatures` y `UpdateBarbershopFeatures`.
+
+- **Aplica a lo nuevo.** Con los bonos desactivados no se compra (`StartVoucherPurchase`) ni se define (`CreateVoucherDefinition`) un bono nuevo: 409 `conflicto`. Los bonos comprados conservan saldo y vigencia, y las definiciones se siguen listando, editando y retirando. Desactivar nada cancela: ni los bonos ni las ofertas en curso (el objeto de la lista de espera llega con sus issues).
+- **Lo que lee el cliente.** `GET /api/v1/enlaces/{enlace}` suma `lista_espera_activa`, para que el cliente sepa si ofrece anotarse (LE-01). No expone `bonos_activos`: la compra la rechaza la API. La lista de espera misma no está implementada.
+- **Aislamiento.** Como `cobro` y `negocio`, la fila es la barbería y no lleva `barbershop_id`: las rutas están en `TenantResources::BARBERSHOP_ROUTES` y las prueba `BarbershopFeaturesTest`.
+- **Pendiente.** El cambio todavía no va al registro técnico (SE-04): la tabla `audit_log` está en el modelo de datos pero no existe en el código; es el #51.
+
 ### El pago y la pasarela (#62, #129)
 
 `Payments/Payments` modela el cobro de una reserva y elige la pasarela de cada barbería (RF-20, RF-23). Desde el #63 cobra con ONVO Pay (tarjeta y SINPE Móvil) y desde el #64 con PayPal (solo tarjeta); el flujo y las respuestas son los mismos con las dos.
@@ -398,7 +407,8 @@ La compra de un bono (RF-27) es un pago, así que la ruta y el caso de uso viven
 - **Idempotencia (PA-05).** El mismo evento dos veces lo corta `webhook_events` (la misma ruta que las reservas); si pasara por otro camino, el bono bloqueado ya está activo y `activate()` falla, y la base garantiza el resto: `payments_one_active_per_voucher_idx` (un pago en curso o aprobado por bono) y `voucher_movements_one_purchase_idx` (un movimiento de compra por bono). Si el bono no se pudo activar, el pago queda `approved` con `refund_pending`, como una reserva vencida (PA-07).
 - **Sin reembolso ni transferencia (BO-07).** `RefundPayment` rechaza el pago de un bono con 409 `conflicto` (`VoucherPaymentNotRefundableException`); no hay ninguna operación para transferirlo.
 - **Aviso de un pago de bono.** `locate_payment_of_notice` no cambió: busca por proveedor y referencia en `payments`, y un pago de bono los tiene como cualquiera.
-- **Lo que todavía no existe.** `vouchers_enabled` llega con el #50; hasta entonces cualquier bono a la venta se puede comprar. Un bono pendiente no vence por sí solo: no hay regla de expiración de compras pendientes.
+- **Bonos desactivados (#50).** `StartVoucherPurchase` empieza por el puerto `VoucherSales` (adaptador `BarbershopsVoucherSales`, que invoca `GetBarbershopFeatures` de `Barbershops`): con `vouchers_enabled` en `false` lanza `VoucherSalesDisabledException` (409 `conflicto`, sin tipo estable propio) antes de bloquear el bono, crear el rol de cliente, el bono o el pago. Un bono ya comprado o pendiente no se toca: el pago pendiente que se confirma después sigue activándolo.
+- **Lo que todavía no existe.** Un bono pendiente no vence por sí solo: no hay regla de expiración de compras pendientes.
 
 ### Definir y retirar bonos (#87)
 
@@ -407,7 +417,7 @@ La compra de un bono (RF-27) es un pago, así que la ruta y el caso de uso viven
 - **Servicios cubiertos.** Cada identificador debe existir en la barbería, activo o no: el puerto `CatalogServices` lo comprueba por el caso de uso `ListServices` del catálogo, y uno que no existe (o que es de otra barbería) responde 422 en `servicios.N`, igual que uno inventado, así no se revela su existencia. Una lista vacía o con un servicio repetido también responde 422.
 - **Con ventas, los términos son inmutables.** Si hay al menos un bono adquirido de la definición (pagado o no), pedir otras `sesiones`, otra `vigencia_dias` u otros `servicios` responde 409 `bono-con-ventas` y no escribe nada; repetir el mismo valor no cuenta como cambio. Siempre se pueden editar `nombre` y `precio`, y retirar o reactivar el bono. Sin ventas se edita todo. La consulta es `VoucherDefinitionRepository::hasPurchases()`.
 - **Retirar o cambiar el precio no toca lo comprado.** `purchased_vouchers` guarda su propia copia de nombre, precio, sesiones y vigencia (BO-01) y solo apunta a la definición por su llave; ni el saldo, ni las fechas, ni su registro de movimientos dependen de la definición.
-- **Precondición de RF-09.** Todavía no existe la activación de bonos de la barbería (`vouchers_enabled`, prevista en el #49), así que las rutas no la comprueban; cuando llegue, la lee `CreateVoucherDefinition` por un puerto.
+- **Precondición de RF-09 (#50).** `CreateVoucherDefinition` lee `vouchers_enabled` por el puerto `VoucherSales` (adaptador `BarbershopsVoucherSales`): con los bonos desactivados el `POST` responde 409 `conflicto` y no escribe nada. Listar, consultar, editar, retirar y reactivar las definiciones existentes no lo comprueban.
 
 ### Concurrencia
 
