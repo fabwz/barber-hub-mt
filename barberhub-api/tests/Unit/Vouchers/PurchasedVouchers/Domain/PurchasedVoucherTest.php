@@ -233,6 +233,21 @@ final class PurchasedVoucherTest extends TestCase
         $this->assertFalse($voucher->isValidAt($expiresAt));
     }
 
+    /** Expired means a paid voucher at or past its expiry; a voucher waiting for its payment never expires (BO-07, RF-29). */
+    public function test_a_voucher_is_expired_from_its_expiry_instant_and_only_if_it_was_paid(): void
+    {
+        $pending = VoucherFactory::pending();
+        $active = VoucherFactory::active();
+        $expiresAt = $active->expiresAt;
+        $this->assertNotNull($expiresAt);
+
+        $this->assertFalse($pending->isExpiredAt($expiresAt->modify('+1 year')));
+        $this->assertFalse($active->isExpiredAt(VoucherFactory::now()));
+        $this->assertFalse($active->isExpiredAt($expiresAt->modify('-1 second')));
+        $this->assertTrue($active->isExpiredAt($expiresAt));
+        $this->assertTrue($active->isExpiredAt($expiresAt->modify('+1 day')));
+    }
+
     /** Whatever happens to a voucher, the entries of its record add up to its balance, and the balance stays between zero and the total (BO-03, BO-09). */
     public function test_the_entries_always_add_up_to_the_balance(): void
     {
