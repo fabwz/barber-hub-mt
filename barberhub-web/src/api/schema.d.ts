@@ -353,6 +353,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/funciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar las funciones
+         * @description Trae `bonos_activos` (venta de bonos nuevos) y `lista_espera_activa`. Una barbería nueva los tiene en `false`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         */
+        get: operations["catalog.barbershops.features.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Activar o desactivar las funciones
+         * @description Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opción de anotarse; las ofertas en curso no se cancelan. El cambio aplica a las operaciones nuevas. Solo el dueño.
+         */
+        patch: operations["catalog.barbershops.features.update"];
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -844,6 +868,13 @@ export interface components {
             /** @description `onvo` o `paypal`; obligatoria con `deposito` y `total`. */
             pasarela?: components["schemas"]["PaymentGateway"];
         };
+        /** ActualizarFunciones */
+        ActualizarFunciones: {
+            /** @description Activa o desactiva la venta de bonos nuevos. */
+            bonos_activos?: boolean;
+            /** @description Activa o desactiva la lista de espera. */
+            lista_espera_activa?: boolean;
+        };
         /** ActualizarServicio */
         ActualizarServicio: {
             nombre?: string;
@@ -875,6 +906,8 @@ export interface components {
             redes?: {
                 [key: string]: string;
             };
+            /** @description Si la barbería tiene lista de espera; con `false` el cliente no ve la opción de anotarse (RF-09, LE-01). */
+            lista_espera_activa: boolean;
         };
         /** Bono */
         Bono: {
@@ -1075,6 +1108,11 @@ export interface components {
             dia: number;
             abre: string;
             cierra: string;
+        };
+        /** Funciones */
+        Funciones: {
+            bonos_activos: boolean;
+            lista_espera_activa: boolean;
         };
         /** MiBarberia */
         MiBarberia: {
@@ -2212,6 +2250,63 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    "catalog.barbershops.features.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `Funciones` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Funciones"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "catalog.barbershops.features.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActualizarFunciones"];
+            };
+        };
+        responses: {
+            /** @description `Funciones` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Funciones"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
         };
     };
     index: {
