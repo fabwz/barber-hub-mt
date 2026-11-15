@@ -196,6 +196,35 @@ final class ManageVoucherDefinitionsTest extends TestCase
         $this->assertFalse((bool) DB::table('voucher_definitions')->where('id', $definition)->value('is_active'));
     }
 
+    /** With the vouchers switched off a new voucher is refused with a conflict and nothing is stored; one that exists is still listed, edited and withdrawn (RF-09, BO-01). */
+    public function test_with_the_vouchers_switched_off_no_new_voucher_is_defined_but_the_existing_ones_are_managed(): void
+    {
+        Sanctum::actingAs($this->owner, []);
+        $definition = $this->postJson($this->url($this->puraNavaja), $this->payload())->assertCreated()->json('data.id');
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['vouchers_enabled' => false]);
+
+        $this->postJson($this->url($this->puraNavaja), $this->payload(null, 'Bono nuevo'))
+            ->assertStatus(409)
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('type', $this->problem('conflicto'));
+        $this->assertSame(1, $this->countDefinitions($this->puraNavaja));
+
+        $this->getJson($this->url($this->puraNavaja))->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson($this->url($this->puraNavaja, $definition))->assertOk();
+        $this->patchJson($this->url($this->puraNavaja, $definition), ['nombre' => 'Bono renovado', 'precio' => 28000])->assertOk()->assertJsonPath('data.nombre', 'Bono renovado');
+        $this->patchJson($this->url($this->puraNavaja, $definition), ['activo' => false])->assertOk()->assertJsonPath('data.activo', false);
+        $this->patchJson($this->url($this->puraNavaja, $definition), ['activo' => true])->assertOk()->assertJsonPath('data.activo', true);
+    }
+
+    /** The switch is read from the barbershop of the route: with the vouchers off in Pura Navaja, Fade Lab still defines its own (MT-04). */
+    public function test_the_switch_of_one_barbershop_does_not_reach_the_other(): void
+    {
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['vouchers_enabled' => false]);
+        Sanctum::actingAs($this->foreignOwner, []);
+
+        $this->postJson($this->url($this->fadeLab), $this->payload([$this->foreignService]))->assertCreated();
+    }
+
     /** Changing the price changes the voucher on sale and not the one already bought, which keeps what its customer paid (BO-01). */
     public function test_changing_the_price_does_not_change_a_purchased_voucher(): void
     {
@@ -413,7 +442,7 @@ final class ManageVoucherDefinitionsTest extends TestCase
     private function createBarbershop(string $link): string
     {
         $id = (string) Str::uuid7();
-        DB::table('barbershops')->insert(['id' => $id, 'name' => $link, 'city' => 'San Carlos', 'phone' => '2460-0000', 'public_link' => $link]);
+        DB::table('barbershops')->insert(['id' => $id, 'name' => $link, 'city' => 'San Carlos', 'phone' => '2460-0000', 'public_link' => $link, 'vouchers_enabled' => true]);
 
         return $id;
     }

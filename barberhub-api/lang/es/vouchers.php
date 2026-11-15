@@ -16,6 +16,7 @@ return [
     'not_active' => 'El bono todavía no está activo: su pago no se ha confirmado.',
     'price_invalid' => 'El precio del bono debe ser de al menos ₡1.',
     'services_required' => 'El bono debe cubrir al menos un servicio.',
+    'sales_disabled' => 'La barbería tiene desactivados los bonos: no se pueden comprar ni definir bonos nuevos.',
     'sessions_count_invalid' => 'El bono debe tener al menos una sesión.',
     'unknown_service' => 'El servicio no existe en la barbería.',
     'validity_days_invalid' => 'La vigencia del bono debe ser de al menos un día.',
