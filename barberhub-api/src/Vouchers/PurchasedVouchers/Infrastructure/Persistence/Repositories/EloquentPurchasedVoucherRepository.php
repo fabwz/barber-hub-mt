@@ -11,6 +11,9 @@ use Illuminate\Support\Str;
 use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Money;
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
+use Src\Shared\Infrastructure\Persistence\EloquentPages;
 use Src\Vouchers\PurchasedVouchers\Domain\Contracts\PurchasedVoucherRepository;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\PurchasedVoucher;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\VoucherMovement;
@@ -127,12 +130,51 @@ final readonly class EloquentPurchasedVoucherRepository implements PurchasedVouc
             ->orderBy('id')
             ->get();
 
-        return array_values($rows->map(fn (VoucherMovementModel $row): VoucherMovement => VoucherMovement::reconstitute(
-            VoucherMovementType::from($row->type),
-            $row->sessions_delta,
-            $row->reservation_id === null ? null : new ReservationId($row->reservation_id),
-            new DateTimeImmutable($row->created_at),
-        ))->all());
+        return array_values($rows->map(fn (VoucherMovementModel $row): VoucherMovement => $this->movementToDomain($row))->all());
+    }
+
+    /**
+     * Read the record of several vouchers with one query and split it by voucher, each in the order it was written.
+     *
+     * @param  list<PurchasedVoucherId>  $ids
+     * @return array<string, list<VoucherMovement>>
+     */
+    public function movementsOfMany(array $ids): array
+    {
+        $record = array_fill_keys(array_map(fn (PurchasedVoucherId $id): string => $id->value, $ids), []);
+
+        if ($ids === []) {
+            return $record;
+        }
+
+        $rows = VoucherMovementModel::query()
+            ->where('barbershop_id', $this->context->current()->value)
+            ->whereIn('purchased_voucher_id', array_keys($record))
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($rows as $row) {
+            $record[$row->purchased_voucher_id][] = $this->movementToDomain($row);
+        }
+
+        return $record;
+    }
+
+    /** Page the paid vouchers of a customer among those of the current barbershop. */
+    public function pageOfCustomer(CustomerMembershipId $customer, PageRequest $page): Page
+    {
+        return EloquentPages::of(
+            $this->paidOfBarbershop()->where('customer_membership_id', $customer->value),
+            $page,
+            fn (PurchasedVoucherModel $model): PurchasedVoucher => $this->toDomain($model),
+        );
+    }
+
+    /** Page the paid vouchers of the current barbershop. */
+    public function pageOfBarbershop(PageRequest $page): Page
+    {
+        return EloquentPages::of($this->paidOfBarbershop(), $page, fn (PurchasedVoucherModel $model): PurchasedVoucher => $this->toDomain($model));
     }
 
     /**
@@ -196,6 +238,31 @@ final readonly class EloquentPurchasedVoucherRepository implements PurchasedVouc
     private function ofBarbershop(): Builder
     {
         return PurchasedVoucherModel::query()->where('barbershop_id', $this->context->current()->value);
+    }
+
+    /**
+     * The vouchers of the current barbershop that were paid, the latest activated first; the identifier breaks the tie so a page
+     * never repeats or skips a voucher.
+     *
+     * @return Builder<PurchasedVoucherModel>
+     */
+    private function paidOfBarbershop(): Builder
+    {
+        return $this->ofBarbershop()
+            ->where('status', VoucherStatus::Active->value)
+            ->orderByDesc('activated_at')
+            ->orderByDesc('id');
+    }
+
+    /** Rebuild an entry of the record from its stored state. */
+    private function movementToDomain(VoucherMovementModel $row): VoucherMovement
+    {
+        return VoucherMovement::reconstitute(
+            VoucherMovementType::from($row->type),
+            $row->sessions_delta,
+            $row->reservation_id === null ? null : new ReservationId($row->reservation_id),
+            new DateTimeImmutable($row->created_at),
+        );
     }
 
     /** Rebuild the aggregate from its stored state. */

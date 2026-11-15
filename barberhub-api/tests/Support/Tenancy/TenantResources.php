@@ -36,6 +36,7 @@ final class TenantResources
     public const array CUSTOMER_ROUTES = [
         'POST api/v1/barberias/{barberia}/reservas',
         'GET api/v1/barberias/{barberia}/mis-reservas',
+        'GET api/v1/barberias/{barberia}/mis-bonos',
         'POST api/v1/barberias/{barberia}/reservas/propuesta',
         'POST api/v1/barberias/{barberia}/bonos/{bono}/compras',
     ];
@@ -216,10 +217,10 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/pagos',
                 [TenantResource::SHOW, TenantResource::REFUND],
             ),
-            // The vouchers (#132). The owner administers the definitions (#87); the purchase (#88) is a customer route of the purchased
-            // voucher, so it is listed as one of its own paths; the use and the query of the purchased voucher arrive with #89 and #90,
-            // so its operations are empty for now: the audit still proves what the database hides. The covered services are served
-            // inside the definition. The withdrawal (`activo: false`) is the UPDATE, and the isolation test tries it against Fade Lab.
+            // The vouchers (#132). The owner administers the definitions (#87) and lists the vouchers sold (#90); the purchase (#88) and
+            // the customer's own list (#90) are customer routes of the purchased voucher, so they are listed as its own paths. The use
+            // of the voucher arrives with #89. The covered services are served inside the definition. The withdrawal (`activo: false`)
+            // is the UPDATE, and the isolation test tries it against Fade Lab.
             new TenantResource(
                 'voucher_definitions',
                 fn (string $barbershopId): string => self::createVoucherDefinition($barbershopId)[0],
@@ -236,15 +237,15 @@ final class TenantResources
             new TenantResource(
                 'purchased_vouchers',
                 fn (string $barbershopId): string => self::createPurchasedVoucher($barbershopId)[0],
-                'api/v1/barberias/{barberia}/mis-bonos',
+                'api/v1/barberias/{barberia}/administracion/bonos-vendidos',
+                [TenantResource::LIST],
                 [],
-                [],
-                ['api/v1/barberias/{barberia}/bonos/{bono}/compras'],
+                ['api/v1/barberias/{barberia}/mis-bonos', 'api/v1/barberias/{barberia}/bonos/{bono}/compras'],
             ),
             new TenantResource(
                 'voucher_movements',
                 fn (string $barbershopId): string => self::createPurchasedVoucher($barbershopId)[1],
-                'api/v1/barberias/{barberia}/mis-bonos',
+                'api/v1/barberias/{barberia}/administracion/bonos-vendidos',
                 [],
             ),
         ];

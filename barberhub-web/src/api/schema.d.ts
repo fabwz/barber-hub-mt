@@ -686,6 +686,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/mis-bonos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar mis bonos
+         * @description Lista, del activado más recientemente al más antiguo, los bonos pagados que la persona de la sesión compró en la barbería, con su `saldo` en sesiones (igual a la suma de sus `movimientos`: compra, apartado, consumo y reintegro), su `estado`, `activado_en` y `vence_en`, y en cada movimiento la `reserva` a la que se liga. Un bono vencido muestra `saldo` 0, `estado` `vencido` y su fecha de vencimiento; se calcula al consultar, sin proceso de vencimiento. Un bono que todavía espera su pago no aparece. Una persona que todavía no compró ahí recibe la lista vacía, no un error. El dueño o un colaborador de esa barbería recibe 403 `prohibido`: la vista del dueño es `GET /administracion/bonos-vendidos`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.
+         */
+        get: operations["vouchers.purchased.mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/barberias/{barberia}/administracion/bonos-vendidos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar los bonos vendidos
+         * @description Lista, del activado más recientemente al más antiguo, los bonos pagados que los clientes compraron en la barbería, con el nombre del cliente (`cliente_nombre`; nunca su correo ni su teléfono) y lo mismo que ve el cliente: `saldo`, `estado`, `activado_en`, `vence_en` y los `movimientos` con su `reserva`. Un bono vencido muestra `saldo` 0, `estado` `vencido` y su fecha de vencimiento. Un bono que todavía espera su pago no aparece. Solo el dueño: un colaborador o un cliente reciben 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.
+         */
+        get: operations["vouchers.purchased.sold"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/administracion/servicios": {
         parameters: {
             query?: never;
@@ -921,6 +961,48 @@ export interface components {
             servicios: unknown[];
             /** @description `false` si está retirado de la venta. */
             activo: boolean;
+        };
+        /** BonoComprado */
+        BonoComprado: {
+            id: string;
+            nombre: string;
+            /** @description Sesiones que trae el bono al comprarlo. Ejemplo: 5. */
+            sesiones_totales: number;
+            /** @description Sesiones que le quedan, igual a la suma de sus `movimientos`; 0 si ya venció. Ejemplo: 3. */
+            saldo: number;
+            /**
+             * @description `activo` mientras está vigente o `vencido` desde su fecha de vencimiento; se calcula al consultar, sin proceso de vencimiento.
+             * @enum {string}
+             */
+            estado: "vencido" | "activo";
+            /** @description Cuándo se confirmó el pago, ISO 8601 con el desfase de Costa Rica (-06:00). Ejemplo: 2030-03-01T08:00:00-06:00. */
+            activado_en: string | null;
+            /** @description Cuándo vence, ISO 8601 con el desfase de Costa Rica (-06:00); es el instante en que deja de valer. Ejemplo: 2030-05-30T08:00:00-06:00. */
+            vence_en: string | null;
+            /** @description Cada cambio del saldo, del más antiguo al más reciente, con la reserva a la que se liga (nula en la compra). */
+            movimientos: unknown[];
+        };
+        /** BonoVendido */
+        BonoVendido: {
+            id: string;
+            nombre: string;
+            /** @description Sesiones que trae el bono al comprarlo. Ejemplo: 5. */
+            sesiones_totales: number;
+            /** @description Sesiones que le quedan, igual a la suma de sus `movimientos`; 0 si ya venció. Ejemplo: 3. */
+            saldo: number;
+            /**
+             * @description `activo` mientras está vigente o `vencido` desde su fecha de vencimiento; se calcula al consultar, sin proceso de vencimiento.
+             * @enum {string}
+             */
+            estado: "vencido" | "activo";
+            /** @description Cuándo se confirmó el pago, ISO 8601 con el desfase de Costa Rica (-06:00). Ejemplo: 2030-03-01T08:00:00-06:00. */
+            activado_en: string | null;
+            /** @description Cuándo vence, ISO 8601 con el desfase de Costa Rica (-06:00); es el instante en que deja de valer. Ejemplo: 2030-05-30T08:00:00-06:00. */
+            vence_en: string | null;
+            /** @description Cada cambio del saldo, del más antiguo al más reciente, con la reserva a la que se liga (nula en la compra). */
+            movimientos: unknown[];
+            /** @description Nombre del cliente que lo compró. */
+            cliente_nombre: string;
         };
         /** CambiarEstadoDeColaborador */
         CambiarEstadoDeColaborador: {
@@ -2813,6 +2895,80 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ReservaCancelada"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "vouchers.purchased.mine": {
+        parameters: {
+            query?: {
+                /** @description Número de página, desde 1. */
+                pagina?: number;
+                /** @description Elementos por página, de 1 a 50. Por defecto, 15. */
+                por_pagina?: number;
+            };
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `BonoComprado` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BonoComprado"][];
+                        meta: {
+                            pagina: number;
+                            por_pagina: number;
+                            total: number;
+                            ultima_pagina: number;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "vouchers.purchased.sold": {
+        parameters: {
+            query?: {
+                /** @description Número de página, desde 1. */
+                pagina?: number;
+                /** @description Elementos por página, de 1 a 50. Por defecto, 15. */
+                por_pagina?: number;
+            };
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `BonoVendido` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BonoVendido"][];
+                        meta: {
+                            pagina: number;
+                            por_pagina: number;
+                            total: number;
+                            ultima_pagina: number;
+                        };
                     };
                 };
             };

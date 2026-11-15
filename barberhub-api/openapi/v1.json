@@ -85,6 +85,10 @@
         {
             "name": "Bonos de la barber\u00eda",
             "description": "Administraci\u00f3n de los bonos que vende la barber\u00eda, por su due\u00f1o."
+        },
+        {
+            "name": "Saldo de bonos",
+            "description": "Consulta del saldo y la vigencia de los bonos comprados: el cliente ve los suyos y el due\u00f1o, los vendidos en su barber\u00eda."
         }
     ],
     "security": [
@@ -2544,6 +2548,192 @@
                 }
             }
         },
+        "/barberias/{barberia}/mis-bonos": {
+            "get": {
+                "operationId": "vouchers.purchased.mine",
+                "description": "Lista, del activado m\u00e1s recientemente al m\u00e1s antiguo, los bonos pagados que la persona de la sesi\u00f3n compr\u00f3 en la barber\u00eda, con su `saldo` en sesiones (igual a la suma de sus `movimientos`: compra, apartado, consumo y reintegro), su `estado`, `activado_en` y `vence_en`, y en cada movimiento la `reserva` a la que se liga. Un bono vencido muestra `saldo` 0, `estado` `vencido` y su fecha de vencimiento; se calcula al consultar, sin proceso de vencimiento. Un bono que todav\u00eda espera su pago no aparece. Una persona que todav\u00eda no compr\u00f3 ah\u00ed recibe la lista vac\u00eda, no un error. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`: la vista del due\u00f1o es `GET /administracion/bonos-vendidos`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.",
+                "summary": "Listar mis bonos",
+                "tags": [
+                    "Saldo de bonos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "N\u00famero de p\u00e1gina, desde 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "por_pagina",
+                        "in": "query",
+                        "description": "Elementos por p\u00e1gina, de 1 a 50. Por defecto, 15.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `BonoComprado`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BonoComprado"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "por_pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "ultima_pagina": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "pagina",
+                                                "por_pagina",
+                                                "total",
+                                                "ultima_pagina"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/bonos-vendidos": {
+            "get": {
+                "operationId": "vouchers.purchased.sold",
+                "description": "Lista, del activado m\u00e1s recientemente al m\u00e1s antiguo, los bonos pagados que los clientes compraron en la barber\u00eda, con el nombre del cliente (`cliente_nombre`; nunca su correo ni su tel\u00e9fono) y lo mismo que ve el cliente: `saldo`, `estado`, `activado_en`, `vence_en` y los `movimientos` con su `reserva`. Un bono vencido muestra `saldo` 0, `estado` `vencido` y su fecha de vencimiento. Un bono que todav\u00eda espera su pago no aparece. Solo el due\u00f1o: un colaborador o un cliente reciben 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.",
+                "summary": "Listar los bonos vendidos",
+                "tags": [
+                    "Saldo de bonos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "N\u00famero de p\u00e1gina, desde 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "por_pagina",
+                        "in": "query",
+                        "description": "Elementos por p\u00e1gina, de 1 a 50. Por defecto, 15.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `BonoVendido`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BonoVendido"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "por_pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "ultima_pagina": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "pagina",
+                                                "por_pagina",
+                                                "total",
+                                                "ultima_pagina"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/administracion/servicios": {
             "get": {
                 "operationId": "catalog.services.index",
@@ -3179,6 +3369,125 @@
                     "activo"
                 ],
                 "title": "Bono"
+            },
+            "BonoComprado": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "sesiones_totales": {
+                        "type": "integer",
+                        "description": "Sesiones que trae el bono al comprarlo. Ejemplo: 5."
+                    },
+                    "saldo": {
+                        "type": "integer",
+                        "description": "Sesiones que le quedan, igual a la suma de sus `movimientos`; 0 si ya venci\u00f3. Ejemplo: 3."
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "`activo` mientras est\u00e1 vigente o `vencido` desde su fecha de vencimiento; se calcula al consultar, sin proceso de vencimiento.",
+                        "enum": [
+                            "vencido",
+                            "activo"
+                        ]
+                    },
+                    "activado_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Cu\u00e1ndo se confirm\u00f3 el pago, ISO 8601 con el desfase de Costa Rica (-06:00). Ejemplo: 2030-03-01T08:00:00-06:00."
+                    },
+                    "vence_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Cu\u00e1ndo vence, ISO 8601 con el desfase de Costa Rica (-06:00); es el instante en que deja de valer. Ejemplo: 2030-05-30T08:00:00-06:00."
+                    },
+                    "movimientos": {
+                        "type": "array",
+                        "description": "Cada cambio del saldo, del m\u00e1s antiguo al m\u00e1s reciente, con la reserva a la que se liga (nula en la compra).",
+                        "items": {}
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "sesiones_totales",
+                    "saldo",
+                    "estado",
+                    "activado_en",
+                    "vence_en",
+                    "movimientos"
+                ],
+                "title": "BonoComprado"
+            },
+            "BonoVendido": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "sesiones_totales": {
+                        "type": "integer",
+                        "description": "Sesiones que trae el bono al comprarlo. Ejemplo: 5."
+                    },
+                    "saldo": {
+                        "type": "integer",
+                        "description": "Sesiones que le quedan, igual a la suma de sus `movimientos`; 0 si ya venci\u00f3. Ejemplo: 3."
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "`activo` mientras est\u00e1 vigente o `vencido` desde su fecha de vencimiento; se calcula al consultar, sin proceso de vencimiento.",
+                        "enum": [
+                            "vencido",
+                            "activo"
+                        ]
+                    },
+                    "activado_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Cu\u00e1ndo se confirm\u00f3 el pago, ISO 8601 con el desfase de Costa Rica (-06:00). Ejemplo: 2030-03-01T08:00:00-06:00."
+                    },
+                    "vence_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Cu\u00e1ndo vence, ISO 8601 con el desfase de Costa Rica (-06:00); es el instante en que deja de valer. Ejemplo: 2030-05-30T08:00:00-06:00."
+                    },
+                    "movimientos": {
+                        "type": "array",
+                        "description": "Cada cambio del saldo, del m\u00e1s antiguo al m\u00e1s reciente, con la reserva a la que se liga (nula en la compra).",
+                        "items": {}
+                    },
+                    "cliente_nombre": {
+                        "type": "string",
+                        "description": "Nombre del cliente que lo compr\u00f3."
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "sesiones_totales",
+                    "saldo",
+                    "estado",
+                    "activado_en",
+                    "vence_en",
+                    "movimientos",
+                    "cliente_nombre"
+                ],
+                "title": "BonoVendido"
             },
             "CambiarEstadoDeColaborador": {
                 "type": "object",

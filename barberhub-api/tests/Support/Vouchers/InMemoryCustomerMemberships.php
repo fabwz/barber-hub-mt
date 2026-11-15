@@ -40,6 +40,25 @@ final class InMemoryCustomerMemberships implements CustomerMemberships
         return $this->roles[$userId] ?? null;
     }
 
+    /**
+     * The name of each role, as the person of the test is called "Cliente" followed by the position of the role.
+     *
+     * @param  list<string>  $membershipIds
+     * @return array<string, string>
+     */
+    public function namesOf(array $membershipIds): array
+    {
+        $names = [];
+
+        foreach (array_values($this->roles) as $position => $role) {
+            if (in_array($role, $membershipIds, true)) {
+                $names[$role] = 'Cliente '.($position + 1);
+            }
+        }
+
+        return $names;
+    }
+
     /** How many customer roles were created. */
     public function created(): int
     {

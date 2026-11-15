@@ -174,6 +174,12 @@ final class PurchasedVoucher
         return $this->status === VoucherStatus::Active && $this->expiresAt !== null && $at < $this->expiresAt;
     }
 
+    /** Tell whether a paid voucher is past its expiry at the instant. A voucher that is not paid yet has no expiry, so it is never expired (BO-07). */
+    public function isExpiredAt(DateTimeImmutable $at): bool
+    {
+        return $this->status === VoucherStatus::Active && $this->expiresAt !== null && $at >= $this->expiresAt;
+    }
+
     /** The sessions the voucher shows at the instant: an expired or unpaid voucher shows none, though its sessions are not erased (BO-07). */
     public function balanceAt(DateTimeImmutable $at): SessionBalance
     {
