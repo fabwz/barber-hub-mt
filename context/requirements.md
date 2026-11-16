@@ -7,11 +7,11 @@ Documento organizado según la estructura de ISO/IEC/IEEE 29148:2018 para una es
 | Campo | Valor |
 | --- | --- |
 | Documento | `context/requirements.md` |
-| Versión | 1.6 |
-| Fecha | 16 de octubre de 2026 |
+| Versión | 1.7 |
+| Fecha | 16 de noviembre de 2026 |
 | Estado | Para aprobación |
 | Documentos relacionados | `context/business-rules.md` (reglas de negocio), `docs/` (arquitectura, base de datos, modelo de datos y decisiones técnicas) |
-| Alcance de la versión | 53 requisitos funcionales, 28 requisitos no funcionales, 18 restricciones de diseño y 5 requisitos legales |
+| Alcance de la versión | 54 requisitos funcionales, 28 requisitos no funcionales, 18 restricciones de diseño y 5 requisitos legales |
 
 Reglas de mantenimiento: los requisitos y las reglas viven en este archivo y en `business-rules.md`; los issues los citan por su identificador; si algo cambia, se corrige primero el archivo. Los identificadores no se reutilizan.
 
@@ -48,8 +48,9 @@ BarberHub es una plataforma web multi-inquilino donde varias barberías administ
 | 10 | Chat conversacional con IA. | D |
 | 11 | Verificación de edad o de identidad del cliente, y verificación del correo al registrarse. | D |
 | 12 | Eliminación o anonimización de la cuenta. | D |
-| 13 | Directorio de barberías: cada cliente llega por el enlace de su barbería. | D |
+| 13 | (Retirada en la versión 1.7: el directorio de barberías es opcional por barbería y lo cubre el RF-54. El enlace de cada barbería sigue siendo su puerta de entrada.) | D |
 | 14 | Más de un rol para una misma persona en una misma barbería. | D |
+| 15 | Pausar las reservas de una barbería (decisión de diseño): el dueño no puede suspender temporalmente las reservas nuevas; queda como pendiente opcional, fuera del alcance. | D |
 
 ### 1.3 Definiciones, siglas y abreviaturas
 
@@ -127,6 +128,7 @@ Se apoya en servicios externos: dos pasarelas de pago (ONVO Pay y PayPal), un pr
 | Inteligencia artificial | RF-37 | Reserva a partir de una frase, con salida estructurada y validada. |
 | Identidad, acceso y datos | RF-38 a RF-46 | Cuentas, contraseñas, roles, aislamiento, datos de la cuenta e imágenes. |
 | Preferencias de la cuenta | RF-47 a RF-49 | Avisos, apariencia e idioma. |
+| Directorio de barberías | RF-54 | Lista pública y opcional de las barberías que su dueño activó, con búsqueda por nombre o ciudad. |
 | Extras | RF-50 a RF-53 | Propinas, WhatsApp, Google Calendar y factura electrónica. |
 
 ### 2.3 Usuarios y características
@@ -197,7 +199,7 @@ La guía visual del cliente web está pendiente de definir (apéndice B); las pa
 | Rol | Pantallas |
 | --- | --- |
 | Acceso (todos) | Registro, inicio de sesión, olvidé mi contraseña, crear nueva contraseña, elegir barbería, términos y condiciones, política de privacidad, "Esta barbería no existe" |
-| Cliente | Reservar (con servicios con imagen), reservar con IA, resumen y pago, estado del pago y reserva confirmada, mis reservas, reprogramar o cancelar, bonos, lista de espera y ofertas, aviso emergente de ofertas |
+| Cliente | Directorio de barberías (con búsqueda), barra de navegación del cliente (con menú de cuenta), reservar (con servicios con imagen), reservar con IA, resumen y pago, estado del pago y reserva confirmada, mis reservas, reprogramar o cancelar, bonos, lista de espera y ofertas, aviso emergente de ofertas |
 | Dueño | Agenda en vivo con panel de detalle de reserva, reserva asistida, servicios, horario, personal con invitaciones, bloqueos, negocio y políticas, bonos del negocio, ingresos, reembolsos |
 | Colaborador | Mi agenda en vivo con panel de detalle |
 | Común | Mi cuenta, con las pestañas Datos, Seguridad, Avisos (solo cliente), Apariencia e Idioma |
@@ -222,7 +224,7 @@ La guía visual del cliente web está pendiente de definir (apéndice B); las pa
 
 ### 3.2 Requisitos funcionales
 
-Son 53 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, precondiciones, flujo, reglas de negocio relacionadas, criterios de aceptación y método de verificación. Los criterios usan datos de la barbería de referencia.
+Son 54 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, precondiciones, flujo, reglas de negocio relacionadas, criterios de aceptación y método de verificación. Los criterios usan datos de la barbería de referencia.
 
 **Plazos y umbrales comunes.** "En la misma operación" significa dentro de la misma solicitud, sin tareas diferidas. "Dentro de 60 s" se aplica a los correos. Las alternativas a un espacio no disponible son hasta 3 espacios del mismo día y servicio, los de inicio más próximo a la hora pedida.
 
@@ -1012,6 +1014,23 @@ Se construyen después de todo lo anterior, en este orden: RF-50, RF-51, RF-52 y
   - Solo se usa el ambiente de pruebas.
 - **Verificación:** Prueba automatizada con servicio simulado.
 
+#### 3.2.11 Directorio de barberías
+
+##### RF-54 · Directorio de barberías
+- **Clase:** Complementaria
+- **Enunciado:** El sistema deberá ofrecer al cliente un directorio público con las barberías cuyo dueño activó su aparición, y permitir al dueño activar o desactivar esa aparición.
+- **Actores:** Cliente (con o sin cuenta); dueño.
+- **Precondiciones:** La barbería existe y tiene enlace público (RF-02). Por defecto ninguna barbería aparece en el directorio.
+- **Flujo:** 1) El dueño activa o desactiva la aparición de su barbería en el directorio, junto con las demás funciones (RF-09); el cambio queda en el registro técnico. 2) El cliente abre el directorio y ve, por orden de nombre, las barberías activadas, cada una con su nombre, ciudad, logo y enlace. 3) El cliente busca por nombre o ciudad, sin distinguir tildes ni mayúsculas. 4) El cliente elige una barbería y llega a ella por su enlace público.
+- **Reglas:** MT-07, MT-10.
+- **Criterios de aceptación:**
+  - Solo aparecen las barberías cuyo dueño activó la aparición: una barbería recién registrada no aparece.
+  - El directorio no expone datos de contacto (teléfono, correo ni datos del dueño) ni identificadores internos.
+  - Buscar "quesada" o "QUESADA" encuentra una barbería de "Ciudad Quesada"; buscar "navaja" encuentra a "Barbería Pura Navaja".
+  - Una barbería que no figura en el directorio sigue accesible por su enlace público.
+  - El dueño activa o desactiva la aparición y el cambio queda en el registro técnico; colaborador y cliente no pueden cambiarla.
+- **Verificación:** Prueba automatizada.
+
 ### 3.3 Requisitos no funcionales
 
 Son 28 requisitos medibles. Los identificadores conservan su numeración original; los umbrales con origen D son decisiones del proyecto. La columna Entrega indica el milestone en que se cumple.
@@ -1095,7 +1114,7 @@ Son 28 requisitos medibles. Los identificadores conservan su numeración origina
 | RD-15 | Toda configuración sensible en variables de entorno; `.env.example` sin valores reales. | C |
 | RD-16 | Zona horaria de la aplicación: America/Costa_Rica. | D |
 | RD-17 | Archivos subidos con validación de tipo y tamaño, guardados y servidos por barbería. | C |
-| RD-18 | En la API, `{barberia}` en las rutas es el UUID v7 de la barbería; el enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}`. No existe un encabezado de barbería activa y nunca se acepta la barbería en el cuerpo, en la consulta ni en un encabezado: el UUID de la ruta identifica el recurso y el contexto de barbería se establece solo después de verificar que la sesión tiene un rol en esa barbería; si no lo tiene o el recurso es de otra barbería, la respuesta es 404 (UP-06, MT-03). Esa regla tiene tres excepciones: (1) las operaciones de cliente que crean la primera membresía, que son crear una reserva (RF-11), comprar un bono (RF-27) y anotarse en una fila de espera (RF-30): una persona sin rol en la barbería puede hacerlas y el sistema crea su membresía de cliente en la misma transacción (UP-09), mientras que un dueño o colaborador de esa barbería recibe 403 con el tipo `prohibido` (UP-07); (2) la propuesta de IA (RF-37), que no crea ninguna reserva ni guarda datos: la puede pedir cualquier persona autenticada sin rol en la barbería, no crea la membresía y, si es dueño o colaborador de esa barbería, recibe 403 con el tipo `prohibido`; (3) las lecturas de datos propios (mis reservas, mis bonos y mis filas de espera) en una barbería donde la persona aún no tiene rol, que devuelven una lista vacía y no un error. El resto de las rutas sigue respondiendo 404 sin membresía. Las rutas públicas son la resolución del enlace, la lista de servicios activos y la consulta de disponibilidad, y solo exponen datos públicos. | D |
+| RD-18 | En la API, `{barberia}` en las rutas es el UUID v7 de la barbería; el enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}`. No existe un encabezado de barbería activa y nunca se acepta la barbería en el cuerpo, en la consulta ni en un encabezado: el UUID de la ruta identifica el recurso y el contexto de barbería se establece solo después de verificar que la sesión tiene un rol en esa barbería; si no lo tiene o el recurso es de otra barbería, la respuesta es 404 (UP-06, MT-03). Esa regla tiene tres excepciones: (1) las operaciones de cliente que crean la primera membresía, que son crear una reserva (RF-11), comprar un bono (RF-27) y anotarse en una fila de espera (RF-30): una persona sin rol en la barbería puede hacerlas y el sistema crea su membresía de cliente en la misma transacción (UP-09), mientras que un dueño o colaborador de esa barbería recibe 403 con el tipo `prohibido` (UP-07); (2) la propuesta de IA (RF-37), que no crea ninguna reserva ni guarda datos: la puede pedir cualquier persona autenticada sin rol en la barbería, no crea la membresía y, si es dueño o colaborador de esa barbería, recibe 403 con el tipo `prohibido`; (3) las lecturas de datos propios (mis reservas, mis bonos y mis filas de espera) en una barbería donde la persona aún no tiene rol, que devuelven una lista vacía y no un error. El resto de las rutas sigue respondiendo 404 sin membresía. Las rutas públicas son la resolución del enlace, la lista de servicios activos y la consulta de disponibilidad, y solo exponen datos públicos. A ellas se suma, como excepción de lectura entre barberías, `GET /api/v1/directorio` (RF-54, MT-10): una lista opt-in de las barberías cuyo dueño activó su aparición, con solo nombre, ciudad, logo y enlace. | D |
 
 ### 3.5 Requisitos legales y de cumplimiento
 
@@ -1120,7 +1139,7 @@ Son 28 requisitos medibles. Los identificadores conservan su numeración origina
 
 ### 4.2 Cobertura de los requisitos funcionales
 
-Los 53 requisitos funcionales se verifican con al menos una prueba automatizada (53 de 53); 6 de ellos se complementan además con demostración o inspección. El método de cada uno consta en su ficha.
+Los 54 requisitos funcionales se verifican con al menos una prueba automatizada (54 de 54); 6 de ellos se complementan además con demostración o inspección. El método de cada uno consta en su ficha.
 
 ### 4.3 Criterios generales
 
@@ -1187,6 +1206,7 @@ Los 53 requisitos funcionales se verifican con al menos una prueba automatizada 
 | RF-51 | WhatsApp Business Cloud | Extra | NO-01, NO-02, NO-03, NO-07, NO-10, CL-02 | M18 | M18 |
 | RF-52 | Sincronización con Google Calendar | Extra | MT-02, CO-04 | M18 | M18 |
 | RF-53 | Factura electrónica | Extra | SV-02, PA-11 | M18 | M18 |
+| RF-54 | Directorio de barberías | Complementaria | MT-07, MT-10 | M06 | M16 |
 
 ### 5.2 Reglas cubiertas por requisitos no funcionales o restricciones
 
@@ -1197,7 +1217,7 @@ Los 53 requisitos funcionales se verifican con al menos una prueba automatizada 
 | SE-02 | RNF-24, RD-15 |
 | SE-03 | RNF-17, RD-08 |
 
-Las 121 reglas vigentes de `business-rules.md` están cubiertas por al menos un requisito funcional, un requisito no funcional, una restricción o un requisito legal.
+Las 122 reglas vigentes de `business-rules.md` están cubiertas por al menos un requisito funcional, un requisito no funcional, una restricción o un requisito legal.
 
 ## Apéndice A. Equivalencia con la numeración anterior de los requisitos funcionales
 
@@ -1225,7 +1245,7 @@ Las 121 reglas vigentes de `business-rules.md` están cubiertas por al menos un 
 | RF-E1 | RF-50 | RF-E2 | RF-51 |
 | RF-E3 | RF-52 | RF-E4 | RF-53 |
 
-Requisitos nuevos sin equivalente anterior: RF-47, RF-48 y RF-49.
+Requisitos nuevos sin equivalente anterior: RF-47, RF-48, RF-49 y RF-54.
 
 ## Apéndice B. Puntos pendientes de definir
 
@@ -1245,6 +1265,7 @@ Requisitos nuevos sin equivalente anterior: RF-47, RF-48 y RF-49.
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
 | 1.3 | 14 de octubre de 2026 | Primera versión del documento en este formato. Divide los requisitos compuestos y los renumera de forma consecutiva (53 en total); concreta los valores ambiguos; incorpora la recuperación de contraseña, el aviso emergente de ofertas, "Mi cuenta" con avisos, apariencia e idioma, WCAG 2.2 AA, el aislamiento con seguridad a nivel de fila y la arquitectura hexagonal; reemplaza Pest por PHPUnit. |
+| 1.7 | 16 de noviembre de 2026 | Agrega el RF-54 (directorio de barberías, opcional por barbería) y la regla MT-10; retira la exclusión 13 (se conserva su número y remite al RF-54) y agrega la exclusión 15 (pausar las reservas de una barbería, fuera del alcance); RD-18 incluye `GET /api/v1/directorio` entre las rutas públicas; actualiza el resumen por grupo, las pantallas del cliente (directorio y barra de navegación) y la matriz de trazabilidad (API en M06, cliente web en M16). Sin otros cambios. |
 | 1.6 | 16 de octubre de 2026 | RNF-19 deja de exigir una declaración de uso de IA en cada pull request; la declaración de uso de IA se mantiene solo en el README (RNF-26). Sin otros cambios. |
 | 1.5 | 16 de octubre de 2026 | La membresía de cliente se crea al primer uso en la barbería (RF-11, RF-27 y RF-30), con 403 de tipo `prohibido` para quien ya es dueño o colaborador de ella (RF-42); RD-18 documenta las excepciones a la regla de 404 sin rol (operaciones que crean la primera membresía, propuesta de IA y lecturas propias con lista vacía); se agrega la regla UP-09. Sin otros cambios. |
 | 1.4 | 15 de octubre de 2026 | Alinea la numeración de milestones a los 18 del backlog (§2.6, columna Entrega de los RNF y matriz de trazabilidad §5.1); RF-17 cita CA-02, CA-03 y CA-04 en lugar de una tabla inexistente; agrega RD-18 (identificación de la barbería en la API); RNF-12 se entrega en M03 (despliegue mínimo) y M17 (automatización). Sin otros cambios en los requisitos. |
