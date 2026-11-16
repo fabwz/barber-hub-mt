@@ -36,6 +36,7 @@ La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin
 | `POST api/v1/cuentas` | Registro de cliente (RF-01): todavía no hay sesión. |
 | `POST api/v1/tokens` | Inicio de sesión: entrega el token; limita los intentos (SE-05). |
 | `GET api/v1/enlaces/{enlace}` | Portada de la barbería por su enlace público (MT-07, RD-18): datos públicos (MT-09). |
+| `GET api/v1/directorio` | Directorio de las barberías que eligieron aparecer (RF-54, MT-10): solo nombre, ciudad, logo y enlace (MT-09). |
 | `GET api/v1/barberias/{barberia}/servicios` | Servicios activos de una barbería antes de tener sesión (RD-18). |
 | `GET api/v1/barberias/{barberia}/disponibilidad` | Espacios libres antes de tener sesión (RD-18). |
 | `POST api/v1/pagos/avisos/onvo` | Aviso de ONVO Pay (RF-22): sin sesión; el origen se verifica con la firma del proveedor. |
@@ -86,8 +87,8 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `PATCH api/v1/barberias/{barberia}/administracion/cobro` | Rol | dueño | Política de cobro: solo el dueño (UP-03). |
 | `GET api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
 | `PATCH api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
-| `GET api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos y lista de espera: solo el dueño (RF-09, UP-03). |
-| `PATCH api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos y lista de espera: solo el dueño (RF-09, UP-03). Con los bonos desactivados, comprar o definir un bono nuevo responde 409 `conflicto`. |
+| `GET api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos, lista de espera y aparición en el directorio: solo el dueño (RF-09, RF-54, UP-03). |
+| `PATCH api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos, lista de espera y aparición en el directorio: solo el dueño (RF-09, RF-54, UP-03). Con los bonos desactivados, comprar o definir un bono nuevo responde 409 `conflicto`. |
 | `GET api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PATCH api/v1/barberias/{barberia}/administracion/servicios/{servicio}` | Rol | dueño | Administración de la barbería: solo su dueño. |

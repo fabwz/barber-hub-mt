@@ -56,7 +56,7 @@ final class BarbershopFeaturesTest extends TestCase
     {
         Sanctum::actingAs($this->owner, []);
 
-        $this->getJson($this->url($this->puraNavaja))->assertOk()->assertExactJson(['data' => ['bonos_activos' => false, 'lista_espera_activa' => false]]);
+        $this->getJson($this->url($this->puraNavaja))->assertOk()->assertExactJson(['data' => ['bonos_activos' => false, 'lista_espera_activa' => false, 'aparece_en_directorio' => false]]);
     }
 
     /** The owner switches each function on and off, and the change is stored. */
@@ -65,14 +65,14 @@ final class BarbershopFeaturesTest extends TestCase
         Sanctum::actingAs($this->owner, []);
 
         $this->patchJson($this->url($this->puraNavaja), ['bonos_activos' => true])->assertOk()
-            ->assertExactJson(['data' => ['bonos_activos' => true, 'lista_espera_activa' => false]]);
+            ->assertExactJson(['data' => ['bonos_activos' => true, 'lista_espera_activa' => false, 'aparece_en_directorio' => false]]);
         $this->patchJson($this->url($this->puraNavaja), ['lista_espera_activa' => true])->assertOk()
-            ->assertExactJson(['data' => ['bonos_activos' => true, 'lista_espera_activa' => true]]);
+            ->assertExactJson(['data' => ['bonos_activos' => true, 'lista_espera_activa' => true, 'aparece_en_directorio' => false]]);
         $this->assertSame([true, true], $this->stored($this->puraNavaja));
 
         $this->patchJson($this->url($this->puraNavaja), ['bonos_activos' => false, 'lista_espera_activa' => false])->assertOk();
         $this->assertSame([false, false], $this->stored($this->puraNavaja));
-        $this->getJson($this->url($this->puraNavaja))->assertExactJson(['data' => ['bonos_activos' => false, 'lista_espera_activa' => false]]);
+        $this->getJson($this->url($this->puraNavaja))->assertExactJson(['data' => ['bonos_activos' => false, 'lista_espera_activa' => false, 'aparece_en_directorio' => false]]);
     }
 
     /** An empty body changes nothing, and the payment policy and the link are left as they were. */

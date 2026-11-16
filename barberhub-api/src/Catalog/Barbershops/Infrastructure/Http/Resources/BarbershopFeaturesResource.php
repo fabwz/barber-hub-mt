@@ -22,15 +22,16 @@ final class BarbershopFeaturesResource extends JsonResource
     }
 
     /**
-     * Expose the switches: whether it sells vouchers and whether it has a waitlist.
+     * Expose the switches: whether it sells vouchers, whether it has a waitlist and whether it appears in the public directory.
      *
-     * @return array{bonos_activos: bool, lista_espera_activa: bool}
+     * @return array{bonos_activos: bool, lista_espera_activa: bool, aparece_en_directorio: bool}
      */
     public function toArray(Request $request): array
     {
         return [
             'bonos_activos' => $this->features->vouchersEnabled,
             'lista_espera_activa' => $this->features->waitlistEnabled,
+            'aparece_en_directorio' => $this->features->listedInDirectory,
         ];
     }
 }

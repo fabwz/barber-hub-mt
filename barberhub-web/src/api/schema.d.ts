@@ -313,6 +313,26 @@ export interface paths {
         patch: operations["catalog.barbershops.details.update"];
         trace?: never;
     };
+    "/directorio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar el directorio de barberías
+         * @description Lista, por nombre, solo las barberías cuyo dueño activó `aparece_en_directorio` (por defecto, ninguna). Cada una trae `nombre`, `ciudad`, `logo` (`null` si no tiene) y `enlace`; nunca un identificador, un teléfono, un correo ni datos del dueño. `buscar` filtra por nombre o ciudad sin distinguir mayúsculas ni tildes. Una barbería que no aparece sigue accesible por su enlace en `GET /enlaces/{enlace}`, que es la puerta de entrada de cada una. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total. No requiere sesión.
+         */
+        get: operations["catalog.barbershops.directory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/disponibilidad": {
         parameters: {
             query?: never;
@@ -362,7 +382,7 @@ export interface paths {
         };
         /**
          * Consultar las funciones
-         * @description Trae `bonos_activos` (venta de bonos nuevos) y `lista_espera_activa`. Una barbería nueva los tiene en `false`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         * @description Trae `bonos_activos` (venta de bonos nuevos), `lista_espera_activa` y `aparece_en_directorio` (si la barbería figura en `GET /directorio`). Una barbería nueva los tiene en `false`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
          */
         get: operations["catalog.barbershops.features.show"];
         put?: never;
@@ -372,7 +392,7 @@ export interface paths {
         head?: never;
         /**
          * Activar o desactivar las funciones
-         * @description Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opción de anotarse; las ofertas en curso no se cancelan. El cambio aplica a las operaciones nuevas. Solo el dueño.
+         * @description Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opción de anotarse; las ofertas en curso no se cancelan. Con `aparece_en_directorio` en `true` la barbería figura en el directorio público; con `false` deja de figurar, pero sigue accesible por su enlace. El cambio del directorio queda en el registro técnico. El cambio aplica a las operaciones nuevas. Solo el dueño.
          */
         patch: operations["catalog.barbershops.features.update"];
         trace?: never;
@@ -914,6 +934,8 @@ export interface components {
             bonos_activos?: boolean;
             /** @description Activa o desactiva la lista de espera. */
             lista_espera_activa?: boolean;
+            /** @description Hace que la barbería aparezca o no en el directorio público (RF-54). Por defecto no aparece. */
+            aparece_en_directorio?: boolean;
         };
         /** ActualizarServicio */
         ActualizarServicio: {
@@ -934,6 +956,15 @@ export interface components {
             enlace: string;
             /** @constant */
             rol: "dueno";
+        };
+        /** BarberiaDelDirectorio */
+        BarberiaDelDirectorio: {
+            nombre: string;
+            ciudad: string;
+            /** @description Dirección del logo, o `null` si la barbería no tiene. */
+            logo: string | null;
+            /** @description Enlace público; sirve en `GET /enlaces/{enlace}`. */
+            enlace: string;
         };
         /** BarberiaPublica */
         BarberiaPublica: {
@@ -1195,6 +1226,7 @@ export interface components {
         Funciones: {
             bonos_activos: boolean;
             lista_espera_activa: boolean;
+            aparece_en_directorio: boolean;
         };
         /** MiBarberia */
         MiBarberia: {
@@ -2275,6 +2307,41 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.barbershops.directory": {
+        parameters: {
+            query?: {
+                /** @description Número de página, desde 1. */
+                pagina?: number;
+                /** @description Elementos por página, de 1 a 50. Por defecto, 15. */
+                por_pagina?: number;
+                /** @description Texto que debe contener el nombre o la ciudad de la barbería. No distingue mayúsculas ni tildes. */
+                buscar?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `BarberiaDelDirectorio` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BarberiaDelDirectorio"][];
+                        meta: {
+                            pagina: number;
+                            por_pagina: number;
+                            total: number;
+                            ultima_pagina: number;
+                        };
+                    };
+                };
+            };
         };
     };
     "availability.slots.index": {

@@ -153,6 +153,7 @@ La barbería vive en la variable `app.barbershop_id` y se fija con `set_config('
 | Con `{barberia}` y sesión | `auth:sanctum` y `barbershop` | La de la ruta, solo si la persona tiene una membresía activa en ella |
 | Públicas (servicios activos y disponibilidad) | `barbershop:public` | La de la ruta, sin sesión y sin verificar membresía |
 | `GET /api/v1/enlaces/{enlace}` | Ninguno | No fija barbería: lee `barbershops` por su enlace público |
+| `GET /api/v1/directorio` | Ninguno | No fija barbería: lee `barbershops` (sin política de fila) y solo las columnas públicas de las que tienen `listed_in_directory`; sin función de base de datos nueva (#223) |
 
 Las rutas con `{barberia}` restringen el parámetro con `whereUuid('barberia')`; un identificador mal formado no encuentra ruta y responde el 404 genérico.
 

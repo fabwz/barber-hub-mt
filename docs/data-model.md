@@ -46,6 +46,7 @@ erDiagram
         varchar public_link
         varchar payment_mode
         varchar payment_gateway
+        boolean listed_in_directory
     }
     users {
         uuid id PK
@@ -151,6 +152,7 @@ Cada fila es un inquilino. La política de cobro y la pasarela son parámetros d
 | `cancellation_deadline_hours` | `smallint` | Creada en el #49. Obligatoria, por defecto 24. `CHECK` `barbershops_cancellation_deadline_check` entre 0 y 720 (CA-01). Cambiarla no toca las reservas ya creadas, que guardan su copia |
 | `payment_gateway` | `varchar(10)` | Creada en el #39. Admite nulos (barbería sin pasarela) y tiene el `CHECK` `barbershops_payment_gateway_check` entre `onvo` y `paypal` (PA-02). Desde el #49 el `CHECK` `barbershops_payment_gateway_required_check` exige una pasarela cuando `payment_mode` es `deposit` o `full`. Cambiarla aplica a los cobros nuevos (PA-02) |
 | `vouchers_enabled`, `waitlist_enabled` | `boolean` | Creadas en el #50. Obligatorias, por defecto `false` (RF-09). Con `vouchers_enabled` en `false` no se compran ni se definen bonos nuevos (BO-01); con `waitlist_enabled` en `false` el cliente no ve la opción de anotarse (LE-01). Cambiarlas aplica a las operaciones nuevas: nunca toca los bonos comprados ni las ofertas en curso |
+| `listed_in_directory` | `boolean` | Creada en el #223. Obligatoria, por defecto `false` (RF-54, MT-10). Con `true` la barbería figura en el directorio público `GET /api/v1/directorio`; con `false` sigue accesible por su enlace (MT-07). Lo cambia solo el dueño, junto con `vouchers_enabled` y `waitlist_enabled` |
 | `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
 Las credenciales de las pasarelas no se guardan aquí: viven en variables de entorno. Si cada barbería necesita su propia cuenta de cobro, queda por definir en PD-07.
@@ -456,7 +458,7 @@ Acciones sensibles con autor, fecha y cambio, sin pantalla de consulta (SE-04). 
 | `changes` | `jsonb` | `CHECK` de que es un objeto. Un campo por cambio, `{"previous": ..., "new": ...}`; un campo secreto lleva solo `{"changed": true}`. Nunca contraseñas, tokens, credenciales ni datos de contacto |
 | `created_at` | `timestamptz` | El instante del cambio, que entra como parámetro |
 
-Acciones que existen hoy: `barbershop.payment_policy.updated` (modalidad, porcentaje del depósito y plazo de cancelación), `barbershop.payment_gateway.updated` (pasarela), `barbershop.features.updated` (bonos y lista de espera) `reservation.cancelled_by_barbershop` (estado de la reserva) y `payment.refunded` (estado del pago y `refunded_amount`, el monto devuelto en colones). Una lista permitida por acción, en `AuditAction`, decide qué campos entran: lo que no figura nunca se guarda.
+Acciones que existen hoy: `barbershop.payment_policy.updated` (modalidad, porcentaje del depósito y plazo de cancelación), `barbershop.payment_gateway.updated` (pasarela), `barbershop.features.updated` (bonos y lista de espera), `barbershop.directory_listing.updated` (`listed_in_directory`, el indicador del directorio, #223), `reservation.cancelled_by_barbershop` (estado de la reserva) y `payment.refunded` (estado del pago y `refunded_amount`, el monto devuelto en colones). Una lista permitida por acción, en `AuditAction`, decide qué campos entran: lo que no figura nunca se guarda.
 
 Solo crece: el rol de la aplicación puede insertar y leer, pero no tiene `UPDATE` ni `DELETE`, y el disparador `trg_audit_log_append_only` los rechaza para cualquier rol, el dueño de la tabla incluido (el mismo enfoque que `voucher_movements`). Tiene seguridad a nivel de fila con la política `audit_log_barbershop_isolation`. Los índices `audit_log_barbershop_idx` `(barbershop_id, created_at)` y `audit_log_subject_idx` `(barbershop_id, subject_type, subject_id)` sirven para leerla cuando una consulta exista. No tiene columna de correlación: el identificador del #119 todavía no existe.
 

@@ -35,6 +35,7 @@ final class PublicRoutesTest extends TestCase
             'POST api/v1/cuentas' => ['POST', 'api/v1/cuentas', [], [422]],
             'POST api/v1/tokens' => ['POST', 'api/v1/tokens', [], [422]],
             'GET api/v1/enlaces/{enlace}' => ['GET', 'api/v1/enlaces/pura-navaja', [], [200]],
+            'GET api/v1/directorio' => ['GET', 'api/v1/directorio', [], [200]],
             'GET api/v1/barberias/{barberia}/servicios' => ['GET', 'api/v1/barberias/{barberia}/servicios', [], [200]],
             'GET api/v1/barberias/{barberia}/disponibilidad' => ['GET', 'api/v1/barberias/{barberia}/disponibilidad', [], [200, 422]],
             // Without its signing secret (as in the CI) a notice answers 503 and is never accepted; with it, 401.

@@ -30,7 +30,7 @@ final class DemoBarbershopSeeder extends Seeder
      * sells vouchers, the others do not. The public data (RF-01) is the address, the contact email of the business
      * (never the owner's login email) and the four social links, all invented; Don Chepe has none, to show both cases.
      *
-     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, payment_mode: string, deposit_percentage: int|null, cancellation_deadline_hours: int, vouchers_enabled: bool, waitlist_enabled: bool, address: string|null, contact_email: string|null, networks: array{whatsapp: string|null, instagram: string|null, facebook: string|null, tiktok: string|null}, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
+     * @var list<array{id: string, name: string, city: string, phone: string, link: string, gateway: string|null, payment_mode: string, deposit_percentage: int|null, cancellation_deadline_hours: int, vouchers_enabled: bool, waitlist_enabled: bool, listed_in_directory: bool, address: string|null, contact_email: string|null, networks: array{whatsapp: string|null, instagram: string|null, facebook: string|null, tiktok: string|null}, owner: array{id: string, membership: string, name: string, email: string, phone: string}}>
      */
     public const array BARBERSHOPS = [
         [
@@ -45,6 +45,7 @@ final class DemoBarbershopSeeder extends Seeder
             'cancellation_deadline_hours' => 4,
             'vouchers_enabled' => true,
             'waitlist_enabled' => false,
+            'listed_in_directory' => true,
             'address' => '100 m norte de la iglesia, Ciudad Quesada (dirección de ejemplo)',
             'contact_email' => 'contacto@puranavaja.test',
             'networks' => [
@@ -73,6 +74,7 @@ final class DemoBarbershopSeeder extends Seeder
             'cancellation_deadline_hours' => 24,
             'vouchers_enabled' => false,
             'waitlist_enabled' => false,
+            'listed_in_directory' => true,
             'address' => 'Diagonal al parque central, Fortuna (dirección de ejemplo)',
             'contact_email' => 'hola@fadelab.test',
             'networks' => [
@@ -101,6 +103,7 @@ final class DemoBarbershopSeeder extends Seeder
             'cancellation_deadline_hours' => 24,
             'vouchers_enabled' => false,
             'waitlist_enabled' => false,
+            'listed_in_directory' => false,
             'address' => null,
             'contact_email' => null,
             'networks' => ['whatsapp' => null, 'instagram' => null, 'facebook' => null, 'tiktok' => null],
@@ -246,6 +249,7 @@ final class DemoBarbershopSeeder extends Seeder
                     'cancellation_deadline_hours' => $barbershop['cancellation_deadline_hours'],
                     'vouchers_enabled' => $barbershop['vouchers_enabled'],
                     'waitlist_enabled' => $barbershop['waitlist_enabled'],
+                    'listed_in_directory' => $barbershop['listed_in_directory'],
                     'address' => $barbershop['address'],
                     'contact_email' => $barbershop['contact_email'],
                     'whatsapp_url' => $barbershop['networks']['whatsapp'],
