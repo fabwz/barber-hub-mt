@@ -224,6 +224,10 @@ final class ConsultPurchasedVouchersTest extends TestCase
     /** A page of vouchers reads the record and the names with a fixed number of queries, however many vouchers it has. */
     public function test_a_page_does_not_read_the_record_once_per_voucher(): void
     {
+        // Sanctum writes `last_used_at` with the current second on every request, and Eloquent only sends that UPDATE when the
+        // second changed. Without a frozen clock a second boundary between the two counts adds a query and the test flickers.
+        $this->freezeTime();
+
         foreach ([$this->anaMembership, $this->luisMembership, $this->anaMembership, $this->luisMembership] as $membership) {
             $this->insertPurchasedVoucher($this->puraNavaja, $membership, $this->definition);
         }
