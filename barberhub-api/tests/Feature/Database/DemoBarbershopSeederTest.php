@@ -74,6 +74,19 @@ final class DemoBarbershopSeederTest extends TestCase
         ], $switches);
     }
 
+    /** Pura Navaja and Fade Lab appear in the public directory; Don Chepe does not, to show the opt-in (RF-54). */
+    public function test_pura_navaja_and_fade_lab_appear_in_the_directory_and_don_chepe_does_not(): void
+    {
+        $this->seed(DemoBarbershopSeeder::class);
+        $this->seed(DemoBarbershopSeeder::class);
+
+        $this->assertSame([
+            'don-chepe' => false,
+            'fade-lab' => true,
+            'pura-navaja' => true,
+        ], DB::table('barbershops')->orderBy('public_link')->pluck('listed_in_directory', 'public_link')->map(fn (mixed $listed): bool => (bool) $listed)->all());
+    }
+
     /** Pura Navaja takes a 30 % deposit with a 4-hour deadline, Fade Lab full payment and Don Chepe no payment (PA-01, CA-01). */
     public function test_each_barbershop_has_its_payment_policy(): void
     {
