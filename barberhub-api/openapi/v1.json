@@ -36,7 +36,7 @@
         },
         {
             "name": "Funciones de la barber\u00eda",
-            "description": "Activar o desactivar los bonos y la lista de espera, a cargo del due\u00f1o."
+            "description": "Activar o desactivar los bonos, la lista de espera y la aparici\u00f3n en el directorio, a cargo del due\u00f1o."
         },
         {
             "name": "Datos de la barber\u00eda",
@@ -45,6 +45,10 @@
         {
             "name": "Enlaces p\u00fablicos",
             "description": "Consulta de una barber\u00eda por su enlace, sin iniciar sesi\u00f3n."
+        },
+        {
+            "name": "Directorio de barber\u00edas",
+            "description": "Las barber\u00edas que su due\u00f1o decidi\u00f3 mostrar al p\u00fablico, sin iniciar sesi\u00f3n."
         },
         {
             "name": "Servicios p\u00fablicos",
@@ -1277,6 +1281,97 @@
                 }
             }
         },
+        "/directorio": {
+            "get": {
+                "operationId": "catalog.barbershops.directory",
+                "description": "Lista, por nombre, solo las barber\u00edas cuyo due\u00f1o activ\u00f3 `aparece_en_directorio` (por defecto, ninguna). Cada una trae `nombre`, `ciudad`, `logo` (`null` si no tiene) y `enlace`; nunca un identificador, un tel\u00e9fono, un correo ni datos del due\u00f1o. `buscar` filtra por nombre o ciudad sin distinguir may\u00fasculas ni tildes. Una barber\u00eda que no aparece sigue accesible por su enlace en `GET /enlaces/{enlace}`, que es la puerta de entrada de cada una. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total. No requiere sesi\u00f3n.",
+                "summary": "Listar el directorio de barber\u00edas",
+                "tags": [
+                    "Directorio de barber\u00edas"
+                ],
+                "parameters": [
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "N\u00famero de p\u00e1gina, desde 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "por_pagina",
+                        "in": "query",
+                        "description": "Elementos por p\u00e1gina, de 1 a 50. Por defecto, 15.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "buscar",
+                        "in": "query",
+                        "description": "Texto que debe contener el nombre o la ciudad de la barber\u00eda. No distingue may\u00fasculas ni tildes.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 80
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `BarberiaDelDirectorio`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BarberiaDelDirectorio"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "por_pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "ultima_pagina": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "pagina",
+                                                "por_pagina",
+                                                "total",
+                                                "ultima_pagina"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
         "/barberias/{barberia}/disponibilidad": {
             "get": {
                 "operationId": "availability.slots.index",
@@ -1401,7 +1496,7 @@
         "/barberias/{barberia}/administracion/funciones": {
             "get": {
                 "operationId": "catalog.barbershops.features.show",
-                "description": "Trae `bonos_activos` (venta de bonos nuevos) y `lista_espera_activa`. Una barber\u00eda nueva los tiene en `false`. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "description": "Trae `bonos_activos` (venta de bonos nuevos), `lista_espera_activa` y `aparece_en_directorio` (si la barber\u00eda figura en `GET /directorio`). Una barber\u00eda nueva los tiene en `false`. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
                 "summary": "Consultar las funciones",
                 "tags": [
                     "Funciones de la barber\u00eda"
@@ -1446,7 +1541,7 @@
             },
             "patch": {
                 "operationId": "catalog.barbershops.features.update",
-                "description": "Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opci\u00f3n de anotarse; las ofertas en curso no se cancelan. El cambio aplica a las operaciones nuevas. Solo el due\u00f1o.",
+                "description": "Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opci\u00f3n de anotarse; las ofertas en curso no se cancelan. Con `aparece_en_directorio` en `true` la barber\u00eda figura en el directorio p\u00fablico; con `false` deja de figurar, pero sigue accesible por su enlace. El cambio del directorio queda en el registro t\u00e9cnico. El cambio aplica a las operaciones nuevas. Solo el due\u00f1o.",
                 "summary": "Activar o desactivar las funciones",
                 "tags": [
                     "Funciones de la barber\u00eda"
@@ -3221,6 +3316,10 @@
                     "lista_espera_activa": {
                         "type": "boolean",
                         "description": "Activa o desactiva la lista de espera."
+                    },
+                    "aparece_en_directorio": {
+                        "type": "boolean",
+                        "description": "Hace que la barber\u00eda aparezca o no en el directorio p\u00fablico (RF-54). Por defecto no aparece."
                     }
                 },
                 "title": "ActualizarFunciones"
@@ -3282,6 +3381,35 @@
                     "rol"
                 ],
                 "title": "Barberia"
+            },
+            "BarberiaDelDirectorio": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "ciudad": {
+                        "type": "string"
+                    },
+                    "logo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Direcci\u00f3n del logo, o `null` si la barber\u00eda no tiene."
+                    },
+                    "enlace": {
+                        "type": "string",
+                        "description": "Enlace p\u00fablico; sirve en `GET /enlaces/{enlace}`."
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "ciudad",
+                    "logo",
+                    "enlace"
+                ],
+                "title": "BarberiaDelDirectorio"
             },
             "BarberiaPublica": {
                 "type": "object",
@@ -4115,11 +4243,15 @@
                     },
                     "lista_espera_activa": {
                         "type": "boolean"
+                    },
+                    "aparece_en_directorio": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
                     "bonos_activos",
-                    "lista_espera_activa"
+                    "lista_espera_activa",
+                    "aparece_en_directorio"
                 ],
                 "title": "Funciones"
             },
