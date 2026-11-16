@@ -14,6 +14,7 @@ enum AuditAction: string
     case PaymentPolicyUpdated = 'barbershop.payment_policy.updated';
     case PaymentGatewayUpdated = 'barbershop.payment_gateway.updated';
     case FeaturesUpdated = 'barbershop.features.updated';
+    case DirectoryListingUpdated = 'barbershop.directory_listing.updated';
     case ReservationCancelledByBarbershop = 'reservation.cancelled_by_barbershop';
     case PaymentRefunded = 'payment.refunded';
 
@@ -28,6 +29,7 @@ enum AuditAction: string
             self::PaymentPolicyUpdated => ['mode', 'deposit_percentage', 'cancellation_deadline_hours'],
             self::PaymentGatewayUpdated => ['gateway'],
             self::FeaturesUpdated => ['vouchers_enabled', 'waitlist_enabled'],
+            self::DirectoryListingUpdated => ['listed_in_directory'],
             self::ReservationCancelledByBarbershop => ['status'],
             self::PaymentRefunded => ['status', 'refunded_amount'],
         };

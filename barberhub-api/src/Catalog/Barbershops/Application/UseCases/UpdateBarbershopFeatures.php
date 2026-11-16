@@ -27,9 +27,11 @@ final readonly class UpdateBarbershopFeatures
     ) {}
 
     /**
-     * Switch the vouchers and the waitlist of the current barbershop on or off (RF-09). A field that does not come keeps its value.
+     * Switch the vouchers, the waitlist and the place in the public directory of the current barbershop on or off (RF-09, RF-54). A
+     * field that does not come keeps its value.
      * The change applies to the operations that start from now on: it never cancels a voucher already bought or an offer in course.
-     * The change and its entry in the technical record (SE-04) are written in one transaction: if one fails, none stays.
+     * The change and its entries in the technical record (SE-04) are written in one transaction: if one fails, none stays. The
+     * directory has an action of its own, so a change of it is never mixed with one of the vouchers or the waitlist.
      */
     public function execute(UpdateBarbershopFeaturesCommand $command, string $actorUserId, DateTimeImmutable $now): BarbershopFeatures
     {
@@ -39,23 +41,22 @@ final readonly class UpdateBarbershopFeatures
         $features = BarbershopFeatures::of(
             $command->vouchersEnabled ?? $current->vouchersEnabled,
             $command->waitlistEnabled ?? $current->waitlistEnabled,
+            $command->listedInDirectory ?? $current->listedInDirectory,
         );
 
         $this->transaction->run(function () use ($barbershop, $current, $features, $actorUserId, $now): void {
             $this->barbershops->save($barbershop->withFeatures($features));
 
-            $entry = AuditEntry::of(
-                new UserId($actorUserId),
-                AuditAction::FeaturesUpdated,
-                'barbershop',
-                $barbershop->id->value,
-                self::snapshot($current),
-                self::snapshot($features),
-                $now,
-            );
+            $actor = new UserId($actorUserId);
+            $entries = [
+                AuditEntry::of($actor, AuditAction::FeaturesUpdated, 'barbershop', $barbershop->id->value, self::snapshot($current), self::snapshot($features), $now),
+                AuditEntry::of($actor, AuditAction::DirectoryListingUpdated, 'barbershop', $barbershop->id->value, self::snapshot($current), self::snapshot($features), $now),
+            ];
 
-            if ($entry !== null) {
-                $this->audit->record($entry);
+            foreach ($entries as $entry) {
+                if ($entry !== null) {
+                    $this->audit->record($entry);
+                }
             }
         });
 
@@ -63,12 +64,16 @@ final readonly class UpdateBarbershopFeatures
     }
 
     /**
-     * The switches as the technical record names them.
+     * The switches as the technical record names them; each action keeps only the ones it allows.
      *
      * @return array<string, bool>
      */
     private static function snapshot(BarbershopFeatures $features): array
     {
-        return ['vouchers_enabled' => $features->vouchersEnabled, 'waitlist_enabled' => $features->waitlistEnabled];
+        return [
+            'vouchers_enabled' => $features->vouchersEnabled,
+            'waitlist_enabled' => $features->waitlistEnabled,
+            'listed_in_directory' => $features->listedInDirectory,
+        ];
     }
 }

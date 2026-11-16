@@ -52,6 +52,7 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                     'payment_gateway' => $barbershop->paymentPolicy->gateway?->value,
                     'vouchers_enabled' => $barbershop->features->vouchersEnabled,
                     'waitlist_enabled' => $barbershop->features->waitlistEnabled,
+                    'listed_in_directory' => $barbershop->features->listedInDirectory,
                     'address' => $barbershop->profile->address?->value,
                     'contact_email' => $barbershop->profile->contactEmail?->value,
                     'whatsapp_url' => $barbershop->profile->links[SocialNetwork::Whatsapp->value]->value ?? null,
@@ -107,7 +108,7 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                 SocialNetwork::Facebook->value => $model->facebook_url,
                 SocialNetwork::Tiktok->value => $model->tiktok_url,
             ]),
-            BarbershopFeatures::of($model->vouchers_enabled, $model->waitlist_enabled),
+            BarbershopFeatures::of($model->vouchers_enabled, $model->waitlist_enabled, $model->listed_in_directory),
         );
     }
 }

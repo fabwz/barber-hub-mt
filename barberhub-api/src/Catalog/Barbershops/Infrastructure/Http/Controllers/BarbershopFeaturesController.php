@@ -12,7 +12,7 @@ use Src\Catalog\Barbershops\Infrastructure\Http\Requests\UpdateBarbershopFeature
 use Src\Catalog\Barbershops\Infrastructure\Http\Resources\BarbershopFeaturesResource;
 use Src\Shared\Domain\Contracts\Clock;
 
-#[Group('Funciones de la barbería', 'Activar o desactivar los bonos y la lista de espera, a cargo del dueño.')]
+#[Group('Funciones de la barbería', 'Activar o desactivar los bonos, la lista de espera y la aparición en el directorio, a cargo del dueño.')]
 final readonly class BarbershopFeaturesController
 {
     /** Receive the clock that gives the instant of the change. */
@@ -21,7 +21,7 @@ final readonly class BarbershopFeaturesController
     /** Show the switches of the barbershop. */
     #[Endpoint(
         title: 'Consultar las funciones',
-        description: 'Trae `bonos_activos` (venta de bonos nuevos) y `lista_espera_activa`. Una barbería nueva los tiene en `false`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.',
+        description: 'Trae `bonos_activos` (venta de bonos nuevos), `lista_espera_activa` y `aparece_en_directorio` (si la barbería figura en `GET /directorio`). Una barbería nueva los tiene en `false`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.',
     )]
     public function show(GetBarbershopFeatures $getBarbershopFeatures): BarbershopFeaturesResource
     {
@@ -31,7 +31,7 @@ final readonly class BarbershopFeaturesController
     /** Change the switches of the barbershop. */
     #[Endpoint(
         title: 'Activar o desactivar las funciones',
-        description: 'Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opción de anotarse; las ofertas en curso no se cancelan. El cambio aplica a las operaciones nuevas. Solo el dueño.',
+        description: 'Cambia solo los campos que vienen. Con `bonos_activos` en `false` no se pueden comprar ni definir bonos nuevos (409 `conflicto`), pero las definiciones se siguen editando, retirando y listando, y los bonos ya comprados conservan su saldo y su vigencia. Con `lista_espera_activa` en `false` el cliente no ve la opción de anotarse; las ofertas en curso no se cancelan. Con `aparece_en_directorio` en `true` la barbería figura en el directorio público; con `false` deja de figurar, pero sigue accesible por su enlace. El cambio del directorio queda en el registro técnico. El cambio aplica a las operaciones nuevas. Solo el dueño.',
     )]
     public function update(UpdateBarbershopFeaturesRequest $request, UpdateBarbershopFeatures $updateBarbershopFeatures): BarbershopFeaturesResource
     {

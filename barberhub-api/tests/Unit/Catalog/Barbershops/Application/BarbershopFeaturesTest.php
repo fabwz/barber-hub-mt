@@ -115,6 +115,31 @@ final class BarbershopFeaturesTest extends TestCase
         $this->assertSame([], $this->audit->entries());
     }
 
+    /** A new barbershop is out of the directory, and the directory has its own action and entry, apart from the vouchers and the waitlist (RF-54, SE-04). */
+    public function test_the_directory_switch_starts_off_and_has_its_own_entry(): void
+    {
+        $this->assertFalse($this->get->execute()->listedInDirectory);
+
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(true, null, true), self::OWNER, new DateTimeImmutable(self::NOW));
+
+        $entries = $this->audit->entries();
+        $this->assertSame([AuditAction::FeaturesUpdated, AuditAction::DirectoryListingUpdated], [$entries[0]->action, $entries[1]->action]);
+        $this->assertSame(['vouchers_enabled' => ['previous' => false, 'new' => true]], $entries[0]->changes);
+        $this->assertSame(['listed_in_directory' => ['previous' => false, 'new' => true]], $entries[1]->changes);
+        $this->assertSame([true, false, true], [$this->get->execute()->vouchersEnabled, $this->get->execute()->waitlistEnabled, $this->get->execute()->listedInDirectory]);
+    }
+
+    /** A field that does not come keeps the directory as it was, and leaves no entry for it. */
+    public function test_a_change_that_leaves_the_directory_alone_keeps_it_and_records_nothing_for_it(): void
+    {
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(null, null, true), self::OWNER, new DateTimeImmutable(self::NOW));
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(null, true, null), self::OWNER, new DateTimeImmutable(self::NOW));
+        $this->update->execute(new UpdateBarbershopFeaturesCommand(null, null, true), self::OWNER, new DateTimeImmutable(self::NOW));
+
+        $this->assertTrue($this->get->execute()->listedInDirectory);
+        $this->assertSame([AuditAction::DirectoryListingUpdated, AuditAction::FeaturesUpdated], array_map(fn ($entry): AuditAction => $entry->action, $this->audit->entries()));
+    }
+
     /** A barbershop that does not exist cannot be read or changed. */
     public function test_a_missing_barbershop_is_not_found(): void
     {
