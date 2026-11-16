@@ -218,6 +218,38 @@ Plana, sin tarjeta. Columnas: rango de hora (tabular), cliente, servicio y etiqu
 ### Navegación del negocio (escritorio)
 Barra superior con: Agenda, Reservas, Servicios, Barberos y Pagos. Elemento inactivo: texto `fg-muted`, peso 400. **Página activa:** relleno `elevated`, texto `fg` en peso 500, ícono en `accent` y `aria-current="page"`.
 
+### Navbar del cliente
+Barra de las pantallas de la persona con sesión iniciada (hoy, solo el directorio de `/barberias`). Es la misma barra del negocio: 64 px de alto, línea inferior de 1 px `line`, 20 px de relleno lateral en celular y 32 px en escritorio, y 40 px entre la marca y los enlaces. **No reemplaza la cabecera de cada barbería** y no lleva «Mis reservas»: esa lista es por barbería y vive en su cabecera.
+- **Escritorio:** la marca (`BrandLogo` de 45 px, enlace al directorio), los enlaces en píldora de 44 px y, a la derecha, el menú de cuenta. Enlace en reposo: texto `fg-muted`; hover: relleno `surface`. **Activo:** relleno `elevated`, texto `fg` en peso 500 y `aria-current="page"`.
+- **Enlaces:** «Barberías» siempre. «Mi perfil» y «Preferencias» **solo cuando su ruta existe** (`router.hasRoute`); mientras no existan, la barra lleva solo «Barberías» y no hay enlaces rotos.
+- **Celular:** la marca y un botón de menú de 44 px (`aria-label="Menú"`); el panel ocupa el ancho de la pantalla (12 px de margen) y lleva los enlaces en filas de 48 px, el nombre y «Cerrar sesión».
+- Transiciones de 150 ms `ease-out` solo en hover y en la apertura del menú.
+
+### Menú de cuenta
+- **Botón (escritorio):** píldora de 44 px de alto con el monograma de 32 px (`elevated`, borde `line-strong`, 12 px en peso 500), el nombre (14 px, peso 500, con puntos suspensivos si no cabe) y un chevron de 18 px que **gira 180°** al abrir. Cerrado: transparente con borde `line-strong`. Hover: relleno `surface` y borde `line-hover`. Abierto: relleno `elevated` y borde `line-hover`. Tiene `aria-expanded` y `aria-controls`; no usa `role="menu"` (es una lista de enlaces y un botón).
+- **Botón (celular):** círculo de 44 px con el ícono de menú de 20 px (`Menu`), que pasa a `X` al abrir. Mismos colores de borde y relleno.
+- **Panel:** 248 px de ancho en escritorio (alineado a la derecha, 6 px bajo la barra), radio de 16 px, relleno `surface`, borde `line`, 8 px de relleno y **sin sombra**. Arriba, «Sesión iniciada» (12 px, `fg-muted`) y el nombre completo (14 px, peso 500); una línea `line` de 1 px; y una fila de 44 px (48 px en celular), «Cerrar sesión», con ícono `LogOut` de 18 px en `fg-muted`; hover `elevated`. En celular, antes de «Sesión iniciada», van los enlaces de la barra, separados del bloque de la persona por una línea.
+- **Teclado:** `Escape` lo cierra y devuelve el foco al botón; un clic fuera también lo cierra, y también seguir un enlace. «Cerrar sesión» invalida el token y lleva a `/`.
+- **Nombre:** la sesión solo conoce el correo, así que mientras la API no entregue el nombre de la cuenta se muestra el correo, y el monograma sale de lo que va antes de la «@» (`laura.brenes@…` es «LB»).
+
+### Tarjeta de barbería
+Enlace completo a `/b/:enlace`, con borde de 1 px `line`, radio de 16 px, relleno de 16 px y **sin sombra**. De izquierda a derecha: un círculo de 48 px con el logo recortado o, si no hay, el **monograma** (iniciales de las dos primeras palabras de más de dos letras del nombre, 14 px, peso 500, relleno `elevated`, borde `line-strong`); el nombre (peso 500, una sola línea con puntos suspensivos) y la ciudad (14 px, `fg-muted`); y un chevron de 18 px en `fg-subtle`. Sin calificaciones ni etiquetas.
+- **Reposo:** transparente. **Hover:** relleno `surface` y borde `line-strong`. **Presionada:** relleno `elevated`. **Foco de teclado:** el contorno común de 1 px `accent` con 2 px de separación.
+- **Dirección:** el diseño la trae como tercera línea (14 px, `fg-subtle`, una línea con puntos suspensivos), pero la API del directorio no la entrega: **no se muestra** hasta que lo haga.
+- **Disposición:** celular en una columna con 12 px de separación; escritorio en tres columnas con 16 px, dentro de un máximo de 1040 px centrado.
+
+### Campo de búsqueda
+El campo de texto de arriba (48 px de alto, radio de 8 px, borde `field`, relleno `canvas`) con una lupa de 20 px a la izquierda (`fg-muted`) y, **solo cuando hay texto**, un botón «Borrar búsqueda» de 44 px a la derecha, que vacía el campo y deja el foco en él. Foco: borde `accent`. Deshabilitado mientras carga por primera vez: opacidad de 0,6 (en las búsquedas siguientes **no** se deshabilita, para no perder el foco al escribir). Va dentro de `role="search"`, el campo es `role="searchbox"` y su nombre es «Buscar por nombre o ciudad». En escritorio mide como máximo 480 px. Busca por nombre o ciudad sin distinguir tildes ni mayúsculas (lo resuelve la API) y espera 300 ms tras la última tecla.
+
+### Directorio de barberías
+Ruta `/barberias`, con sesión. Diseño de origen: sección 11 de la v7. Título «Barberías» (24 px, peso 400) y la línea «Elija una barbería para ver sus servicios y reservar su cita.»; bajo ella, el campo de búsqueda y la lista de tarjetas. Los textos de los estados:
+- **Cargando:** esqueleto de cuatro tarjetas en celular y seis en escritorio (círculo de 48 px y dos líneas), con `aria-busy` y sin animación con `prefers-reduced-motion`.
+- **Resultado de la búsqueda:** una línea de estado (`role="status"`, 14 px, `fg-muted`) con el total de `meta` («1 barbería», «2 barberías»), solo mientras hay una búsqueda.
+- **Vacío general:** «Aún no hay barberías disponibles.» y «Cuando haya una disponible, aparece aquí.», entre dos líneas `line`, sin campo de búsqueda. No lleva acción: no hay nada que hacer.
+- **Vacío de búsqueda:** «No encontramos barberías con “texto”.», «Revise el nombre o la ciudad, o borre la búsqueda para ver todas.» y el botón secundario «Borrar búsqueda».
+- **Error:** caja de 8 px de radio con relleno `danger-surface` y 16 px de relleno: ícono de 20 px, «No pudimos cargar las barberías.» en `danger` y peso 500, «Revise su conexión e intente de nuevo.» y el botón secundario «Reintentar». Si había una búsqueda, el campo se mantiene.
+- **Más páginas:** el diseño no tiene paginación. Se pide el mayor `por_pagina` que admite la API (50) y, si `meta` indica más páginas, bajo la lista sale el botón secundario «Ver más», que agrega la página siguiente; si falla, «No pudimos cargar más barberías. Intente de nuevo.» en `danger`, sin perder la lista.
+
 ### Aviso
 Tarjeta de 16 px con borde de 1 px, sin sombra. Aparece abajo a la derecha en escritorio y arriba en el celular.
 - **Éxito:** relleno `surface`, borde `line`, check en `accent` y texto `fg`. `role="status"`.

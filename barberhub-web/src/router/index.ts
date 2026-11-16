@@ -48,6 +48,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/barberias',
+    name: 'directory',
+    component: () => import('@/views/DirectoryView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/ingresar',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),
