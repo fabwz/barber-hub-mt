@@ -31,6 +31,7 @@ Las rutas y los atributos JSON son parte de lo que ve quien consume la API, por 
 | Teléfono de la barbería (contacto) | `Phone` | `barbershops.phone` | `telefono` |
 | Enlace público (se genera una vez; el segundo homónimo lleva `-2`) | `PublicLink`, `PublicLinkGenerator` | `barbershops.public_link` | `enlace` |
 | Datos públicos de la barbería (los que ve cualquier visitante) | `PublicBarbershop` | — | `BarberiaPublica` |
+| Directorio (lista pública y opcional de las barberías cuyo dueño activó su aparición; no reemplaza al enlace público) | `ListDirectoryBarbershops`, `BarbershopDirectoryReader` | `barbershops.listed_in_directory` (`false` por defecto) | `/directorio`, `aparece_en_directorio` |
 | Persona (cuenta) | `User` | `users` | — |
 | Nombre | `name` | `name` | `nombre` |
 | Correo | `Email` | `email` | `correo` |
@@ -154,6 +155,16 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 | Franja del día (IA) | `DayPart` | — | `franja` |
 | Mañana, tarde, noche | `Morning`, `Afternoon`, `Evening` | — | `manana`, `tarde`, `noche` |
 | Registro técnico | `AuditLog` | `audit_log` | — |
+
+### Mi cuenta y sus atajos (cliente web)
+
+| Negocio | Código | Base de datos | API |
+| --- | --- | --- | --- |
+| Mi cuenta (pantalla común a todos los roles: datos, seguridad, avisos, apariencia e idioma) | — (solo cliente web) | — | — |
+| Mi perfil (atajo del menú de cuenta a la pestaña de datos de Mi cuenta) | `profile` (nombre de ruta, solo cliente web) | — | — |
+| Preferencias (atajo del menú de cuenta a las pestañas de avisos, apariencia e idioma de Mi cuenta) | `preferences` (nombre de ruta, solo cliente web) | — | — |
+
+Mi perfil y Preferencias no son pantallas distintas: son accesos directos a partes de Mi cuenta (RF-45, RF-47, RF-48 y RF-49).
 
 ### Perfil público de la barbería (previsto, #187 y #46)
 

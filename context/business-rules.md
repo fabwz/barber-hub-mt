@@ -1,6 +1,6 @@
 # BarberHub: reglas de negocio
 
-Versión 1.5 (16 de octubre de 2026). Contiene 121 reglas vigentes en 16 categorías. Define cómo funciona una barbería costarricense dentro de BarberHub, sin diseñar tablas, endpoints ni clases. Los requisitos que las aplican están en `requirements.md` y citan estas reglas por su identificador.
+Versión 1.6 (16 de noviembre de 2026). Contiene 122 reglas vigentes en 16 categorías. Define cómo funciona una barbería costarricense dentro de BarberHub, sin diseñar tablas, endpoints ni clases. Los requisitos que las aplican están en `requirements.md` y citan estas reglas por su identificador.
 
 ## 1. Cómo leer este documento
 
@@ -21,6 +21,7 @@ Los identificadores no se reutilizan. Una regla retirada deja su número vacío 
 | BarberHub | La plataforma: un único sistema donde conviven varias barberías. |
 | Barbería | Cada negocio registrado en la plataforma, con sus datos totalmente separados de los demás. En el código es `Barbershop`. |
 | Enlace público | La dirección propia de cada barbería, por la que sus clientes llegan a ella. |
+| Directorio | Lista pública y opcional de las barberías cuyo dueño activó su aparición; no reemplaza al enlace público (MT-10). |
 | Dueño | Persona que administra una barbería. |
 | Colaborador | Barbero o barbera que atiende y tiene agenda propia. |
 | Cliente | Persona que reserva, paga y cancela. |
@@ -289,6 +290,7 @@ Lo que cambia entre barberías son parámetros, no reglas. La plataforma demostr
 | MT-07 | Cada barbería tiene un enlace público propio por el que sus clientes llegan a ella. | D |
 | MT-08 | El logo y el banner de la barbería se muestran a sus clientes en el encabezado de sus pantallas, y el logo también en sus correos. | D |
 | MT-09 | La dirección, las redes sociales (WhatsApp, Instagram, Facebook y TikTok), el logo y el banner de la barbería son datos públicos que edita solo el dueño; los enlaces de redes se validan por red y los vacíos no se muestran. | D |
+| MT-10 | El directorio es opcional por barbería: solo aparece la que su dueño activó, y no reemplaza al enlace público. | D |
 
 ### Notificaciones y procesos automáticos (NO)
 
@@ -377,6 +379,13 @@ No se reutilizan sus identificadores.
 | BO-09 (parte) | El vencimiento como movimiento de saldo | La vigencia se valida al reservar, sin proceso de vencimiento |
 
 ## Apéndice B. Historial de cambios
+
+### Versión 1.6
+
+| Cambio | Reglas |
+| --- | --- |
+| Regla nueva | MT-10: el directorio es opcional por barbería: solo aparece la que su dueño activó, y no reemplaza al enlace público |
+| Término nuevo | "Directorio" en el glosario |
 
 ### Versión 1.5
 
