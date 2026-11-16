@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopDetailsController;
+use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopDirectoryController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopFeaturesController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\MyBarbershopController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PaymentPolicyController;
@@ -55,3 +56,7 @@ Route::prefix('barberias/{barberia}/administracion/negocio')
 // Public: the link is how a customer reaches a barbershop before having any session (RD-18).
 Route::get('enlaces/{enlace}', [PublicBarbershopController::class, 'show'])
     ->name('catalog.barbershops.show-by-link');
+
+// Public: the barbershops that chose to appear, before any session and across barbershops, with only their public fields (RF-54).
+Route::get('directorio', [BarbershopDirectoryController::class, 'index'])
+    ->name('catalog.barbershops.directory');
