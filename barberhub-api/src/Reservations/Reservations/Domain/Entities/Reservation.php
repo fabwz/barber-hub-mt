@@ -14,6 +14,7 @@ use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatusChange;
@@ -52,6 +53,7 @@ final class Reservation
         public private(set) int $rescheduleCount,
         public private(set) ReservationStatus $status,
         public private(set) ?DateTimeImmutable $expiresAt,
+        public private(set) ?PurchasedVoucherId $purchasedVoucherId,
         public private(set) array $pendingChanges,
     ) {}
 
@@ -96,6 +98,7 @@ final class Reservation
             0,
             ReservationStatus::Temporary,
             $at->modify('+'.self::PAYMENT_WINDOW_MINUTES.' minutes'),
+            null,
             [new ReservationStatusChange(null, ReservationStatus::Temporary, $author, $at)],
         );
     }
@@ -114,8 +117,9 @@ final class Reservation
         int $rescheduleCount,
         ReservationStatus $status,
         ?DateTimeImmutable $expiresAt,
+        ?PurchasedVoucherId $purchasedVoucherId = null,
     ): self {
-        return new self($id, $collaboratorId, $serviceId, $customerMembershipId, $interval, $blockedUntil, $price, $duration, $cancellationDeadlineHours, $rescheduleCount, $status, $expiresAt, []);
+        return new self($id, $collaboratorId, $serviceId, $customerMembershipId, $interval, $blockedUntil, $price, $duration, $cancellationDeadlineHours, $rescheduleCount, $status, $expiresAt, $purchasedVoucherId, []);
     }
 
     /**
@@ -132,6 +136,21 @@ final class Reservation
         }
 
         $this->changeTo(ReservationStatus::Confirmed, $at, $author);
+    }
+
+    /**
+     * Record that a session of the voucher pays this confirmed reservation, so a cancellation or an absence knows which voucher gets
+     * the session back or keeps it (RF-28, BO-04). It is set once, right after the session was set aside.
+     *
+     * @throws TransitionNotAllowedException when the reservation is not confirmed or already has a voucher
+     */
+    public function payWithVoucher(PurchasedVoucherId $voucher): void
+    {
+        if ($this->status !== ReservationStatus::Confirmed || $this->purchasedVoucherId !== null) {
+            throw TransitionNotAllowedException::create();
+        }
+
+        $this->purchasedVoucherId = $voucher;
     }
 
     /** Expire a temporary reservation whose payment did not arrive in time (RE-05); its space is released. */

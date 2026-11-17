@@ -16,6 +16,7 @@ use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
@@ -49,7 +50,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
 
     /**
      * Insert the reservation once; afterwards its status changes and, when it is rescheduled, its space (collaborator, start,
-     * end, blocked-until and the count of reschedules). Its pending history entries are inserted in the
+     * end, blocked-until and the count of reschedules), and the voucher that pays it, if one does. Its pending history entries are inserted in the
      * same transaction, so a status never changes without leaving its entry (RE-09). A collision with another reservation
      * is rejected by the exclusions of the table (ADR 0009) and translated here: the one of the collaborator is a space
      * that is not available (RE-01) and the one of the customer is an overlap of their own reservations (RE-06).
@@ -105,6 +106,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
                     'cancellation_deadline_hours' => $reservation->cancellationDeadlineHours,
                     'reschedule_count' => $reservation->rescheduleCount,
                     'expires_at' => $reservation->expiresAt,
+                    'purchased_voucher_id' => $reservation->purchasedVoucherId?->value,
                 ]);
             } else {
                 $model->update([
@@ -115,6 +117,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
                     'blocked_until' => $reservation->blockedUntil,
                     'reschedule_count' => $reservation->rescheduleCount,
                     'expires_at' => $reservation->expiresAt,
+                    'purchased_voucher_id' => $reservation->purchasedVoucherId?->value,
                 ]);
             }
 
@@ -277,6 +280,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
             $model->reschedule_count,
             ReservationStatus::from($model->status),
             $model->expires_at,
+            $model->purchased_voucher_id === null ? null : new PurchasedVoucherId($model->purchased_voucher_id),
         );
     }
 }
