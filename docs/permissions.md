@@ -89,6 +89,7 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `PATCH api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
 | `GET api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos, lista de espera y aparición en el directorio: solo el dueño (RF-09, RF-54, UP-03). |
 | `PATCH api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos, lista de espera y aparición en el directorio: solo el dueño (RF-09, RF-54, UP-03). Con los bonos desactivados, comprar o definir un bono nuevo responde 409 `conflicto`. |
+| `GET api/v1/barberias/{barberia}/administracion/ingresos` | Rol | dueño | Reporte de ingresos de un rango de fechas (`desde` y `hasta`, hasta 366 días): solo su dueño (RF-25, PA-11, CO-04, MT-02). Colaborador y cliente reciben 403 `prohibido`; quien no tiene rol en la barbería, 404. Un rango sin datos responde 200 con ceros. |
 | `GET api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PATCH api/v1/barberias/{barberia}/administracion/servicios/{servicio}` | Rol | dueño | Administración de la barbería: solo su dueño. |

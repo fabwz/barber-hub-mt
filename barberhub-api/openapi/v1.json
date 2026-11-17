@@ -87,6 +87,10 @@
             "description": "Compra de un bono de la barber\u00eda, cobro con la pasarela de la barber\u00eda y activaci\u00f3n con el aviso verificado de su pago."
         },
         {
+            "name": "Ingresos",
+            "description": "Reporte de ingresos de la barber\u00eda para un rango de fechas, a cargo del due\u00f1o."
+        },
+        {
             "name": "Bonos de la barber\u00eda",
             "description": "Administraci\u00f3n de los bonos que vende la barber\u00eda, por su due\u00f1o."
         },
@@ -1771,6 +1775,73 @@
                 "responses": {
                     "204": {
                         "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/ingresos": {
+            "get": {
+                "operationId": "payments.income.show",
+                "description": "Recibe `desde` y `hasta` (`AAAA-MM-DD`, ambos d\u00edas incluidos, en la hora de Costa Rica; hasta 366 d\u00edas) y devuelve tres cifras separadas, sin un total combinado (PA-11): `cobrado_en_linea` (`bruto`, `reembolsado` y `neto`: los pagos de reservas aprobados, por el d\u00eda en que se crearon, menos los pagos reembolsados, por el d\u00eda del reembolso; un pago pendiente de devolver sigue contando hasta que se reembolsa), `bonos_vendidos` (`total` y `cantidad` de los bonos activados en el rango, con el precio con que se vendieron) y `servicios_atendidos` (`total` y `cantidad` de las reservas completadas cuyo servicio empez\u00f3 en el rango, por su precio completo aunque se pagara con bono). El saldo que se cobra en el local no figura (PA-10). Los montos son colones enteros. El `detalle` trae un rengl\u00f3n por cada d\u00eda con movimiento, del m\u00e1s antiguo al m\u00e1s reciente. Un rango sin datos responde 200 con las cifras en cero y `detalle` vac\u00edo. Solo el due\u00f1o: un colaborador o un cliente reciben 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`. Un rango inv\u00e1lido (fechas que no existen, `hasta` anterior a `desde` o m\u00e1s de 366 d\u00edas) responde 422 `datos-invalidos`.",
+                "summary": "Consultar los ingresos",
+                "tags": [
+                    "Ingresos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "desde",
+                        "in": "query",
+                        "required": true,
+                        "description": "Primer d\u00eda del rango, incluido, como `AAAA-MM-DD` en la hora de Costa Rica.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "hasta",
+                        "in": "query",
+                        "required": true,
+                        "description": "\u00daltimo d\u00eda del rango, incluido, como `AAAA-MM-DD`. No puede ser anterior a `desde` ni dejar un rango de m\u00e1s de 366 d\u00edas.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ReporteIngresos`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ReporteIngresos"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
@@ -4768,6 +4839,79 @@
                     "acepta_privacidad"
                 ],
                 "title": "RegistroDeCuenta"
+            },
+            "ReporteIngresos": {
+                "type": "object",
+                "properties": {
+                    "desde": {
+                        "type": "string"
+                    },
+                    "hasta": {
+                        "type": "string"
+                    },
+                    "cobrado_en_linea": {
+                        "type": "object",
+                        "properties": {
+                            "bruto": {
+                                "type": "integer"
+                            },
+                            "reembolsado": {
+                                "type": "integer"
+                            },
+                            "neto": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "bruto",
+                            "reembolsado",
+                            "neto"
+                        ]
+                    },
+                    "bonos_vendidos": {
+                        "type": "object",
+                        "properties": {
+                            "total": {
+                                "type": "integer"
+                            },
+                            "cantidad": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "total",
+                            "cantidad"
+                        ]
+                    },
+                    "servicios_atendidos": {
+                        "type": "object",
+                        "properties": {
+                            "total": {
+                                "type": "integer"
+                            },
+                            "cantidad": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "total",
+                            "cantidad"
+                        ]
+                    },
+                    "detalle": {
+                        "type": "array",
+                        "items": {}
+                    }
+                },
+                "required": [
+                    "desde",
+                    "hasta",
+                    "cobrado_en_linea",
+                    "bonos_vendidos",
+                    "servicios_atendidos",
+                    "detalle"
+                ],
+                "title": "ReporteIngresos"
             },
             "ReprogramarReserva": {
                 "type": "object",

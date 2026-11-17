@@ -458,6 +458,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/ingresos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar los ingresos
+         * @description Recibe `desde` y `hasta` (`AAAA-MM-DD`, ambos días incluidos, en la hora de Costa Rica; hasta 366 días) y devuelve tres cifras separadas, sin un total combinado (PA-11): `cobrado_en_linea` (`bruto`, `reembolsado` y `neto`: los pagos de reservas aprobados, por el día en que se crearon, menos los pagos reembolsados, por el día del reembolso; un pago pendiente de devolver sigue contando hasta que se reembolsa), `bonos_vendidos` (`total` y `cantidad` de los bonos activados en el rango, con el precio con que se vendieron) y `servicios_atendidos` (`total` y `cantidad` de las reservas completadas cuyo servicio empezó en el rango, por su precio completo aunque se pagara con bono). El saldo que se cobra en el local no figura (PA-10). Los montos son colones enteros. El `detalle` trae un renglón por cada día con movimiento, del más antiguo al más reciente. Un rango sin datos responde 200 con las cifras en cero y `detalle` vacío. Solo el dueño: un colaborador o un cliente reciben 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`. Un rango inválido (fechas que no existen, `hasta` anterior a `desde` o más de 366 días) responde 422 `datos-invalidos`.
+         */
+        get: operations["payments.income.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mis-barberias": {
         parameters: {
             query?: never;
@@ -1394,6 +1414,25 @@ export interface components {
             acepta_terminos: "yes" | "on" | "1" | 1 | "true" | true;
             /** @enum {unknown} */
             acepta_privacidad: "yes" | "on" | "1" | 1 | "true" | true;
+        };
+        /** ReporteIngresos */
+        ReporteIngresos: {
+            desde: string;
+            hasta: string;
+            cobrado_en_linea: {
+                bruto: number;
+                reembolsado: number;
+                neto: number;
+            };
+            bonos_vendidos: {
+                total: number;
+                cantidad: number;
+            };
+            servicios_atendidos: {
+                total: number;
+                cantidad: number;
+            };
+            detalle: unknown[];
         };
         /** ReprogramarReserva */
         ReprogramarReserva: {
@@ -2558,6 +2597,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "payments.income.show": {
+        parameters: {
+            query: {
+                /** @description Primer día del rango, incluido, como `AAAA-MM-DD` en la hora de Costa Rica. */
+                desde: string;
+                /** @description Último día del rango, incluido, como `AAAA-MM-DD`. No puede ser anterior a `desde` ni dejar un rango de más de 366 días. */
+                hasta: string;
+            };
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ReporteIngresos` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ReporteIngresos"];
+                    };
+                };
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];

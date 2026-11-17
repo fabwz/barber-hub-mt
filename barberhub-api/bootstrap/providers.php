@@ -11,6 +11,7 @@ use Src\Catalog\OpeningHours\Infrastructure\OpeningHoursServiceProvider;
 use Src\Catalog\Services\Infrastructure\ServicesServiceProvider;
 use Src\Identity\Memberships\Infrastructure\MembershipsServiceProvider;
 use Src\Identity\Users\Infrastructure\UsersServiceProvider;
+use Src\Payments\Income\Infrastructure\IncomeServiceProvider;
 use Src\Payments\Payments\Infrastructure\PaymentsServiceProvider;
 use Src\Reservations\Reservations\Infrastructure\ReservationsServiceProvider;
 use Src\Shared\Infrastructure\SharedServiceProvider;
@@ -30,6 +31,7 @@ return [
     SlotsServiceProvider::class,
     ReservationsServiceProvider::class,
     PaymentsServiceProvider::class,
+    IncomeServiceProvider::class,
     VoucherDefinitionsServiceProvider::class,
     PurchasedVouchersServiceProvider::class,
 ];

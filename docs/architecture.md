@@ -38,7 +38,7 @@ Hoy existen cuatro contextos, cada uno con sus módulos y las tres capas (las su
 | Catalog | `Barbershops`, `Services`, `OpeningHours`, `Closures`, `Collaborators` |
 | Availability | `Slots` |
 | Reservations | `Reservations` |
-| Payments | `Payments` |
+| Payments | `Payments`, `Income` |
 | Vouchers | `VoucherDefinitions`, `PurchasedVouchers` |
 
 `Payments` existe desde el #62 con el módulo `Payments`, y `Vouchers` desde el #132 (dominio y esquema; las rutas del dueño, #87, y la compra, que expone `Payments`, #88); `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` ya existe, y el `Shared` de `Vouchers` (los números y el nombre que comparten la definición y el bono comprado); los demás `Shared` de contexto (previsto, #22) aún no existen.
@@ -464,6 +464,16 @@ La petición de crear la reserva (`POST /barberias/{barberia}/reservas`) acepta 
 - **El vencimiento se calcula al consultar (BO-07).** El reloj entra como parámetro (`Clock`, en el controlador). `PurchasedVoucher::isExpiredAt()` dice que un bono pagado venció desde su instante de vencimiento (inclusive): entonces `saldo` es 0, `estado` es `vencido` y `vence_en` se conserva. No hay estado `vencido` guardado ni proceso que lo escriba; las sesiones no se borran, solo dejan de mostrarse.
 - **Solo bonos pagados.** `pageOfCustomer` y `pageOfBarbershop` filtran `status = 'active'`: un bono que espera su pago no es todavía un bono (BO-02) y no se lista. Van del activado más recientemente al más antiguo, con el identificador como desempate.
 - **Permisos y aislamiento.** El cliente solo ve los bonos de su propio rol de cliente, que sale de la sesión y nunca de la petición (CL-04); sin rol, lista vacía; dueño y colaborador reciben 403 en `mis-bonos` (UP-07). La lectura del dueño es solo del dueño (un colaborador recibe 403, como en `administracion/bonos`). Todas las consultas del repositorio filtran por la barbería de la ruta y la seguridad a nivel de fila es la segunda barrera (MT-02); las rutas están en `AccessMatrix` y en `TenantResources`.
+
+### El reporte de ingresos (#91)
+
+`GET /barberias/{barberia}/administracion/ingresos?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (`auth:sanctum`, `barbershop`, `role:owner`) responde las tres cifras de RF-25 por separado y sin total combinado (PA-11): `cobrado_en_linea` (`bruto`, `reembolsado`, `neto`), `bonos_vendidos` (`total`, `cantidad`) y `servicios_atendidos` (`total`, `cantidad`), más un `detalle` con un renglón por día con movimiento. El saldo que se cobra en el local no figura (PA-10). Un rango sin datos responde 200 con ceros y `detalle` vacío. Un colaborador recibe 403 `prohibido` (CO-04) y quien no tiene rol, 404 (UP-06).
+
+- **Módulo propio.** `Payments/Income` no tiene dominio ni tabla: es un caso de uso de lectura, `GetIncomeReport`, que declara tres puertos en su `Application/Contracts`: `OnlinePaymentTotals` (los pagos y reembolsos, que son de `Payments`), `SoldVouchers` y `AttendedServices`. El primero lo lee `Payments` de lo suyo (`DatabaseOnlinePaymentTotals`, una consulta agrupada sobre `payments`); los otros dos los implementan adaptadores que invocan un caso de uso de consulta del otro contexto, que lee sus propias tablas: `SummarizeVoucherSales` (`Vouchers/PurchasedVouchers`, puerto `SoldVoucherTotals`) y `SummarizeAttendedServices` (`Reservations/Reservations`, puerto `AttendedServiceTotals`). Ningún contexto importa el dominio del otro.
+- **Las sumas son SQL.** Cada lector agrupa por día (`to_char(columna AT TIME ZONE 'America/Costa_Rica', 'YYYY-MM-DD')`) y suma en la base; no se carga ninguna fila. Todos filtran por la barbería de la ruta (`BarbershopContext`) y la seguridad a nivel de fila es la segunda barrera (MT-02).
+- **El rango.** `ReportPeriod` (`Src\Shared\Domain`) convierte los dos días en `[desde 00:00, hasta + 1 día 00:00)` de `America/Costa_Rica` y lo comparten los tres contextos. Valida que sean días reales, que `desde` no pase de `hasta` y que el rango no pase de 366 días (decisión del issue); la petición lo responde con 422 `datos-invalidos`.
+- **Qué fecha ubica cada cifra.** Cobro: `payments.created_at` (estados `approved` y `refunded`, solo pagos de reserva). Reembolso: `payments.updated_at` de los `refunded`, por su monto completo; un pago con `refund_pending` sigue aprobado y no resta. Bono vendido: `purchased_vouchers.activated_at`, con su precio. Servicio atendido: `reservations.starts_at` de las `completed`, por su precio completo aunque se pagara con una sesión de bono. Ver [data-model.md](data-model.md), sección `refunds`.
+- **Pendiente de #61.** Todavía no hay forma de marcar una reserva como atendida, así que `servicios_atendidos` solo tiene datos cuando hay reservas `completed`; la consulta ya está lista.
 
 ### Concurrencia
 
