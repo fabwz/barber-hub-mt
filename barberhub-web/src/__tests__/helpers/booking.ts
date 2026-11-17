@@ -45,6 +45,7 @@ export interface BookingHandlers {
   availability?: (request: Request) => Response | Promise<Response>
   reserve?: (request: Request) => Response | Promise<Response>
   cancel?: (request: Request) => Response | Promise<Response>
+  proposal?: (request: Request) => Response | Promise<Response>
 }
 
 /** The shop plus availability and reservation answers; each test overrides what it needs. */
@@ -58,6 +59,9 @@ export function bookingHandler(handlers: BookingHandlers = {}) {
     }
     if (route === `POST /api/v1/barberias/${SHOP.id}/reservas`) {
       return handlers.reserve ? handlers.reserve(request) : jsonResponse(201, { data: RESERVATION })
+    }
+    if (route === `POST /api/v1/barberias/${SHOP.id}/reservas/propuesta`) {
+      return handlers.proposal ? handlers.proposal(request) : jsonResponse(200, proposalBody())
     }
     if (route === `POST /api/v1/barberias/${SHOP.id}/reservas/${RESERVATION.id}/cancelacion`) {
       return handlers.cancel
@@ -75,4 +79,31 @@ export function conflict(alternativas: unknown[]) {
     detail: 'Ese espacio ya no está disponible.',
     alternativas,
   })
+}
+
+/** Body of `POST /reservas/propuesta`: an incomplete proposal unless the test says otherwise. */
+export function proposalBody(overrides: Record<string, unknown> = {}) {
+  return {
+    data: {
+      servicio: null,
+      barbero: null,
+      fecha: null,
+      hora: null,
+      franja: null,
+      campos_faltantes: [],
+      aclaracion: null,
+      validada: false,
+      estado: 'incompleta',
+      campo: null,
+      servicio_id: null,
+      barbero_id: null,
+      inicio: null,
+      fin: null,
+      precio: null,
+      candidatos: [],
+      espacios: [],
+      alternativas: [],
+      ...overrides,
+    },
+  }
 }

@@ -142,7 +142,7 @@ describe('ShopView · booking', () => {
 
     await chip(wrapper, '11:00').trigger('click')
 
-    const bar = wrapper.get('section > div:last-child')
+    const bar = wrapper.get('section[aria-labelledby="booking-title"] > div:last-child')
     expect(bar.text()).toContain('Corte clásico')
     expect(bar.text()).toContain('11:00')
     expect(bar.text()).toContain('con Daniela')
@@ -347,7 +347,9 @@ describe('ShopView · booking', () => {
 
     expect(wrapper.text()).not.toContain('Otros espacios cercanos')
     expect(wrapper.findAll('[role="radio"]')[0]!.attributes('aria-checked')).toBe('true')
-    expect(wrapper.get('section > div:last-child').text()).toContain('09:15')
+    expect(
+      wrapper.get('section[aria-labelledby="booking-title"] > div:last-child').text(),
+    ).toContain('09:15')
 
     await button(wrapper, 'Reservar').trigger('click')
     await flushPromises()

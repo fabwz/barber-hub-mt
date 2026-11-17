@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useId, useTemplateRef, watch } from 'vue'
+import { computed, ref, useId, useSlots, useTemplateRef, watch } from 'vue'
 import { ArrowRight, Calendar, ChevronDown, CircleAlert } from 'lucide-vue-next'
 
 import BaseButton from '@/components/BaseButton.vue'
@@ -35,6 +35,9 @@ export interface PanelReservation extends PanelSelection {
   expiresAt: string | null
 }
 
+/** A choice the assistant could not make: it is marked «Falta elegir» until the person makes it. */
+export type PanelMissing = 'servicio' | 'barbero' | 'fecha'
+
 export interface PanelFailure {
   title: string
   description: string
@@ -61,6 +64,8 @@ interface Props {
   reservation?: PanelReservation | null
   /** A payment of the reservation is under way: the person is told to continue to the payment. */
   paymentInProgress?: boolean
+  /** Choices that the proposal of the assistant left open. */
+  missing?: PanelMissing[]
 }
 
 const {
@@ -78,6 +83,7 @@ const {
   notice = null,
   reservation = null,
   paymentInProgress = false,
+  missing = [],
 } = defineProps<Props>()
 
 /** Chosen barber; the empty string is «Sin preferencia». */
@@ -97,6 +103,10 @@ const emit = defineEmits<{
 const title = useTemplateRef<HTMLElement>('title')
 // The shop view calls it when the person comes back to change a reservation.
 defineExpose({ focusTitle: () => title.value?.focus() })
+
+const templateSlots = useSlots()
+// Read on every render: the slots object is not reactive.
+const showAssistant = () => !reservation && templateSlots.assistant !== undefined
 
 const barberLabelId = useId()
 const hourLabelId = useId()
@@ -159,24 +169,53 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
+    <!-- Assistant: the phrase block above the manual choices, which stay as they are -->
+    <div v-if="showAssistant()" class="mt-8 flex flex-col gap-6 md:mt-6 md:gap-8">
+      <slot name="assistant" />
+      <p class="flex items-center gap-4 text-sm text-fg-muted">
+        <span class="h-px flex-1 bg-line" aria-hidden="true" />
+        O elija a mano
+        <span class="h-px flex-1 bg-line" aria-hidden="true" />
+      </p>
+    </div>
+
     <div
-      class="mt-8 flex flex-col gap-8 md:mt-6"
-      :class="reservation ? 'md:mx-auto md:w-full md:max-w-110' : 'md:grid md:grid-cols-2'"
+      class="flex flex-col gap-8"
+      :class="[
+        showAssistant() ? 'mt-6 md:mt-8' : 'mt-8 md:mt-6',
+        reservation ? 'md:mx-auto md:w-full md:max-w-110' : 'md:grid md:grid-cols-2',
+      ]"
     >
       <!-- Left: service and barber (gone once there is a reservation) -->
       <div v-if="!reservation" class="flex min-w-0 flex-col gap-8">
         <div>
-          <h3 class="mb-2 text-lg font-medium">Servicio</h3>
-          <slot name="services" />
+          <div class="mb-2 flex items-baseline justify-between gap-3">
+            <h3 class="text-lg font-medium">Servicio</h3>
+            <span v-if="missing.includes('servicio')" class="text-sm text-warning">
+              Falta elegir
+            </span>
+          </div>
+          <div
+            class="border-t"
+            :class="missing.includes('servicio') ? 'border-warning' : 'border-transparent'"
+          >
+            <slot name="services" />
+          </div>
         </div>
 
         <div v-if="hasService && !reservation">
-          <h3 :id="barberLabelId" class="mb-4 text-lg font-medium">Barbero</h3>
+          <div class="mb-4 flex items-baseline justify-between gap-3">
+            <h3 :id="barberLabelId" class="text-lg font-medium">Barbero</h3>
+            <span v-if="missing.includes('barbero')" class="text-sm text-warning">
+              Falta elegir
+            </span>
+          </div>
           <div class="relative">
             <select
               v-model="barber"
               :aria-labelledby="barberLabelId"
-              class="h-13 w-full cursor-pointer appearance-none rounded-field border border-field bg-canvas pr-11 pl-4 text-base font-medium text-fg transition-colors duration-150 ease-out hover:border-fg-muted"
+              class="h-13 w-full cursor-pointer appearance-none rounded-field border bg-canvas pr-11 pl-4 text-base font-medium text-fg transition-colors duration-150 ease-out hover:border-fg-muted"
+              :class="missing.includes('barbero') ? 'border-warning' : 'border-field'"
             >
               <option value="">Sin preferencia</option>
               <option v-for="item in barbers" :key="item.id" :value="item.id">
@@ -254,7 +293,7 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
         <template v-else>
           <InlineNotice v-if="notice" :title="notice">Elija otra hora.</InlineNotice>
 
-          <DatePicker v-model="date" :days="days" />
+          <DatePicker v-model="date" :days="days" :missing="missing.includes('fecha')" />
 
           <div :aria-busy="hoursState === 'loading'">
             <h3 :id="hourLabelId" class="mb-4 text-lg font-medium">Hora</h3>
