@@ -197,7 +197,7 @@ final class TenantResources
             ),
             // The payment is read at pagos/{id} (#63) and refunded at pagos/{id}/reembolsos; the owner of Pura Navaja tries both against
             // Fade Lab. Paying is a route under the reservation, which the reservations resource owns. The row has no charge in the
-            // provider, so reading it asks nobody.
+            // provider, so reading it asks nobody. The income report (#91) adds up these rows and is served at administracion/ingresos.
             new TenantResource(
                 'payments',
                 function (string $barbershopId): string {
@@ -216,6 +216,8 @@ final class TenantResources
                 },
                 'api/v1/barberias/{barberia}/pagos',
                 [TenantResource::SHOW, TenantResource::REFUND],
+                [],
+                ['api/v1/barberias/{barberia}/administracion/ingresos'],
             ),
             // The vouchers (#132). The owner administers the definitions (#87) and lists the vouchers sold (#90); the purchase (#88) and
             // the customer's own list (#90) are customer routes of the purchased voucher, so they are listed as its own paths. The use

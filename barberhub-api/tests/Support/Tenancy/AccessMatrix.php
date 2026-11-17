@@ -140,6 +140,7 @@ final class AccessMatrix
             "POST {$base}/administracion/bonos" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
             "GET {$base}/administracion/bonos/{bono}" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26).'),
             "GET {$base}/administracion/bonos-vendidos" => $admin('Bonos vendidos en la barbería, con saldo y vigencia: solo su dueño (RF-29, MT-02).'),
+            "GET {$base}/administracion/ingresos" => $admin('Reporte de ingresos de la barbería: solo su dueño (RF-25, PA-11, CO-04, MT-02).'),
             "PATCH {$base}/administracion/bonos/{bono}" => $admin('Bonos de la barbería: solo su dueño (UP-03, RF-26). Editar, retirar o reactivar.'),
         ];
     }

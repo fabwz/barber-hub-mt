@@ -208,6 +208,7 @@ trait BuildsAccessScenario
         return match (true) {
             str_starts_with($key, 'PATCH ') && str_ends_with($key, '/reservas/{reserva}') => ['inicio' => '2030-03-05T14:00:00-06:00'],
             str_ends_with($key, '/reservas/{reserva}/pagos') => ['metodo' => 'tarjeta', 'token' => 'pm_test_1'],
+            str_ends_with($key, '/administracion/ingresos') => ['desde' => '2030-03-01', 'hasta' => '2030-03-31'],
             default => [],
         };
     }
