@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Src\Reservations\Reservations\Application\Contracts\ActiveCollaboratorNames;
 use Src\Reservations\Reservations\Application\Contracts\ActiveServiceNames;
+use Src\Reservations\Reservations\Application\Contracts\AttendedServiceTotals;
 use Src\Reservations\Reservations\Application\Contracts\AuthorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\BarbershopPresence;
 use Src\Reservations\Reservations\Application\Contracts\BlockedIntervalReader;
@@ -53,6 +54,7 @@ use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomer
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerMemberships;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentAmounts;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentChannels;
+use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentAttendedServiceTotals;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentBlockedIntervalReader;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesActiveServiceNames;
@@ -73,6 +75,7 @@ final class ReservationsServiceProvider extends ServiceProvider
     public array $bindings = [
         ReservationRepository::class => EloquentReservationRepository::class,
         BlockedIntervalReader::class => EloquentBlockedIntervalReader::class,
+        AttendedServiceTotals::class => EloquentAttendedServiceTotals::class,
         BookableServices::class => ServicesBookableServices::class,
         CancellationDeadlines::class => BarbershopsCancellationDeadlines::class,
         PaymentRequirement::class => BarbershopsPaymentRequirement::class,
