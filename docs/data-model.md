@@ -339,6 +339,10 @@ Restricciones:
 
 El «depósito a devolver» de CA-02 es un reembolso en estado `due`.
 
+**Todavía no existe.** Mientras RF-24 (M14) no cree la tabla, un reembolso es un pago en estado `refunded` por su monto completo, y el reporte de ingresos (RF-25, #91) fecha el cobro y el reembolso con las columnas que `payments` ya tiene: el cobro, con `created_at` (el pago no guarda cuándo se aprobó, solo que se aprobó momentos después de crearse) y el reembolso, con `updated_at` (un pago reembolsado es final, así que su último cambio es el reembolso). Un pago aprobado con `refund_pending` sigue contando como cobrado hasta que se reembolsa. RF-24 traerá fechas propias (`refunds.completed_at` y la aprobación del pago) y entonces el reporte las usará, y solo restarán los reembolsos `completed`; una prueba (`IncomeReportTest`) fija hoy que el reembolso se ubica por `updated_at`.
+
+El reporte no tiene tabla de ingresos: suma `payments` de reservas (cobrado en línea; los pagos de un bono no entran, son la venta del bono), `purchased_vouchers` activos por `activated_at` y con el `price` con que se vendieron (bonos vendidos) y `reservations` completadas por `starts_at` y con su `price` (servicios atendidos). Los días son los de `America/Costa_Rica`, con el rango `[desde 00:00, hasta + 1 día 00:00)`.
+
 | Columna | Tipo | Regla |
 | --- | --- | --- |
 | `id`, `barbershop_id`, `payment_id` | `uuid` | Llave primaria y llaves foráneas compuestas |
