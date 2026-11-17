@@ -261,7 +261,8 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 
 ### Estado vacío y estado de error
 - **Vacío:** un título que nombra el espacio, una línea que explica qué pasa y una acción en verbo. Ejemplo: «No hay reservas para el sáb 7 nov.» y «Ir a hoy».
-- **Error de carga:** «Error: no pudimos cargar …», una línea con la salida («Revise su conexión e intente de nuevo. Lo que ya eligió se mantiene.») y el botón «Reintentar». Lo ya elegido por la persona nunca se pierde.
+- **Error de carga:** «No pudimos cargar …», sin el prefijo «Error:» (es el texto de la v7), una línea con la salida («Revise su conexión e intente de nuevo. Lo que ya eligió se mantiene.») y el botón secundario «Reintentar». Lo ya elegido por la persona nunca se pierde. Es una sola caja para todas las pantallas (componente `ErrorState`): radio de 8 px, relleno `danger-surface`, sin borde, 16 px de relleno, ícono de 20 px y título en `danger` con peso 500. Si la API pide una espera (429), el botón queda deshabilitado y una línea dice cuánto falta.
+- **Selector de negocio sin negocios** (`/negocios`): cuando la cuenta no tiene barberías (por ejemplo, un cliente nuevo) no se redirige; se muestra «Aún no tiene barberías.», la línea «Explore las barberías para reservar su primera cita.» y el enlace «Ver barberías» hacia el directorio. El diseño de la v7 no define esta pantalla: sigue el patrón del estado vacío.
 
 ### Cabecera de la barbería (pantallas del cliente)
 - **Banner opcional:** proporción 2:1 en celular y 3:1 en escritorio (4:1 en la portada de 1280 px), con **radio de 16 px**, decorativo (`aria-hidden`). Queda separado de la ventana con el mismo margen de los lados: 20 px en celular y 32 px en escritorio, también arriba. No lleva texto encima. Mientras el negocio no tenga imagen se muestra un bloque neutro `line`.

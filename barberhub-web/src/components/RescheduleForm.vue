@@ -174,13 +174,12 @@ async function confirm(): Promise<void> {
           label="Cargando horas disponibles"
         />
 
-        <div v-else-if="hoursState === 'error'" class="rounded-card bg-danger-surface">
-          <ErrorState
-            message="No pudimos cargar los horarios."
-            description="Revise su conexión e intente de nuevo. Su reserva actual no cambia."
-            @retry="availability.retry()"
-          />
-        </div>
+        <ErrorState
+          v-else-if="hoursState === 'error'"
+          message="No pudimos cargar los horarios."
+          description="Revise su conexión e intente de nuevo. Su reserva actual no cambia."
+          @retry="availability.retry()"
+        />
 
         <div v-else-if="hoursState === 'empty'" class="border-y border-line py-4">
           <p class="font-medium">No quedan horas el {{ dayText }} con {{ barberName }}.</p>

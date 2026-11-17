@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
 import BrandLogo from '@/components/BrandLogo.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import OptionCard from '@/components/OptionCard.vue'
 import OptionGroup from '@/components/OptionGroup.vue'
@@ -18,17 +19,15 @@ const store = useActiveShopStore()
 const selected = ref<string | null>(null)
 
 const showList = computed(() => store.status === 'ready' && store.shops.length > 1)
+const isEmpty = computed(() => store.status === 'ready' && store.shops.length === 0)
 const chosenName = computed(() => store.shops.find((shop) => shop.id === selected.value)?.name)
 const announcement = computed(() =>
   chosenName.value === undefined ? '' : `Seleccionó ${chosenName.value}.`,
 )
 
-/** One shop enters directly, none goes to «/» (a customer is not an error), several show the list. */
+/** One shop enters directly, none shows the empty state, several show the list. */
 async function decide(): Promise<void> {
-  if (store.status !== 'ready') return
-  if (store.shops.length === 0) {
-    await router.replace('/')
-  } else if (store.shops.length === 1) {
+  if (store.status === 'ready' && store.shops.length === 1) {
     store.select(store.shops[0]!.id)
     await router.replace('/')
   }
@@ -63,11 +62,27 @@ onMounted(load)
 
         <ErrorState
           v-if="store.status === 'error'"
-          class="mt-6 p-0! md:p-0!"
+          class="mt-6"
           message="No pudimos cargar sus barberías."
           description="Revise su conexión e intente de nuevo."
           @retry="load"
         />
+
+        <div v-else-if="isEmpty" class="mt-6 border-y border-line">
+          <EmptyState
+            title="Aún no tiene barberías."
+            description="Explore las barberías para reservar su primera cita."
+          >
+            <template #action>
+              <RouterLink
+                to="/barberias"
+                class="inline-flex min-h-11 items-center justify-center rounded-pill border border-line-strong bg-elevated px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:bg-btn-hover"
+              >
+                Ver barberías
+              </RouterLink>
+            </template>
+          </EmptyState>
+        </div>
 
         <form v-else-if="showList" novalidate class="mt-2" @submit.prevent="submit">
           <p class="text-fg-muted">
@@ -86,7 +101,7 @@ onMounted(load)
           </BaseButton>
         </form>
 
-        <!-- Loading, and also the instant before a single or no shop moves on to «/». -->
+        <!-- Loading, and also the instant before a single shop moves on to «/». -->
         <div v-else class="mt-6">
           <SkeletonBlock shape="row" :count="3" label="Cargando sus barberías" />
         </div>

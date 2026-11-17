@@ -104,13 +104,18 @@ describe('ShopSelectView', () => {
     expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false)
   })
 
-  it('with no staff shop (a customer) goes to «/» and it is not an error', async () => {
+  it('with no staff shop (a customer) shows the empty state with a way out, not an error', async () => {
     mockFetch(staffHandler([CLIENT_SHOP]))
     const { wrapper, router } = await mountView(ShopSelectView, '/negocios')
     await flushPromises()
 
-    expect(router.currentRoute.value.path).toBe('/')
+    expect(router.currentRoute.value.path).toBe('/negocios')
+    expect(wrapper.text()).toContain('Aún no tiene barberías.')
+    expect(wrapper.get('a').text()).toBe('Ver barberías')
+    expect(wrapper.get('a').attributes('href')).toBe('/barberias')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false)
   })
 
   it('without a session the route goes to the login', async () => {

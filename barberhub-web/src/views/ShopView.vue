@@ -208,7 +208,7 @@ const failure = computed<PanelFailure | null>(() => {
       description: 'Elija uno de los espacios cercanos o cambie la hora.',
     }
   }
-  return { title: 'Error: no pudimos crear la reserva.', description: error.detail }
+  return { title: 'No pudimos crear la reserva.', description: error.detail }
 })
 
 const alternatives = computed<TimeSlot[]>(() =>
@@ -625,7 +625,8 @@ async function reserve(): Promise<void> {
     <template v-else>
       <h1 class="sr-only">BarberHub</h1>
       <ErrorState
-        message="Error: no pudimos cargar la barbería."
+        class="mx-5 mt-6 md:mx-8 md:mt-8"
+        message="No pudimos cargar la barbería."
         description="Revise su conexión e intente de nuevo."
         @retry="store.load(link)"
       />

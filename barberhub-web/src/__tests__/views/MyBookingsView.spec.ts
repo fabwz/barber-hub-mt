@@ -150,6 +150,7 @@ describe('MyBookingsView', () => {
     })
 
     expect(wrapper.get('[role="alert"]').text()).toContain('No pudimos cargar sus reservas.')
+    expect(wrapper.get('[role="alert"]').classes()).toContain('bg-danger-surface')
     fail = false
     await wrapper
       .findAll('button')

@@ -117,6 +117,7 @@ describe('DirectoryView — states', () => {
 
     const alert = wrapper.get('[role="alert"]')
     expect(alert.text()).toContain('No pudimos cargar las barberías.')
+    expect(alert.classes()).toContain('bg-danger-surface')
     expect(wrapper.find('a[href^="/b/"]').exists()).toBe(false)
 
     online = true

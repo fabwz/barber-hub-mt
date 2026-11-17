@@ -235,7 +235,8 @@ describe('BookingConfirmedView', () => {
         return calls === 1 ? problem(500) : jsonResponse(200, { data: confirmed() })
       },
     })
-    expect(failing.wrapper.get('[role="alert"]').text()).toContain('no pudimos cargar su reserva')
+    expect(failing.wrapper.get('[role="alert"]').text()).toContain('No pudimos cargar su reserva.')
+    expect(failing.wrapper.get('[role="alert"]').classes()).toContain('bg-danger-surface')
     await failing.wrapper.get('[role="alert"] button').trigger('click')
     await flushPromises()
     expect(failing.wrapper.get('h1').text()).toBe('Reserva confirmada')
