@@ -64,7 +64,7 @@ final class ReservationProposalResource extends JsonResource
             'campo' => $proposal->field === null ? null : $this->fieldName($proposal->field),
             /** Identificador del servicio del catálogo de la barbería; `null` mientras el texto no se haya resuelto a uno solo. */
             'servicio_id' => $proposal->serviceId,
-            /** Identificador del barbero del catálogo (activo y que ofrece ese servicio); `null` si no se nombró o no se resolvió. */
+            /** Identificador del barbero del catálogo (activo); `null` si no se nombró o no se resolvió. Con estado `no_reconocida` y campo `barbero`, un valor indica que el barbero existe pero no ofrece el servicio. */
             'barbero_id' => $proposal->collaboratorId,
             /** Inicio del espacio libre en ISO 8601 con desfase, listo para `POST /reservas`; solo con estado `valida` y hora exacta. */
             'inicio' => $proposal->startsAt?->format(DATE_ATOM),
@@ -72,7 +72,7 @@ final class ReservationProposalResource extends JsonResource
             'fin' => $proposal->endsAt?->format(DATE_ATOM),
             /** Precio en colones enteros, con IVA incluido, tomado del catálogo; `null` mientras no haya un servicio resuelto. */
             'precio' => $proposal->price?->colones,
-            /** Opciones del catálogo (`id` y `nombre`) para que la persona elija: servicios o barberos, según `campo`. Vacío si no hay ambigüedad. */
+            /** Opciones del catálogo (`id` y `nombre`) para que la persona elija: servicios o barberos, según `campo`. Vacío si no hay ambigüedad. Con estado `no_reconocida` y campo `barbero` y un `barbero_id`, trae solo a ese barbero (con su nombre del catálogo) para poder nombrarlo. */
             'candidatos' => array_map(fn (ProposalCandidate $candidate): array => ['id' => $candidate->id, 'nombre' => $candidate->name], $proposal->candidates),
             /** Espacios libres reales que encajan con lo pedido (la franja, o la hora exacta cuando falta elegir barbero), con `barbero`, `inicio` y `fin`. */
             'espacios' => $this->slots($proposal->spaces),
@@ -104,6 +104,9 @@ final class ReservationProposalResource extends JsonResource
         return match ($proposal->status) {
             ProposalStatus::Valid => null,
             ProposalStatus::Incomplete => $proposal->missing === [] ? null : Lang::string("reservations.clarification.{$this->fieldName($proposal->missing[0])}"),
+            ProposalStatus::Unrecognized => Lang::string($proposal->field === ProposalField::Collaborator && $proposal->collaboratorId !== null
+                ? 'reservations.proposal.unrecognized.barbero_sin_servicio'
+                : 'reservations.proposal.unrecognized.'.$this->fieldName($proposal->field ?? ProposalField::Time)),
             default => Lang::string("reservations.proposal.{$proposal->status->value}.".$this->fieldName($proposal->field ?? ProposalField::Time)),
         };
     }

@@ -24,7 +24,8 @@ return [
         ],
         'unrecognized' => [
             'servicio' => 'No encontramos ese servicio en esta barbería. ¿Cuál desea reservar?',
-            'barbero' => 'No encontramos a ese barbero en esta barbería para ese servicio. ¿Con cuál desea reservar?',
+            'barbero' => 'No encontramos a ese barbero en esta barbería. ¿Con cuál desea reservar?',
+            'barbero_sin_servicio' => 'Ese barbero no ofrece ese servicio. ¿Con cuál desea reservar?',
         ],
         'unavailable' => [
             'hora' => 'No hay un espacio disponible a esa hora. Puede elegir uno de los más cercanos, si los hay, o probar con otro día.',

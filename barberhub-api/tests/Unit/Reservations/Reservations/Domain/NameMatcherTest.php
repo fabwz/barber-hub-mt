@@ -21,6 +21,7 @@ final class NameMatcherTest extends TestCase
             'case' => ['DEGRADADO', 'degradado'],
             'accents' => ['Clásico Ñandú Pingüino', 'clasico nandu pinguino'],
             'signs' => ['corte + barba!!', 'corte barba'],
+            'conjunction' => ['Corte y barba', 'corte barba'],
             'spaces' => ["  corte \t  barba  ", 'corte barba'],
             'injection' => ["corte'; drop table x; --", 'corte drop table x'],
             'only signs' => ['!!!', ''],
@@ -31,6 +32,13 @@ final class NameMatcherTest extends TestCase
     public function test_a_text_is_normalized(string $text, string $expected): void
     {
         $this->assertSame($expected, NameMatcher::normalize($text));
+    }
+
+    /** «corte y barba» is «Corte + barba», and «Daniel» is still not «Daniela». */
+    public function test_the_conjunction_y_matches_the_plus_sign_and_nothing_is_guessed(): void
+    {
+        $this->assertSame(['b'], (new NameMatcher)->match('corte y barba', self::CATALOG));
+        $this->assertSame([], (new NameMatcher)->match('daniel', ['x' => 'Daniela']));
     }
 
     /** A combined accent (the letter and the mark apart) is read like the precomposed one. */
@@ -63,7 +71,7 @@ final class NameMatcherTest extends TestCase
     public function test_a_longer_text_does_not_match(): void
     {
         $this->assertSame([], (new NameMatcher)->match('corte clásico premium', self::CATALOG));
-        $this->assertSame([], (new NameMatcher)->match('corte y barba', self::CATALOG));
+        $this->assertSame([], (new NameMatcher)->match('corte con barba', self::CATALOG));
     }
 
     /** An empty text, or one of signs only, matches nothing. */

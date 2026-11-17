@@ -276,8 +276,9 @@ const aiSentence = computed(() => {
   if (current === null) return ''
   const serviceName = store.shop?.services.find((item) => item.id === current.serviceId)?.nombre
   const barber = namedBarber(current)
+  // Without a recognized service there is no filler: only what the API resolved is shown.
   const parts = [
-    (serviceName ?? 'Una cita') + (barber ? ` con ${barber}` : ''),
+    serviceName ? serviceName + (barber ? ` con ${barber}` : '') : '',
     current.date ? `el ${formatShortDate(current.date)}` : '',
     current.time ? `a las ${current.time}` : '',
     current.band ? BAND_TEXT[current.band] : '',
@@ -319,11 +320,20 @@ const aiWarning = computed<BlockNotice | null>(() => {
     case 'no_reconocida': {
       const service = current.field === 'servicio'
       const said = quoted(service ? current.serviceText : current.barberText)
+      const known = namedBarber(current)
+      if (!service && known !== '') {
+        // The barber exists in this shop but does not offer the service: both are named.
+        const offered = store.shop?.services.find((item) => item.id === current.serviceId)?.nombre
+        return {
+          title: 'No disponible en esta barbería',
+          body: `${known} no ofrece ${quoted(offered ?? current.serviceText) || 'ese servicio'}. Elija un barbero de abajo, donde quedó resaltado.`,
+        }
+      }
       return {
         title: 'No disponible en esta barbería',
         body: service
           ? `Esta barbería no ofrece ${said || 'ese servicio'}. Elija un servicio de abajo, donde quedó resaltado.`
-          : `Esta barbería no tiene un barbero llamado ${said || 'ese'} que ofrezca el servicio. Elija un barbero de abajo, donde quedó resaltado.`,
+          : `Esta barbería no tiene un barbero llamado ${said || 'ese'}. Elija un barbero de abajo, donde quedó resaltado.`,
       }
     }
     case 'no_disponible':
@@ -397,7 +407,8 @@ function applyProposal(current: BookingProposal): void {
   const known = store.shop?.services.some((item) => item.id === current.serviceId) ?? false
   if (current.serviceId !== null && known) {
     booking.selectService(current.serviceId)
-    booking.selectBarber(current.barberId)
+    // A barber who does not offer the service is shown in the request but never selected.
+    booking.selectBarber(current.status === 'no_reconocida' ? null : current.barberId)
   } else if (
     booking.serviceId === null &&
     (current.missing.includes('servicio') || current.field === 'servicio')

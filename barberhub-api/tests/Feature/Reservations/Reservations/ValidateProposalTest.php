@@ -43,7 +43,7 @@ final class ValidateProposalTest extends AiTestCase
         $this->seedBookableBarbershops();
         $this->scopeQueriesTo($this->puraNavaja);
         $this->corteClasico = $this->insertService($this->puraNavaja, 'Corte clásico', 30, 5000);
-        $this->corteYBarba = $this->insertService($this->puraNavaja, 'Corte y barba', 60, 9000);
+        $this->corteYBarba = $this->insertService($this->puraNavaja, 'Corte + barba', 60, 9000);
         $this->offer($this->daniela, $this->corteClasico);
         $this->offer($this->daniela, $this->corteYBarba);
         $this->ana = $this->insertUser('Ana Rojas');
@@ -121,7 +121,7 @@ final class ValidateProposalTest extends AiTestCase
             ->assertJsonPath('data.precio', null);
 
         $this->assertEqualsCanonicalizing(
-            [['id' => $this->corteClasico, 'nombre' => 'Corte clásico'], ['id' => $this->corteYBarba, 'nombre' => 'Corte y barba']],
+            [['id' => $this->corteClasico, 'nombre' => 'Corte clásico'], ['id' => $this->corteYBarba, 'nombre' => 'Corte + barba']],
             $response->json('data.candidatos'),
         );
     }
@@ -223,7 +223,45 @@ final class ValidateProposalTest extends AiTestCase
         $this->propose()->assertOk()
             ->assertJsonPath('data.estado', 'no_reconocida')
             ->assertJsonPath('data.campo', 'barbero')
-            ->assertJsonPath('data.servicio_id', $this->corteYBarba);
+            ->assertJsonPath('data.servicio_id', $this->corteYBarba)
+            ->assertJsonPath('data.barbero_id', $this->kevin)
+            ->assertJsonPath('data.candidatos', [['id' => $this->kevin, 'nombre' => 'Kevin']])
+            ->assertJsonPath('data.aclaracion', 'Ese barbero no ofrece ese servicio. ¿Con cuál desea reservar?');
+    }
+
+    /** «corte y barba» is «Corte + barba», with the real spaces and the sign, alone or in the whole phrase (#231). */
+    public function test_the_conjunction_y_resolves_to_a_service_written_with_a_plus_sign(): void
+    {
+        $this->extract(new ExtractedReservation('corte y barba', 'Daniela', self::TUESDAY, '10:00'));
+        $this->propose()->assertOk()
+            ->assertJsonPath('data.estado', 'valida')
+            ->assertJsonPath('data.servicio_id', $this->corteYBarba)
+            ->assertJsonPath('data.precio', 9000);
+
+        $this->extract(new ExtractedReservation('corte y barba', null, self::TUESDAY, dayPart: ExtractedDayPart::Afternoon));
+        $this->propose()->assertOk()->assertJsonPath('data.servicio_id', $this->corteYBarba)->assertJsonPath('data.estado', 'ambigua');
+    }
+
+    /** A barber who does not exist stays unknown: no id, no invented one, and the notice of an unknown name (#231). */
+    public function test_a_barber_who_does_not_exist_is_still_unrecognized(): void
+    {
+        $this->extract(new ExtractedReservation('degradado', 'Pedro', self::TUESDAY, '10:00'));
+
+        $this->propose()->assertOk()
+            ->assertJsonPath('data.estado', 'no_reconocida')
+            ->assertJsonPath('data.campo', 'barbero')
+            ->assertJsonPath('data.barbero_id', null)
+            ->assertJsonPath('data.aclaracion', 'No encontramos a ese barbero en esta barbería. ¿Con cuál desea reservar?');
+    }
+
+    /** Names are never guessed: «Daniel» is not «Daniela», and a service that does not exist is not invented (#231). */
+    public function test_names_are_not_guessed(): void
+    {
+        $this->extract(new ExtractedReservation('degradado', 'Daniel', self::TUESDAY, '10:00'));
+        $this->propose()->assertOk()->assertJsonPath('data.estado', 'no_reconocida')->assertJsonPath('data.barbero_id', null);
+
+        $this->extract(new ExtractedReservation('masaje', null, self::TUESDAY, '10:00'));
+        $this->propose()->assertOk()->assertJsonPath('data.estado', 'no_reconocida')->assertJsonPath('data.campo', 'servicio')->assertJsonPath('data.servicio_id', null);
     }
 
     /** A taken space is not available and offers the same alternatives the booking gives with its 409 (RE-02). */

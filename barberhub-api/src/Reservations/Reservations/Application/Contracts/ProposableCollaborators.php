@@ -14,4 +14,12 @@ interface ProposableCollaborators
      * @return list<ProposableCollaborator>
      */
     public function offering(string $serviceId): array;
+
+    /**
+     * All the active collaborators of the current barbershop, whatever they offer: it tells a barber who does not exist from one who
+     * exists but does not offer the service asked for.
+     *
+     * @return list<ProposableCollaborator>
+     */
+    public function active(): array;
 }

@@ -195,7 +195,9 @@ describe('ShopView · reserve with the assistant', () => {
 
     expect(block(wrapper).text()).toContain('Faltan datos')
     expect(block(wrapper).text()).toContain('No pudimos saber el servicio ni la hora.')
-    expect(block(wrapper).text()).toContain('Una cita, el ')
+    // No filler when the service is not known: the request shows only what was resolved.
+    expect(block(wrapper).text()).not.toContain('Una cita')
+    expect(block(wrapper).text()).toMatch(/Solicitud\s*El /)
     expect(useBookingStore().serviceId).toBeNull()
     expect(wrapper.text()).toContain('Falta elegir')
 
@@ -244,10 +246,61 @@ describe('ShopView · reserve with the assistant', () => {
     })
     await ask(wrapper, 'un corte con Esteban mañana')
 
-    expect(block(wrapper).text()).toContain('un barbero llamado «esteban»')
+    expect(block(wrapper).text()).toContain(
+      'Esta barbería no tiene un barbero llamado «esteban». Elija',
+    )
+    expect(block(wrapper).text()).not.toContain('que ofrezca el servicio')
     expect(useBookingStore().serviceId).toBe(SERVICES[0]!.id)
     expect(useBookingStore().barberId).toBeNull()
     expect(wrapper.text()).toContain('Falta elegir')
+  })
+
+  it('says a barber who exists does not offer the service, naming both, and shows them in the request', async () => {
+    const { wrapper } = await open({
+      proposal: () =>
+        jsonResponse(
+          200,
+          proposalBody({
+            servicio: 'infantil',
+            barbero: 'kevin',
+            fecha: DAY,
+            franja: { nombre: 'noche', desde: '18:00', hasta: '23:59' },
+            estado: 'no_reconocida',
+            campo: 'barbero',
+            servicio_id: SERVICES[0]!.id,
+            barbero_id: 'kevin-mora-id',
+            candidatos: [{ id: 'kevin-mora-id', nombre: 'Kevin Mora' }],
+          }),
+        ),
+    })
+    await ask(wrapper, 'infantil con kevin en la noche')
+
+    const text = block(wrapper).text()
+    expect(text).toContain(`Kevin Mora no ofrece «${SERVICES[0]!.nombre}»`)
+    expect(text).not.toContain('un barbero llamado')
+    expect(text).toContain(`${SERVICES[0]!.nombre} con Kevin Mora`)
+    expect(useBookingStore().serviceId).toBe(SERVICES[0]!.id)
+    expect(useBookingStore().barberId).toBeNull()
+    expect(wrapper.text()).toContain('Falta elegir')
+  })
+
+  it('shows no filler in the request when the service is not recognized', async () => {
+    const { wrapper } = await open({
+      proposal: () =>
+        jsonResponse(
+          200,
+          proposalBody({
+            servicio: 'masaje',
+            fecha: DAY,
+            estado: 'no_reconocida',
+            campo: 'servicio',
+          }),
+        ),
+    })
+    await ask(wrapper, 'un masaje mañana')
+
+    expect(block(wrapper).text()).not.toContain('Una cita')
+    expect(block(wrapper).text()).toContain('Esta barbería no ofrece «masaje».')
   })
 
   it('offers the candidates of an ambiguous phrase and lets each space say with whom', async () => {
