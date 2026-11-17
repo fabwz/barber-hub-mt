@@ -128,6 +128,20 @@ final readonly class EloquentVoucherDefinitionRepository implements VoucherDefin
     }
 
     /**
+     * Read the definitions of the current barbershop that cover the service, whether or not they are still on sale.
+     *
+     * @return list<string>
+     */
+    public function idsCoveringService(ServiceId $service): array
+    {
+        return array_values(VoucherDefinitionServiceModel::query()
+            ->where('barbershop_id', $this->context->current()->value)
+            ->where('service_id', $service->value)
+            ->pluck('voucher_definition_id')
+            ->all());
+    }
+
+    /**
      * Rebuild the definition from its row and the services it covers.
      *
      * @param  array<array-key, string>  $services

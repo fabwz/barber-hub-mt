@@ -134,6 +134,7 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Sesión | `Sessions` | `remaining_sessions` | `sesiones_restantes` |
 | Movimiento de saldo | `VoucherMovement` | `voucher_movements` | — |
 | Bono aplicable | `applicable` | — | — |
+| Pagar con bono | `withVoucher` | `reservations.purchased_voucher_id` | `con_bono` |
 | Funciones de la barbería (bonos y lista de espera activados o no) | `BarbershopFeatures` | `vouchers_enabled`, `waitlist_enabled` | `funciones` (recurso `administracion/funciones`), `bonos_activos`, `lista_espera_activa` |
 
 La **pasarela** es la integración con un proveedor de pago, el puerto `PaymentGateway`; **ONVO Pay** y **PayPal** son los proveedores (`PaymentProvider`). PayPal cobra en dólares: el **tipo de cambio** (`exchangeRate`, `provider_exchange_rate`) son los colones por dólar con que el adaptador convirtió el monto, y la **captura** (`providerCaptureId`, `provider_capture_id`) es el paso con que PayPal toma el dinero de una orden ya aprobada por el cliente. La **dirección de retorno** es la ruta pública a la que el proveedor devuelve al cliente; no confirma nada. La política de la barbería guarda cuál de las dos pasarelas eligió el dueño (`Barbershops`). El **cobro** es el cargo que el sistema crea en el proveedor; el **pago** es el registro propio de ese cobro (`Payment`), con su estado. El **depósito** es la parte del precio que se paga al reservar (el precio por el porcentaje de la política, redondeado hacia arriba al colón); con la modalidad de pago total, el monto del pago es el precio completo.
@@ -212,11 +213,11 @@ Un **tipo de error estable** es un tipo fijo de error RFC 9457 que el cliente we
 | `no-autenticado` | Falta un token válido |
 | `prohibido` | La persona autenticada no tiene permiso suficiente |
 | `metodo-no-permitido` | La ruta no acepta el método HTTP usado |
-| `conflicto` | Una regla del dominio sin tipo propio impide la operación |
+| `conflicto` | Una regla del dominio sin tipo propio impide la operación, por ejemplo reservar con un bono que no cubre el servicio (BO-06) |
 | `espacio-no-disponible` | El espacio ya no está libre (RE-02), con hasta 3 alternativas |
-| `saldo-insuficiente` | El bono ya no tiene sesiones (BO-03) |
+| `saldo-insuficiente` | El bono ya no tiene sesiones, o el cliente no tiene ningún bono pagado (BO-03) |
 | `plazo-vencido` | La cancelación o reprogramación llegó fuera de plazo |
-| `bono-vencido` | El bono ya no está vigente (BO-06) |
+| `bono-vencido` | El bono no está vigente en la fecha de la cita (BO-06) |
 | `oferta-vencida` | La oferta caducó antes de la respuesta (LE-05) |
 | `bono-con-ventas` | El bono ya se vendió: sus sesiones, su vigencia y sus servicios no se cambian (RF-26) |
 | `demasiadas-solicitudes` | Se superó el límite de solicitudes |

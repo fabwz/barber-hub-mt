@@ -184,23 +184,41 @@ final readonly class EloquentPurchasedVoucherRepository implements PurchasedVouc
      * second wall. Nothing is read before deciding. When no row matched, the voucher is read only to tell why. The entry of the
      * record is written in the same transaction, so a refused session leaves nothing behind.
      */
-    public function holdSession(PurchasedVoucherId $id, ReservationId $reservation, DateTimeImmutable $at): void
+    public function holdSession(PurchasedVoucherId $id, ReservationId $reservation, DateTimeImmutable $at, ?DateTimeImmutable $now = null): void
     {
-        DB::transaction(function () use ($id, $reservation, $at): void {
+        DB::transaction(function () use ($id, $reservation, $at, $now): void {
             $instant = self::instant($at);
+            $happenedAt = $now ?? $at;
             $taken = $this->ofBarbershop()
                 ->whereKey($id->value)
                 ->where('status', VoucherStatus::Active->value)
                 ->where('remaining_sessions', '>', 0)
                 ->where('expires_at', '>', $instant)
-                ->update(['remaining_sessions' => DB::raw('remaining_sessions - 1'), 'updated_at' => $instant]);
+                ->update(['remaining_sessions' => DB::raw('remaining_sessions - 1'), 'updated_at' => self::instant($happenedAt)]);
 
             if ($taken === 0) {
                 throw $this->whyNotHeld($id, $instant);
             }
 
-            $this->record($id, $this->context->current()->value, VoucherMovementType::Hold, VoucherMovementType::Hold->delta(), $reservation, $at);
+            $this->record($id, $this->context->current()->value, VoucherMovementType::Hold, VoucherMovementType::Hold->delta(), $reservation, $happenedAt);
         });
+    }
+
+    /**
+     * Read the paid vouchers of the customer, the one that expires first leading (BO-08).
+     *
+     * @return list<PurchasedVoucher>
+     */
+    public function activeOfCustomer(CustomerMembershipId $customer): array
+    {
+        $models = $this->ofBarbershop()
+            ->where('customer_membership_id', $customer->value)
+            ->where('status', VoucherStatus::Active->value)
+            ->orderBy('expires_at')
+            ->orderBy('id')
+            ->get();
+
+        return array_values($models->map(fn (PurchasedVoucherModel $model): PurchasedVoucher => $this->toDomain($model))->all());
     }
 
     /** Tell why the update matched nothing: the voucher is not there, is not paid, has expired or has no session left. */

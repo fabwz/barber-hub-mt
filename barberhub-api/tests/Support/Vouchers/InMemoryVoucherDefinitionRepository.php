@@ -7,6 +7,7 @@ namespace Tests\Support\Vouchers;
 use Src\Vouchers\Shared\Domain\ValueObjects\VoucherDefinitionId;
 use Src\Vouchers\VoucherDefinitions\Domain\Contracts\VoucherDefinitionRepository;
 use Src\Vouchers\VoucherDefinitions\Domain\Entities\VoucherDefinition;
+use Src\Vouchers\VoucherDefinitions\Domain\ValueObjects\ServiceId;
 
 final class InMemoryVoucherDefinitionRepository implements VoucherDefinitionRepository
 {
@@ -53,6 +54,19 @@ final class InMemoryVoucherDefinitionRepository implements VoucherDefinitionRepo
         usort($definitions, fn (VoucherDefinition $a, VoucherDefinition $b): int => $a->name->value <=> $b->name->value);
 
         return $definitions;
+    }
+
+    /**
+     * The definitions that cover the service.
+     *
+     * @return list<string>
+     */
+    public function idsCoveringService(ServiceId $service): array
+    {
+        return array_values(array_map(
+            fn (VoucherDefinition $definition): string => $definition->id->value,
+            array_filter($this->definitions, fn (VoucherDefinition $definition): bool => $definition->services->covers($service)),
+        ));
     }
 
     /** Tell whether the test marked the definition as sold. */

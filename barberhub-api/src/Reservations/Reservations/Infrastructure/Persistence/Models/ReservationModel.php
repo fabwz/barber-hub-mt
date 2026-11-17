@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $cancellation_deadline_hours
  * @property int $reschedule_count
  * @property CarbonImmutable|null $expires_at
+ * @property string|null $purchased_voucher_id
  */
 #[Table('reservations')]
 #[Fillable([
@@ -42,6 +43,7 @@ use Illuminate\Database\Eloquent\Model;
     'cancellation_deadline_hours',
     'reschedule_count',
     'expires_at',
+    'purchased_voucher_id',
 ])]
 final class ReservationModel extends Model
 {

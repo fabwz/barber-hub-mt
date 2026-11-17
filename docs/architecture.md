@@ -416,7 +416,7 @@ El contexto `Vouchers` tiene dos módulos, como el mapa de contextos: `VoucherDe
 - **El registro de movimientos** (`VoucherMovement`, tipos `purchase`, `hold`, `consume` y `release`) solo crece, y su suma es el saldo (BO-09). No hay movimiento de vencimiento: la vigencia se valida al reservar y al consultar, sin proceso de vencimiento (BO-07), con `isValidAt()` y `balanceAt()` en el agregado.
 - **Errores de negocio.** `InsufficientBalanceException` (`saldo-insuficiente`) y `VoucherExpiredException` (`bono-vencido`) usan los tipos estables; el resto (`VoucherNotActiveException`, `VoucherAlreadyActiveException`, `BalanceAboveTotalException`) responde el 409 `conflicto`, y `VoucherNotFoundException`, el 404 de siempre.
 - **Persistencia.** Los modelos Eloquent solo guardan y leen (sin lógica ni casts de fecha: los instantes viajan como texto con su desfase). El consumo concurrente es `PurchasedVoucherRepository::holdSession()`, descrito en [database.md](database.md); el caso de uso que lo llama es el #89.
-- **Colaboración con otros contextos.** `ReservationId` y `CustomerMembershipId` son identificadores propios del módulo; no importa el dominio de `Reservations` ni de `Identity`. El aviso de pago que activa el bono (`PaymentConfirmed`) llega desde `Payments` por el puerto `VoucherActivation` (#88), y la reserva que consume la sesión llegará por puerto o evento en el #89.
+- **Colaboración con otros contextos.** `ReservationId` y `CustomerMembershipId` son identificadores propios del módulo; no importa el dominio de `Reservations` ni de `Identity`. El aviso de pago que activa el bono (`PaymentConfirmed`) llega desde `Payments` por el puerto `VoucherActivation` (#88), y la reserva usa la sesión por el puerto `ReservationVouchers` (#89, ver «Reservar con una sesión de bono»).
 
 ### Comprar un bono y activarlo con el aviso (#88)
 
@@ -432,6 +432,19 @@ La compra de un bono (RF-27) es un pago, así que la ruta y el caso de uso viven
 - **Aviso de un pago de bono.** `locate_payment_of_notice` no cambió: busca por proveedor y referencia en `payments`, y un pago de bono los tiene como cualquiera.
 - **Bonos desactivados (#50).** `StartVoucherPurchase` empieza por el puerto `VoucherSales` (adaptador `BarbershopsVoucherSales`, que invoca `GetBarbershopFeatures` de `Barbershops`): con `vouchers_enabled` en `false` lanza `VoucherSalesDisabledException` (409 `conflicto`, sin tipo estable propio) antes de bloquear el bono, crear el rol de cliente, el bono o el pago. Un bono ya comprado o pendiente no se toca: el pago pendiente que se confirma después sigue activándolo.
 - **Lo que todavía no existe.** Un bono pendiente no vence por sí solo: no hay regla de expiración de compras pendientes.
+
+### Reservar con una sesión de bono (#89)
+
+La petición de crear la reserva (`POST /barberias/{barberia}/reservas`) acepta `con_bono` (booleano opcional, falso por omisión): el cliente elige pagar con bono y el servidor elige cuál (BO-08). Nunca viene un identificador de bono del cliente.
+
+- **Puerto.** `CreateReservation` y `CancelReservation` llaman al puerto `ReservationVouchers` (`hold`, `release`, `consume`), cuyo adaptador `VouchersReservationVouchers` invoca los casos de uso `HoldVoucherSession`, `ReleaseVoucherSession` y `ConsumeVoucherSession` de `PurchasedVouchers`. `Reservations` no importa el dominio de `Vouchers`; las excepciones de bonos atraviesan `Application` sin que `Reservations` las nombre.
+- **Orden dentro de la transacción de la reserva.** Bloquea al colaborador, revalida el espacio, crea la membresía, confirma la reserva (RE-07, sin depósito), la guarda, aparta la sesión y vuelve a guardar la reserva con el bono usado. La reserva se guarda antes porque el registro del bono apunta a ella; si no hay sesión, todo se revierte y no queda ni la reserva ni la membresía.
+- **Qué bono se usa (`HoldVoucherSession`).** Entre los bonos pagados del cliente en esa barbería, nunca los de otra (MT-03, BO-07), en este orden de evaluación: ninguno pagado, `saldo-insuficiente`; ninguno cubre el servicio, `conflicto` con la clave `vouchers.not_applicable` y sin cobro de diferencia (BO-06); ninguno de los que lo cubren está vigente en la fecha de la cita, `bono-vencido`; de los vigentes se prueba primero el que vence antes (BO-08) y, si a ese se le acabó la última sesión, el siguiente; si ninguno la tiene, `saldo-insuficiente`. Qué definiciones cubren el servicio lo lee el puerto `CoveringDefinitions` (adaptador hacia `ListDefinitionsCoveringService` de `VoucherDefinitions`), con la definición viva, retirada o no.
+- **La vigencia se mide en la cita (BO-06, BO-07).** `holdSession()` recibe la fecha de la cita para la vigencia y el instante de la reserva para el registro: un bono vigente hoy no sirve para una cita posterior a su vencimiento. El decremento sigue siendo el `UPDATE` atómico y condicional del #132, así que dos reservas por la última sesión dejan una confirmada y otra con `saldo-insuficiente` y el saldo en 0.
+- **Sin cobro no hay bono.** Si la barbería no cobra (`sin_pago`) no hay depósito que reemplazar: `con_bono` responde 422 `datos-invalidos` en ese campo (`VoucherNotRequiredException`) antes de escribir nada y no se aparta ninguna sesión.
+- **Cancelar (RF-17, BO-05).** `reservations.purchased_voucher_id` dice qué bono pagó la reserva. Con ella, `CancelReservation` reintegra la sesión (`release`) si la cancelación es a tiempo o de la barbería y la deja usada (`consume`, sin cambio de saldo) si es tardía, en la misma transacción. Repetir la cancelación vuelve antes de llegar ahí (CA-06) y los dos casos de uso de bonos además miran el registro: una reserva ya liquidada no se liquida de nuevo; el índice único `voucher_movements_one_settlement_idx` es la segunda barrera.
+- **Ausencia.** El caso de uso de marcar atendida o ausente (RF-18) todavía no existe; cuando llegue llamará a `ReservationVouchers::consume`. La sesión ya está descontada desde que se confirmó la reserva (BO-04), así que hasta entonces una ausencia no reintegra nada.
+- **Registro técnico (#51).** No hay acción nueva en `audit_log`: el movimiento de saldo ya queda en `voucher_movements`, que solo crece y nombra la reserva, y la cancelación de la barbería deja su entrada de siempre. SE-04 pide registrar el ajuste de saldos, que no existe en el código.
 
 ### Definir y retirar bonos (#87)
 
@@ -457,7 +470,7 @@ La compra de un bono (RF-27) es un pago, así que la ruta y el caso de uso viven
 | Garantía | Dónde se cumple |
 | --- | --- |
 | Dos solicitudes por el mismo espacio: una gana, la otra recibe `espacio-no-disponible` | `CreateReservation` bloquea la fila del colaborador (`SELECT ... FOR UPDATE`) y revalida la disponibilidad (#56); la restricción `EXCLUDE` de PostgreSQL es la segunda barrera y su violación se traduce a `espacio-no-disponible`. La prueba de carrera con conexiones paralelas es el #127 (RE-01, RE-02) |
-| El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0 ...`) en `PurchasedVoucherRepository::holdSession()` más `CHECK (remaining_sessions >= 0)`, ambos del #132 (BO-03). La prueba con conexiones paralelas de la operación es `SimultaneousVoucherHoldsTest` (#132); el caso de uso de consumo es el #89 y la prueba amplia, el #133 |
+| El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0 ...`) en `PurchasedVoucherRepository::holdSession()` más `CHECK (remaining_sessions >= 0)`, ambos del #132 (BO-03). La prueba con conexiones paralelas de la operación es `SimultaneousVoucherHoldsTest` (#132); el caso de uso de la reserva es `HoldVoucherSession` (#89) y la prueba amplia, el #133 |
 | Una reserva tiene un solo pago pendiente o aprobado | Índice único parcial `payments_one_active_per_reservation_idx` sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved` (#129); `EloquentPaymentRepository` lo traduce a `ActivePaymentExistsException`. Es la idempotencia del botón de pagar |
 | Un evento de la pasarela se procesa una sola vez | Llave única `(gateway, event_id)` en `webhook_events`, escrita en la misma transacción que el efecto del aviso, con el pago y la reserva bloqueados (#65) (PA-05) |
 | Cancelar es idempotente | El caso de uso revisa el estado actual dentro de la transacción (previsto, #60) (CA-06) |
@@ -477,9 +490,10 @@ Toda respuesta de error sigue RFC 9457 (`application/problem+json`). `ProblemDet
 | Persona autenticada sin permiso suficiente | `prohibido` | 403 |
 | Otra excepción del dominio sin tipo propio | `conflicto` | 409 |
 | Espacio ocupado al reservar | `espacio-no-disponible`, con hasta 3 alternativas | 409 |
-| Última sesión del bono ya tomada | `saldo-insuficiente` | 409 |
+| Última sesión del bono ya tomada, o ningún bono pagado (RF-28) | `saldo-insuficiente` | 409 |
+| Ningún bono del cliente cubre el servicio de la reserva (BO-06) | `conflicto` | 409 |
 | Cancelación o reprogramación fuera del plazo | `plazo-vencido` | 409 |
-| Bono vencido | `bono-vencido` | 409 |
+| Bono vencido en la fecha de la cita | `bono-vencido` | 409 |
 | Oferta vencida | `oferta-vencida` | 409 |
 | Cambiar las sesiones, la vigencia o los servicios de un bono que ya se vendió (RF-26) | `bono-con-ventas` | 409 |
 | Cualquier otra | `error-interno`, sin detalles técnicos | 500 |

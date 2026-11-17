@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Shared\ScopesQueriesToBarbershop;
+use Tests\Support\Vouchers\SeedsVouchers;
 use Tests\TestCase;
 
 /** The integrity of the reservation tables lives in PostgreSQL too, and no relation crosses barbershops (ADR 0009, MT-04). */
@@ -20,6 +21,7 @@ final class ReservationSchemaTest extends TestCase
 {
     use RefreshDatabaseAsOwner;
     use ScopesQueriesToBarbershop;
+    use SeedsVouchers;
 
     private const string CHECK_VIOLATION = '23514';
 
@@ -63,7 +65,7 @@ final class ReservationSchemaTest extends TestCase
 
         $this->assertEqualsCanonicalizing([
             'id', 'barbershop_id', 'collaborator_id', 'service_id', 'customer_membership_id', 'status', 'starts_at', 'ends_at',
-            'blocked_until', 'price', 'duration_minutes', 'cancellation_deadline_hours', 'reschedule_count', 'expires_at', 'created_at', 'updated_at',
+            'blocked_until', 'price', 'duration_minutes', 'cancellation_deadline_hours', 'reschedule_count', 'expires_at', 'purchased_voucher_id', 'created_at', 'updated_at',
         ], $schema->getColumnListing('reservations'));
         $this->assertEqualsCanonicalizing(
             ['id', 'barbershop_id', 'reservation_id', 'from_status', 'to_status', 'changed_by_user_id', 'changed_at'],
@@ -175,6 +177,29 @@ final class ReservationSchemaTest extends TestCase
         }
 
         $this->assertSame(0, DB::table('reservations')->count());
+    }
+
+    /** A reservation can use only a voucher of its own barbershop, (RF-28, BO-07, MT-04). */
+    public function test_a_reservation_can_use_only_a_voucher_of_its_barbershop(): void
+    {
+        $this->scopeQueriesTo($this->fadeLab);
+        $foreignCustomer = $this->insertCustomer($this->fadeLab, 'otra@barberhub.test');
+        $foreignDefinition = $this->insertVoucherDefinition($this->fadeLab, [$this->insertService($this->fadeLab)]);
+        $foreignVoucher = $this->insertPurchasedVoucher($this->fadeLab, $foreignCustomer, $foreignDefinition);
+        $this->scopeQueriesTo($this->puraNavaja);
+        $definition = $this->insertVoucherDefinition($this->puraNavaja, [$this->haircut]);
+        $voucher = $this->insertPurchasedVoucher($this->puraNavaja, $this->ana, $definition);
+
+        try {
+            DB::transaction(fn () => $this->reservation(['purchased_voucher_id' => $foreignVoucher]));
+            $this->fail('A reservation used a voucher of another barbershop.');
+        } catch (QueryException $exception) {
+            $this->assertSame(self::FOREIGN_KEY_VIOLATION, $exception->getCode());
+        }
+
+        $id = $this->reservation(['purchased_voucher_id' => $voucher]);
+        $this->assertSame($voucher, DB::table('reservations')->where('id', $id)->value('purchased_voucher_id'));
+        $this->assertNull(DB::table('reservations')->where('id', $this->reservation($this->slot('2030-03-04 12:00')))->value('purchased_voucher_id'));
     }
 
     /** A collaborator with a reservation cannot be deleted, so the reservation never points at nothing. */
