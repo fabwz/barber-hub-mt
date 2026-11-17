@@ -7,6 +7,43 @@ Plataforma web multi-inquilino de reservas y cobro para barberías. Proyecto int
 - `barberhub-api`: API REST en Laravel 13 y PHP 8.4, con PostgreSQL 18.
 - `barberhub-web`: cliente web en Vue con TypeScript.
 
+## Requisitos, instalación y ejecución
+
+| Herramienta | Versión | Para qué |
+| --- | --- | --- |
+| PHP | 8.4, con las extensiones `intl` y `pdo_pgsql` | API |
+| Composer | 2 | Dependencias de la API |
+| PostgreSQL | 18 | Base de datos |
+| Node.js | 26 (`barberhub-web/.nvmrc`) | Cliente web |
+| npm | El que incluye Node.js | Dependencias del cliente |
+
+Cada proyecto tiene su propio README con el detalle:
+
+- **API:** [`barberhub-api/README.md`](barberhub-api/README.md): roles y bases (`database/roles.sql`), migraciones, ejecución, pruebas y todas las variables de entorno.
+- **Cliente web:** [`barberhub-web/README.md`](barberhub-web/README.md): instalación, scripts y su variable de entorno.
+
+Resumen para levantar el proyecto (los valores de `.env` se completan según cada README; nunca se versionan):
+
+```sh
+# API (en una terminal)
+cd barberhub-api
+composer install
+cp .env.example .env
+php artisan key:generate
+# Una vez: psql -U postgres -v "owner_password=..." -v "app_password=..." -f database/roles.sql
+php artisan migrate --database=pgsql_admin
+php artisan db:seed
+php artisan serve
+
+# Cliente web (en otra terminal)
+cd barberhub-web
+npm ci
+cp .env.example .env
+npm run dev
+```
+
+Pruebas y comprobaciones: `composer lint`, `composer analyse` y `php artisan test` en `barberhub-api`; `npm run lint`, `npm run format:check`, `npm run type-check`, `npm run test` y `npm run build` en `barberhub-web`. `composer test` puede agotar los 300 s que Composer concede a un script; `php artisan test` corre la misma suite completa sin ese límite.
+
 ## Documentación: `context/`, `docs/` y `.claude/`
 
 - **`context/`:** qué debe hacer el sistema (requisitos y reglas de negocio). Es la fuente de verdad funcional: los issues la citan por identificador (por ejemplo RF-10 o MT-03) y solo cambia por decisión del dueño del proyecto.
@@ -262,6 +299,32 @@ Cómo comprobar que funciona:
 3. Comprueba que el botón **Merge pull request** está desactivado y que la sección de verificaciones dice que faltan los checks requeridos.
 4. Corrige el error y haz push: cuando los cuatro trabajos queden en verde, el botón se activa.
 5. Cierra el pull request de prueba y borra la rama.
+
+## Uso de inteligencia artificial
+
+Este proyecto se construyó con asistencia de IA, y este apartado declara qué se generó y qué se verificó (RNF-26).
+
+### Qué herramienta hizo qué
+
+- **Claude (chat), como arquitecto:** diseño, decisiones técnicas, redacción de los prompts de cada issue y revisión de cada entrega.
+- **Claude Code:** genera código, pruebas y documentación en el repositorio, con una rama y un pull request por issue. Sus instrucciones están en `.claude/CLAUDE.md`. Claude Code no ejecuta los comandos de git que modifican algo ni los de GitHub: los commits y los merges los realiza el autor. La asistencia de IA se declara en esta sección, no en los commits.
+- **Claude Design:** diseño de la interfaz. El diseño de la interfaz parte del artefacto de Claude Design (BarberHub v7); `DESIGN.md` lo documenta y se mantiene alineado con él.
+
+### Qué verifica el autor
+
+- Revisa cada entrega contra los criterios de aceptación del issue.
+- Hace los commits y los merges.
+- Ejecuta pruebas manuales en el navegador y con Postman.
+- Exige la CI en verde: Pint, Larastan, PHPUnit y Vitest (además de ESLint, Prettier, `vue-tsc`, la compilación y el análisis de secretos).
+
+### La IA como función del producto
+
+La reserva con IA (RF-37) convierte una frase libre en una propuesta de reserva que el cliente confirma; la IA no crea reservas (IA-03).
+
+- El proveedor externo (Google Gemini) está detrás de un puerto: el dominio no lo conoce y en las pruebas se simula.
+- La salida es estructurada y se valida contra el catálogo y la disponibilidad reales de la barbería; lo que no existe se descarta (IA-02).
+- Al proveedor solo se envían la frase, la fecha, la zona horaria y los nombres de los servicios y colaboradores activos; nunca el correo ni el teléfono del cliente (IA-06).
+- La respuesta del proveedor tiene un límite de 10 s y un circuito de corte; si falla, el resto del sistema sigue funcionando y se ofrece la reserva manual (IA-05).
 
 ## Estado
 
