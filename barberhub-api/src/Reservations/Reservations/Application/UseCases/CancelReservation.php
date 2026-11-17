@@ -6,12 +6,14 @@ namespace Src\Reservations\Reservations\Application\UseCases;
 
 use DateTimeImmutable;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
+use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\DTOs\CancelledReservation;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
+use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Shared\Domain\Contracts\AuditLog;
@@ -22,12 +24,13 @@ use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CancelReservation
 {
-    /** Receive the reservation repository, the port that finds the customer role, the transaction port and the technical record. */
+    /** Receive the reservation repository, the port that finds the customer role, the transaction port, the technical record and the vouchers port. */
     public function __construct(
         private ReservationRepository $reservations,
         private CustomerDirectory $customers,
         private TransactionRunner $transaction,
         private AuditLog $audit,
+        private ReservationVouchers $vouchers,
     ) {}
 
     /**
@@ -37,7 +40,11 @@ final readonly class CancelReservation
      * simultaneous cancellations run in turn and the second finds it cancelled. Cancelling again changes nothing and adds
      * no entry to the history (CA-06); a repeat keeps the class of the first one, measured at the instant it was made.
      * A reservation in a final status that is not a cancellation cannot be cancelled (RE-04). A cancellation by the barbershop
-     * leaves its entry in the technical record, in the same transaction (SE-04); the cancellation by the customer does not.
+     * leaves its entry in the technical record, in the same transaction (SE-04); the cancellation by the customer does not. If a
+     * session of a voucher pays the reservation, the same transaction settles it: an on-time cancellation, or the one of the
+     * barbershop, gives the session back and a late one leaves it used (RF-17, BO-05, CA-02, CA-03). A repeat returns before it, so
+     * the session is never given back twice (CA-06). The balance of the voucher is already in its append-only record, which names
+     * the reservation, so the technical record needs no further entry for it (SE-04 names balance adjustments, which do not exist).
      *
      * @throws ReservationNotFoundException
      * @throws TransitionNotAllowedException
@@ -65,8 +72,25 @@ final readonly class CancelReservation
                 $this->recordCancellation($reservation, $previous, $userId, $now);
             }
 
-            return new CancelledReservation($reservation, $reservation->classifyCancellation($now));
+            $class = $reservation->classifyCancellation($now);
+            $this->settleVoucherSession($reservation, $class, $now);
+
+            return new CancelledReservation($reservation, $class);
         });
+    }
+
+    /** Give the session of the voucher back, or leave it used when the cancellation was late (BO-05); a reservation with no voucher has nothing to settle. */
+    private function settleVoucherSession(Reservation $reservation, CancellationClass $class, DateTimeImmutable $now): void
+    {
+        if ($reservation->purchasedVoucherId === null) {
+            return;
+        }
+
+        $voucher = $reservation->purchasedVoucherId->value;
+
+        $class === CancellationClass::Late
+            ? $this->vouchers->consume($voucher, $reservation->id->value, $now)
+            : $this->vouchers->release($voucher, $reservation->id->value, $now);
     }
 
     /** Leave the status change of a cancellation by the barbershop in the technical record (SE-04). */

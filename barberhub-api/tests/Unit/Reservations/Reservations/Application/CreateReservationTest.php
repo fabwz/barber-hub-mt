@@ -25,6 +25,7 @@ use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundExceptio
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
+use Src\Reservations\Reservations\Domain\Exceptions\VoucherNotRequiredException;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\SlotAlternative;
@@ -33,8 +34,10 @@ use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 use Src\Shared\Domain\ValueObjects\UserId;
+use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\InsufficientBalanceException;
 use Tests\Support\Identity\InMemoryMembershipRepository;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Reservations\RecordingReservationVouchers;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
 /** Daniela's space of 10:00 is booked by Ana in a barbershop with no payment policy yet (RF-11, RE-01, RE-02, RE-06, RE-07, SV-03, UP-09). */
@@ -53,6 +56,8 @@ final class CreateReservationTest extends TestCase
     private InMemoryMembershipRepository $memberships;
 
     private RecordingTransactionRunner $transaction;
+
+    private RecordingReservationVouchers $vouchers;
 
     /** @var list<string> What happened, in order. */
     private array $calls = [];
@@ -81,6 +86,7 @@ final class CreateReservationTest extends TestCase
         $this->reservations = new InMemoryReservationRepository;
         $this->memberships = new InMemoryMembershipRepository;
         $this->transaction = new RecordingTransactionRunner;
+        $this->vouchers = new RecordingReservationVouchers;
         $test = $this;
 
         $services = new class($test) implements BookableServices
@@ -151,7 +157,7 @@ final class CreateReservationTest extends TestCase
             }
         };
 
-        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations), $this->transaction);
+        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations), $this->transaction, $this->vouchers);
     }
 
     /** The reservation is confirmed at once with the copies of the service, and its history has creation and confirmation (RE-07, SV-03, RE-09). */
@@ -271,6 +277,63 @@ final class CreateReservationTest extends TestCase
         }
     }
 
+    /** Paying with a voucher in a barbershop that charges confirms at once, with no deposit, and sets one session aside for the appointment (RF-28, BO-04, RE-07). */
+    public function test_a_voucher_confirms_the_reservation_and_sets_a_session_aside(): void
+    {
+        $this->paymentRequired = true;
+
+        $reservation = $this->createReservation->execute($this->command(withVoucher: true), self::at('2030-03-01 08:00'));
+
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->status);
+        $this->assertNull($reservation->expiresAt);
+        $this->assertSame(RecordingReservationVouchers::VOUCHER, $reservation->purchasedVoucherId?->value);
+        $this->assertSame(['hold'], $this->vouchers->operations());
+        $this->assertSame($reservation->id->value, $this->vouchers->calls[0][2]);
+        $this->assertEquals([self::SERVICE_ID, self::at('2030-03-05 10:00')], $this->vouchers->holds[0]);
+        $this->assertSame(RecordingReservationVouchers::VOUCHER, $this->reservations->find($reservation->id)?->purchasedVoucherId?->value);
+    }
+
+    /** A reservation that does not ask for a voucher never touches one (RF-28). */
+    public function test_a_reservation_without_voucher_uses_no_session(): void
+    {
+        $this->paymentRequired = true;
+
+        $reservation = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+
+        $this->assertSame([], $this->vouchers->calls);
+        $this->assertNull($reservation->purchasedVoucherId);
+        $this->assertSame(ReservationStatus::Temporary, $reservation->status);
+    }
+
+    /** With no session to take the transaction is rolled back and neither the reservation nor the membership remain (BO-03, RF-11). */
+    public function test_a_refused_voucher_leaves_nothing(): void
+    {
+        $this->paymentRequired = true;
+        $this->vouchers->refuse = InsufficientBalanceException::create();
+
+        try {
+            $this->createReservation->execute($this->command(withVoucher: true), self::at('2030-03-01 08:00'));
+            $this->fail('The reservation was created without a session.');
+        } catch (InsufficientBalanceException) {
+            $this->assertSame(1, $this->transaction->rolledBack());
+            $this->assertSame(0, $this->transaction->committed());
+        }
+    }
+
+    /** Where the barbershop does not charge there is no payment to replace: it is refused on the field and no session is used (RF-28). */
+    public function test_a_voucher_is_refused_where_the_barbershop_does_not_charge(): void
+    {
+        try {
+            $this->createReservation->execute($this->command(withVoucher: true), self::at('2030-03-01 08:00'));
+            $this->fail('The voucher was accepted in a barbershop that does not charge.');
+        } catch (VoucherNotRequiredException $exception) {
+            $this->assertSame('con_bono', $exception->field());
+            $this->assertSame([], $this->vouchers->calls);
+            $this->assertSame(0, $this->reservations->count());
+            $this->assertSame(0, $this->transaction->runs());
+        }
+    }
+
     /** An owner or a collaborator of the barbershop is refused and nothing is stored (UP-07). */
     public function test_staff_of_the_barbershop_is_refused(): void
     {
@@ -360,9 +423,9 @@ final class CreateReservationTest extends TestCase
     }
 
     /** The request of Ana for Daniela's space of 10:00 on Tuesday 5 March 2030. */
-    private function command(?DateTimeImmutable $startsAt = null): CreateReservationCommand
+    private function command(?DateTimeImmutable $startsAt = null, bool $withVoucher = false): CreateReservationCommand
     {
-        return new CreateReservationCommand(self::ANA_ID, self::SERVICE_ID, self::DANIELA_ID, $startsAt ?? self::at('2030-03-05 10:00'));
+        return new CreateReservationCommand(self::ANA_ID, self::SERVICE_ID, self::DANIELA_ID, $startsAt ?? self::at('2030-03-05 10:00'), $withVoucher);
     }
 
     /** A moment in Costa Rica time. */

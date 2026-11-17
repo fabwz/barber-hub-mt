@@ -30,6 +30,8 @@ final class CreateReservationRequest extends FormRequest
             'barbero' => ['required', 'uuid'],
             /** Inicio del espacio, fecha y hora ISO 8601 con desfase, por ejemplo `2030-03-05T10:00:00-06:00`. */
             'inicio' => ['required', 'date_format:'.self::START_FORMAT],
+            /** Verdadero para pagar con una sesión de un bono de la persona en esta barbería, sin depósito (RF-28). El servidor elige el bono: entre los vigentes que cubren el servicio, el que vence antes. Por omisión es falso. */
+            'con_bono' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -51,6 +53,7 @@ final class CreateReservationRequest extends FormRequest
             $this->string('servicio')->toString(),
             $this->string('barbero')->toString(),
             new DateTimeImmutable($this->string('inicio')->toString())->setTimezone(new DateTimeZone((string) config('app.timezone'))),
+            $this->boolean('con_bono'),
         );
     }
 }

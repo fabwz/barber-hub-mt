@@ -34,5 +34,6 @@ return [
     'slot_unavailable' => 'El espacio ya no está disponible. Elija uno de los espacios alternativos.',
     'start_invalid' => 'El inicio debe escribirse como fecha y hora ISO 8601 con desfase, por ejemplo 2030-03-05T10:00:00-06:00.',
     'transition_not_allowed' => 'La reserva no puede pasar a ese estado.',
+    'voucher_not_required' => 'Esta barbería no cobra por reservar, así que no hace falta usar una sesión de bono.',
 
 ];

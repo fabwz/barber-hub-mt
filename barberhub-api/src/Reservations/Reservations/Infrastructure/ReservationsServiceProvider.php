@@ -30,6 +30,7 @@ use Src\Reservations\Reservations\Application\Contracts\ProposableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\ProposableServices;
 use Src\Reservations\Reservations\Application\Contracts\ProposalAvailability;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExtractor;
+use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorMisconfiguredException;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
@@ -58,6 +59,7 @@ use Src\Reservations\Reservations\Infrastructure\Services\ServicesActiveServiceN
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesBookableServices;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesProposableServices;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesServiceNames;
+use Src\Reservations\Reservations\Infrastructure\Vouchers\VouchersReservationVouchers;
 use Src\Shared\Domain\Contracts\AiAvailability;
 use Src\Shared\Domain\Contracts\Clock;
 
@@ -89,6 +91,7 @@ final class ReservationsServiceProvider extends ServiceProvider
         ProposableServices::class => ServicesProposableServices::class,
         ProposableCollaborators::class => CollaboratorsProposableCollaborators::class,
         ProposalAvailability::class => AvailabilityProposalAvailability::class,
+        ReservationVouchers::class => VouchersReservationVouchers::class,
     ];
 
     /** Limit the proposals by phrase to 10 a minute per person (RF-37): each one spends a call of the free tier of the provider. */

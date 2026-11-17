@@ -16,6 +16,7 @@ use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
@@ -24,6 +25,7 @@ use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Reservations\RecordingReservationVouchers;
 use Tests\Support\Shared\InMemoryAuditLog;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
@@ -44,6 +46,8 @@ final class CancelReservationTest extends TestCase
 
     private InMemoryAuditLog $audit;
 
+    private RecordingReservationVouchers $vouchers;
+
     private string $reservationId;
 
     /** Ana has a confirmed reservation on 5 March at 10:00 with a deadline of 24 hours. */
@@ -54,6 +58,7 @@ final class CancelReservationTest extends TestCase
         $this->reservations = new InMemoryReservationRepository;
         $this->transaction = new RecordingTransactionRunner;
         $this->audit = new InMemoryAuditLog;
+        $this->vouchers = new RecordingReservationVouchers;
         $reservation = Reservation::create(
             $this->reservations->nextId(),
             new CollaboratorId('0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d55'),
@@ -178,6 +183,59 @@ final class CancelReservationTest extends TestCase
         $this->assertCount(1, $this->audit->entries());
     }
 
+    /** A cancellation on time gives the session of the voucher back, once, and a reservation paid another way settles nothing (RF-17, BO-05, CA-02). */
+    public function test_an_on_time_cancellation_gives_the_session_back(): void
+    {
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+        $this->assertSame([], $this->vouchers->calls);
+
+        $this->setUp();
+        $this->payWithVoucher();
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+
+        $this->assertSame([['release', RecordingReservationVouchers::VOUCHER, $this->reservationId]], $this->vouchers->calls);
+        $this->assertSame(1, $this->transaction->committed());
+    }
+
+    /** The cancellation of the barbershop gives the session back whatever the time (BO-05, CA-04). */
+    public function test_a_cancellation_by_the_barbershop_gives_the_session_back(): void
+    {
+        $this->payWithVoucher();
+
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, self::at('2030-03-05 09:30'));
+
+        $this->assertSame(['release'], $this->vouchers->operations());
+    }
+
+    /** A late cancellation leaves the session used: the balance is not given back (BO-05, CA-03). */
+    public function test_a_late_cancellation_leaves_the_session_used(): void
+    {
+        $this->payWithVoucher();
+
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 10:01'));
+
+        $this->assertSame([['consume', RecordingReservationVouchers::VOUCHER, $this->reservationId]], $this->vouchers->calls);
+    }
+
+    /** Repeating the cancellation does not settle the session again (CA-06). */
+    public function test_repeating_the_cancellation_settles_the_session_once(): void
+    {
+        $this->payWithVoucher();
+
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:30'));
+
+        $this->assertSame(['release'], $this->vouchers->operations());
+    }
+
+    /** Attach the voucher to the reservation of Ana, as the creation does. */
+    private function payWithVoucher(): void
+    {
+        $reservation = $this->reservations->find(new ReservationId($this->reservationId)) ?? throw new \LogicException;
+        $reservation->payWithVoucher(new PurchasedVoucherId(RecordingReservationVouchers::VOUCHER));
+        $this->reservations->save($reservation);
+    }
+
     private function useCase(): CancelReservation
     {
         $customers = new class implements CustomerDirectory
@@ -193,7 +251,7 @@ final class CancelReservationTest extends TestCase
             }
         };
 
-        return new CancelReservation($this->reservations, $customers, $this->transaction, $this->audit);
+        return new CancelReservation($this->reservations, $customers, $this->transaction, $this->audit, $this->vouchers);
     }
 
     private static function at(string $moment): DateTimeImmutable

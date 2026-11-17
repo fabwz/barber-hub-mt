@@ -11,22 +11,25 @@ use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerMemberships;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
+use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
+use Src\Reservations\Reservations\Domain\Exceptions\VoucherNotRequiredException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CreateReservation
 {
-    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations and the transaction port. */
+    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations, the transaction port and the vouchers port. */
     public function __construct(
         private ReservationRepository $reservations,
         private BookableServices $services,
@@ -37,6 +40,7 @@ final readonly class CreateReservation
         private PaymentRequirement $payment,
         private ExpireOverdueReservations $expireOverdue,
         private TransactionRunner $transaction,
+        private ReservationVouchers $vouchers,
     ) {}
 
     /**
@@ -49,16 +53,25 @@ final readonly class CreateReservation
      * If the barbershop charges, the reservation stays temporary and expires 10 minutes after it was made unless its
      * payment confirms it (RE-05, PA-06); if not, it is confirmed right away (RE-07), so its history has two entries:
      * creation and confirmation. If anything fails the transaction is
-     * rolled back and no membership is left. When the space is taken, by the check or by the exclusion of the database
+     * rolled back and no membership is left. When the customer pays with a voucher (RF-28) and the barbershop charges, the
+     * reservation is confirmed right away without a deposit (RE-07) and, once it is stored, a session of a valid voucher that
+     * covers the service is set aside in the same transaction, the one that expires first (BO-04, BO-08); if none can be, the
+     * transaction is rolled back and nothing is left, not even the membership. In a barbershop that does not charge there is nothing
+     * to replace, so asking for a voucher is rejected before anything is written and no session is used. When the space is taken, by the check or by the exclusion of the database
      * (the second barrier, ADR 0009), the error carries up to 3 alternatives, read after the rollback (RE-02).
      *
      * @throws SlotUnavailableException
      * @throws OverlappingReservationException
+     * @throws VoucherNotRequiredException
      */
     public function execute(CreateReservationCommand $command, DateTimeImmutable $now): Reservation
     {
         $service = $this->services->find($command->serviceId) ?? throw ServiceNotBookableException::create();
         $author = Author::person(new UserId($command->userId));
+
+        if ($command->withVoucher && ! $this->payment->isRequired()) {
+            throw VoucherNotRequiredException::create();
+        }
 
         try {
             return $this->transaction->run(function () use ($command, $service, $author, $now): Reservation {
@@ -87,7 +100,17 @@ final readonly class CreateReservation
                     throw OverlappingReservationException::create();
                 }
 
-                if (! $this->payment->isRequired()) {
+                if ($command->withVoucher) {
+                    $reservation->confirm($now, $author);
+                    $this->reservations->save($reservation);
+                    $reservation->payWithVoucher(new PurchasedVoucherId($this->vouchers->hold(
+                        $customer->value,
+                        $command->serviceId,
+                        $reservation->id->value,
+                        $command->startsAt,
+                        $now,
+                    )));
+                } elseif (! $this->payment->isRequired()) {
                     $reservation->confirm($now, $author);
                 }
 
