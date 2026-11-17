@@ -72,7 +72,13 @@ final readonly class ValidateProposal
             $ids = $this->matcher->match($said->collaborator, $this->names($staff));
 
             if ($ids === []) {
-                return $this->result($said, $missing, ProposalStatus::Unrecognized, ProposalField::Collaborator, $service);
+                // An active barber who does not offer the service is not an unknown name: the answer carries them.
+                $everyone = $this->collaborators->active();
+                $ids = $this->matcher->match($said->collaborator, $this->names($everyone));
+                $known = array_values(array_filter($everyone, fn (ProposableCollaborator $candidate): bool => in_array($candidate->id, $ids, true)));
+
+                return $this->result($said, $missing, ProposalStatus::Unrecognized, ProposalField::Collaborator, $service, count($known) === 1 ? $known[0] : null,
+                    candidates: count($known) === 1 ? $this->candidates($known) : []);
             }
 
             $matches = array_values(array_filter($staff, fn (ProposableCollaborator $candidate): bool => in_array($candidate->id, $ids, true)));

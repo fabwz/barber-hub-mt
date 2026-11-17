@@ -19,14 +19,16 @@ final class NameMatcher
         'ñ' => 'n',
     ];
 
-    /** Lower case, without accents or signs, with the words separated by one space. */
+    /** Lower case, without accents, signs or the word «y», with the words separated by one space. */
     public static function normalize(string $text): string
     {
         $plain = strtr(mb_strtolower($text, 'UTF-8'), self::ACCENTS);
         $plain = preg_replace('/\p{Mn}/u', '', $plain) ?? '';
         $plain = preg_replace('/[^a-z0-9]+/', ' ', $plain) ?? '';
+        // The conjunction «y» reads like the sign «+»: «corte y barba» is «Corte + barba».
+        $words = array_filter(explode(' ', trim($plain)), fn (string $word): bool => $word !== 'y');
 
-        return trim($plain);
+        return implode(' ', $words);
     }
 
     /**
