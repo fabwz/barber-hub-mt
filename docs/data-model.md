@@ -253,7 +253,7 @@ El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es 
 | `customer_membership_id` | `uuid` | Creada en el #126, obligatoria por ahora. Llave foránea compuesta a `memberships`. Pasa a ser opcional con las reservas asistidas |
 | `assisted_client_id` | `uuid` | Prevista, con las reservas asistidas. Opcional; llave foránea compuesta a `assisted_clients` |
 | `created_by_membership_id` | `uuid` | Prevista, con las reservas asistidas. Opcional; quien la creó cuando es asistida |
-| `purchased_voucher_id` | `uuid` | Prevista, con los bonos (RF-28). Opcional; el bono usado |
+| `purchased_voucher_id` | `uuid` | Creada en el #89 (migración `add_purchased_voucher_to_reservations_table`). Opcional; el bono cuya sesión paga la reserva (RF-28). Llave foránea compuesta `(purchased_voucher_id, barbershop_id)` a `purchased_vouchers`, sin cascada: una reserva solo usa un bono de su barbería (MT-04, BO-07). Índice parcial `reservations_purchased_voucher_idx` sobre `(barbershop_id, purchased_voucher_id)` |
 | `status` | `varchar(30)` | Creada en el #126. `CHECK` entre los siete estados de RE-04 |
 | `starts_at`, `ends_at` | `timestamptz` | Creadas en el #126. Inicio y fin del servicio; `CHECK (starts_at < ends_at)` |
 | `blocked_until` | `timestamptz` | Creada en el #126. Fin del servicio más 5 minutos de limpieza; `CHECK (ends_at <= blocked_until)`. El dominio la calcula (`Reservation::CLEANUP_MINUTES`) |
@@ -365,7 +365,7 @@ Llave candidata: `(gateway, event_id)`; su violación es lo que convierte un avi
 
 ## Bonos
 
-Las cuatro tablas existen desde el issue #132, con la seguridad a nivel de fila de [database.md](database.md). Las rutas de definir bonos llegan con el #87; las de comprar, consumir y consultar, con el #88 al #90.
+Las cuatro tablas existen desde el issue #132, con la seguridad a nivel de fila de [database.md](database.md). Las rutas de definir bonos llegan con el #87; las de comprar, usar y consultar, con el #88 al #90. El #89 no agrega rutas: reservar con bono es el campo `con_bono` de crear la reserva y la reserva guarda el bono usado en `reservations.purchased_voucher_id`.
 
 ### voucher_definitions y voucher_definition_services
 
