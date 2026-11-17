@@ -1351,7 +1351,7 @@ export interface components {
             campo: "servicio" | "barbero" | "fecha" | "hora" | null;
             /** @description Identificador del servicio del catálogo de la barbería; `null` mientras el texto no se haya resuelto a uno solo. */
             servicio_id: string | null;
-            /** @description Identificador del barbero del catálogo (activo y que ofrece ese servicio); `null` si no se nombró o no se resolvió. */
+            /** @description Identificador del barbero del catálogo (activo); `null` si no se nombró o no se resolvió. Con estado `no_reconocida` y campo `barbero`, un valor indica que el barbero existe pero no ofrece el servicio. */
             barbero_id: string | null;
             /** @description Inicio del espacio libre en ISO 8601 con desfase, listo para `POST /reservas`; solo con estado `valida` y hora exacta. */
             inicio: string | null;
@@ -1359,7 +1359,7 @@ export interface components {
             fin: string | null;
             /** @description Precio en colones enteros, con IVA incluido, tomado del catálogo; `null` mientras no haya un servicio resuelto. */
             precio: number | null;
-            /** @description Opciones del catálogo (`id` y `nombre`) para que la persona elija: servicios o barberos, según `campo`. Vacío si no hay ambigüedad. */
+            /** @description Opciones del catálogo (`id` y `nombre`) para que la persona elija: servicios o barberos, según `campo`. Vacío si no hay ambigüedad. Con estado `no_reconocida` y campo `barbero` y un `barbero_id`, trae solo a ese barbero (con su nombre del catálogo) para poder nombrarlo. */
             candidatos: unknown[];
             /** @description Espacios libres reales que encajan con lo pedido (la franja, o la hora exacta cuando falta elegir barbero), con `barbero`, `inicio` y `fin`. */
             espacios: unknown[];
