@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { CircleAlert } from 'lucide-vue-next'
 
 import BaseButton from '@/components/BaseButton.vue'
 import ClientNavbar from '@/components/ClientNavbar.vue'
+import ErrorState from '@/components/ErrorState.vue'
 import SearchField from '@/components/SearchField.vue'
 import ShopCard from '@/components/ShopCard.vue'
 import { useDirectory } from '@/composables/useDirectory'
@@ -75,25 +75,13 @@ const count = computed(() => (total.value === 1 ? '1 barbería' : `${total.value
           </li>
         </ul>
 
-        <div
+        <ErrorState
           v-else-if="status === 'error'"
-          role="alert"
-          class="mt-8 flex max-w-140 items-start gap-3 rounded-field bg-danger-surface p-4"
-        >
-          <CircleAlert
-            :size="20"
-            :stroke-width="1.5"
-            class="mt-0.5 flex-none text-danger"
-            aria-hidden="true"
-          />
-          <div class="flex flex-col items-start gap-4">
-            <div>
-              <p class="font-medium text-danger">No pudimos cargar las barberías.</p>
-              <p class="mt-1 text-sm text-fg-muted">Revise su conexión e intente de nuevo.</p>
-            </div>
-            <BaseButton variant="secondary" @click="directory.retry()">Reintentar</BaseButton>
-          </div>
-        </div>
+          class="mt-8 max-w-140"
+          message="No pudimos cargar las barberías."
+          description="Revise su conexión e intente de nuevo."
+          @retry="directory.retry()"
+        />
 
         <div v-else-if="isGeneralEmpty" class="mt-8 max-w-140 border-y border-line py-6">
           <p class="text-lg font-medium">Aún no hay barberías disponibles.</p>

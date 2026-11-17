@@ -173,13 +173,13 @@ onMounted(() => void start())
         </div>
 
         <!-- Error -->
-        <div v-else-if="phase === 'error'" class="mt-8 rounded-card bg-danger-surface">
-          <ErrorState
-            message="No pudimos cargar sus reservas."
-            description="Revise su conexión e intente de nuevo."
-            @retry="start"
-          />
-        </div>
+        <ErrorState
+          v-else-if="phase === 'error'"
+          class="mt-8"
+          message="No pudimos cargar sus reservas."
+          description="Revise su conexión e intente de nuevo."
+          @retry="start"
+        />
 
         <!-- Empty -->
         <div v-else-if="isEmpty" class="mt-8 border-y border-line">

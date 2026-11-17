@@ -253,9 +253,7 @@ onMounted(() => void load())
         <!-- Error -->
         <template v-else-if="state === 'error'">
           <h1 ref="title" tabindex="-1" class="text-2xl outline-offset-4">Su reserva</h1>
-          <div class="mt-6 rounded-card bg-danger-surface">
-            <ErrorState message="No pudimos cargar su reserva." @retry="load" />
-          </div>
+          <ErrorState class="mt-6" message="No pudimos cargar su reserva." @retry="load" />
         </template>
 
         <!-- Reschedule -->

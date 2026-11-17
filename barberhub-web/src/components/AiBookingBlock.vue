@@ -3,6 +3,7 @@ import { computed, useId, watch } from 'vue'
 import { ChevronDown, CircleAlert } from 'lucide-vue-next'
 
 import BaseButton from '@/components/BaseButton.vue'
+import ErrorState from '@/components/ErrorState.vue'
 import type { TimeSlot } from '@/components/TimeSlots.vue'
 import { useCountdown } from '@/composables/useCountdown'
 import { MAX_PHRASE_LENGTH, type AiBookingState } from '@/stores/aiBooking'
@@ -181,37 +182,20 @@ function chipLabel(slot: TimeSlot): string {
           </div>
         </div>
 
-        <div
+        <ErrorState
           v-else-if="state === 'error'"
-          role="alert"
-          class="flex items-start gap-3 rounded-field bg-danger-surface p-4"
+          :message="failure?.title ?? 'No pudimos procesar su solicitud.'"
+          :description="
+            failure?.body ??
+            'Puede continuar a mano: elija el servicio, el barbero, el día y la hora aquí abajo. Su frase se conserva.'
+          "
+          :retry-disabled="wait.active.value"
+          @retry="emit('retry')"
         >
-          <CircleAlert
-            :size="20"
-            :stroke-width="1.5"
-            class="mt-0.5 flex-none text-danger"
-            aria-hidden="true"
-          />
-          <div class="flex flex-col items-start gap-4">
-            <div>
-              <p class="font-medium text-danger">
-                {{ failure?.title ?? 'No pudimos procesar su solicitud.' }}
-              </p>
-              <p class="mt-1 text-sm text-fg-muted">
-                {{
-                  failure?.body ??
-                  'Puede continuar a mano: elija el servicio, el barbero, el día y la hora aquí abajo. Su frase se conserva.'
-                }}
-              </p>
-              <p v-if="wait.active.value" class="mt-1 text-sm text-fg-muted">
-                Podrá intentar de nuevo en {{ wait.remaining.value }} s.
-              </p>
-            </div>
-            <BaseButton variant="secondary" :disabled="wait.active.value" @click="emit('retry')">
-              Reintentar
-            </BaseButton>
-          </div>
-        </div>
+          <p v-if="wait.active.value" class="mt-1 text-sm text-fg-muted">
+            Podrá intentar de nuevo en {{ wait.remaining.value }} s.
+          </p>
+        </ErrorState>
 
         <template v-else-if="state === 'ready'">
           <div v-if="sentence !== ''">

@@ -100,6 +100,7 @@ describe('BookingDetailView', () => {
     const { wrapper, count } = await openDetail({ detail: () => problem(500) })
 
     expect(wrapper.get('[role="alert"]').text()).toContain('No pudimos cargar su reserva.')
+    expect(wrapper.get('[role="alert"]').classes()).toContain('bg-danger-surface')
     await button(wrapper, 'Reintentar')!.trigger('click')
     await flushPromises()
     expect(count('GET', `/reservas/${detailed().id}`)).toBe(2)

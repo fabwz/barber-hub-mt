@@ -482,9 +482,12 @@ onMounted(() => void load())
         </template>
 
         <!-- Error -->
-        <div v-else-if="state === 'error'" class="mt-6 rounded-card bg-danger-surface">
-          <ErrorState message="Error: no pudimos cargar su reserva." @retry="load" />
-        </div>
+        <ErrorState
+          v-else-if="state === 'error'"
+          class="mt-6"
+          message="No pudimos cargar su reserva."
+          @retry="load"
+        />
 
         <div
           v-else-if="reservation"
@@ -546,16 +549,13 @@ onMounted(() => void load())
                 <span>Cambiar reserva</span>
                 <ArrowRight :size="16" :stroke-width="1.5" class="flex-none" aria-hidden="true" />
               </button>
-              <div
+              <ErrorState
                 v-if="booking.releaseError && phase === 'form'"
-                class="mt-2 rounded-card bg-danger-surface"
-              >
-                <ErrorState
-                  message="Error: no pudimos cambiar la reserva."
-                  :description="`${booking.releaseError.detail} Su reserva sigue vigente: puede intentarlo de nuevo o continuar con el pago.`"
-                  @retry="changeReservation"
-                />
-              </div>
+                class="mt-2"
+                message="No pudimos cambiar la reserva."
+                :description="`${booking.releaseError.detail} Su reserva sigue vigente: puede intentarlo de nuevo o continuar con el pago.`"
+                @retry="changeReservation"
+              />
               <p
                 v-if="reservation.plazo_cancelacion_horas > 0"
                 class="mt-2 max-w-110 text-sm text-fg-subtle"

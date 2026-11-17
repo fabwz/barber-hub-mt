@@ -171,7 +171,7 @@ const retries = ref(0)
 
     <section aria-labelledby="cat-error" class="flex flex-col gap-4">
       <h2 id="cat-error" class="text-lg font-medium">ErrorState</h2>
-      <ErrorState message="Error: no pudimos cargar las reservas." @retry="retries++" />
+      <ErrorState message="No pudimos cargar las reservas." @retry="retries++" />
       <p class="text-sm text-fg-muted tabular-nums">Reintentos: {{ retries }}</p>
     </section>
   </main>

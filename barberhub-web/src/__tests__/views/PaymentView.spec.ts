@@ -160,7 +160,7 @@ describe('PaymentView: summary', () => {
     expect(wrapper.get('main').attributes('aria-busy')).toBeUndefined()
 
     const failing = await open({ reservation: () => problem(500) })
-    expect(failing.wrapper.text()).toContain('Error: no pudimos cargar su reserva.')
+    expect(failing.wrapper.text()).toContain('No pudimos cargar su reserva.')
     const empty = await open({ reservation: () => problem(404, { type: 'no-encontrado' }) })
     expect(empty.wrapper.text()).toContain('No tiene una cita en curso')
   })
@@ -816,7 +816,7 @@ describe('PaymentView: «Cambiar reserva»', () => {
 
     expect(cancelCalls()).toHaveLength(1)
     expect(router.currentRoute.value.name).toBe('payment')
-    expect(wrapper.get('[role="alert"]').text()).toContain('no pudimos cambiar la reserva')
+    expect(wrapper.get('[role="alert"]').text()).toContain('No pudimos cambiar la reserva')
     expect(wrapper.get('[role="alert"]').text()).toContain('Su reserva sigue vigente')
     expect(bookingStore().serviceId).toBeNull()
     expect(link(wrapper)!.attributes('disabled')).toBeUndefined()

@@ -196,9 +196,12 @@ onMounted(() => void load())
         </template>
 
         <!-- Error -->
-        <div v-else-if="state === 'error'" class="rounded-card bg-danger-surface">
-          <ErrorState message="Error: no pudimos cargar su reserva." @retry="load" />
-        </div>
+        <ErrorState
+          v-else-if="state === 'error'"
+          class="mt-6"
+          message="No pudimos cargar su reserva."
+          @retry="load"
+        />
 
         <!-- Confirmed -->
         <div v-else-if="reservation" class="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-8">

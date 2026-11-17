@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useId, useSlots, useTemplateRef, watch } from 'vue'
-import { ArrowRight, Calendar, ChevronDown, CircleAlert } from 'lucide-vue-next'
+import { ArrowRight, Calendar, ChevronDown } from 'lucide-vue-next'
 
 import BaseButton from '@/components/BaseButton.vue'
 import BookingSummary from '@/components/BookingSummary.vue'
@@ -308,27 +308,11 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
               />
             </div>
 
-            <div
+            <ErrorState
               v-else-if="hoursState === 'error'"
-              role="alert"
-              class="flex items-start gap-3 rounded-field bg-danger-surface p-4"
-            >
-              <CircleAlert
-                :size="20"
-                :stroke-width="1.5"
-                class="mt-0.5 flex-none text-danger"
-                aria-hidden="true"
-              />
-              <div class="flex flex-col items-start gap-4">
-                <div>
-                  <p class="font-medium text-danger">No pudimos cargar los horarios.</p>
-                  <p class="mt-1 text-sm text-fg-muted">
-                    Revise su conexión e intente de nuevo. Lo que ya eligió se mantiene.
-                  </p>
-                </div>
-                <BaseButton variant="secondary" @click="emit('retry')">Reintentar</BaseButton>
-              </div>
-            </div>
+              message="No pudimos cargar los horarios."
+              @retry="emit('retry')"
+            />
 
             <div
               v-else-if="hoursState === 'empty'"
@@ -366,14 +350,13 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
             <TimeSlots v-else v-model="slot" :slots="slots" :show-barber="anyBarber" />
           </div>
 
-          <div v-if="failure" class="rounded-card bg-danger-surface">
-            <ErrorState
-              :message="failure.title"
-              :description="failure.description"
-              retry-label="Reintentar"
-              @retry="emit('reserve')"
-            />
-          </div>
+          <ErrorState
+            v-if="failure"
+            :message="failure.title"
+            :description="failure.description"
+            retry-label="Reintentar"
+            @retry="emit('reserve')"
+          />
           <div v-if="alternatives.length > 0" class="flex flex-col gap-2">
             <h3 class="text-lg font-medium">Otros espacios cercanos</h3>
             <TimeSlots

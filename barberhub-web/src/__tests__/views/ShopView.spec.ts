@@ -98,7 +98,11 @@ describe('ShopView', () => {
     const { wrapper } = await mountView(ShopView, '/b/pura-navaja')
     await flushPromises()
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('no pudimos cargar la barbería')
+    const alert = wrapper.get('[role="alert"]')
+    expect(alert.text()).toContain('No pudimos cargar la barbería.')
+    expect(alert.text()).not.toContain('Error:')
+    expect(alert.classes()).toContain('bg-danger-surface')
+    expect(alert.find('svg').exists()).toBe(true)
     const calls = fetchMock.mock.calls.length
 
     fail = false
