@@ -56,7 +56,11 @@ describe('ShopView', () => {
     // One box with two columns: services (left) and date and hour (right).
     const box = body!.get('section')
     expect(box.classes()).toEqual(expect.arrayContaining(['md:rounded-card', 'md:border']))
-    const columns = box.findAll('div').find((d) => d.classes().includes('md:grid-cols-2'))!
+    const columns = box
+      .findAll('div')
+      .find(
+        (d) => d.classes().includes('md:grid-cols-2') && d.find('[role="radiogroup"]').exists(),
+      )!
     const [left, right] = columns.findAll(':scope > div')
     expect(left!.find('[role="radiogroup"]').exists()).toBe(true)
     expect(right!.text()).toContain('Elija un servicio')

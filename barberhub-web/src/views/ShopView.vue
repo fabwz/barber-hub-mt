@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CalendarDays } from 'lucide-vue-next'
 
+import AiBookingBlock, { type BlockNotice } from '@/components/AiBookingBlock.vue'
 import BookingPanel, {
   type PanelFailure,
+  type PanelMissing,
   type PanelReservation,
   type PanelSelection,
 } from '@/components/BookingPanel.vue'
@@ -16,10 +18,11 @@ import ServiceRow from '@/components/ServiceRow.vue'
 import ShopHeader from '@/components/ShopHeader.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import type { TimeSlot } from '@/components/TimeSlots.vue'
-import { addDays, dateOf, timeOf, todayInCostaRica } from '@/composables/format'
+import { addDays, dateOf, formatShortDate, timeOf, todayInCostaRica } from '@/composables/format'
 import { useAvailability } from '@/composables/useAvailability'
 import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
 import { readStoredPayment } from '@/composables/usePayment'
+import { useAiBookingStore, type BookingProposal } from '@/stores/aiBooking'
 import { useBookingStore } from '@/stores/booking'
 import { useSessionStore } from '@/stores/session'
 import { useShopStore } from '@/stores/shop'
@@ -31,6 +34,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useShopStore()
 const booking = useBookingStore()
+const ai = useAiBookingStore()
 const session = useSessionStore()
 
 const link = computed(() => String(route.params.enlace))
@@ -59,6 +63,7 @@ watch(
   (shop) => {
     if (!shop) return
     booking.enter(shop.id)
+    ai.enter(shop.id)
     if (booking.serviceId && !shop.services.some((item) => item.id === booking.serviceId)) {
       booking.clear()
     }
@@ -135,12 +140,18 @@ const nextDays = computed(() => availability.nextDays.value.map((item) => item.d
 
 const barberModel = computed({
   get: () => booking.barberId ?? '',
-  set: (value: string) => booking.selectBarber(value === '' ? null : value),
+  set: (value: string) => {
+    forget('barbero')
+    booking.selectBarber(value === '' ? null : value)
+  },
 })
 const dateModel = computed({
   get: () => booking.date,
   set: (value: string | null) => {
-    if (value) booking.selectDate(value)
+    if (value) {
+      forget('fecha')
+      booking.selectDate(value)
+    }
   },
 })
 const slotModel = computed({
@@ -205,12 +216,226 @@ const alternatives = computed<TimeSlot[]>(() =>
 )
 
 function onService(id: string | null): void {
-  if (id) booking.selectService(id)
+  if (id) {
+    forget('servicio')
+    booking.selectService(id)
+  }
 }
 
 function pickAlternative(value: string): void {
   const found = booking.alternatives.find((item) => item.start === value)
   if (found) booking.pickAlternative(found)
+}
+
+// —— Assistant (RF-37): a phrase becomes a proposal that fills the manual choices; it books nothing ——
+
+const BAND_TEXT = { manana: 'por la mañana', tarde: 'por la tarde', noche: 'por la noche' } as const
+const FIELD_TEXT = {
+  servicio: 'el servicio',
+  barbero: 'el barbero',
+  fecha: 'el día',
+  hora: 'la hora',
+}
+
+/** Open on desktop, folded on a phone; open as well when there is a phrase or a proposal to see. */
+const aiOpen = ref(
+  (typeof globalThis.matchMedia === 'function' &&
+    globalThis.matchMedia('(min-width: 48rem)').matches) ||
+    ai.phrase !== '' ||
+    ai.state !== 'idle',
+)
+
+/** Choices the proposal could not make, marked «Falta elegir» until the person makes them. */
+const flagged = ref<PanelMissing[]>([])
+
+function forget(field: PanelMissing): void {
+  flagged.value = flagged.value.filter((item) => item !== field)
+}
+
+const proposal = computed(() => (ai.state === 'ready' ? ai.proposal : null))
+
+function barberNameFor(id: string | null): string {
+  if (id === null) return ''
+  const known = proposal.value?.candidates.find((item) => item.id === id)?.name
+  return known || barberNameOf(id)
+}
+
+/** The barber the phrase named, when the catalog resolved it: the catalog name or, failing that, the words used. */
+function namedBarber(current: BookingProposal): string {
+  if (current.barberId === null) return ''
+  return barberNameFor(current.barberId) || (current.barberText ?? '')
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/** The request in plain words, made only of what the API resolved. */
+const aiSentence = computed(() => {
+  const current = proposal.value
+  if (current === null) return ''
+  const serviceName = store.shop?.services.find((item) => item.id === current.serviceId)?.nombre
+  const barber = namedBarber(current)
+  const parts = [
+    (serviceName ?? 'Una cita') + (barber ? ` con ${barber}` : ''),
+    current.date ? `el ${formatShortDate(current.date)}` : '',
+    current.time ? `a las ${current.time}` : '',
+    current.band ? BAND_TEXT[current.band] : '',
+  ].filter((part) => part !== '')
+  return `${capitalize(parts.join(', '))}.`
+})
+
+function quoted(text: string | null): string {
+  return text ? `«${text}»` : ''
+}
+
+function missingText(current: BookingProposal): string {
+  const fields = current.missing.length > 0 ? current.missing : current.field ? [current.field] : []
+  return fields.map((field) => FIELD_TEXT[field]).join(' ni ')
+}
+
+const aiWarning = computed<BlockNotice | null>(() => {
+  const current = proposal.value
+  if (current === null) return null
+  switch (current.status) {
+    case 'incompleta':
+      return {
+        title: 'Faltan datos',
+        body: `No pudimos saber ${missingText(current)}. ${
+          flagged.value.length > 0
+            ? 'Complete lo que falta abajo, donde quedó resaltado.'
+            : 'Elíjala abajo.'
+        }`,
+      }
+    case 'ambigua': {
+      const names = current.candidates.map((item) => quoted(item.name)).join(', ')
+      return {
+        title: 'Hay varias opciones',
+        body: `Su frase encaja con más de un ${current.field === 'servicio' ? 'servicio' : 'barbero'}${
+          names ? `: ${names}` : ''
+        }. Elija uno abajo, donde quedó resaltado.`,
+      }
+    }
+    case 'no_reconocida': {
+      const service = current.field === 'servicio'
+      const said = quoted(service ? current.serviceText : current.barberText)
+      return {
+        title: 'No disponible en esta barbería',
+        body: service
+          ? `Esta barbería no ofrece ${said || 'ese servicio'}. Elija un servicio de abajo, donde quedó resaltado.`
+          : `Esta barbería no tiene un barbero llamado ${said || 'ese'} que ofrezca el servicio. Elija un barbero de abajo, donde quedó resaltado.`,
+      }
+    }
+    case 'no_disponible':
+      return current.alternatives.length > 0
+        ? {
+            title: 'Ese espacio no está disponible.',
+            body: 'Estos espacios del mismo día son los más cercanos a lo que pidió.',
+          }
+        : null
+    default:
+      return null
+  }
+})
+
+const aiEmpty = computed<BlockNotice | null>(() => {
+  const current = proposal.value
+  if (current?.status !== 'no_disponible' || current.alternatives.length > 0) return null
+  const barber = namedBarber(current)
+  return {
+    title: `No quedan espacios${current.date ? ` el ${formatShortDate(current.date)}` : ''}${
+      barber ? ` con ${barber}` : ''
+    }.`,
+    body: barber
+      ? 'Pruebe otro día, o elija «Sin preferencia» abajo para ver las horas de todos los barberos.'
+      : 'Pruebe otro día.',
+  }
+})
+
+/** The spaces to offer: those of the proposal, the nearest ones, or the exact space when it is free. */
+const aiSpacesRaw = computed(() => {
+  const current = proposal.value
+  if (current === null) return []
+  if (current.status === 'no_disponible') return current.alternatives
+  if (current.spaces.length > 0) return current.spaces
+  return current.status === 'valida' && current.start && current.end && current.barberId
+    ? [{ barberId: current.barberId, start: current.start, end: current.end }]
+    : []
+})
+
+const aiSpaces = computed<TimeSlot[]>(() =>
+  aiSpacesRaw.value.map((item) => ({
+    value: item.start,
+    time: timeOf(item.start),
+    barberName: barberNameFor(item.barberId),
+  })),
+)
+
+const aiSpacesFor = computed(() => {
+  const first = aiSpacesRaw.value[0]
+  const current = proposal.value
+  if (!first || current === null) return ''
+  const barber = namedBarber(current)
+  return `${formatShortDate(dateOf(first.start))}${barber ? ` con ${barber}` : ''}`
+})
+
+/** Too many requests (429): another text and the wait that `Retry-After` brings. */
+const aiFailure = computed<BlockNotice | null>(() => {
+  const error = ai.error
+  if (error === null || (error.status !== 429 && !error.type.endsWith('demasiadas-solicitudes'))) {
+    return null
+  }
+  return {
+    title: 'No pudimos procesar su solicitud.',
+    body: 'Hizo muchas solicitudes seguidas. Espere un momento o continúe a mano aquí abajo. Su frase se conserva.',
+  }
+})
+
+/** Fills service, barber and day through the booking store. Nothing is reserved. */
+function applyProposal(current: BookingProposal): void {
+  const marks: PanelMissing[] = []
+  const known = store.shop?.services.some((item) => item.id === current.serviceId) ?? false
+  if (current.serviceId !== null && known) {
+    booking.selectService(current.serviceId)
+    booking.selectBarber(current.barberId)
+  } else if (
+    booking.serviceId === null &&
+    (current.missing.includes('servicio') || current.field === 'servicio')
+  ) {
+    marks.push('servicio')
+  }
+  if (current.date !== null) booking.selectDate(current.date)
+  else if (current.missing.includes('fecha') || current.field === 'fecha') marks.push('fecha')
+  if (
+    current.field === 'barbero' &&
+    (current.status === 'ambigua' || current.status === 'no_reconocida')
+  ) {
+    marks.push('barbero')
+  }
+  flagged.value = marks
+  aiOpen.value = true
+}
+
+async function generate(): Promise<void> {
+  if (!session.isAuthenticated) {
+    // The phrase stays in the store: it is still here after the login.
+    await goToLogin()
+    return
+  }
+  if (!store.shop) return
+  flagged.value = []
+  const found = await ai.propose(store.shop.id)
+  if (ai.error?.status === 401) {
+    await goToLogin()
+    return
+  }
+  if (found && ai.proposal) applyProposal(ai.proposal)
+}
+
+/** A chip of the proposal completes the hour below; the reservation is still made with «Reservar». */
+function pickSpace(value: string): void {
+  const found = aiSpacesRaw.value.find((item) => item.start === value)
+  if (found) booking.selectSlot({ start: found.start, barberId: found.barberId })
 }
 
 function goToLogin() {
@@ -313,10 +538,31 @@ async function reserve(): Promise<void> {
           @retry="availability.retry()"
           @reserve="reserve"
           :payment-in-progress="paymentInProgress"
+          :missing="flagged"
           @restart="booking.clear()"
           @pay="goToPayment"
           @pick-alternative="pickAlternative"
         >
+          <template #assistant>
+            <AiBookingBlock
+              v-model:open="aiOpen"
+              v-model:phrase="ai.phrase"
+              :state="ai.state"
+              :sentence="aiSentence"
+              :warning="aiWarning"
+              :empty="aiEmpty"
+              :spaces="aiSpaces"
+              :spaces-for="aiSpacesFor"
+              :show-barber="proposal !== null && proposal.barberId === null"
+              :selected="booking.slot?.start ?? null"
+              :failure="aiFailure"
+              :retry-after="ai.error?.retryAfter ?? null"
+              @submit="generate"
+              @retry="generate"
+              @pick="pickSpace"
+            />
+          </template>
+
           <template #services>
             <OptionGroup
               :model-value="booking.serviceId"

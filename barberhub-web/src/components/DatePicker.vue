@@ -15,9 +15,11 @@ interface Props {
   days: PickerDay[]
   /** Desktop: the days wrap onto several lines instead of scrolling sideways (a wide column). */
   wrap?: boolean
+  /** The proposal of the assistant could not tell the day: «Falta elegir» until the person picks one. */
+  missing?: boolean
 }
 
-const { days, wrap = false } = defineProps<Props>()
+const { days, wrap = false, missing = false } = defineProps<Props>()
 const selected = defineModel<string | null>({ default: null })
 
 const calendarId = useId()
@@ -102,7 +104,10 @@ function cellClasses(cell: { value: string; off: boolean }): string[] {
   <div>
     <div class="flex items-baseline justify-between gap-3">
       <h3 class="text-lg font-medium">Fecha</h3>
-      <span class="hidden text-sm text-fg-subtle md:inline">{{ month }}</span>
+      <span class="flex items-baseline gap-3">
+        <span v-if="missing" class="text-sm text-warning">Falta elegir</span>
+        <span class="hidden text-sm text-fg-subtle md:inline">{{ month }}</span>
+      </span>
     </div>
 
     <div class="mt-2 flex items-center justify-between gap-3 md:hidden">
