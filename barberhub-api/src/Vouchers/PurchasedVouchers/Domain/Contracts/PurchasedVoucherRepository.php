@@ -74,12 +74,22 @@ interface PurchasedVoucherRepository
      * Set a session aside for a reservation, atomically: the balance goes down by one only if the voucher is active, valid at
      * the given instant and has a session left, in a single conditional update, and the entry joins the record in the same
      * transaction. Two simultaneous calls for the last session cannot both win, so the balance never goes below zero (BO-03).
-     * It is the counterpart in the database of PurchasedVoucher::hold(), which decides the same in memory.
+     * It is the counterpart in the database of PurchasedVoucher::hold(), which decides the same in memory. The validity is
+     * checked at `$at`, the instant the voucher must cover (the appointment of the reservation, BO-06), while the entry of the record
+     * and the update of the row are stamped with `$now`, the instant it happens; without `$now` both are `$at`.
      *
      * @throws VoucherNotFoundException when the voucher is not one of the current barbershop
      * @throws VoucherNotActiveException when its payment is not confirmed
      * @throws VoucherExpiredException when it is not valid at the instant
      * @throws InsufficientBalanceException when no session is left
      */
-    public function holdSession(PurchasedVoucherId $id, ReservationId $reservation, DateTimeImmutable $at): void;
+    public function holdSession(PurchasedVoucherId $id, ReservationId $reservation, DateTimeImmutable $at, ?DateTimeImmutable $now = null): void;
+
+    /**
+     * The paid vouchers of a customer in the current barbershop, expired or not, with or without sessions left, the one that expires
+     * first leading and the identifier breaking the tie (BO-08). Those that wait for their payment are left out (BO-02).
+     *
+     * @return list<PurchasedVoucher>
+     */
+    public function activeOfCustomer(CustomerMembershipId $customer): array;
 }

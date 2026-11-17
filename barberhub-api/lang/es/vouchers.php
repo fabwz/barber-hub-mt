@@ -14,6 +14,7 @@ return [
     'movement_invalid' => 'El movimiento del bono no es válido.',
     'name_invalid' => 'El nombre del bono es obligatorio y no puede pasar de 120 caracteres.',
     'not_active' => 'El bono todavía no está activo: su pago no se ha confirmado.',
+    'not_applicable' => 'Ninguno de sus bonos cubre este servicio.',
     'price_invalid' => 'El precio del bono debe ser de al menos ₡1.',
     'services_required' => 'El bono debe cubrir al menos un servicio.',
     'sales_disabled' => 'La barbería tiene desactivados los bonos: no se pueden comprar ni definir bonos nuevos.',

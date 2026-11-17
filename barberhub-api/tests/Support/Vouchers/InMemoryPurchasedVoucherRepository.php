@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Tests\Support\Vouchers;
 
 use DateTimeImmutable;
-use LogicException;
 use Src\Shared\Domain\ValueObjects\Page;
 use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Vouchers\PurchasedVouchers\Domain\Contracts\PurchasedVoucherRepository;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\PurchasedVoucher;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\VoucherMovement;
+use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\VoucherNotFoundException;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\CustomerMembershipId;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\ReservationId;
@@ -111,10 +111,28 @@ final class InMemoryPurchasedVoucherRepository implements PurchasedVoucherReposi
         return $this->page(fn (PurchasedVoucher $voucher): bool => true, $page);
     }
 
-    /** Not used by the tests of the purchase. */
-    public function holdSession(PurchasedVoucherId $id, ReservationId $reservation, DateTimeImmutable $at): void
+    /** Set a session aside with the rules of the aggregate, which decide the same as the conditional update of the database. */
+    public function holdSession(PurchasedVoucherId $id, ReservationId $reservation, DateTimeImmutable $at, ?DateTimeImmutable $now = null): void
     {
-        throw new LogicException('The tests of the purchase never hold a session.');
+        $voucher = $this->find($id) ?? throw VoucherNotFoundException::create();
+        $voucher->hold($reservation, $at);
+        $this->save($voucher);
+    }
+
+    /**
+     * The paid vouchers of a customer, the one that expires first leading.
+     *
+     * @return list<PurchasedVoucher>
+     */
+    public function activeOfCustomer(CustomerMembershipId $customer): array
+    {
+        $paid = array_values(array_filter(
+            $this->vouchers,
+            fn (PurchasedVoucher $voucher): bool => $voucher->status === VoucherStatus::Active && $voucher->customerMembershipId->equals($customer),
+        ));
+        usort($paid, fn (PurchasedVoucher $a, PurchasedVoucher $b): int => [$a->expiresAt, $a->id->value] <=> [$b->expiresAt, $b->id->value]);
+
+        return $paid;
     }
 
     /**

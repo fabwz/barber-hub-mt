@@ -230,6 +230,42 @@ final class EloquentPurchasedVoucherRepositoryTest extends TestCase
         $this->assertSame(5, $this->storedBalance($voucher->id));
     }
 
+    /** The validity is checked at the appointment and the entry is stamped with the moment of booking, which are two different instants (BO-04, BO-06, RF-28). */
+    public function test_the_validity_is_checked_at_the_appointment_and_the_entry_is_stamped_now(): void
+    {
+        $voucher = $this->persistedActiveVoucher();
+        $appointment = VoucherFactory::now()->modify('+4 days');
+        $now = VoucherFactory::now()->modify('+1 hour');
+
+        $this->vouchers->holdSession($voucher->id, $this->reservation(), $appointment, $now);
+
+        $entries = $this->vouchers->movementsOf($voucher->id);
+        $this->assertEquals($now, $entries[1]->at);
+        $this->assertEquals($now, new DateTimeImmutable((string) DB::table('purchased_vouchers')->where('id', $voucher->id->value)->value('updated_at')));
+        $this->assertRefused(VoucherExpiredException::class, $voucher->id, $voucher->expiresAt ?? $appointment);
+    }
+
+    /** The paid vouchers of a customer come the one that expires first leading; a pending one, another customer's and another barbershop's do not (BO-02, BO-08, MT-03). */
+    public function test_the_paid_vouchers_of_a_customer_come_the_one_that_expires_first_leading(): void
+    {
+        $slow = VoucherFactory::active(validityDays: 90, id: (string) Str::uuid7(), barbershop: $this->puraNavaja, membership: $this->membership, definition: $this->definition);
+        $fast = VoucherFactory::active(validityDays: 30, id: (string) Str::uuid7(), barbershop: $this->puraNavaja, membership: $this->membership, definition: $this->definition);
+        $pending = VoucherFactory::pending(id: (string) Str::uuid7(), barbershop: $this->puraNavaja, membership: $this->membership, definition: $this->definition);
+        [, $luis] = $this->insertCustomer($this->puraNavaja, 'Luis Mora');
+        $luisVoucher = VoucherFactory::active(id: (string) Str::uuid7(), barbershop: $this->puraNavaja, membership: $luis, definition: $this->definition);
+
+        foreach ([$slow, $pending, $fast, $luisVoucher] as $voucher) {
+            $this->vouchers->save($voucher);
+        }
+
+        $paid = $this->vouchers->activeOfCustomer(new CustomerMembershipId($this->membership));
+
+        $this->assertSame([$fast->id->value, $slow->id->value], array_map(fn (PurchasedVoucher $voucher): string => $voucher->id->value, $paid));
+
+        $this->workAs($this->fadeLab);
+        $this->assertSame([], $this->vouchers->activeOfCustomer(new CustomerMembershipId($this->membership)));
+    }
+
     /** An active voucher of Pura Navaja, saved with its purchase in the record. */
     private function persistedActiveVoucher(int $sessions = 5): PurchasedVoucher
     {
