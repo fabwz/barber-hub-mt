@@ -1,7 +1,12 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { readStoredPayment, writeStoredPayment } from '@/composables/usePayment'
+import {
+  readStoredPayment,
+  readStoredVoucherPayment,
+  writeStoredPayment,
+  writeStoredVoucherPayment,
+} from '@/composables/usePayment'
 import { SESSION_STORAGE_KEY } from '@/stores/session'
 import PaymentReturnView from '@/views/PaymentReturnView.vue'
 import { mountView } from '../helpers/mountView'
@@ -67,6 +72,24 @@ describe('PaymentReturnView', () => {
     expect(router.currentRoute.value.path).toBe(`/b/pura-navaja/pago/${RESERVATION_ID}`)
     expect(router.currentRoute.value.query).toEqual({ retorno: '1', cancelado: '1' })
     expect(readStoredPayment()).toBeNull()
+  })
+
+  it('goes to the purchase of the voucher stored, and forgets it when the payment was cancelled', async () => {
+    const voucher = { enlace: 'pura-navaja', bono: 'b1', pago: PAYMENT_ID, metodo: 'tarjeta' }
+    writeStoredVoucherPayment(voucher)
+
+    const { router } = await mountView(PaymentReturnView, '/pago/retorno')
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('voucher-purchase'))
+    expect(router.currentRoute.value.path).toBe('/b/pura-navaja/bonos/b1/compra')
+    expect(router.currentRoute.value.query).toEqual({ retorno: '1' })
+    expect(readStoredVoucherPayment()).toEqual(voucher)
+
+    const cancelled = await mountView(PaymentReturnView, '/pago/retorno?cancelado=1')
+    await vi.waitFor(() =>
+      expect(cancelled.router.currentRoute.value.name).toBe('voucher-purchase'),
+    )
+    expect(cancelled.router.currentRoute.value.query).toEqual({ retorno: '1', cancelado: '1' })
+    expect(readStoredVoucherPayment()).toBeNull()
   })
 
   it('needs a session', async () => {

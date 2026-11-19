@@ -4,7 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 
 import BrandLogo from '@/components/BrandLogo.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
-import { readStoredPayment, writeStoredPayment } from '@/composables/usePayment'
+import {
+  readStoredPayment,
+  readStoredVoucherPayment,
+  writeStoredPayment,
+  writeStoredVoucherPayment,
+} from '@/composables/usePayment'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,12 +19,23 @@ const router = useRouter()
  * saved before leaving says which payment this was, and the payment page asks the API for its status.
  */
 onMounted(() => {
+  const cancelled = route.query.cancelado === '1'
+  const voucher = readStoredVoucherPayment()
+  if (voucher !== null) {
+    // The purchase of a voucher: its own page asks the API for the status.
+    if (cancelled) writeStoredVoucherPayment(null)
+    void router.replace({
+      name: 'voucher-purchase',
+      params: { enlace: voucher.enlace, bono: voucher.bono },
+      query: cancelled ? { retorno: '1', cancelado: '1' } : { retorno: '1' },
+    })
+    return
+  }
   const stored = readStoredPayment()
   if (stored === null) {
     void router.replace('/')
     return
   }
-  const cancelled = route.query.cancelado === '1'
   // A cancelled payment is not resumed: the person chooses again.
   if (cancelled) writeStoredPayment(null)
   void router.replace({
