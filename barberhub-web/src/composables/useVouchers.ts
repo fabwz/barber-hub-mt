@@ -8,47 +8,33 @@ export type PurchasedVoucher = components['schemas']['BonoComprado']
 /** Where a load stands: with its data (maybe none), or why it could not be. */
 export type VoucherListResult = 'ready' | 'forbidden' | 'error'
 
+/** The gateways a shop can collect through (PA-02). */
+export type VoucherGateway = 'onvo' | 'paypal'
+
+interface PaymentChannel {
+  gateway: VoucherGateway | null
+  methods: string[]
+}
+
+type OnSaleRead = PaymentChannel & { items: VoucherOnSale[]; enabled: boolean }
+
+/** The gateway and methods of the list; a gateway the client does not know is read as none. */
+function readChannel(gateway: string | null, methods: string[]): PaymentChannel {
+  if (gateway !== 'onvo' && gateway !== 'paypal') return { gateway: null, methods: [] }
+  return { gateway, methods }
+}
+
 /** Largest page the API allows; every page is asked for so the lists are complete. */
 const PAGE_SIZE = 50
 /** Safety stop: 20 pages of 50 vouchers in one barbershop. */
 const MAX_PAGES = 20
 
-export type MovementType = 'compra' | 'apartado' | 'consumo' | 'reintegro'
+export type VoucherMovement = components['schemas']['MovimientoDeBono']
+export type MovementType = VoucherMovement['tipo']
 
-/**
- * A change of the balance of a purchased voucher. The contract leaves the items of `movimientos`
- * untyped, so they are read defensively here from what the API documents (tipo, sesiones, reserva,
- * fecha), like the 409 alternatives.
- */
-export interface VoucherMovement {
-  type: MovementType
-  /** Sessions it adds (positive) or takes from the balance (negative); 0 for a consumption. */
-  sessions: number
-  /** Reservation it belongs to; `null` for the purchase. */
-  reservationId: string | null
-  /** ISO 8601 instant, as the API delivers it. */
-  at: string
-}
-
-const MOVEMENT_TYPES: readonly string[] = ['compra', 'apartado', 'consumo', 'reintegro']
-
-/** The valid movements of a voucher, newest first (the API lists them oldest first). */
-export function readMovements(raw: unknown[]): VoucherMovement[] {
-  const movements = raw.flatMap((item): VoucherMovement[] => {
-    if (typeof item !== 'object' || item === null) return []
-    const { tipo, sesiones, reserva, fecha } = item as Record<string, unknown>
-    if (typeof tipo !== 'string' || !MOVEMENT_TYPES.includes(tipo)) return []
-    if (typeof sesiones !== 'number' || typeof fecha !== 'string' || fecha === '') return []
-    return [
-      {
-        type: tipo as MovementType,
-        sessions: sesiones,
-        reservationId: typeof reserva === 'string' && reserva !== '' ? reserva : null,
-        at: fecha,
-      },
-    ]
-  })
-  return movements.reverse()
+/** The movements of a voucher, newest first (the API lists them oldest first). */
+export function newestFirst(movements: VoucherMovement[]): VoucherMovement[] {
+  return [...movements].reverse()
 }
 
 /**
@@ -74,6 +60,10 @@ export function useVouchers() {
   const onSale = ref<VoucherOnSale[]>([])
   /** `meta.bonos_activos` of the list on sale; `false` until it is known. */
   const enabled = ref(false)
+  /** `meta.pasarela`: the gateway the shop collects through now; `null` if it does not charge (nothing can be bought). */
+  const gateway = ref<VoucherGateway | null>(null)
+  /** `meta.metodos_de_pago`: the methods that gateway admits, as the API names them. */
+  const methods = ref<string[]>([])
   const result = ref<VoucherListResult | null>(null)
   // Only the last call may write: an older one that ends later is dropped.
   let call = 0
@@ -93,11 +83,12 @@ export function useVouchers() {
     return all
   }
 
-  async function readOnSale(shopId: string): Promise<{ items: VoucherOnSale[]; enabled: boolean }> {
+  async function readOnSale(shopId: string): Promise<OnSaleRead> {
     const all: VoucherOnSale[] = []
     let page = 1
     let last = 1
     let active = false
+    let channel: PaymentChannel = { gateway: null, methods: [] }
     do {
       const { data } = await api.GET('/barberias/{barberia}/bonos', {
         params: { path: { barberia: shopId }, query: { pagina: page, por_pagina: PAGE_SIZE } },
@@ -105,9 +96,10 @@ export function useVouchers() {
       all.push(...data!.data)
       last = data!.meta.ultima_pagina
       active = data!.meta.bonos_activos
+      channel = readChannel(data!.meta.pasarela, data!.meta.metodos_de_pago)
       page += 1
     } while (page <= last && page <= MAX_PAGES)
-    return { items: all, enabled: active }
+    return { items: all, enabled: active, ...channel }
   }
 
   /** Loads what the screen needs: `which` limits it to one of the two lists. */
@@ -126,6 +118,8 @@ export function useVouchers() {
       if (selling !== null) {
         onSale.value = selling.items
         enabled.value = selling.enabled
+        gateway.value = selling.gateway
+        methods.value = selling.methods
       }
       result.value = 'ready'
     } catch (caught) {
@@ -135,5 +129,5 @@ export function useVouchers() {
     return result.value
   }
 
-  return { mine, onSale, enabled, result, load }
+  return { mine, onSale, enabled, gateway, methods, result, load }
 }

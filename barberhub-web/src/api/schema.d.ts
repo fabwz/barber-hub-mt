@@ -34,7 +34,7 @@ export interface paths {
         };
         /**
          * Listar los bonos a la venta
-         * @description Lista, por nombre, los bonos que la barbería tiene a la venta, cada uno con su `id`, `nombre`, `sesiones`, `vigencia_dias`, `precio` en colones con el IVA de 13 % incluido y los `servicios` que cubre (`id` y `nombre`). El `id` es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`. Un bono retirado de la venta no aparece. Lo puede leer cualquier persona con sesión, tenga o no rol en la barbería: no crea ninguna membresía (el rol de cliente nace con la primera compra). `meta.bonos_activos` dice si la barbería tiene los bonos activados; con los bonos desactivados la lista viene vacía y comprar responde 409 `conflicto`. El dueño o un colaborador de esa barbería recibe 403 `prohibido`: sus bonos se administran con `GET /administracion/bonos`. Sin sesión, 401; una barbería inexistente, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.
+         * @description Lista, por nombre, los bonos que la barbería tiene a la venta, cada uno con su `id`, `nombre`, `sesiones`, `vigencia_dias`, `precio` en colones con el IVA de 13 % incluido y los `servicios` que cubre (`id` y `nombre`). El `id` es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`. Un bono retirado de la venta no aparece. Lo puede leer cualquier persona con sesión, tenga o no rol en la barbería: no crea ninguna membresía (el rol de cliente nace con la primera compra). `meta.bonos_activos` dice si la barbería tiene los bonos activados; con los bonos desactivados la lista viene vacía y comprar responde 409 `conflicto`. `meta.pasarela` es la pasarela con la que la barbería cobra hoy (`onvo` o `paypal`; nula si la barbería no cobra) y `meta.metodos_de_pago` los métodos que esa pasarela admite (`tarjeta` y `sinpe_movil` con ONVO, solo `tarjeta` con PayPal; lista vacía si `pasarela` es nula), con el mismo cálculo que las reservas; se informan igual con los bonos desactivados. El dueño o un colaborador de esa barbería recibe 403 `prohibido`: sus bonos se administran con `GET /administracion/bonos`. Sin sesión, 401; una barbería inexistente, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.
          */
         get: operations["vouchers.on-sale.index"];
         put?: never;
@@ -1065,7 +1065,7 @@ export interface components {
             /** @description Cuándo vence, ISO 8601 con el desfase de Costa Rica (-06:00); es el instante en que deja de valer. Ejemplo: 2030-05-30T08:00:00-06:00. */
             vence_en: string | null;
             /** @description Cada cambio del saldo, del más antiguo al más reciente, con la reserva a la que se liga (nula en la compra). */
-            movimientos: unknown[];
+            movimientos: components["schemas"]["MovimientoDeBono"][];
             /** @description Servicios que cubre el bono, ordenados por nombre, tal como los define hoy la barbería: si el bono ya no está a la venta, igual se muestran. Con ellos el cliente sabe con qué servicios puede reservar. */
             servicios: components["schemas"]["ServicioCubierto"][];
         };
@@ -1087,7 +1087,7 @@ export interface components {
             /** @description Cuándo vence, ISO 8601 con el desfase de Costa Rica (-06:00); es el instante en que deja de valer. Ejemplo: 2030-05-30T08:00:00-06:00. */
             vence_en: string | null;
             /** @description Cada cambio del saldo, del más antiguo al más reciente, con la reserva a la que se liga (nula en la compra). */
-            movimientos: unknown[];
+            movimientos: components["schemas"]["MovimientoDeBono"][];
             /** @description Nombre del cliente que lo compró. */
             cliente_nombre: string;
         };
@@ -1309,6 +1309,20 @@ export interface components {
              * @enum {string}
              */
             rol: "dueno" | "colaborador" | "cliente";
+        };
+        /** MovimientoDeBono */
+        MovimientoDeBono: {
+            /**
+             * @description `compra`, `apartado`, `consumo` o `reintegro`.
+             * @enum {string}
+             */
+            tipo: "compra" | "apartado" | "consumo" | "reintegro";
+            /** @description Sesiones que suma o resta al saldo: la compra suma las del bono, el apartado resta 1, el reintegro suma 1 y el consumo no cambia nada (0). */
+            sesiones: number;
+            /** @description Identificador de la reserva ligada; nulo en la compra. */
+            reserva: string | null;
+            /** @description Cuándo se escribió el movimiento, ISO 8601 con el desfase de Costa Rica (-06:00). Ejemplo: 2030-03-01T08:00:00-06:00. */
+            fecha: string;
         };
         /** PagarReserva */
         PagarReserva: {
@@ -1837,6 +1851,8 @@ export interface operations {
                             total: number;
                             ultima_pagina: number;
                             bonos_activos: boolean;
+                            pasarela: string | null;
+                            metodos_de_pago: string[];
                         };
                     };
                 };

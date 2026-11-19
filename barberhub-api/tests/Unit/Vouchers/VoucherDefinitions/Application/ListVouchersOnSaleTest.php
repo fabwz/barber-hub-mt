@@ -8,12 +8,14 @@ use PHPUnit\Framework\TestCase;
 use Src\Shared\Domain\ValueObjects\Page;
 use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Vouchers\PurchasedVouchers\Application\Contracts\OnSaleVouchers;
+use Src\Vouchers\PurchasedVouchers\Application\DTOs\PaymentChannel;
 use Src\Vouchers\PurchasedVouchers\Application\UseCases\ListVouchersOnSale as ListForCustomer;
 use Src\Vouchers\VoucherDefinitions\Application\DescribeCoveredServices;
 use Src\Vouchers\VoucherDefinitions\Application\UseCases\ListCoveredServices;
 use Src\Vouchers\VoucherDefinitions\Application\UseCases\ListVouchersOnSale;
 use Tests\Support\Vouchers\InMemoryCatalogServices;
 use Tests\Support\Vouchers\InMemoryVoucherDefinitionRepository;
+use Tests\Support\Vouchers\InMemoryVoucherPaymentChannel;
 use Tests\Support\Vouchers\InMemoryVoucherSales;
 use Tests\Support\Vouchers\VoucherFactory;
 
@@ -78,11 +80,13 @@ final class ListVouchersOnSaleTest extends TestCase
             }
         };
 
-        $off = new ListForCustomer($shelf, new InMemoryVoucherSales(false))->execute(new PageRequest);
-        $on = new ListForCustomer($shelf, new InMemoryVoucherSales)->execute(new PageRequest);
+        $off = new ListForCustomer($shelf, new InMemoryVoucherSales(false), new InMemoryVoucherPaymentChannel)->execute(new PageRequest);
+        $on = new ListForCustomer($shelf, new InMemoryVoucherSales, new InMemoryVoucherPaymentChannel(new PaymentChannel('paypal', ['tarjeta'])))->execute(new PageRequest);
 
         $this->assertFalse($off->enabled);
         $this->assertSame([], $off->page->items);
+        $this->assertNull($off->channel);
+        $this->assertSame(['paypal', ['tarjeta']], [$on->channel?->gateway, $on->channel?->methods]);
         $this->assertTrue($on->enabled);
         $this->assertSame(1, $shelf->reads);
     }

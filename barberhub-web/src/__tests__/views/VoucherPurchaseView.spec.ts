@@ -12,6 +12,9 @@ import { mountView } from '../helpers/mountView'
 import { ONVO_KEY, ONVO_URL } from '../helpers/payment'
 import {
   BOUGHT_ID,
+  FREE_SHELF,
+  ONVO_SHELF,
+  PAYPAL_SHELF,
   VOUCHER_ID,
   VOUCHER_PAYMENT_ID,
   VOUCHER_PURCHASE_PAGE,
@@ -261,7 +264,7 @@ describe('VoucherPurchaseView: who can buy', () => {
 
   it('says so when the voucher is no longer on sale', async () => {
     const { wrapper } = await open({
-      onSale: () => jsonResponse(200, list([onSale({ id: 'otro' })], { bonos_activos: true })),
+      onSale: () => jsonResponse(200, list([onSale({ id: 'otro' })], ONVO_SHELF)),
     })
 
     expect(wrapper.text()).toContain('Este bono ya no está a la venta')
@@ -281,7 +284,7 @@ describe('VoucherPurchaseView: loading and error states', () => {
 
     expect(wrapper.get('main').attributes('aria-busy')).toBe('true')
     expect(wrapper.text()).toContain('Cargando el resumen')
-    release(jsonResponse(200, list([onSale()], { bonos_activos: true })))
+    release(jsonResponse(200, list([onSale()], ONVO_SHELF)))
     await flushPromises()
     expect(wrapper.get('main').attributes('aria-busy')).toBeUndefined()
   })
@@ -291,9 +294,7 @@ describe('VoucherPurchaseView: loading and error states', () => {
     const { wrapper } = await open({
       onSale: () => {
         calls += 1
-        return calls === 1
-          ? problem(500)
-          : jsonResponse(200, list([onSale()], { bonos_activos: true }))
+        return calls === 1 ? problem(500) : jsonResponse(200, list([onSale()], ONVO_SHELF))
       },
     })
     expect(wrapper.get('[role="alert"]').text()).toContain('No pudimos cargar el bono.')
@@ -323,5 +324,149 @@ describe('voucher purchase: the bought voucher is the one the payment names', ()
 
     expect(wrapper.text()).toContain('mar 5 mar 2030')
     expect(wrapper.text()).not.toContain('2031')
+  })
+})
+
+describe('VoucherPurchaseView: the gateway of the shop', () => {
+  const approval = 'https://www.sandbox.paypal.com/checkoutnow?token=T1'
+  const paypalShelf = () => jsonResponse(200, list([onSale()], PAYPAL_SHELF))
+  const toPayPal = () =>
+    jsonResponse(201, {
+      data: payment({ accion_siguiente: { tipo: 'redireccion', url: approval } }),
+    })
+
+  it('with ONVO offers the card and SINPE Móvil, as before', async () => {
+    const { wrapper } = await open({
+      onSale: () => jsonResponse(200, list([onSale()], ONVO_SHELF)),
+    })
+
+    expect(radio(wrapper, 'tarjeta').text()).toBe('Tarjeta')
+    expect(radio(wrapper, 'sinpe_movil').text()).toBe('SINPE Móvil')
+    expect(wrapper.text()).toContain('Pago seguro con ONVO Pay')
+    await radio(wrapper, 'tarjeta').trigger('click')
+    expect(input(wrapper, 'cc-number').exists()).toBe(true)
+  })
+
+  it('offers only the methods the API lists for the gateway', async () => {
+    const { wrapper } = await open({
+      onSale: () =>
+        jsonResponse(200, list([onSale()], { ...ONVO_SHELF, metodos_de_pago: ['tarjeta'] })),
+    })
+
+    expect(radio(wrapper, 'tarjeta').exists()).toBe(true)
+    expect(wrapper.find('[role="radio"][data-value="sinpe_movil"]').exists()).toBe(false)
+  })
+
+  it('with PayPal says PayPal, shows no card form and sends only the method before going to PayPal', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign })
+    const { wrapper, calls, onvo } = await open({ onSale: paypalShelf, purchase: toPayPal })
+
+    expect(radio(wrapper, 'tarjeta').text()).toBe('PayPal')
+    expect(wrapper.find('[role="radio"][data-value="sinpe_movil"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Pago protegido por PayPal')
+
+    await radio(wrapper, 'tarjeta').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Al pagar, se abre PayPal para que confirme el pago.')
+    expect(wrapper.find('input[autocomplete="cc-number"]').exists()).toBe(false)
+    expect(button(wrapper, 'Continuar a PayPal')).toBeDefined()
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const sent = calls('POST', '/compras')
+    expect(sent).toHaveLength(1)
+    expect(JSON.parse(sent[0]!.body)).toEqual({ metodo: 'tarjeta' })
+    // Nothing goes to ONVO and the payment is kept to be resumed when PayPal sends the person back.
+    expect(onvo).toEqual([])
+    expect(assign).toHaveBeenCalledTimes(1)
+    expect(assign).toHaveBeenCalledWith(approval)
+    expect(readStoredVoucherPayment()).toMatchObject({ bono: VOUCHER_ID, pago: VOUCHER_PAYMENT_ID })
+    expect(wrapper.text()).not.toContain('Bono activado')
+  })
+
+  it('does not go to PayPal twice on a double click', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign })
+    const { wrapper, calls } = await open({ onSale: paypalShelf, purchase: toPayPal })
+
+    await radio(wrapper, 'tarjeta').trigger('click')
+    await wrapper.get('form').trigger('submit')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(calls('POST', '/compras')).toHaveLength(1)
+    expect(assign).toHaveBeenCalledTimes(1)
+  })
+
+  it('on the return from PayPal asks the API for the status and activates only if it says approved', async () => {
+    writeStoredVoucherPayment({ ...STORED, metodo: 'tarjeta' })
+    let status = 'pendiente'
+    const { wrapper, calls } = await open(
+      {
+        onSale: paypalShelf,
+        status: () => jsonResponse(200, { data: payment({ estado: status }) }),
+      },
+      `${VOUCHER_PURCHASE_PAGE}?retorno=1`,
+    )
+
+    // The address says nothing: the status is read, and while it is pending the voucher is not active.
+    expect(calls('GET', `/pagos/${VOUCHER_PAYMENT_ID}`)).toHaveLength(1)
+    expect(wrapper.text()).toContain('Esperando la confirmación de su pago…')
+    expect(wrapper.text()).not.toContain('Bono activado')
+
+    status = 'aprobado'
+    await button(wrapper, 'Verificar ahora')!.trigger('click')
+    await flushPromises()
+
+    expect(calls('GET', `/pagos/${VOUCHER_PAYMENT_ID}`)).toHaveLength(2)
+    expect(wrapper.get('h1').text()).toBe('Bono activado')
+  })
+
+  it('forgets a purchase cancelled at PayPal and shows PayPal again', async () => {
+    writeStoredVoucherPayment(STORED)
+    const { wrapper, calls } = await open(
+      { onSale: paypalShelf },
+      `${VOUCHER_PURCHASE_PAGE}?retorno=1&cancelado=1`,
+    )
+
+    expect(calls('GET', `/pagos/${VOUCHER_PAYMENT_ID}`)).toHaveLength(0)
+    expect(readStoredVoucherPayment()).toBeNull()
+    expect(radio(wrapper, 'tarjeta').text()).toBe('PayPal')
+  })
+
+  it('shows the message of the API and does not leave when a PayPal purchase is refused', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign })
+    const { wrapper } = await open({
+      onSale: paypalShelf,
+      purchase: () =>
+        problem(503, {
+          type: 'servicio-no-disponible',
+          detail: 'PayPal no responde. Intente más tarde.',
+        }),
+    })
+
+    await radio(wrapper, 'tarjeta').trigger('click')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No se pudo realizar el pago.')
+    expect(wrapper.text()).toContain('PayPal no responde. Intente más tarde.')
+    expect(assign).not.toHaveBeenCalled()
+    expect(readStoredVoucherPayment()).toBeNull()
+    expect(button(wrapper, 'Continuar a PayPal')).toBeDefined()
+  })
+
+  it('does not offer to buy when the shop does not charge (no gateway)', async () => {
+    const { wrapper, calls } = await open({
+      onSale: () => jsonResponse(200, list([onSale()], FREE_SHELF)),
+    })
+
+    expect(wrapper.text()).toContain('Esta barbería no tiene bonos a la venta')
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.find('[role="radio"]').exists()).toBe(false)
+    expect(calls('POST', '/compras')).toHaveLength(0)
   })
 })

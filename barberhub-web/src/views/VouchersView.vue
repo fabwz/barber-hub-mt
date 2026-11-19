@@ -159,7 +159,11 @@ onMounted(() => void start())
                 description="No puede comprar bonos aquí. Los que ya compró siguen visibles y puede usarlos."
               />
             </div>
-            <div v-else-if="vouchers.onSale.value.length === 0" class="border-y border-line">
+            <!-- No vouchers on the shelf, or a shop that does not charge (no gateway): nothing can be bought -->
+            <div
+              v-else-if="vouchers.onSale.value.length === 0 || vouchers.gateway.value === null"
+              class="border-y border-line"
+            >
               <EmptyState
                 title="Esta barbería no tiene bonos a la venta"
                 description="Cuando publique uno, aparece aquí."

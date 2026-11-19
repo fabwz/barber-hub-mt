@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Application\DTOs;
 
+use Src\Payments\Payments\Application\Contracts\PaymentGateway;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 
@@ -16,4 +17,10 @@ final readonly class PaymentChannel
      * @param  list<PaymentMethod>  $methods
      */
     public function __construct(public PaymentProvider $provider, public array $methods) {}
+
+    /** The channel of a gateway: its provider and every method it says it supports. */
+    public static function ofGateway(PaymentGateway $gateway): self
+    {
+        return new self($gateway->provider(), array_values(array_filter(PaymentMethod::cases(), fn (PaymentMethod $method): bool => $gateway->supports($method))));
+    }
 }

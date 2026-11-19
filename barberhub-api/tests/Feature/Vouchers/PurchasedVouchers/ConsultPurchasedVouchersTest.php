@@ -7,6 +7,7 @@ namespace Tests\Feature\Vouchers\PurchasedVouchers;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Src\Shared\Domain\Contracts\Clock;
 use Tests\Support\RefreshDatabaseAsOwner;
@@ -289,6 +290,47 @@ final class ConsultPurchasedVouchersTest extends TestCase
         DB::flushQueryLog();
         $this->sendAs('owner', 'GET', $this->sold($this->puraNavaja))->assertOk()->assertJsonCount(8, 'data');
         $this->assertSame($withFour, count(DB::getQueryLog()));
+    }
+
+    /**
+     * The movements of a voucher, to the customer and to the owner, are what the exported contract says: the four kinds, the sessions,
+     * the reservation (null in the purchase) and the date, and both contracts point at the same schema, with no untyped item (RF-29, BO-09).
+     */
+    public function test_the_movements_match_the_exported_contract(): void
+    {
+        $voucher = $this->insertPurchasedVoucher($this->puraNavaja, $this->anaMembership, $this->definition);
+        $first = $this->insertReservation($this->puraNavaja, $this->daniela, $this->degradado, $this->anaMembership, '2030-03-20T09:00:00-06:00');
+        $second = $this->insertReservation($this->puraNavaja, $this->daniela, $this->degradado, $this->anaMembership, '2030-03-20T11:00:00-06:00');
+        $this->insertVoucherMovement($this->puraNavaja, $voucher, 'hold', -1, $first);
+        $this->insertVoucherMovement($this->puraNavaja, $voucher, 'hold', -1, $second);
+        $this->insertVoucherMovement($this->puraNavaja, $voucher, 'release', 1, $second);
+        $this->insertVoucherMovement($this->puraNavaja, $voucher, 'consume', 0, $first);
+        DB::table('purchased_vouchers')->where('id', $voucher)->update(['remaining_sessions' => 4]);
+
+        $contract = File::json(base_path('openapi/v1.json'));
+        $schemas = $contract['components']['schemas'];
+        $movement = $schemas['MovimientoDeBono'];
+        foreach (['BonoComprado', 'BonoVendido'] as $name) {
+            $this->assertSame(['type' => 'array', 'description' => $schemas[$name]['properties']['movimientos']['description'], 'items' => ['$ref' => '#/components/schemas/MovimientoDeBono']], $schemas[$name]['properties']['movimientos']);
+        }
+        $this->assertSame(['tipo', 'sesiones', 'reserva', 'fecha'], $movement['required']);
+
+        $mine = $this->sendAs('customer', 'GET', $this->mine($this->puraNavaja))->assertOk()->json('data.0.movimientos');
+        $sold = $this->sendAs('owner', 'GET', $this->sold($this->puraNavaja))->assertOk()->json('data.0.movimientos');
+
+        $this->assertSame($mine, $sold);
+        $this->assertSame(['compra', 'apartado', 'apartado', 'reintegro', 'consumo'], array_column($mine, 'tipo'));
+        $this->assertSame([null, $first, $second, $second, $first], array_column($mine, 'reserva'));
+        foreach ($mine as $entry) {
+            $this->assertSame(array_keys($movement['properties']), array_keys($entry));
+            $this->assertContains($entry['tipo'], $movement['properties']['tipo']['enum']);
+            $this->assertIsInt($entry['sesiones']);
+            $this->assertTrue($entry['reserva'] === null || is_string($entry['reserva']));
+            $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-06:00$/', $entry['fecha']);
+        }
+        $this->assertSame(['integer'], [$movement['properties']['sesiones']['type']]);
+        $this->assertSame(['string', 'null'], $movement['properties']['reserva']['type']);
+        $this->assertSame('string', $movement['properties']['fecha']['type']);
     }
 
     private function mine(string $barbershopId): string

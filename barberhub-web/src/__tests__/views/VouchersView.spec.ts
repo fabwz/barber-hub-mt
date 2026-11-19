@@ -7,6 +7,9 @@ import { mountView } from '../helpers/mountView'
 import {
   VOUCHERS_PAGE,
   VOUCHER_ID,
+  FREE_SHELF,
+  ONVO_SHELF,
+  PAYPAL_SHELF,
   bought,
   expired,
   list,
@@ -116,7 +119,7 @@ describe('VouchersView: my vouchers and vouchers on sale', () => {
     expect(items[5]).toContain('vie 4 ene 2030')
   })
 
-  it('ignores a movement the API sends malformed instead of breaking the list', async () => {
+  it('lists the four kinds of movement with their label and signed sessions, newest first', async () => {
     const { wrapper } = await open({
       mine: () =>
         jsonResponse(
@@ -124,9 +127,20 @@ describe('VouchersView: my vouchers and vouchers on sale', () => {
           list([
             bought({
               movimientos: [
-                { tipo: 'otro' },
-                'x',
                 { tipo: 'compra', sesiones: 5, reserva: null, fecha: '2030-01-04T08:00:00-06:00' },
+                {
+                  tipo: 'apartado',
+                  sesiones: -1,
+                  reserva: 'r1',
+                  fecha: '2030-01-12T09:00:00-06:00',
+                },
+                { tipo: 'consumo', sesiones: 0, reserva: 'r1', fecha: '2030-01-14T10:00:00-06:00' },
+                {
+                  tipo: 'reintegro',
+                  sesiones: 1,
+                  reserva: 'r2',
+                  fecha: '2030-01-27T09:00:00-06:00',
+                },
               ],
             }),
           ]),
@@ -137,7 +151,16 @@ describe('VouchersView: my vouchers and vouchers on sale', () => {
       .find((b) => b.text() === 'Movimientos')!
       .trigger('click')
 
-    expect(wrapper.findAll('li li')).toHaveLength(1)
+    const rows = wrapper.findAll('li li')
+    expect(rows).toHaveLength(4)
+    expect(rows.map((row) => row.find('.font-medium').text())).toEqual([
+      'Reintegro',
+      'Consumo',
+      'Apartado',
+      'Compra',
+    ])
+    expect(rows[0]!.text()).toContain('+1 sesión')
+    expect(rows[3]!.text()).toContain('+5 sesiones')
   })
 })
 
@@ -156,7 +179,7 @@ describe('VouchersView: vouchers turned off', () => {
 
   it('says there is nothing on sale when the vouchers are on but none is published', async () => {
     const { wrapper } = await open({
-      onSale: () => jsonResponse(200, list([], { bonos_activos: true })),
+      onSale: () => jsonResponse(200, list([], ONVO_SHELF)),
     })
 
     expect(section(wrapper, 'Bonos a la venta').text()).toContain(
@@ -226,7 +249,7 @@ describe('VouchersView: loading, error and empty states', () => {
   it('shows the empty state of the vouchers bought and of the vouchers on sale', async () => {
     const { wrapper } = await open({
       mine: () => jsonResponse(200, list([])),
-      onSale: () => jsonResponse(200, list([], { bonos_activos: true })),
+      onSale: () => jsonResponse(200, list([], ONVO_SHELF)),
     })
 
     expect(wrapper.text()).toContain('Aún no tiene bonos')
@@ -243,9 +266,30 @@ describe('VouchersView: loading, error and empty states', () => {
           list([bought({ id: `b${page}` })], { pagina: page, ultima_pagina: 2 }),
         )
       },
-      onSale: () => jsonResponse(200, list([onSale()], { bonos_activos: true })),
+      onSale: () => jsonResponse(200, list([onSale()], ONVO_SHELF)),
     })
 
     expect(calls('GET', '/mis-bonos')).toHaveLength(2)
+  })
+})
+
+describe('VouchersView: a shop that does not charge', () => {
+  it('offers no voucher to buy, with the same state as an empty shelf', async () => {
+    const { wrapper } = await open({
+      onSale: () => jsonResponse(200, list([onSale()], FREE_SHELF)),
+    })
+
+    expect(section(wrapper, 'Bonos a la venta').text()).toContain(
+      'Esta barbería no tiene bonos a la venta',
+    )
+    expect(wrapper.text()).not.toContain('Comprar bono')
+  })
+
+  it('still offers the vouchers to a shop that collects with PayPal', async () => {
+    const { wrapper } = await open({
+      onSale: () => jsonResponse(200, list([onSale()], PAYPAL_SHELF)),
+    })
+
+    expect(wrapper.text()).toContain('Comprar bono')
   })
 })

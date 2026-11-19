@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-vue-next'
 
 import StatusLabel from '@/components/StatusLabel.vue'
 import { dateOf, formatDateWithYear, sessionsLabel } from '@/composables/format'
-import { readMovements, type MovementType, type PurchasedVoucher } from '@/composables/useVouchers'
+import { newestFirst, type MovementType, type PurchasedVoucher } from '@/composables/useVouchers'
 
 interface Props {
   voucher: PurchasedVoucher
@@ -20,7 +20,7 @@ const MOVEMENT_LABELS: Record<MovementType, string> = {
 }
 
 const expired = computed(() => voucher.estado === 'vencido')
-const movements = computed(() => readMovements(voucher.movimientos))
+const movements = computed(() => newestFirst(voucher.movimientos))
 const services = computed(() => voucher.servicios.map((service) => service.nombre).join(', '))
 
 /** «3 de 5 sesiones» while active; an expired voucher has no balance: «0 sesiones». */
@@ -84,10 +84,12 @@ const titleId = useId()
         class="flex min-h-14 items-center justify-between gap-3 border-b border-line py-2 last:border-b-0"
       >
         <span class="flex min-w-0 flex-col">
-          <span class="font-medium">{{ MOVEMENT_LABELS[movement.type] }}</span>
-          <span class="text-sm text-fg-muted">{{ formatDateWithYear(dateOf(movement.at)) }}</span>
+          <span class="font-medium">{{ MOVEMENT_LABELS[movement.tipo] }}</span>
+          <span class="text-sm text-fg-muted">{{
+            formatDateWithYear(dateOf(movement.fecha))
+          }}</span>
         </span>
-        <span class="flex-none text-sm tabular-nums">{{ change(movement.sessions) }}</span>
+        <span class="flex-none text-sm tabular-nums">{{ change(movement.sesiones) }}</span>
       </li>
       <li v-if="movements.length === 0" class="py-3 text-sm text-fg-muted">
         Aún no hay movimientos.
