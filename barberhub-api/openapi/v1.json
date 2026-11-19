@@ -101,6 +101,10 @@
         {
             "name": "Saldo de bonos",
             "description": "Consulta del saldo y la vigencia de los bonos comprados: el cliente ve los suyos y el due\u00f1o, los vendidos en su barber\u00eda."
+        },
+        {
+            "name": "Lista de espera",
+            "description": "Anotarse en la fila de espera de un servicio, un d\u00eda y un barbero, ver las filas propias y salir de ellas."
         }
     ],
     "security": [
@@ -1967,6 +1971,157 @@
                 }
             }
         },
+        "/barberias/{barberia}/filas": {
+            "post": {
+                "operationId": "waitlist.entries.store",
+                "description": "Anota a la persona de la sesi\u00f3n en la fila de un `servicio` activo en una `fecha` (`AAAA-MM-DD`, hoy o posterior en Costa Rica), con el `barbero` indicado o con cualquiera si se omite o va nulo. La fila nace `esperando` y su `ingreso` (la hora de la petici\u00f3n) la ordena: el primero en entrar es el primero en recibir una oferta. Solo se anota quien no tiene d\u00f3nde reservar: si hay espacios disponibles para esa combinaci\u00f3n, la petici\u00f3n se rechaza con 409 `conflicto` y el miembro `espacios` trae hasta 3, los de inicio m\u00e1s pr\u00f3ximo, con `barbero`, `inicio` y `fin` (ISO 8601), para que reserve uno con `POST /reservas`; no se crea ninguna fila. Cada persona tiene como m\u00e1ximo 3 filas activas (`esperando` u `ofrecida`) por barber\u00eda: la cuarta responde 409 `conflicto`, tambi\u00e9n cuando dos anotaciones llegan a la vez (el bloqueo por persona las atiende una tras otra). Repetir la misma combinaci\u00f3n de servicio, d\u00eda y barbero con una fila activa responde 409 `conflicto`. Con la lista de espera desactivada por la barber\u00eda (`lista_espera_activa` en `false`) responde 409 `conflicto`. Una persona sin rol en la barber\u00eda queda como cliente con su primera fila; si la anotaci\u00f3n falla no queda ninguna membres\u00eda. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`. Un servicio o un barbero inexistente, inactivo o de otra barber\u00eda responde 404 `no-encontrado`, igual que una barber\u00eda inexistente; un dato mal escrito o una fecha pasada, 422 `datos-invalidos` con el campo. La oferta del espacio liberado todav\u00eda no se aplica.",
+                "summary": "Anotarse en la lista de espera",
+                "tags": [
+                    "Lista de espera"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AnotarseEnFila"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`FilaDeEspera`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/FilaDeEspera"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/mis-filas": {
+            "get": {
+                "operationId": "waitlist.entries.mine",
+                "description": "Lista, de la que entr\u00f3 primero a la \u00faltima, las filas activas (`esperando` u `ofrecida`) que la persona de la sesi\u00f3n tiene en la barber\u00eda: a lo sumo 3, as\u00ed que no va paginada. No muestra filas de otras personas. Una persona que todav\u00eda no se anot\u00f3 ah\u00ed recibe la lista vac\u00eda, no un error. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`.",
+                "summary": "Listar mis filas de espera",
+                "tags": [
+                    "Lista de espera"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `FilaDeEspera`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/FilaDeEspera"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/filas/{fila}": {
+            "delete": {
+                "operationId": "waitlist.entries.destroy",
+                "description": "Saca a la persona de una de sus filas en cualquier momento, tambi\u00e9n con la lista de espera desactivada: la fila queda `retirada` (no se borra) y deja de contar para el m\u00e1ximo de 3. Repetir la petici\u00f3n responde 204 igual y no cambia nada. Una fila ya `cumplida` con una reserva responde 409 `conflicto`. Una fila que no existe, de otra persona o de otra barber\u00eda, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`: una persona nunca ve ni modifica las filas de otras. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`.",
+                "summary": "Salir de la lista de espera",
+                "tags": [
+                    "Lista de espera"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "fila",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/mis-barberias": {
             "get": {
                 "operationId": "catalog.barbershops.mine",
@@ -3535,6 +3690,34 @@
                 },
                 "title": "ActualizarServicio"
             },
+            "AnotarseEnFila": {
+                "type": "object",
+                "properties": {
+                    "servicio": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Identificador del servicio activo de la barber\u00eda."
+                    },
+                    "fecha": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "D\u00eda que busca, fecha de Costa Rica `AAAA-MM-DD`, de hoy en adelante."
+                    },
+                    "barbero": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "Identificador del barbero; nulo u omitido significa \u00abcualquiera\u00bb."
+                    }
+                },
+                "required": [
+                    "servicio",
+                    "fecha"
+                ],
+                "title": "AnotarseEnFila"
+            },
             "Barberia": {
                 "type": "object",
                 "properties": {
@@ -4452,6 +4635,52 @@
                     "dias_siguientes"
                 ],
                 "title": "Disponibilidad"
+            },
+            "FilaDeEspera": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string",
+                        "description": "Identificador del servicio por el que espera."
+                    },
+                    "barbero": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Identificador del barbero que pidi\u00f3; nulo significa \u00abcualquiera\u00bb."
+                    },
+                    "fecha": {
+                        "type": "string",
+                        "description": "D\u00eda que busca, `AAAA-MM-DD`."
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "`esperando` mientras espera su turno u `ofrecida` cuando ya tiene un espacio ofrecido.",
+                        "enum": [
+                            "esperando",
+                            "ofrecida",
+                            "cumplida",
+                            "retirada"
+                        ]
+                    },
+                    "ingreso": {
+                        "type": "string",
+                        "description": "Cu\u00e1ndo entr\u00f3 a la fila, ISO 8601 con el desfase de Costa Rica (-06:00); ordena la fila: primero en entrar, primero en recibir una oferta. Ejemplo: 2030-03-01T08:00:00-06:00."
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "barbero",
+                    "fecha",
+                    "estado",
+                    "ingreso"
+                ],
+                "title": "FilaDeEspera"
             },
             "Franja": {
                 "type": "object",

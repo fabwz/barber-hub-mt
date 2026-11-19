@@ -103,6 +103,11 @@ final class AccessMatrix
             "GET {$base}/bonos" => RouteRule::firstUse(self::FIRST_USE, 'Bonos a la venta con sus servicios (RF-27, UP-09): sin rol pasa y no se crea membresía; dueño y colaborador reciben 403.'),
             "POST {$base}/bonos/{bono}/compras" => RouteRule::firstUse(self::FIRST_USE, 'Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403.'),
 
+            // The waitlist (RF-30, RD-18, UP-09, CL-04).
+            "POST {$base}/filas" => RouteRule::firstUse(self::FIRST_USE, 'Anotarse crea el rol de cliente en la misma transacción (RF-30, UP-09); dueño y colaborador reciben 403.'),
+            "GET {$base}/mis-filas" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (RF-30, CL-04): sin rol, lista vacía.'),
+            "DELETE {$base}/filas/{fila}" => RouteRule::firstUse(self::CUSTOMER_OWN, 'Solo el cliente sale de su propia fila; la de otra persona, la inexistente y quien no tiene rol responden 404 (CL-04); dueño y colaborador reciben 403.'),
+
             // Reservations.
             "GET {$base}/reservas" => RouteRule::owned(['owner', 'collaborator'], self::STAFF_AGENDA, 'El dueño ve la agenda de todos; un colaborador solo la suya (CO-04).'),
             "GET {$base}/reservas/{reserva}" => RouteRule::owned(self::ALL_ROLES, self::RESERVATION_DETAIL, 'Cliente: solo las suyas; colaborador: solo las de su agenda; dueño: cualquiera de su barbería (UP-02, CO-04, CL-04).'),

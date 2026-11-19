@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\Reservations\SeedsBookableBarbershops;
 use Tests\Support\Reservations\SeedsReservations;
 use Tests\Support\Vouchers\SeedsVouchers;
+use Tests\Support\Waitlist\SeedsWaitlist;
 
 /**
  * The two barbershops and the people of the permission tests (RF-42). Pura Navaja has its owner, the collaborators Daniela
@@ -25,6 +26,7 @@ trait BuildsAccessScenario
     use SeedsBookableBarbershops;
     use SeedsReservations;
     use SeedsVouchers;
+    use SeedsWaitlist;
 
     /** @var array<string, string> Account of each actor of AccessMatrix::ACTORS, but the anonymous one. */
     private array $accounts = [];
@@ -66,6 +68,7 @@ trait BuildsAccessScenario
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->puraNavaja),
             'bono' => $this->insertVoucherDefinition($this->puraNavaja, [$this->degradado]),
+            'fila' => $this->insertWaitlistEntry($this->puraNavaja, $this->anaMembership, $this->degradado),
         ];
         $danielaAccount = (string) DB::table('collaborators')->where('id', $this->daniela)->value('user_id');
         $kevinAccount = (string) DB::table('collaborators')->where('id', $this->kevin)->value('user_id');
@@ -83,6 +86,7 @@ trait BuildsAccessScenario
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->fadeLab),
             'bono' => $this->insertVoucherDefinition($this->fadeLab, [$this->corte]),
+            'fila' => $this->insertWaitlistEntry($this->fadeLab, $beaMembership, $this->corte),
         ];
         $mauricioAccount = (string) DB::table('collaborators')->where('id', $this->mauricio)->value('user_id');
         $this->scopeQueriesTo(null);
@@ -184,7 +188,7 @@ trait BuildsAccessScenario
         foreach ([$this->puraNavaja, $this->fadeLab] as $barbershopId) {
             $this->scopeQueriesTo($barbershopId);
 
-            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'opening_hours'] as $table) {
+            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'opening_hours', 'waitlist_entries'] as $table) {
                 $fingerprint["{$barbershopId} {$table}"] = md5((string) json_encode(DB::table($table)->orderBy('id')->get()));
             }
         }

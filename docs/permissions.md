@@ -72,6 +72,9 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `GET api/v1/barberias/{barberia}/mis-bonos` | Lectura de lo propio (RF-29, CL-04): sin rol, lista vacía; dueño y colaborador reciben 403 `prohibido`. Solo trae los bonos ya pagados de la persona. |
 | `GET api/v1/barberias/{barberia}/bonos` | Bonos a la venta con sus servicios cubiertos (RF-27, UP-09): una persona sin rol pasa y no se le crea ninguna membresía; dueño y colaborador reciben 403 `prohibido`. Un bono retirado no aparece. |
 | `POST api/v1/barberias/{barberia}/bonos/{bono}/compras` | Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403 `prohibido` y no se crea nada. Un bono que no existe, está retirado o es de otra barbería responde 404. |
+| `POST api/v1/barberias/{barberia}/filas` | Anotarse en la lista de espera crea el rol de cliente en la misma transacción (RF-30, UP-09); dueño y colaborador reciben 403 `prohibido` y no se crea nada. Con espacios disponibles, con 3 filas activas ya, con una fila igual o con la lista desactivada responde 409 `conflicto`. Un servicio o un barbero que no existe o es de otra barbería responde 404. |
+| `GET api/v1/barberias/{barberia}/mis-filas` | Lectura de lo propio (RF-30, CL-04): sin rol, lista vacía; dueño y colaborador reciben 403 `prohibido`. Solo trae las filas activas de la persona. |
+| `DELETE api/v1/barberias/{barberia}/filas/{fila}` | Solo el cliente sale de su propia fila (RF-30, CL-04): la de otra persona, la que no existe, la de otra barbería y quien no tiene rol responden el mismo 404; dueño y colaborador reciben 403 `prohibido`. |
 
 ## Rutas con rol (y propiedad del recurso)
 
