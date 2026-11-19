@@ -7,6 +7,8 @@ import BookingSummary from '@/components/BookingSummary.vue'
 import DatePicker, { type PickerDay } from '@/components/DatePicker.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import InlineNotice from '@/components/InlineNotice.vue'
+import OptionCard from '@/components/OptionCard.vue'
+import OptionGroup from '@/components/OptionGroup.vue'
 import TimeSlots, { type TimeSlot } from '@/components/TimeSlots.vue'
 import { colones, formatShortDate, secondsUntil } from '@/composables/format'
 import { useCountdown } from '@/composables/useCountdown'
@@ -33,6 +35,10 @@ export interface PanelReservation extends PanelSelection {
   status: 'temporary' | 'confirmed'
   /** ISO 8601 deadline to pay; `null` when the API does not bring it. */
   expiresAt: string | null
+  /** Paid with a session of a voucher (RF-28). */
+  paidWithVoucher?: boolean
+  /** Hours before the start up to which it is cancelled without penalty, as the API gives them. */
+  cancellationHours?: number
 }
 
 /** A choice the assistant could not make: it is marked «Falta elegir» until the person makes it. */
@@ -66,6 +72,8 @@ interface Props {
   paymentInProgress?: boolean
   /** Choices that the proposal of the assistant left open. */
   missing?: PanelMissing[]
+  /** The person has a voucher that can pay this service: «Pagar con bono» is offered. */
+  voucherOffer?: boolean
 }
 
 const {
@@ -84,12 +92,15 @@ const {
   reservation = null,
   paymentInProgress = false,
   missing = [],
+  voucherOffer = false,
 } = defineProps<Props>()
 
 /** Chosen barber; the empty string is «Sin preferencia». */
 const barber = defineModel<string>('barber', { default: '' })
 const date = defineModel<string | null>('date', { default: null })
 const slot = defineModel<string | null>('slot', { default: null })
+/** How the reservation is paid: `bono` with a session of a voucher, `metodo` in the next step. */
+const payWith = defineModel<string>('payWith', { default: 'metodo' })
 
 const emit = defineEmits<{
   retry: []
@@ -98,6 +109,8 @@ const emit = defineEmits<{
   /** «Continuar al pago» of a temporary reservation. */
   pay: []
   'pick-alternative': [value: string]
+  'view-bookings': []
+  'view-vouchers': []
 }>()
 
 const title = useTemplateRef<HTMLElement>('title')
@@ -154,6 +167,7 @@ watch(
   { immediate: true },
 )
 const expired = computed(() => counting.value && countdown.remaining.value === 0)
+const withVoucher = computed(() => voucherOffer && payWith.value === 'bono')
 </script>
 
 <template>
@@ -260,6 +274,28 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
                 :duration-minutes="reservation.durationMinutes"
                 :remaining="countdown.formatted.value"
               />
+              <template v-if="reservation.paidWithVoucher">
+                <InlineNotice title="Se usó 1 sesión de su bono.">
+                  La reserva quedó confirmada, sin depósito ni saldo en el local.
+                </InlineNotice>
+                <p
+                  v-if="reservation.cancellationHours && reservation.cancellationHours > 0"
+                  class="max-w-110 text-sm text-fg-subtle"
+                >
+                  Puede cancelar o cambiar la hora sin costo hasta
+                  {{ reservation.cancellationHours }}
+                  {{ reservation.cancellationHours === 1 ? 'hora' : 'horas' }} antes de la cita. Si
+                  cancela a tiempo, la sesión vuelve a su bono. Cada barbería define este plazo.
+                </p>
+                <div class="flex flex-wrap gap-3">
+                  <BaseButton size="large" @click="emit('view-bookings')">
+                    Ver mis reservas
+                  </BaseButton>
+                  <BaseButton size="large" variant="secondary" @click="emit('view-vouchers')">
+                    Ver mis bonos
+                  </BaseButton>
+                </div>
+              </template>
               <template v-if="reservation.status === 'temporary'">
                 <InlineNotice v-if="paymentInProgress" title="Tiene un pago en proceso.">
                   Continúe al pago para ver su estado.
@@ -350,6 +386,22 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
             <TimeSlots v-else v-model="slot" :slots="slots" :show-barber="anyBarber" />
           </div>
 
+          <section v-if="voucherOffer" aria-labelledby="pay-with-title">
+            <h3 id="pay-with-title" class="mb-4 text-lg font-medium">Forma de pago</h3>
+            <OptionGroup v-model="payWith" aria-label="Forma de pago" class="gap-2!">
+              <OptionCard value="bono" variant="card" :disabled="submitting">
+                Pagar con bono
+                <template #description>
+                  Se usará 1 sesión de un bono que cubra este servicio; sin depósito.
+                </template>
+              </OptionCard>
+              <OptionCard value="metodo" variant="card" :disabled="submitting">
+                Pagar con tarjeta o SINPE Móvil
+                <template #description>Elegirá el método en el siguiente paso.</template>
+              </OptionCard>
+            </OptionGroup>
+          </section>
+
           <ErrorState
             v-if="failure"
             :message="failure.title"
@@ -389,7 +441,10 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
           </template>
           <span v-else class="text-fg-muted">{{ summaryHint }}</span>
         </p>
-        <p v-if="total !== null" class="text-base whitespace-nowrap tabular-nums md:text-lg">
+        <p v-if="withVoucher" class="text-base whitespace-nowrap md:text-lg">
+          <span class="text-sm text-fg-muted">Pago</span> 1 sesión de su bono
+        </p>
+        <p v-else-if="total !== null" class="text-base whitespace-nowrap tabular-nums md:text-lg">
           {{ colones(total) }}
           <span class="text-sm text-fg-muted">IVA incluido</span>
         </p>
@@ -401,7 +456,7 @@ const expired = computed(() => counting.value && countdown.remaining.value === 0
         :loading="submitting"
         @click="emit('reserve')"
       >
-        Reservar
+        {{ withVoucher ? 'Confirmar con bono' : 'Reservar' }}
       </BaseButton>
     </div>
   </section>

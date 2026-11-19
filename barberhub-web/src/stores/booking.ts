@@ -29,6 +29,8 @@ export interface CreatedReservation {
   reservation: Reservation
   serviceName: string
   barberName: string
+  /** Paid with a session of a voucher (RF-28): it is confirmed at once, with no payment. */
+  paidWithVoucher: boolean
 }
 
 interface StoredSelection {
@@ -232,8 +234,14 @@ export const useBookingStore = defineStore('booking', () => {
     selectSlot({ start: alternative.start, barberId: alternative.barberId })
   }
 
-  /** Creates the temporary reservation (RF-11). The caller checks the session first. */
-  async function reserve(labels: { serviceName: string; barberName: string }): Promise<boolean> {
+  /**
+   * Creates the temporary reservation (RF-11), or with `withVoucher` the one paid with a session of a
+   * voucher (RF-28). The API picks the voucher. The caller checks the session first.
+   */
+  async function reserve(
+    labels: { serviceName: string; barberName: string },
+    options: { withVoucher?: boolean } = {},
+  ): Promise<boolean> {
     if (shopId.value === null || serviceId.value === null || slot.value === null) return false
     submitting.value = true
     error.value = null
@@ -241,9 +249,18 @@ export const useBookingStore = defineStore('booking', () => {
     try {
       const { data } = await api.POST('/barberias/{barberia}/reservas', {
         params: { path: { barberia: shopId.value } },
-        body: { servicio: serviceId.value, barbero: slot.value.barberId, inicio: slot.value.start },
+        body: {
+          servicio: serviceId.value,
+          barbero: slot.value.barberId,
+          inicio: slot.value.start,
+          ...(options.withVoucher ? { con_bono: true } : {}),
+        },
       })
-      reservation.value = { reservation: data!.data, ...labels }
+      reservation.value = {
+        reservation: data!.data,
+        ...labels,
+        paidWithVoucher: options.withVoucher === true,
+      }
       clearSelection()
       persist()
       return true
