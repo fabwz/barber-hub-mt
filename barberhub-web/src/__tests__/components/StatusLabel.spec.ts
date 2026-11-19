@@ -27,6 +27,16 @@ describe('StatusLabel', () => {
     expect(wrapper.classes()).not.toContain('text-fg-muted')
   })
 
+  it('shows the state of a voucher as text: «Activo» and, muted, «Vencido»', () => {
+    const active = mount(StatusLabel, { props: { status: 'voucher_active' } })
+    expect(active.text()).toBe('Activo')
+    expect(active.classes()).not.toContain('text-fg-muted')
+
+    const expired = mount(StatusLabel, { props: { status: 'voucher_expired' } })
+    expect(expired.text()).toBe('Vencido')
+    expect(expired.classes()).toContain('text-fg-muted')
+  })
+
   it.each([
     ['expired', 'Expirada'],
     ['refunded', 'Reembolsado'],

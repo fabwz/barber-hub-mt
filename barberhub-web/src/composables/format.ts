@@ -74,6 +74,12 @@ export function formatShortDate(date: string): string {
   return `${weekday} ${day} ${MONTH_NAMES[month - 1] ?? ''}`
 }
 
+/** «sáb 7 nov 2026». */
+export function formatDateWithYear(date: string): string {
+  const [year] = split(date)
+  return `${formatShortDate(date)} ${year}`
+}
+
 /** «noviembre 2026». */
 export function formatMonthYear(date: string): string {
   const [year, month] = split(date)
@@ -99,4 +105,9 @@ export function secondsUntil(moment: string, now: number = Date.now()): number {
 /** ₡10.000: punto como separador de miles. */
 export function colones(amount: number): string {
   return `₡${String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`
+}
+
+/** «1 sesión» o «5 sesiones». */
+export function sessionsLabel(count: number): string {
+  return `${count} ${Math.abs(count) === 1 ? 'sesión' : 'sesiones'}`
 }
