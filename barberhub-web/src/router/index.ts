@@ -78,6 +78,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { public: true, guestOnly: true },
   },
   {
+    path: '/preferencias',
+    name: 'preferences',
+    component: () => import('@/views/PreferencesView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/terminos',
     name: 'terms',
     component: () => import('@/views/TermsView.vue'),

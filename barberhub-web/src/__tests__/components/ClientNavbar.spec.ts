@@ -62,19 +62,23 @@ describe('ClientNavbar — bar', () => {
     expect(desktop.text()).toContain(EMAIL)
   })
 
-  it('does not show «Mi perfil» or «Preferencias» while those screens do not exist', async () => {
+  it('shows «Preferencias» (its route exists) but not «Mi perfil» while that screen does not exist', async () => {
     const { wrapper, desktop, mobile } = await mountNavbar()
 
     expect(wrapper.text()).not.toContain('Mi perfil')
-    expect(wrapper.text()).not.toContain('Preferencias')
+    expect(
+      wrapper
+        .get('nav[aria-label="Principal"]')
+        .findAll('a')
+        .map((a) => a.text()),
+    ).toEqual(['Barberías', 'Preferencias'])
     await desktop.trigger('click')
     expect(wrapper.text()).not.toContain('Mi perfil')
     await mobile.trigger('click')
     await mobile.trigger('click')
-    expect(wrapper.text()).not.toContain('Preferencias')
     // Every link in the bar and the panel points to a route that exists.
     for (const anchor of wrapper.findAll('a')) {
-      expect(['/barberias']).toContain(anchor.attributes('href'))
+      expect(['/barberias', '/preferencias']).toContain(anchor.attributes('href'))
     }
   })
 
