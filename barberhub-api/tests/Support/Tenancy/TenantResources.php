@@ -40,6 +40,9 @@ final class TenantResources
         'GET api/v1/barberias/{barberia}/bonos',
         'POST api/v1/barberias/{barberia}/reservas/propuesta',
         'POST api/v1/barberias/{barberia}/bonos/{bono}/compras',
+        'POST api/v1/barberias/{barberia}/filas',
+        'GET api/v1/barberias/{barberia}/mis-filas',
+        'DELETE api/v1/barberias/{barberia}/filas/{fila}',
     ];
 
     /**
@@ -252,6 +255,17 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/administracion/bonos-vendidos',
                 [],
             ),
+            // The waitlist (#92). Every route of it is a customer operation, so the owner of the isolation test is refused on his own
+            // barbershop and no operation is listed: the routes count as the resource's own, and the isolation of a row is proved by
+            // the permission matrix (the row of another customer or barbershop answers 404) and by WaitlistTenancyTest.
+            new TenantResource(
+                'waitlist_entries',
+                fn (string $barbershopId): string => self::createWaitlistEntry($barbershopId),
+                'api/v1/barberias/{barberia}/filas',
+                [],
+                [],
+                ['api/v1/barberias/{barberia}/mis-filas'],
+            ),
             // The technical record (#51, SE-04). It has no route: nothing reads it, so the isolation test only proves that the database
             // hides the entries of the other barbershop. The path is where a read would be, and no route answers there.
             new TenantResource(
@@ -351,6 +365,24 @@ final class TenantResources
         DB::table('voucher_definition_services')->insert(['id' => $coveredId, 'barbershop_id' => $barbershopId, 'voucher_definition_id' => $definitionId, 'service_id' => $serviceId]);
 
         return [$definitionId, $coveredId];
+    }
+
+    /** Insert a row of the waitlist of its own customer for its own service, waiting for any collaborator. */
+    private static function createWaitlistEntry(string $barbershopId): string
+    {
+        $userId = (string) Str::uuid7();
+        $membershipId = (string) Str::uuid7();
+        $serviceId = (string) Str::uuid7();
+        $entryId = (string) Str::uuid7();
+        DB::table('users')->insert(['id' => $userId, 'name' => 'Ana Rojas', 'email' => "{$userId}@barberhub.test", 'password' => 'hash']);
+        DB::table('memberships')->insert(['id' => $membershipId, 'user_id' => $userId, 'barbershop_id' => $barbershopId, 'role' => 'customer']);
+        DB::table('services')->insert(['id' => $serviceId, 'barbershop_id' => $barbershopId, 'name' => 'Corte clásico', 'duration_minutes' => 30, 'price' => 6000]);
+        DB::table('waitlist_entries')->insert([
+            'id' => $entryId, 'barbershop_id' => $barbershopId, 'customer_membership_id' => $membershipId, 'service_id' => $serviceId,
+            'desired_date' => '2030-03-05', 'status' => 'waiting', 'joined_at' => '2030-03-01 08:00:00-06',
+        ]);
+
+        return $entryId;
     }
 
     /**
