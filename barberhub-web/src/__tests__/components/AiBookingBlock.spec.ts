@@ -58,7 +58,7 @@ describe('AiBookingBlock', () => {
 
     expect(wrapper.get('[role="status"]').text()).toBe('Generando propuesta.')
     expect(wrapper.get('[aria-busy="true"]').exists()).toBe(true)
-    expect(wrapper.findAll('.animate-pulse.motion-reduce\\:animate-none').length).toBeGreaterThan(0)
+    expect(wrapper.findAll('.animate-pulse').length).toBeGreaterThan(0)
   })
 
   it('marks no space as chosen until the person picks one, and emits the pick', async () => {

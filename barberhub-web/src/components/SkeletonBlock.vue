@@ -21,7 +21,7 @@ const blocks = computed(() => Math.max(1, count))
     <div
       v-for="index in blocks"
       :key="index"
-      class="animate-pulse rounded-field bg-line motion-reduce:animate-none"
+      class="animate-pulse rounded-field bg-line"
       :class="blockClass"
       aria-hidden="true"
     />

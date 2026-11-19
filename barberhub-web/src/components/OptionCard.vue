@@ -91,6 +91,10 @@ function choose(): void {
         <slot name="description" />
       </span>
     </span>
+    <!-- Optional value at the end of the row, before the indicator (the «100 %» of a text size). -->
+    <span v-if="$slots.trailing" class="flex-none text-sm font-normal text-fg-muted tabular-nums">
+      <slot name="trailing" />
+    </span>
     <span v-if="!tile" :class="indicatorClasses" aria-hidden="true">
       <span v-if="checked" class="size-2.5 rounded-full bg-accent" />
     </span>

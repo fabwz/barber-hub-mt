@@ -38,7 +38,7 @@ describe('NoticeBanner', () => {
     expect(wrapper.find('[role]').exists()).toBe(false)
   })
 
-  it('fades in 150 ms and drops the transition with prefers-reduced-motion', () => {
+  it('fades in 150 ms and drops the transition when motion is reduced (main.css)', () => {
     const transition = mount(NoticeBanner).findComponent(Transition)
     const enter = String(transition.props('enterActiveClass') ?? '')
     const leave = String(transition.props('leaveActiveClass') ?? '')
@@ -46,7 +46,7 @@ describe('NoticeBanner', () => {
     for (const classes of [enter, leave]) {
       expect(classes).toContain('duration-150')
       expect(classes).toContain('ease-out')
-      expect(classes).toContain('motion-reduce:transition-none')
+      expect(classes).not.toContain('motion-reduce')
     }
   })
 })

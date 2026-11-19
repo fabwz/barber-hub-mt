@@ -7,6 +7,7 @@ import { isApiError } from '@/api'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseCheckbox from '@/components/BaseCheckbox.vue'
 import BrandLogo from '@/components/BrandLogo.vue'
+import PreferencesLink from '@/components/PreferencesLink.vue'
 import NoticeBanner from '@/components/NoticeBanner.vue'
 import PasswordRequirements, {
   type PasswordRequirement,
@@ -218,8 +219,9 @@ async function submit(): Promise<void> {
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <header class="flex h-16 flex-none items-center px-5 md:px-8">
+    <header class="flex h-16 flex-none items-center justify-between gap-2 px-5 md:px-8">
       <BrandLogo />
+      <PreferencesLink />
     </header>
     <main class="px-5 pt-4 pb-10 md:px-8 md:pt-12" :aria-busy="loading ? 'true' : undefined">
       <div class="mx-auto w-full max-w-97.5 md:max-w-110">

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import logo from '@/assets/images/bh-logo-bone.png'
+import boneLogo from '@/assets/images/bh-logo-bone.png'
+import navyLogo from '@/assets/images/bh-logo-navy.png'
+import { usePreferencesStore, type ResolvedTheme } from '@/stores/preferences'
 
 interface Props {
   /** Width in px of the visible mark (the whole mark, without the empty margin of the PNG). */
@@ -10,7 +12,14 @@ interface Props {
 
 const { size = 56 } = defineProps<Props>()
 
-// The PNG is a 2000 px square with transparent margins. Its opaque pixels span the box
+// The one place where a theme is tied to a file: bone on the dark canvas, navy (the light accent) on the
+// light one. The files are not recolored: each is the logotype as delivered.
+const LOGO_BY_THEME: Record<ResolvedTheme, string> = { dark: boneLogo, light: navyLogo }
+
+const preferences = usePreferencesStore()
+const logo = computed(() => LOGO_BY_THEME[preferences.resolvedTheme])
+
+// Both PNGs are a 2000 px square with transparent margins. Their opaque pixels span the box
 // x 489..1697, y 576..1317 (1209 x 742 px); the window below shows exactly that box,
 // so the mark is complete, uncropped and flush with the edge of its container.
 const SOURCE = 2000

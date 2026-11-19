@@ -72,7 +72,7 @@ const titleId = useId()
       <ChevronDown
         :size="18"
         :stroke-width="1.5"
-        class="flex-none transition-transform duration-150 ease-out motion-reduce:transition-none"
+        class="flex-none transition-transform duration-150 ease-out"
         :class="open ? 'rotate-180' : ''"
         aria-hidden="true"
       />

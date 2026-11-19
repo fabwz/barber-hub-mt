@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { ChevronLeft } from 'lucide-vue-next'
 
 import BrandLogo from '@/components/BrandLogo.vue'
+import PreferencesLink from '@/components/PreferencesLink.vue'
 import InlineNotice from '@/components/InlineNotice.vue'
 import { privacyDocument as doc } from './legal/privacyContent'
 
@@ -26,7 +27,10 @@ function goBack(): void {
         <ChevronLeft :size="18" :stroke-width="1.5" aria-hidden="true" />
         Volver
       </button>
-      <BrandLogo />
+      <div class="flex items-center gap-2">
+        <PreferencesLink />
+        <BrandLogo />
+      </div>
     </header>
     <main class="px-5 pt-4 pb-16 md:px-8 md:pt-8">
       <div class="mx-auto w-full max-w-[58ch]">

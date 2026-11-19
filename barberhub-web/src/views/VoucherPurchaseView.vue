@@ -539,7 +539,7 @@ onMounted(() => void load())
                 form="purchase-form"
                 size="large"
                 class="w-full text-base! tabular-nums md:w-70"
-                :class="busy ? 'animate-pulse cursor-progress motion-reduce:animate-none' : ''"
+                :class="busy ? 'animate-pulse cursor-progress' : ''"
                 :loading="busy"
               >
                 <template v-if="busy">Procesando pago</template>

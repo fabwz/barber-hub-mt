@@ -21,8 +21,8 @@ const classes = computed(() => [
 <template>
   <Transition
     appear
-    enter-active-class="transition-opacity duration-150 ease-out motion-reduce:transition-none"
-    leave-active-class="transition-opacity duration-150 ease-out motion-reduce:transition-none"
+    enter-active-class="transition-opacity duration-150 ease-out"
+    leave-active-class="transition-opacity duration-150 ease-out"
     enter-from-class="opacity-0"
     leave-to-class="opacity-0"
   >

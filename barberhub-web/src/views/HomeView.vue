@@ -4,6 +4,8 @@
 import { onMounted } from 'vue'
 
 import BaseButton from '@/components/BaseButton.vue'
+import BrandLogo from '@/components/BrandLogo.vue'
+import PreferencesLink from '@/components/PreferencesLink.vue'
 import { ROLE_LABELS } from '@/composables/roleLabels'
 import { useActiveShopStore } from '@/stores/activeShop'
 import { useSessionStore } from '@/stores/session'
@@ -22,6 +24,10 @@ const devShops = import.meta.env.DEV ? ['pura-navaja', 'fade-lab', 'don-chepe'] 
 </script>
 
 <template>
+  <header class="flex h-16 flex-none items-center justify-between gap-2 px-5 md:px-8">
+    <BrandLogo />
+    <PreferencesLink />
+  </header>
   <main class="p-5 md:p-8">
     <h1 class="text-2xl text-fg">BarberHub</h1>
     <div v-if="session.isAuthenticated" class="mt-6 flex flex-col items-start gap-4">

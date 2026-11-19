@@ -549,15 +549,11 @@ async function reserve(): Promise<void> {
       <span class="sr-only">Cargando</span>
       <!-- Skeleton with the shape of the header -->
       <div class="border-b border-line" aria-hidden="true">
-        <div
-          class="aspect-2/1 w-full animate-pulse bg-line motion-reduce:animate-none md:aspect-3/1"
-        />
+        <div class="aspect-2/1 w-full animate-pulse bg-line md:aspect-3/1" />
         <div class="flex flex-col gap-3 pb-4">
-          <div
-            class="-mt-9 size-18 animate-pulse rounded-full bg-line motion-reduce:animate-none md:-mt-11 md:size-22"
-          />
-          <div class="h-9 w-2/3 animate-pulse rounded-field bg-line motion-reduce:animate-none" />
-          <div class="h-4 w-1/2 animate-pulse rounded-field bg-line motion-reduce:animate-none" />
+          <div class="-mt-9 size-18 animate-pulse rounded-full bg-line md:-mt-11 md:size-22" />
+          <div class="h-9 w-2/3 animate-pulse rounded-field bg-line" />
+          <div class="h-4 w-1/2 animate-pulse rounded-field bg-line" />
         </div>
       </div>
       <div class="max-w-180 py-5 md:py-8" aria-hidden="true">

@@ -61,16 +61,10 @@ const count = computed(() => (total.value === 1 ? '1 barbería' : `${total.value
             class="items-center gap-4 rounded-card border border-line p-4"
             :class="index > 4 ? 'hidden md:flex' : 'flex'"
           >
-            <div
-              class="size-12 flex-none animate-pulse rounded-full bg-line motion-reduce:animate-none"
-            />
+            <div class="size-12 flex-none animate-pulse rounded-full bg-line" />
             <div class="flex flex-1 flex-col gap-2">
-              <div
-                class="h-5 w-3/5 animate-pulse rounded-field bg-line motion-reduce:animate-none"
-              />
-              <div
-                class="h-4 w-2/5 animate-pulse rounded-field bg-line motion-reduce:animate-none"
-              />
+              <div class="h-5 w-3/5 animate-pulse rounded-field bg-line" />
+              <div class="h-4 w-2/5 animate-pulse rounded-field bg-line" />
             </div>
           </li>
         </ul>

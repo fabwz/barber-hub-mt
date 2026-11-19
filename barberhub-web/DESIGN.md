@@ -4,13 +4,13 @@
 
 Este documento es la fuente de verdad visual del cliente web (`barberhub-web`: Vue 3, TypeScript y Tailwind CSS 4). Toda interfaz nueva lo sigue. Si algo no está aquí, se elige la opción más sobria y se anota.
 
-**Tema:** oscuro (el claro queda pendiente, ver «Pendiente»).
+**Temas:** oscuro y claro. La persona elige Claro, Oscuro o Automático (por defecto, sigue al dispositivo); ver «Preferencias». Los valores de esta guía son los del oscuro salvo que se diga «claro»; el claro redefine los mismos tokens (ver «Tema claro»).
 **Idioma de la interfaz:** español de Costa Rica, tratando de «usted».
 
 ## Principios
 
 1. **Una sola interfaz para todas las barberías.** No hay un color por negocio. La identidad de cada barbería viene de sus datos: logo, nombre, dirección, ciudad, teléfono, redes y un banner opcional.
-2. **Casi todo es gris.** El hueso es el único color de marca y solo señala foco, selección con ícono, estado «confirmada» y la página activa.
+2. **Casi todo es gris.** El hueso (en el tema claro, el azul marino del logotipo) es el único color de marca y solo señala foco, selección con ícono, estado «confirmada» y la página activa.
 3. **Las superficies se separan con líneas de 1 px**, nunca con sombras.
 4. **Cada elemento se gana su lugar.** Pocos elementos por pantalla, mucho aire, jerarquía por tamaño y peso.
 5. **Ningún estado depende solo del color o del tono.** Siempre hay texto, ícono o forma. Excepción decidida: los chips de hora y de fecha se distinguen por relleno, peso y `aria-pressed`, sin check (ver su sección).
@@ -41,20 +41,70 @@ Este documento es la fuente de verdad visual del cliente web (`barberhub-web`: V
 
 El hueso (`#ece6d6`) casi no se distingue del texto (`#eef0f0`, contraste 1,1:1). Por eso **nunca se usa para resaltar texto**: marca con forma, ícono, punto, borde o línea.
 
+### Tema claro
+
+Mismos nombres de token y mismos roles; solo cambian los valores. Se aplica con `<html data-theme="light">` (y `color-scheme: light`); el oscuro es `data-theme="dark"`. Valores de Claude Design (lámina 19), verificados con la fórmula de luminancia relativa de WCAG 2.2.
+
+| Token | Oscuro | Claro |
+|---|---|---|
+| `canvas` | `#161819` | `#f5f6f6` |
+| `surface` | `#1c1f21` | `#ffffff` |
+| `elevated` | `#272e32` | `#e8ebed` |
+| `line` | `#2a2f32` | `#dde0e2` |
+| `line-strong` | `#3a3f45` | `#c4c9cc` |
+| `line-hover` | `#454b50` | `#a9afb3` |
+| `field` | `#6b7073` | `#7b8185` |
+| `fg` | `#eef0f0` | `#14181a` |
+| `fg-muted` | `#9a9d9e` | `#4f5559` |
+| `fg-subtle` | `#85888a` | `#5d6366` |
+| `accent` | `#ece6d6` | `#000f2d` |
+| `accent-hover` | `#cfc8b5` | `#2b3f69` |
+| `btn-hover` | `#2e373c` | `#dce1e4` |
+| `btn-active` | `#20262a` | `#f0f2f3` |
+| `danger` | `#f2a3a0` | `#a5231f` |
+| `danger-surface` | `#301c1a` | `#fdeceb` |
+| `danger-border` | `#d9706e` | `#c4413a` |
+| `warning` | `#e8c27a` | `#7a5300` |
+| `warning-surface` | `#2d2616` | `#fbf0d6` |
+
+- **Acento en claro:** el azul marino del logotipo, `#000f2d` (17,5:1 sobre `canvas`). Mantiene los mismos usos del hueso: foco, check, punto de selección, página activa y logo. Como el hueso en oscuro, casi no se distingue del texto (`fg`, `#14181a`), así que **tampoco se usa para resaltar texto**: marca con forma, ícono, punto, borde o línea. Su hover es `#2b3f69`.
+- **Fondo de página:** el mismo destello en la esquina, con azul marino al 5 % (`rgba(0, 15, 45, 0.05)`) en lugar de hueso al 4 %. Sigue siendo el único degradado y solo vive en la capa base.
+- **Logotipo:** `bh-logo-bone.png` en oscuro y `bh-logo-navy.png` (`#000F2D`) en claro (ver «Íconos e imágenes»).
+- Las reglas de diseño no cambian: líneas de 1 px, sin sombras ni degradados en componentes, hueso o azul marino solo como acento.
+
 ### Contraste verificado
 
-| Par | Contraste | Mínimo | Resultado |
+Texto, 4,5:1; componentes, foco y bordes de campo, 3:1 (WCAG 2.2 AA). La prueba `themeTokens.spec.ts` calcula estos pares con los valores de `main.css` en los dos temas.
+
+| Par | Oscuro | Claro | Mínimo |
 |---|---|---|---|
-| `fg` sobre `canvas` / `surface` / `elevated` | 15,6 / 14,5 / 12,1 | 4,5 | Cumple |
-| `fg-muted` sobre `canvas` / `surface` / `elevated` | 6,5 / 6,1 / 5,1 | 4,5 | Cumple |
-| `fg-subtle` sobre `canvas` / `surface` | 5,0 / 4,6 | 4,5 | Cumple |
-| `fg-subtle` sobre `elevated` | 3,9 | 4,5 | **No usar** |
-| `accent` sobre `canvas` / `elevated` | 14,3 / 11,1 | 3 | Cumple |
-| `danger` sobre `danger-surface` | 8,1 | 4,5 | Cumple |
-| `warning` sobre `warning-surface` | 8,9 | 4,5 | Cumple |
-| `field` sobre `canvas` / `surface` | 3,6 / 3,3 | 3 | Cumple |
-| `danger-border` sobre `canvas` | 5,5 | 3 | Cumple |
-| `fg` sobre `btn-hover` / `btn-active` | 10,6 / 13,4 | 4,5 | Cumple |
+| `fg` sobre `canvas` | 15,6 · Cumple | 16,5 · Cumple | 4,5 |
+| `fg` sobre `surface` | 14,5 · Cumple | 17,9 · Cumple | 4,5 |
+| `fg` sobre `elevated` | 12,1 · Cumple | 14,9 · Cumple | 4,5 |
+| `fg-muted` sobre `canvas` | 6,5 · Cumple | 7,0 · Cumple | 4,5 |
+| `fg-muted` sobre `surface` | 6,1 · Cumple | 7,6 · Cumple | 4,5 |
+| `fg-muted` sobre `elevated` | 5,0 · Cumple | 6,3 · Cumple | 4,5 |
+| `fg-subtle` sobre `canvas` | 5,0 · Cumple | 5,6 · Cumple | 4,5 |
+| `fg-subtle` sobre `surface` | 4,6 · Cumple | 6,1 · Cumple | 4,5 |
+| `fg-subtle` sobre `elevated` | 3,9 · **No usar** | 5,1 · Cumple | 4,5 |
+| `accent` sobre `canvas` | 14,3 · Cumple | 17,5 · Cumple | 3 |
+| `accent` sobre `surface` | 13,3 · Cumple | 19,0 · Cumple | 3 |
+| `accent` sobre `elevated` | 11,1 · Cumple | 15,9 · Cumple | 3 |
+| `accent-hover` sobre `canvas` (texto) | 10,7 · Cumple | 9,6 · Cumple | 4,5 |
+| `danger` sobre `danger-surface` | 8,1 · Cumple | 6,4 · Cumple | 4,5 |
+| `warning` sobre `warning-surface` | 8,9 · Cumple | 6,0 · Cumple | 4,5 |
+| `field` sobre `canvas` | 3,6 · Cumple | 3,6 · Cumple | 3 |
+| `field` sobre `surface` | 3,3 · Cumple | 3,9 · Cumple | 3 |
+| `field` sobre `elevated` | 2,8 · **No usar** | 3,3 · Cumple | 3 |
+| `danger-border` sobre `canvas` | 5,5 · Cumple | 4,7 · Cumple | 3 |
+| `danger-border` sobre `surface` | 5,1 · Cumple | 5,0 · Cumple | 3 |
+| `fg` sobre `btn-hover` | 10,6 · Cumple | 13,6 · Cumple | 4,5 |
+| `fg` sobre `btn-active` | 13,4 · Cumple | 15,9 · Cumple | 4,5 |
+| `fg-muted` sobre `btn-hover` | 4,45 · **No usar** | 5,7 · Cumple | 4,5 |
+
+«No usar» es la regla que ya existía en el oscuro (`fg-subtle` y campos sobre `elevated`; texto secundario sobre `btn-hover`). En claro esos pares sí pasarían, pero la regla se mantiene para que no dependa del tema.
+
+El hueso (`#ece6d6`) casi no se distingue del texto (`#eef0f0`, contraste 1,1:1). Por eso **nunca se usa para resaltar texto**: marca con forma, ícono, punto, borde o línea. Lo mismo vale para el azul marino en claro.
 
 Los campos van sobre `canvas` o `surface`, **nunca sobre `elevated`** (ahí `field` baja a 2,8:1).
 
@@ -102,7 +152,7 @@ Escala fija en rem; no hay tipografía fluida. Las cifras de precio y hora se mu
 
 **Cero sombras en cualquier elemento**, incluidos menús, avisos y diálogos: se separan con borde `line` y la superficie del nivel. **Cero degradados en los componentes**, desenfoque o efectos de vidrio.
 
-**Única excepción, el fondo de la página:** un degradado radial muy tenue en la esquina inferior derecha de la ventana, sobre `canvas`: `radial-gradient(120% 700px at 100% 100%, rgba(238,240,240,0.04), rgba(238,240,240,0)) fixed`. Se declara una sola vez, en la capa base de `main.css`, y ningún componente lo usa (la prueba de reglas de diseño sigue fallando si aparece un degradado en `src/components`).
+**Única excepción, el fondo de la página:** un degradado radial muy tenue en la esquina inferior derecha de la ventana, sobre `canvas`: `radial-gradient(120% 700px at 100% 100%, rgba(238,240,240,0.04), rgba(238,240,240,0)) fixed`. En el tema claro el color del destello es `rgba(0, 15, 45, 0.05)`: ambos viven en la variable `--page-glow`. Se declara una sola vez, en la capa base de `main.css`, y ningún componente lo usa (la prueba de reglas de diseño sigue fallando si aparece un degradado en `src/components`).
 
 ## Componentes
 
@@ -226,9 +276,9 @@ Barra superior con: Agenda, Reservas, Servicios, Barberos y Pagos. Elemento inac
 ### Navbar del cliente
 Barra de las pantallas de la persona con sesión iniciada (hoy, solo el directorio de `/barberias`). Es la misma barra del negocio: 64 px de alto, línea inferior de 1 px `line`, 20 px de relleno lateral en celular y 32 px en escritorio, y 40 px entre la marca y los enlaces. **No reemplaza la cabecera de cada barbería** y no lleva «Mis reservas»: esa lista es por barbería y vive en su cabecera.
 - **Escritorio:** la marca (`BrandLogo` de 45 px, enlace al directorio), los enlaces en píldora de 44 px y, a la derecha, el menú de cuenta. Enlace en reposo: texto `fg-muted`; hover: relleno `surface`. **Activo:** relleno `elevated`, texto `fg` en peso 500 y `aria-current="page"`.
-- **Enlaces:** «Barberías» siempre. «Mi perfil» y «Preferencias» **solo cuando su ruta existe** (`router.hasRoute`); mientras no existan, la barra lleva solo «Barberías» y no hay enlaces rotos.
+- **Enlaces:** «Barberías» y «Preferencias» (ruta `/preferencias`). «Mi perfil» **solo cuando su ruta existe** (`router.hasRoute`); mientras no exista, no hay enlace roto. «Preferencias» es la página activa (`aria-current`, relleno `elevated`) en su pantalla.
 - **Celular:** la marca y un botón de menú de 44 px (`aria-label="Menú"`); el panel ocupa el ancho de la pantalla (12 px de margen) y lleva los enlaces en filas de 48 px, el nombre y «Cerrar sesión».
-- Transiciones de 150 ms `ease-out` solo en hover y en la apertura del menú.
+- Transiciones de 150 ms `ease-out` solo en hover y en la apertura del menú (con la reducción de movimiento, ninguna).
 
 ### Menú de cuenta
 - **Botón (escritorio):** píldora de 44 px de alto con el monograma de 32 px (`elevated`, borde `line-strong`, 12 px en peso 500), el nombre (14 px, peso 500, con puntos suspensivos si no cabe) y un chevron de 18 px que **gira 180°** al abrir. Cerrado: transparente con borde `line-strong`. Hover: relleno `surface` y borde `line-hover`. Abierto: relleno `elevated` y borde `line-hover`. Tiene `aria-expanded` y `aria-controls`; no usa `role="menu"` (es una lista de enlaces y un botón).
@@ -262,7 +312,7 @@ Tarjeta de 16 px con borde de 1 px, sin sombra. Aparece abajo a la derecha en es
 Los textos nombran el problema y la salida, sin «Error:» doble ni signos de exclamación.
 
 ### Esqueleto de carga
-Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de servicio, bloque de agenda). Nunca ruedas. La animación es un pulso lento de opacidad y se desactiva con `prefers-reduced-motion`. El contenedor lleva `aria-busy="true"`.
+Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de servicio, bloque de agenda). Nunca ruedas. La animación es un pulso lento de opacidad y se quita con la reducción de movimiento (ver «Movimiento y foco»). El contenedor lleva `aria-busy="true"`.
 
 ### Estado vacío y estado de error
 - **Vacío:** un título que nombra el espacio, una línea que explica qué pasa y una acción en verbo. Ejemplo: «No hay reservas para el sáb 7 nov.» y «Ir a hoy».
@@ -343,18 +393,27 @@ Las páginas de texto largo (términos y política de privacidad) usan un ancho 
 
 ## Movimiento y foco
 
-- Transiciones de **150 ms** `ease-out`, solo para comunicar un cambio de estado (hover, apertura de un menú). Ninguna animación de entrada.
+- Transiciones de **150 ms** `ease-out`, solo para comunicar un cambio de estado (hover, apertura de un menú, giro de un chevron). Ninguna animación de entrada.
 - **Foco de teclado** (`:focus-visible`): contorno de 1 px `accent` con 2 px de separación, en botones, chips, enlaces y filas.
 - **Foco de campo:** el borde pasa a `accent`, sin contorno.
 - Selección de texto: relleno `elevated` y texto `fg`.
-- Con `prefers-reduced-motion`, las transiciones y animaciones se reducen al mínimo.
+
+### Reducción de movimiento (AC-04)
+
+Con la reducción activada **no queda ninguna animación ni transición no esencial**: el pulso del esqueleto, el giro de los chevrons, el hover animado y el desplazamiento suave. Una sola regla en la capa base de `main.css` lo resuelve para toda la interfaz (`animation: none`, transiciones de 0,01 ms para que las de Vue terminen y `scroll-behavior: auto`); **los componentes no usan `motion-reduce:`**, porque eso decidiría solo por el dispositivo e ignoraría la elección de la persona.
+
+| Elección | Atributo en `<html>` | Resultado |
+|---|---|---|
+| Sin elegir (por defecto) | ninguno | Sigue `prefers-reduced-motion` del dispositivo, en vivo |
+| Activada | `data-motion="reduce"` | Sin movimiento, aunque el dispositivo lo permita |
+| Desactivada | `data-motion="full"` | Con movimiento, aunque el dispositivo pida menos |
 
 ## Íconos e imágenes
 
 - **Lucide**, trazo de 1,5 px, tamaños de 16, 18, 20 y 24 px, heredan el color del texto. Nunca emojis ni glifos como íconos.
 - **Logos de marca:** los de WhatsApp, Instagram, Facebook, TikTok, Google Maps y Waze son los glifos oficiales de [Simple Icons](https://simpleicons.org) (licencia CC0), rellenos (`fill: currentColor`) sobre una cuadrícula de 24 px, en el color del texto. Se copian a `src/composables/brandIcons.ts`; no se agrega la librería como dependencia. Se muestran a 18 px (redes) y 16 px (mapas).
 - El banner y el logo son **del negocio** y se muestran dentro de su marco. BarberHub no agrega fotografías de stock ni ilustraciones decorativas.
-- **Logotipo:** el de BarberHub vive en `src/assets/images/bh-logo-bone.png` (versión hueso, para el tema oscuro) y se muestra con el componente `BrandLogo`, con `alt="BarberHub"`, dimensiones explícitas y un alto mínimo de 24 px (por defecto, 56 × 35 px). `BrandLogo` recorta el margen transparente del archivo para que el logotipo quede completo y pegado al margen de la pantalla. Se usa solo en el encabezado de las pantallas de acceso, de lectura y de la aplicación. No se recolorea ni se deforma. Las versiones negra y azul grisáceo se suman con el tema claro.
+- **Logotipo:** el de BarberHub vive en `src/assets/images/`: `bh-logo-bone.png` (hueso, para el tema oscuro) y `bh-logo-navy.png` (azul marino `#000F2D`, para el claro). `BrandLogo` los une al tema en un único mapa (`LOGO_BY_THEME`) y lo muestra, con `alt="BarberHub"`, dimensiones explícitas y un alto mínimo de 24 px (por defecto, 56 × 35 px). `BrandLogo` recorta el margen transparente del archivo para que el logotipo quede completo y pegado al margen de la pantalla. Se usa solo en el encabezado de las pantallas de acceso, de lectura y de la aplicación. No se recolorea (sin filtros ni recuadros) ni se deforma.
 
 ## Mis reservas, detalle y Reprogramar
 
@@ -397,6 +456,39 @@ Opción de `radiogroup` de 16 px (la misma ficha de método de pago: marca circu
 - **Reserva confirmada con bono:** el panel muestra el resumen con «Confirmada», el aviso «Se usó 1 sesión de su bono.», el plazo real de la reserva («Puede cancelar o cambiar la hora sin costo hasta N horas antes de la cita. Si cancela a tiempo, la sesión vuelve a su bono. Cada barbería define este plazo.») y «Ver mis reservas» y «Ver mis bonos». No hay cuenta regresiva.
 - **Errores estables:** `saldo-insuficiente` («Su bono ya no tiene sesiones disponibles.») y `bono-vencido` («Su bono vence antes de la fecha de la cita.») usan el aviso rojo de siempre con «No se reservó ni se usó ninguna sesión.» y la salida (pagar con tarjeta o SINPE Móvil, o elegir otra fecha); la opción vuelve a «Pagar con tarjeta o SINPE Móvil» y los bonos se leen de nuevo. La API no deja reserva, sesión apartada ni espacio retenido cuando falla.
 
+## Preferencias (pantalla del cliente)
+
+Ruta `/preferencias`, **pública** (sin sesión, sin API). Diseño de origen: láminas 17 a 19 de la v7 (Claude Design). Es la implementación de RF-48 y de AC-01 a AC-06. Un solo `h1` «Preferencias».
+
+- **Dónde se guarda:** solo en el navegador, en `localStorage` (clave `barberhub.preferences`, dentro de `try/catch`; si falla, la elección vive en memoria durante la visita). No pide cuenta ni llama a la API. Un único almacén (`usePreferencesStore`) tiene las tres preferencias.
+- **Se aplica de inmediato**, sin botón de guardar, y **antes del primer render**: un script en línea de `index.html` pone los atributos de `<html>` con las mismas reglas del almacén (una prueba los compara), para que la página no parpadee con el tema equivocado.
+- **Atributos de `<html>`:** `data-theme="light|dark"` (el tema que se ve), `data-text-size="normal|large|xlarge"` y `data-motion="reduce|full"` (ausente si sigue al dispositivo).
+- **Bloque reutilizable** (`PreferencesPanel`): la nota y los tres grupos, sin título ni página alrededor. La pantalla le pone el título y el navbar (sin «Volver»); en «Mi cuenta» será la pestaña «Apariencia» (#105). Nota: «Elija cómo quiere ver BarberHub: los cambios se aplican de inmediato y se guardan en este navegador.» (una sola frase, con un único punto)
+- **Disposición:** celular, una columna: Tema, Tamaño del texto y Reducir el movimiento. Escritorio (desde 768 px): una tarjeta de 16 px con borde `line` y 32 px de relleno, título y nota arriba con una línea `line` debajo, y dos columnas separadas por una línea de 1 px y 32 px a cada lado: a la izquierda Tema y, debajo, Reducir el movimiento; a la derecha Tamaño del texto. Margen de pantalla de 20 px en celular y 32 px en escritorio; la tarjeta ocupa el ancho (máximo 1280 px).
+- **Sin sesión**, encabezado con el logotipo y «Preferencias» como página activa. **Con sesión**, el navbar del cliente.
+
+### Tema
+Control segmentado (abajo) con Claro, Oscuro y Automático; Automático es el valor por defecto, sigue `prefers-color-scheme` y **cambia en vivo** si el dispositivo cambia. Bajo el control, en una región `aria-live="polite"`, la descripción de lo elegido (14 px, `fg-muted`): Claro «Fondo claro y texto oscuro.», Oscuro «Fondo oscuro y texto claro.», Automático «Sigue la preferencia de su dispositivo».
+
+### Tamaño del texto
+Tres niveles (AC-03): **Normal (100 %)**, **Grande (125 %)** y **Muy grande (150 %)**. Se aplica **escalando la raíz** (`font-size` de `<html>` en porcentaje, para multiplicar el tamaño que el navegador ya tenga), así que todo lo que está en `rem` crece; no hay tamaños de texto en píxeles. Los bordes, los radios y los íconos siguen en píxeles. Con 150 % ninguna pantalla pierde contenido ni funciones, y con el zoom del navegador al 200 % no hay desplazamiento horizontal. Se elige con el grupo de filas (`OptionGroup` y `OptionCard` en variante fila, con el valor «100 %» a la derecha). Debajo, la **muestra**.
+
+### Interruptor (nuevo)
+`button` con `role="switch"` y `aria-checked`, con su etiqueta y su descripción (`aria-labelledby`, `aria-describedby`). Área de 56 × 44 px y pista de 48 × 28 px (píldora, borde de 1 px). **Apagado:** pista transparente con borde `field` y perilla de 20 px en `fg-muted` a la izquierda. **Encendido:** pista `elevated` con borde `line-strong` y perilla en `accent` a la derecha, con un check de 12 px. El estado lo dicen la posición y el check, no solo el color. Foco: contorno de 1 px `accent` con 2 px de separación alrededor de la pista. Transición de 150 ms.
+- **Reducir el movimiento:** «Reducir el movimiento» (peso 500) y «Quita las transiciones y animaciones. Por defecto sigue la preferencia de su dispositivo.» El interruptor **muestra el estado efectivo** (el del dispositivo mientras la persona no haya elegido). Al usarlo, la persona activa o desactiva la reducción y esa elección manda sobre el dispositivo.
+
+### Control segmentado (nuevo)
+`radiogroup` en píldora con borde `line-strong` y tres segmentos de al menos 44 px de alto (máximo 480 px de ancho). Ícono de 18 px (sol, luna, pantalla) **solo en escritorio o cuando el control se apila**. El segmento activo lleva relleno `elevated`, borde `line-strong`, texto en peso 500 e ícono en `accent`; los demás, peso 400 y hover `surface`. Flechas, Inicio y Fin cambian la opción y el foco; el elegido lleva el único `tabindex="0"`. **En celular con texto de 125 % o más** (`data-text-size` distinto de «normal», variante `text-scaled`) se apila en filas de 52 px con radio de 16 px.
+
+### Muestra de texto (nueva)
+Tarjeta de 16 px (`surface`, borde `line`) con «Muestra» (12 px, peso 500, `fg-muted`), un renglón de servicio y precio («Corte + barba», «₡10.000»), «45 min · jue 5 nov, 10:30» y un párrafo. Se escribe en `rem`, así que muestra el tamaño elegido.
+
+### Enlace «Preferencias» (puntos de entrada)
+Un solo componente (`PreferencesLink`), con la apariencia de la navegación con botón (sin subrayado, objetivo de 44 px):
+- **Con sesión:** enlace del navbar del cliente (en la barra y en el panel de celular), como «Barberías».
+- **Sin sesión:** en el encabezado de la portada, de Ingresar, de Crear cuenta, de Términos y condiciones y de Política de privacidad. **Celular:** solo un círculo de 44 px con el ícono de controles (Lucide `SlidersHorizontal`, 20 px) y borde `line-strong`; el nombre «Preferencias» sigue disponible para los lectores de pantalla. **Escritorio (768 px):** píldora de 44 px con la palabra. En Ingresar, Crear cuenta y la portada va a la derecha del logotipo; en Términos y Privacidad, «Volver» queda a la izquierda y el enlace va junto al logotipo, a la derecha, sin desacomodar ninguno (el enlace no se encoge).
+- **Página activa:** relleno `elevated` y `aria-current="page"`.
+
 ## Voz del texto
 
 - Español de Costa Rica, «usted».
@@ -414,7 +506,9 @@ Opción de `radiogroup` de 16 px (la misma ficha de método de pago: marca circu
 - Ningún estado depende solo del color o del tono: la selección lleva check o indicador, y los estados llevan texto (solo el texto, sin punto, en todas las pantallas). Excepción decidida: los chips de hora y de fecha (relleno, peso 500 y `aria-pressed`, sin check).
 - `<html lang="es-CR">`. Un solo `h1` por pantalla.
 - Chips como `aria-pressed`; servicios y métodos de pago como `radiogroup`; página activa con `aria-current="page"`; avisos con `role="status"` o `role="alert"`; zonas que cargan con `aria-busy`.
-- Todo funciona con teclado y respeta `prefers-reduced-motion`.
+- Todo funciona con teclado y respeta la reducción de movimiento (la del dispositivo o la que la persona elija).
+- **Texto ampliable:** con «Muy grande» (150 %) ninguna pantalla pierde contenido ni funciones y, con el zoom del navegador al 200 %, no hay desplazamiento horizontal (ver «Preferencias»).
+- Interruptores como `role="switch"` con `aria-checked`; grupos de opciones como `radiogroup` con nombre accesible.
 
 ## Notas para la implementación
 
@@ -451,6 +545,7 @@ Opción de `radiogroup` de 16 px (la misma ficha de método de pago: marca circu
 ```css
 :root {
   color-scheme: dark;
+  --page-glow: rgba(238, 240, 240, 0.04);
   --canvas: #161819;
   --surface: #1c1f21;
   --elevated: #272e32;
@@ -475,7 +570,7 @@ Opción de `radiogroup` de 16 px (la misma ficha de método de pago: marca circu
 body {
   /* El único degradado: un destello tenue en la esquina inferior derecha, sobre canvas. */
   background:
-    radial-gradient(120% 700px at 100% 100%, rgba(238, 240, 240, 0.04), rgba(238, 240, 240, 0)) fixed,
+    radial-gradient(120% 700px at 100% 100%, var(--page-glow), transparent) fixed,
     var(--canvas);
   color: var(--fg);
   font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
@@ -494,8 +589,45 @@ a { color: var(--fg); text-decoration: underline; }
 a:hover { color: var(--accent-hover); }
 * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 
+/* Tema claro: los mismos nombres con otros valores (ver «Tema claro»). */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --page-glow: rgba(0, 15, 45, 0.05);
+  --canvas: #f5f6f6;
+  --surface: #ffffff;
+  --elevated: #e8ebed;
+  --line: #dde0e2;
+  --line-strong: #c4c9cc;
+  --line-hover: #a9afb3;
+  --field: #7b8185;
+  --fg: #14181a;
+  --fg-muted: #4f5559;
+  --fg-subtle: #5d6366;
+  --accent: #000f2d;
+  --accent-hover: #2b3f69;
+  --btn-hover: #dce1e4;
+  --btn-active: #f0f2f3;
+  --danger: #a5231f;
+  --danger-surface: #fdeceb;
+  --danger-border: #c4413a;
+  --warning: #7a5300;
+  --warning-surface: #fbf0d6;
+}
+
+/* Tamaño del texto: se escala la raíz y todo lo que está en rem la sigue. */
+:root[data-text-size='large'] { font-size: 125%; }
+:root[data-text-size='xlarge'] { font-size: 150%; }
+
+/* Reducción de movimiento: sin elegir manda el dispositivo; data-motion manda sobre él. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  :root:not([data-motion='full']), :root:not([data-motion='full']) *,
+  :root:not([data-motion='full']) *::before, :root:not([data-motion='full']) *::after {
+    animation: none !important; transition-duration: 0.01ms !important; transition-delay: 0s !important; scroll-behavior: auto !important;
+  }
+}
+:root[data-motion='reduce'], :root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before, :root[data-motion='reduce'] *::after {
+  animation: none !important; transition-duration: 0.01ms !important; transition-delay: 0s !important; scroll-behavior: auto !important;
 }
 ```
 
@@ -546,11 +678,12 @@ a:hover { color: var(--accent-hover); }
 }
 ```
 
+El tema claro redefine las mismas variables `--color-*` bajo `:root[data-theme='light']`, así que ninguna clase cambia. La variante `text-scaled:` (`@custom-variant`) aplica cuando el texto está por encima del 100 %.
+
 Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg-elevated hover:bg-btn-hover active:bg-btn-active`, `tabular-nums`.
 
 ## Pendiente
 
-- **Tema claro:** se deriva de estos mismos tokens, que ya están como variables. Hasta entonces, la interfaz es solo oscura.
 - **Por confirmar con ONVO:** los formatos de la identificación del SINPE Móvil de cada tipo (tabla de «Campo de texto»).
 - **Pantalla de pago:** la fila «Sucursal» y el banner y el logo de la cabecera dependen de que la API los entregue; el pago muestra la cabecera con los mismos datos de ejemplo que la portada.
 - **Bonos (láminas 14 a 16):** se omitió lo que la API no entrega. (1) Pagar con PayPal en la compra: el contrato de la compra solo admite tarjeta y SINPE Móvil y el bono no informa la pasarela. (2) El nombre, el saldo y el vencimiento del bono dentro de la opción «Pagar con bono», y «No vale para {fecha}»: la API elige el bono al reservar y el cliente no lo recalcula; si el bono vence antes de la cita, la API responde `bono-vencido`. (3) «Le quedan N» tras reservar con bono: la reserva creada no trae el saldo restante (se ve en «Mis bonos»). (4) La hora exacta límite de cancelación («hasta el jue 5 nov, 06:30»): se muestra el plazo real en horas (`plazo_cancelacion_horas`). (5) «Su espacio se mantiene» en los errores de bono: la API no crea la reserva cuando falla, así que el aviso dice que no se reservó nada. (6) El punto de «Activo» y «Vencido» (ver «Etiqueta de estado»). (7) «Sucursal», como en el resto de pantallas.

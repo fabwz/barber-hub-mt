@@ -339,7 +339,7 @@ const withVoucher = computed(() => voucherOffer && payWith.value === 'bono')
               <div
                 v-for="index in 8"
                 :key="index"
-                class="h-11 w-18 animate-pulse rounded-pill bg-line motion-reduce:animate-none"
+                class="h-11 w-18 animate-pulse rounded-pill bg-line"
                 aria-hidden="true"
               />
             </div>
