@@ -16,7 +16,7 @@ import {
   type SubmitInput,
 } from '@/composables/usePayment'
 
-export interface PurchaseInput extends Omit<SubmitInput, 'reservationId' | 'gateway'> {
+export interface PurchaseInput extends Omit<SubmitInput, 'reservationId'> {
   /** Identifier of the voucher on sale, the `{bono}` of the route. */
   voucherId: string
 }
@@ -35,8 +35,9 @@ export function useVoucherPurchase() {
 
   /**
    * Creates the payment. A double click does not create two: while a request is in flight the call is
-   * ignored, and an active payment is resumed instead of asking for another one. The API does not say
-   * which gateway the shop uses for a voucher, so the card is always exchanged at ONVO.
+   * ignored, and an active payment is resumed instead of asking for another one. The gateway is the
+   * one the list on sale reported: with ONVO the card is exchanged at ONVO; with PayPal only the
+   * method travels and the person is sent to PayPal.
    */
   async function submit(input: PurchaseInput): Promise<Payment | null> {
     if (submitting.value || redirecting.value) return null
@@ -44,7 +45,7 @@ export function useVoucherPurchase() {
     submitting.value = true
     error.value = null
     try {
-      const body = await buildPaymentBody({ ...input, gateway: 'onvo' })
+      const body = await buildPaymentBody(input)
       const { data } = await api.POST('/barberias/{barberia}/bonos/{bono}/compras', {
         params: { path: { barberia: input.shopId, bono: input.voucherId } },
         body,

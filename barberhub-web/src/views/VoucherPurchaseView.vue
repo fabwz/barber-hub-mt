@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { Check, CreditCard, Lock, Smartphone, Ticket } from 'lucide-vue-next'
+import { Check, CreditCard, Lock, Smartphone, Ticket, Wallet } from 'lucide-vue-next'
 
 import BackLink from '@/components/BackLink.vue'
 import BaseButton from '@/components/BaseButton.vue'
@@ -26,7 +26,8 @@ import { useVouchers, type PurchasedVoucher, type VoucherOnSale } from '@/compos
 import { useSessionStore } from '@/stores/session'
 import { useShopStore } from '@/stores/shop'
 
-type LoadState = 'loading' | 'ready' | 'not-found' | 'forbidden' | 'disabled' | 'error'
+type LoadState =
+  'loading' | 'ready' | 'not-found' | 'forbidden' | 'disabled' | 'no-gateway' | 'error'
 
 /** Automatic status checks (3 s apart, so 3 minutes) before the pending payment is left under verification. */
 const MAX_AUTOMATIC_CHECKS = 60
@@ -35,6 +36,21 @@ const METHODS: Array<{ value: PaymentMethod; label: string; icon: typeof CreditC
   { value: 'tarjeta', label: 'Tarjeta', icon: CreditCard },
   { value: 'sinpe_movil', label: 'SINPE Móvil', icon: Smartphone },
 ]
+
+/** What the list on sale says the shop collects with now (`meta.pasarela`): never assumed. */
+const gateway = computed(() => vouchers.gateway.value)
+/** With PayPal the card is typed on PayPal's page, so the tile and the button say PayPal. */
+const viaPayPal = computed(() => gateway.value === 'paypal')
+/** The methods the gateway admits (`meta.metodos_de_pago`), in the order of the design. */
+const methods = computed(() =>
+  METHODS.filter((item) => vouchers.methods.value.includes(item.value)),
+)
+function methodLabel(item: (typeof METHODS)[number]): string {
+  return item.value === 'tarjeta' && viaPayPal.value ? 'PayPal' : item.label
+}
+function methodIcon(item: (typeof METHODS)[number]) {
+  return item.value === 'tarjeta' && viaPayPal.value ? Wallet : item.icon
+}
 
 const route = useRoute()
 const shopStore = useShopStore()
@@ -120,10 +136,18 @@ const generalError = computed(() => {
   return error.detail
 })
 
-const methodNote = computed(() =>
-  method.value === 'sinpe_movil'
-    ? 'Al pagar, ONVO Pay le indica cómo completar el SINPE Móvil desde la app de su banco.'
-    : 'Tarjeta de crédito o débito, con ONVO Pay.',
+const methodNote = computed(() => {
+  if (method.value === 'sinpe_movil') {
+    return 'Al pagar, ONVO Pay le indica cómo completar el SINPE Móvil desde la app de su banco.'
+  }
+  if (viaPayPal.value) return 'Al pagar, se abre PayPal para que confirme el pago.'
+  return 'Tarjeta de crédito o débito, con ONVO Pay.'
+})
+const payVerb = computed(() =>
+  viaPayPal.value && method.value === 'tarjeta' ? 'Continuar a PayPal' : 'Pagar',
+)
+const payNote = computed(() =>
+  viaPayPal.value ? 'Pago protegido por PayPal' : 'Pago seguro con ONVO Pay',
 )
 
 const announcement = computed(() => {
@@ -157,6 +181,7 @@ async function load(): Promise<void> {
   }
   voucher.value = vouchers.onSale.value.find((item) => item.id === voucherId.value) ?? null
   if (!vouchers.enabled.value) state.value = 'disabled'
+  else if (vouchers.gateway.value === null) state.value = 'no-gateway'
   else if (voucher.value === null) state.value = 'not-found'
   else {
     state.value = 'ready'
@@ -185,15 +210,21 @@ async function pay(): Promise<void> {
   }
   const current = method.value as PaymentMethod
 
-  const card = current === 'tarjeta' ? cardForm.value?.collect() : undefined
+  const via = gateway.value
+  if (via === null) return
+
+  const card = current === 'tarjeta' && via === 'onvo' ? cardForm.value?.collect() : undefined
   const sinpe = current === 'sinpe_movil' ? sinpeForm.value?.collect() : undefined
-  if ((current === 'tarjeta' && !card) || (current === 'sinpe_movil' && !sinpe)) return
+  if ((current === 'tarjeta' && via === 'onvo' && !card) || (current === 'sinpe_movil' && !sinpe)) {
+    return
+  }
 
   await purchase.submit({
     shopId: shopId.value,
     enlace: enlace.value,
     voucherId: voucher.value.id,
     method: current,
+    gateway: via,
     card: card ?? undefined,
     sinpe: sinpe ?? undefined,
     billingEmail: session.person?.email ?? null,
@@ -339,6 +370,23 @@ onMounted(() => void load())
             </EmptyState>
           </div>
 
+          <!-- The shop does not charge (no gateway): nothing can be bought, same state as an empty shelf -->
+          <div v-else-if="state === 'no-gateway'" class="mt-6 border-y border-line">
+            <EmptyState
+              title="Esta barbería no tiene bonos a la venta"
+              description="Cuando publique uno, aparece aquí."
+            >
+              <template #action>
+                <RouterLink
+                  :to="{ name: 'vouchers', params: { enlace } }"
+                  class="inline-flex min-h-11 items-center justify-center rounded-pill border border-line-strong bg-elevated px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:bg-btn-hover"
+                >
+                  Ver mis bonos
+                </RouterLink>
+              </template>
+            </EmptyState>
+          </div>
+
           <!-- Empty: there is no such voucher on sale -->
           <div v-else-if="state === 'not-found'" class="mt-6 border-y border-line">
             <EmptyState
@@ -420,28 +468,33 @@ onMounted(() => void load())
                   <OptionGroup
                     v-model="method"
                     aria-label="Método de pago"
-                    class="grid! grid-cols-2 gap-2!"
+                    class="grid! gap-2!"
+                    :class="methods.length > 1 ? 'grid-cols-2' : 'grid-cols-1'"
                   >
                     <OptionCard
-                      v-for="item in METHODS"
+                      v-for="item in methods"
                       :key="item.value"
                       :value="item.value"
                       variant="tile"
-                      :icon="item.icon"
+                      :icon="methodIcon(item)"
                       :disabled="busy"
                     >
-                      {{ item.label }}
+                      {{ methodLabel(item) }}
                     </OptionCard>
                   </OptionGroup>
                   <p v-if="methodError" class="mt-3 text-sm text-danger" role="alert">
                     {{ methodError }}
                   </p>
+                  <div v-else-if="method && viaPayPal" class="mt-6 border-y border-line py-4">
+                    <p class="font-medium">Pago con PayPal</p>
+                    <p class="mt-1 max-w-110 text-sm text-fg-muted">{{ methodNote }}</p>
+                  </div>
                   <p v-else-if="method" class="mt-3 text-sm text-fg-subtle">{{ methodNote }}</p>
                 </section>
 
                 <div :class="busy ? 'opacity-60' : ''">
                   <CardForm
-                    v-if="method === 'tarjeta'"
+                    v-if="method === 'tarjeta' && gateway === 'onvo'"
                     ref="cardForm"
                     :disabled="busy"
                     :error="cardError"
@@ -475,7 +528,7 @@ onMounted(() => void load())
                   class="hidden flex-none md:block"
                   aria-hidden="true"
                 />
-                Pago seguro con ONVO Pay
+                {{ payNote }}
               </span>
               <span class="hidden items-baseline gap-3 text-base whitespace-nowrap md:flex">
                 <span class="text-fg-muted">Total</span>
@@ -490,9 +543,10 @@ onMounted(() => void load())
                 :loading="busy"
               >
                 <template v-if="busy">Procesando pago</template>
-                <template v-else
+                <template v-else-if="payVerb === 'Pagar'"
                   >Pagar<span class="md:hidden">{{ ' ' + colones(price) }}</span></template
                 >
+                <template v-else>{{ payVerb }}</template>
               </BaseButton>
             </div>
           </div>
