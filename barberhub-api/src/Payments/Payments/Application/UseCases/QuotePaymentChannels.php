@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Application\UseCases;
 
-use Src\Payments\Payments\Application\Contracts\PaymentGateway;
 use Src\Payments\Payments\Application\DTOs\PaymentChannel;
 use Src\Payments\Payments\Application\PaymentGatewayResolver;
 use Src\Payments\Payments\Domain\Contracts\PaymentRepository;
-use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
 
 final readonly class QuotePaymentChannels
@@ -35,19 +33,9 @@ final readonly class QuotePaymentChannels
         $channels = [];
         foreach ($reservationIds as $id) {
             $gateway = isset($active[$id]) ? $this->gateways->forPayment($active[$id]) : ($current ??= $this->gateways->forCurrentBarbershop());
-            $channels[$id] = new PaymentChannel($gateway->provider(), self::methodsOf($gateway));
+            $channels[$id] = PaymentChannel::ofGateway($gateway);
         }
 
         return $channels;
-    }
-
-    /**
-     * The methods a gateway admits.
-     *
-     * @return list<PaymentMethod>
-     */
-    private static function methodsOf(PaymentGateway $gateway): array
-    {
-        return array_values(array_filter(PaymentMethod::cases(), fn (PaymentMethod $method): bool => $gateway->supports($method)));
     }
 }

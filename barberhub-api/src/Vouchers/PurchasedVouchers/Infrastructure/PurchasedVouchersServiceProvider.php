@@ -11,6 +11,7 @@ use Src\Vouchers\PurchasedVouchers\Application\Contracts\DefinitionServices;
 use Src\Vouchers\PurchasedVouchers\Application\Contracts\OnSaleVouchers;
 use Src\Vouchers\PurchasedVouchers\Application\Contracts\SellableVouchers;
 use Src\Vouchers\PurchasedVouchers\Application\Contracts\SoldVoucherTotals;
+use Src\Vouchers\PurchasedVouchers\Application\Contracts\VoucherPaymentChannel;
 use Src\Vouchers\PurchasedVouchers\Application\Contracts\VoucherSales;
 use Src\Vouchers\PurchasedVouchers\Domain\Contracts\PurchasedVoucherRepository;
 use Src\Vouchers\PurchasedVouchers\Infrastructure\Barbershops\BarbershopsVoucherSales;
@@ -19,6 +20,7 @@ use Src\Vouchers\PurchasedVouchers\Infrastructure\Catalog\VoucherDefinitionsDefi
 use Src\Vouchers\PurchasedVouchers\Infrastructure\Catalog\VoucherDefinitionsOnSaleVouchers;
 use Src\Vouchers\PurchasedVouchers\Infrastructure\Catalog\VoucherDefinitionsSellableVouchers;
 use Src\Vouchers\PurchasedVouchers\Infrastructure\Memberships\MembershipsCustomerMemberships;
+use Src\Vouchers\PurchasedVouchers\Infrastructure\Payments\PaymentsVoucherPaymentChannel;
 use Src\Vouchers\PurchasedVouchers\Infrastructure\Persistence\Queries\EloquentSoldVoucherTotals;
 use Src\Vouchers\PurchasedVouchers\Infrastructure\Persistence\Repositories\EloquentPurchasedVoucherRepository;
 
@@ -39,5 +41,6 @@ final class PurchasedVouchersServiceProvider extends ServiceProvider
         OnSaleVouchers::class => VoucherDefinitionsOnSaleVouchers::class,
         DefinitionServices::class => VoucherDefinitionsDefinitionServices::class,
         SoldVoucherTotals::class => EloquentSoldVoucherTotals::class,
+        VoucherPaymentChannel::class => PaymentsVoucherPaymentChannel::class,
     ];
 }

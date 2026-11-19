@@ -48,7 +48,7 @@ final class ListVouchersOnSaleTest extends TestCase
             // Ordered by name, not by the order they were attached.
             'servicios' => [['id' => $this->beard, 'nombre' => 'Barba'], ['id' => $this->degradado, 'nombre' => 'Degradado']],
         ]);
-        $response->assertJsonPath('meta', ['pagina' => 1, 'por_pagina' => 15, 'total' => 2, 'ultima_pagina' => 1, 'bonos_activos' => true]);
+        $response->assertJsonPath('meta', ['pagina' => 1, 'por_pagina' => 15, 'total' => 2, 'ultima_pagina' => 1, 'bonos_activos' => true, 'pasarela' => null, 'metodos_de_pago' => []]);
         $this->assertSame(['id', 'nombre', 'sesiones', 'vigencia_dias', 'precio', 'servicios'], array_keys($response->json('data.0')));
     }
 
@@ -87,6 +87,56 @@ final class ListVouchersOnSaleTest extends TestCase
         $response = $this->sendAs('customer', 'GET', $this->onSale($this->puraNavaja))->assertOk();
 
         $response->assertJsonPath('data', [])->assertJsonPath('meta.bonos_activos', false)->assertJsonPath('meta.total', 0);
+    }
+
+    /** With ONVO the list says `onvo` and both of its methods, as a reservation of the same barbershop does (RF-20, PA-02). */
+    public function test_a_barbershop_that_collects_with_onvo_lists_onvo_and_its_methods(): void
+    {
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['payment_mode' => 'deposit', 'deposit_percentage' => 30, 'payment_gateway' => 'onvo']);
+
+        $this->sendAs('customer', 'GET', $this->onSale($this->puraNavaja))
+            ->assertOk()
+            ->assertJsonPath('meta.pasarela', 'onvo')
+            ->assertJsonPath('meta.metodos_de_pago', ['tarjeta', 'sinpe_movil']);
+    }
+
+    /** With PayPal the list says `paypal` and only the card. */
+    public function test_a_barbershop_that_collects_with_paypal_lists_paypal_and_the_card(): void
+    {
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['payment_mode' => 'full', 'deposit_percentage' => null, 'payment_gateway' => 'paypal']);
+
+        $this->sendAs('customer', 'GET', $this->onSale($this->puraNavaja))
+            ->assertOk()
+            ->assertJsonPath('meta.pasarela', 'paypal')
+            ->assertJsonPath('meta.metodos_de_pago', ['tarjeta']);
+    }
+
+    /** A barbershop that does not charge has no gateway and no methods, like a reservation that owes nothing. */
+    public function test_a_barbershop_that_does_not_charge_lists_no_gateway(): void
+    {
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['payment_mode' => 'none', 'deposit_percentage' => null, 'payment_gateway' => null]);
+
+        $this->sendAs('customer', 'GET', $this->onSale($this->puraNavaja))
+            ->assertOk()
+            ->assertJsonPath('meta.pasarela', null)
+            ->assertJsonPath('meta.metodos_de_pago', []);
+    }
+
+    /** The gateway listed is the one the barbershop has at that moment: changing it changes the next reading (PA-02, RF-23). */
+    public function test_the_gateway_listed_follows_the_current_configuration(): void
+    {
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['payment_mode' => 'full', 'deposit_percentage' => null, 'payment_gateway' => 'onvo']);
+        $this->sendAs('customer', 'GET', $this->onSale($this->puraNavaja))->assertJsonPath('meta.pasarela', 'onvo');
+
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['payment_gateway' => 'paypal']);
+        $this->sendAs('customer', 'GET', $this->onSale($this->puraNavaja))->assertJsonPath('meta.pasarela', 'paypal');
+
+        // The other barbershop keeps its own: the gateway is never taken from another one (MT-03).
+        $this->scopeQueriesTo($this->fadeLab);
+        DB::table('barbershops')->where('id', $this->fadeLab)->update(['payment_mode' => 'full', 'deposit_percentage' => null, 'payment_gateway' => 'onvo']);
+        $this->scopeQueriesTo($this->puraNavaja);
+        $this->sendAs('customer', 'GET', $this->onSale($this->fadeLab))->assertJsonPath('meta.pasarela', 'onvo');
+        $this->sendAs('customer', 'GET', $this->onSale($this->puraNavaja))->assertJsonPath('meta.pasarela', 'paypal');
     }
 
     /** A person without a role in the barbershop reads the list and is not made a customer by it (RD-18, UP-09). */
