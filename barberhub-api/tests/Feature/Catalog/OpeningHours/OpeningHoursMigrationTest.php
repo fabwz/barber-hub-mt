@@ -48,6 +48,9 @@ final class OpeningHoursMigrationTest extends TestCase
     // The reservation points at the voucher it uses: it goes before the vouchers when rolling back and after them when applying again.
     private const string RESERVATION_VOUCHER = '2026_11_16_100000_add_purchased_voucher_to_reservations_table';
 
+    // The waitlist rows point at the collaborators (and at the services and customers), so they go first of all when rolling back and last when applying again.
+    private const string WAITLIST_ENTRIES = '2026_11_19_100000_create_waitlist_entries_table';
+
     /** Rolling back drops both tables, the range type and the extension; applying again brings them back. */
     public function test_migrations_roll_back_and_apply_again_without_leftovers(): void
     {
@@ -55,6 +58,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         $this->asOwner(function (): void {
+            $this->apply(self::WAITLIST_ENTRIES, 'down');
             $this->apply(self::RESERVATION_VOUCHER, 'down');
             $this->apply(self::VOUCHER_PAYMENTS, 'down');
             $this->apply(self::PURCHASED_VOUCHERS, 'down');
@@ -87,6 +91,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::PURCHASED_VOUCHERS, 'up');
             $this->apply(self::VOUCHER_PAYMENTS, 'up');
             $this->apply(self::RESERVATION_VOUCHER, 'up');
+            $this->apply(self::WAITLIST_ENTRIES, 'up');
         });
 
         $this->assertTrue($schema->hasTable('opening_hours'));
@@ -101,6 +106,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
 
         $this->asOwner(function () use ($admin): void {
+            $this->apply(self::WAITLIST_ENTRIES, 'down');
             $this->apply(self::RESERVATION_VOUCHER, 'down');
             $this->apply(self::VOUCHER_PAYMENTS, 'down');
             $this->apply(self::PURCHASED_VOUCHERS, 'down');
@@ -127,6 +133,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::PURCHASED_VOUCHERS, 'up');
             $this->apply(self::VOUCHER_PAYMENTS, 'up');
             $this->apply(self::RESERVATION_VOUCHER, 'up');
+            $this->apply(self::WAITLIST_ENTRIES, 'up');
         });
 
         $this->assertSame(1, $admin->table('pg_type')->where('typname', 'timerange')->count());

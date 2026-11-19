@@ -40,8 +40,9 @@ Hoy existen cuatro contextos, cada uno con sus módulos y las tres capas (las su
 | Reservations | `Reservations` |
 | Payments | `Payments`, `Income` |
 | Vouchers | `VoucherDefinitions`, `PurchasedVouchers` |
+| Waitlist | `Entries` |
 
-`Payments` existe desde el #62 con el módulo `Payments`, y `Vouchers` desde el #132 (dominio y esquema; las rutas del dueño, #87, y la compra, que expone `Payments`, #88); `Waitlist` y `Notifications` están previstos (RD-05) y se crean en el milestone que los necesita. `Src\Shared` ya existe, y el `Shared` de `Vouchers` (los números y el nombre que comparten la definición y el bono comprado); los demás `Shared` de contexto (previsto, #22) aún no existen.
+`Payments` existe desde el #62 con el módulo `Payments`, y `Vouchers` desde el #132 (dominio y esquema; las rutas del dueño, #87, y la compra, que expone `Payments`, #88); `Waitlist` existe desde el #92 con el módulo `Entries` (las filas; `Offers` llega con el #93); `Notifications` está previsto (RD-05) y se crea en el milestone que lo necesita. `Src\Shared` ya existe, y el `Shared` de `Vouchers` (los números y el nombre que comparten la definición y el bono comprado); los demás `Shared` de contexto (previsto, #22) aún no existen.
 
 Un módulo corresponde a un agregado, no a una tabla.
 
@@ -144,8 +145,8 @@ Todavía no se comprueba CO-03 (no desactivar con reservas futuras confirmadas):
 
 `Barbershops` guarda en la fila de la barbería dos indicadores, `vouchers_enabled` y `waitlist_enabled` (RF-09, ambos `false` al nacer), que lleva `Barbershop` como el objeto de valor `BarbershopFeatures` (`withFeatures()`). La API es `GET` y `PATCH /api/v1/barberias/{barberia}/administracion/funciones`, solo para el dueño (`auth:sanctum`, `barbershop`, `role:owner`), con `bonos_activos` y `lista_espera_activa`; el `PATCH` es parcial y un valor que no es booleano responde 422 `datos-invalidos`. Los casos de uso son `GetBarbershopFeatures` y `UpdateBarbershopFeatures`.
 
-- **Aplica a lo nuevo.** Con los bonos desactivados no se compra (`StartVoucherPurchase`) ni se define (`CreateVoucherDefinition`) un bono nuevo: 409 `conflicto`. Los bonos comprados conservan saldo y vigencia, y las definiciones se siguen listando, editando y retirando. Desactivar nada cancela: ni los bonos ni las ofertas en curso (el objeto de la lista de espera llega con sus issues).
-- **Lo que lee el cliente.** `GET /api/v1/enlaces/{enlace}` suma `lista_espera_activa`, para que el cliente sepa si ofrece anotarse (LE-01). No expone `bonos_activos`: la compra la rechaza la API. La lista de espera misma no está implementada.
+- **Aplica a lo nuevo.** Con los bonos desactivados no se compra (`StartVoucherPurchase`) ni se define (`CreateVoucherDefinition`) un bono nuevo: 409 `conflicto`. Los bonos comprados conservan saldo y vigencia, y las definiciones se siguen listando, editando y retirando. Desactivar nada cancela: ni los bonos ni las ofertas en curso (el objeto de la lista de espera llega con sus issues). Con la lista de espera desactivada no se anota nadie (`JoinWaitlist`): 409 `conflicto`; las filas ya anotadas se conservan, se listan y se pueden dejar.
+- **Lo que lee el cliente.** `GET /api/v1/enlaces/{enlace}` suma `lista_espera_activa`, para que el cliente sepa si ofrece anotarse (LE-01). No expone `bonos_activos`: la compra la rechaza la API. Anotarse y salir de la fila se describe en «Anotarse y salir de la lista de espera (#92)»; las ofertas aún no están implementadas.
 - **Aislamiento.** Como `cobro` y `negocio`, la fila es la barbería y no lleva `barbershop_id`: las rutas están en `TenantResources::BARBERSHOP_ROUTES` y las prueba `BarbershopFeaturesTest`.
 - **Registro técnico.** Cada cambio de las funciones deja su entrada en `audit_log` (SE-04, #51); ver «El registro técnico».
 
@@ -484,10 +485,30 @@ La petición de crear la reserva (`POST /barberias/{barberia}/reservas`) acepta 
 - **Qué fecha ubica cada cifra.** Cobro: `payments.created_at` (estados `approved` y `refunded`, solo pagos de reserva). Reembolso: `payments.updated_at` de los `refunded`, por su monto completo; un pago con `refund_pending` sigue aprobado y no resta. Bono vendido: `purchased_vouchers.activated_at`, con su precio. Servicio atendido: `reservations.starts_at` de las `completed`, por su precio completo aunque se pagara con una sesión de bono. Ver [data-model.md](data-model.md), sección `refunds`.
 - **Pendiente de #61.** Todavía no hay forma de marcar una reserva como atendida, así que `servicios_atendidos` solo tiene datos cuando hay reservas `completed`; la consulta ya está lista.
 
+### Anotarse y salir de la lista de espera (#92)
+
+El módulo `Waitlist/Entries` guarda las filas (`WaitlistEntry`, tabla `waitlist_entries`) y expone tres rutas de cliente, todas con `auth:sanctum` y `barbershop:customer`, la excepción de RD-18 y UP-09: una persona sin rol pasa, el dueño o un colaborador de esa barbería recibe 403 `prohibido` y sin sesión, 401. El recurso de la API es `filas` (`docs/ubiquitous-language.md`).
+
+| Ruta | Qué hace |
+| --- | --- |
+| `POST /barberias/{barberia}/filas` | Anota a la persona (`servicio`, `fecha` y `barbero` opcional; sin él es «cualquiera»). Responde 201 con la fila |
+| `GET /barberias/{barberia}/mis-filas` | Sus filas activas (`esperando` u `ofrecida`), de la primera en entrar a la última. Sin rol, lista vacía. A lo sumo 3, así que no se pagina |
+| `DELETE /barberias/{barberia}/filas/{fila}` | Sale de la fila: pasa a `left` (`retirada` en la API), no se borra. Responde 204, también al repetirlo |
+
+- **Casos de uso.** `JoinWaitlist`, `LeaveWaitlist` y `ListMyWaitlistEntries`, uno por clase y con `execute`. El módulo habla con los demás por puertos (RD-05): `CustomerMemberships` (Identity, para crear o buscar el rol), `WaitlistSettings` (`waitlist_enabled`, de Barbershops), `WaitlistCatalog` (servicio y barbero, de Catalog) y `OpenSpaces` (los espacios libres, de Availability, con el mismo cálculo que la consulta pública).
+- **Orden de las comprobaciones de `JoinWaitlist`.** Antes de escribir o bloquear nada: lista activada (si no, 409 `conflicto`), día de hoy o posterior en Costa Rica (si no, 422 `datos-invalidos` en `fecha`) y servicio y barbero de la barbería (si no, 404). Después, en una transacción: crea el rol de cliente si no lo tiene (UP-09), toma el bloqueo de su fila de espera y rechaza con 409 `conflicto` si ya tiene 3 filas activas, si ya espera la misma combinación o si hay espacios libres. Si algo falla, no queda ni la fila ni el rol.
+- **Hay espacios: no se anota.** El 409 `conflicto` lleva el miembro `espacios`, con hasta 3 de `{barbero, inicio, fin}` (ISO 8601), los de inicio más próximo, para que la persona reserve uno con `POST /reservas`. Es el mismo patrón de las `alternativas` de la reserva, pero con otro nombre porque aquí no falta un espacio: sobran. No tiene tipo estable propio.
+- **El máximo de 3 (LE-01) y la carrera.** Cuenta filas `waiting` y `offered`; `left` y `fulfilled` no cuentan. El caso de uso toma `pg_advisory_xact_lock` sobre la fila de espera de la persona **antes** de contar, porque las filas que no deben pasar de 3 pueden no existir todavía y no hay fila que bloquear con `FOR UPDATE`. Dos anotaciones a la vez con 2 filas activas dejan 3, no 4. La cuarta no tiene tipo estable: responde 409 `conflicto`.
+- **El orden (LE-02).** La fila toma como `joined_at` la hora de la petición (el `Clock`), y se lista por `joined_at` y `id` (UUID v7, ordenado en el tiempo) para el empate. Las columnas `timestamptz` guardan segundos, como las demás tablas.
+- **Salir.** `LeaveWaitlist` busca la fila entre las de la propia membresía de cliente, sacada de la sesión: la de otra persona, la de otra barbería, la que no existe y la de quien no tiene rol responden el mismo 404 (CL-04, MT-03). Salir no depende de que la lista esté activada. Una fila `fulfilled` no se puede dejar (409 `conflicto`).
+- **Aislamiento.** `waitlist_entries` lleva `barbershop_id`, llaves foráneas compuestas y la política `waitlist_entries_barbershop_isolation`; el repositorio filtra por la barbería en cada método. Las tres rutas están en `TenantResources::CUSTOMER_ROUTES` y en `AccessMatrix`; `WaitlistEntriesTest` prueba que una persona no ve ni modifica las filas de otra.
+- **Todavía no.** Las ofertas (`waitlist_offers`, #93), el evento `SpaceReleased` y que reservar por otra vía saque a la persona de la fila (LE-06) llegan con sus issues; `WaitlistEntry` ya tiene el estado `offered` para ellos.
+
 ### Concurrencia
 
 | Garantía | Dónde se cumple |
 | --- | --- |
+| Una persona tiene como máximo 3 filas activas por barbería aunque se anote a la vez | `JoinWaitlist` toma `pg_advisory_xact_lock` sobre su fila de espera antes de contar (#92, LE-01). La prueba con procesos paralelos es `SimultaneousWaitlistJoinsTest` |
 | Dos solicitudes por el mismo espacio: una gana, la otra recibe `espacio-no-disponible` | `CreateReservation` bloquea la fila del colaborador (`SELECT ... FOR UPDATE`) y revalida la disponibilidad (#56); la restricción `EXCLUDE` de PostgreSQL es la segunda barrera y su violación se traduce a `espacio-no-disponible`. La prueba de carrera con conexiones paralelas es el #127 (RE-01, RE-02) |
 | El saldo del bono nunca es negativo | Decremento atómico y condicional (`UPDATE ... WHERE remaining_sessions > 0 ...`) en `PurchasedVoucherRepository::holdSession()` más `CHECK (remaining_sessions >= 0)`, ambos del #132 (BO-03). La prueba con conexiones paralelas de la operación es `SimultaneousVoucherHoldsTest` (#132); el caso de uso de la reserva es `HoldVoucherSession` (#89) y la prueba amplia, el #133 |
 | Una reserva tiene un solo pago pendiente o aprobado | Índice único parcial `payments_one_active_per_reservation_idx` sobre `(barbershop_id, reservation_id)` donde `status` es `pending` o `approved` (#129); `EloquentPaymentRepository` lo traduce a `ActivePaymentExistsException`. Es la idempotencia del botón de pagar |

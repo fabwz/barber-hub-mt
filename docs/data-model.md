@@ -430,7 +430,9 @@ La fila de un cliente para un servicio y un día (LE-01).
 | `joined_at` | `timestamptz` | Ordena la fila: primero en entrar, primero en recibir oferta (LE-02) |
 | `created_at`, `updated_at` | `timestamptz` | |
 
-El máximo de 3 filas activas por cliente (LE-01) lo verifica el caso de uso.
+Creada en el #92. Los `timestamptz` guardan segundos, como los demás. Las llaves foráneas compuestas `(customer_membership_id, barbershop_id)`, `(service_id, barbershop_id)` y `(collaborator_id, barbershop_id)` impiden apuntar a otra barbería; con `collaborator_id` nulo («cualquiera») la llave no se evalúa. La política es `waitlist_entries_barbershop_isolation`, como la de las demás tablas. Hay dos índices parciales: `waitlist_entries_customer_active_idx` `(barbershop_id, customer_membership_id, joined_at)` donde `status` es `waiting` u `offered`, para contar y listar las filas activas de una persona, y `waitlist_entries_queue_idx` `(barbershop_id, service_id, desired_date, joined_at)` donde `status` es `waiting`, para recorrer la fila en orden de ingreso (LE-02).
+
+El máximo de 3 filas activas por cliente (LE-01) lo verifica el caso de uso, bajo un bloqueo de asesoría (`pg_advisory_xact_lock`) sobre la fila de espera de la persona: no se puede expresar con `CHECK`, `UNIQUE` ni `EXCLUDE`.
 
 ### waitlist_offers
 

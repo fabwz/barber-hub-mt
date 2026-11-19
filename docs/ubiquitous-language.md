@@ -148,6 +148,11 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 | Negocio | Código | Base de datos | API |
 | --- | --- | --- | --- |
 | Fila (de un cliente, para un servicio y un día) | `WaitlistEntry` | `waitlist_entries` | `filas` |
+| Estado de la fila (esperando, ofrecida, cumplida, retirada) | `WaitlistStatus` (`Waiting`, `Offered`, `Fulfilled`, `Left`) | `waitlist_entries.status` (`waiting`, `offered`, `fulfilled`, `left`) | `estado` (`esperando`, `ofrecida`, `cumplida`, `retirada`) |
+| Hora de ingreso a la fila | `joinedAt` | `joined_at` | `ingreso` |
+| Día que busca | `DesiredDate` | `desired_date` | `fecha` |
+| Mis filas activas | `ListMyWaitlistEntries` | — | `mis-filas` |
+| Espacio libre que se muestra en lugar de anotarse | `OpenSpace` | — | `espacios` |
 | Oferta | `Offer` | `waitlist_offers` | `ofertas` |
 | Estado de la oferta | `OfferStatus` | `status` | `estado` |
 | Persona compatible | `isCompatibleWith()` | — | — |

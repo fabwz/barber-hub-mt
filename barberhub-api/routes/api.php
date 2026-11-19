@@ -15,3 +15,4 @@ require base_path('src/Payments/Payments/Infrastructure/Http/routes.php');
 require base_path('src/Payments/Income/Infrastructure/Http/routes.php');
 require base_path('src/Vouchers/VoucherDefinitions/Infrastructure/Http/routes.php');
 require base_path('src/Vouchers/PurchasedVouchers/Infrastructure/Http/routes.php');
+require base_path('src/Waitlist/Entries/Infrastructure/Http/routes.php');
