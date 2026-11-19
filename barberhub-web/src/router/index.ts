@@ -24,6 +24,18 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/b/:enlace/bonos',
+    name: 'vouchers',
+    component: () => import('@/views/VouchersView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/b/:enlace/bonos/:bono/compra',
+    name: 'voucher-purchase',
+    component: () => import('@/views/VoucherPurchaseView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/b/:enlace/mis-reservas',
     name: 'my-bookings',
     component: () => import('@/views/MyBookingsView.vue'),
