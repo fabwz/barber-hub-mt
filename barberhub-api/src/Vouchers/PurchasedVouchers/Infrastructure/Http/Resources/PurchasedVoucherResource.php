@@ -11,8 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Src\Vouchers\PurchasedVouchers\Application\DTOs\PurchasedVoucherView;
-use Src\Vouchers\PurchasedVouchers\Domain\Entities\VoucherMovement;
-use Src\Vouchers\PurchasedVouchers\Domain\ValueObjects\VoucherMovementType;
 
 /**
  * @property-read PurchasedVoucherView $resource
@@ -30,7 +28,7 @@ final class PurchasedVoucherResource extends JsonResource
      * Expose the voucher with its balance, its validity, the record that ties each change of the balance to its reservation and the
      * services it covers.
      *
-     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: list<array{tipo: string, sesiones: int, reserva: string|null, fecha: string}>, servicios: AnonymousResourceCollection}
+     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: AnonymousResourceCollection, servicios: AnonymousResourceCollection}
      */
     public function toArray(Request $request): array
     {
@@ -44,7 +42,7 @@ final class PurchasedVoucherResource extends JsonResource
     /**
      * What both readers see of a voucher, without the covered services, which only the customer reads.
      *
-     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: list<array{tipo: string, sesiones: int, reserva: string|null, fecha: string}>}
+     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: AnonymousResourceCollection}
      */
     public function record(): array
     {
@@ -64,32 +62,13 @@ final class PurchasedVoucherResource extends JsonResource
             /** Cuándo vence, ISO 8601 con el desfase de Costa Rica (-06:00); es el instante en que deja de valer. Ejemplo: 2030-05-30T08:00:00-06:00. */
             'vence_en' => self::instant($voucher->expiresAt),
             /** Cada cambio del saldo, del más antiguo al más reciente, con la reserva a la que se liga (nula en la compra). */
-            'movimientos' => array_map(fn (VoucherMovement $movement): array => [
-                /** `compra`, `apartado`, `consumo` o `reintegro`. */
-                'tipo' => self::typeName($movement->type),
-                /** Sesiones que suma o resta al saldo: la compra suma las del bono, el apartado resta 1, el reintegro suma 1 y el consumo no cambia nada (0). */
-                'sesiones' => $movement->sessionsDelta,
-                /** Identificador de la reserva ligada; nulo en la compra. */
-                'reserva' => $movement->reservationId?->value,
-                'fecha' => self::instant($movement->at) ?? '',
-            ], $this->view->movements),
+            'movimientos' => VoucherMovementResource::collection($this->view->movements),
         ];
     }
 
     /** An instant in the time zone of the application, as the rest of the API writes it. */
-    private static function instant(?DateTimeImmutable $at): ?string
+    public static function instant(?DateTimeImmutable $at): ?string
     {
         return $at?->setTimezone(new DateTimeZone((string) config('app.timezone')))->format(DATE_ATOM);
-    }
-
-    /** The name of the kind of entry in the vocabulary of the API (BO-09). */
-    private static function typeName(VoucherMovementType $type): string
-    {
-        return match ($type) {
-            VoucherMovementType::Purchase => 'compra',
-            VoucherMovementType::Hold => 'apartado',
-            VoucherMovementType::Consume => 'consumo',
-            VoucherMovementType::Release => 'reintegro',
-        };
     }
 }

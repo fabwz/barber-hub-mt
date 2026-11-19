@@ -6,6 +6,7 @@ namespace Src\Vouchers\PurchasedVouchers\Infrastructure\Http\Resources;
 
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Src\Vouchers\PurchasedVouchers\Application\DTOs\PurchasedVoucherView;
 
@@ -25,7 +26,7 @@ final class SoldVoucherResource extends JsonResource
      * Expose the voucher as the owner sees it: what the customer sees, except the covered services that only the customer reads, plus
      * the name of the customer, never their email or phone.
      *
-     * @return array<string, mixed>
+     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: AnonymousResourceCollection, cliente_nombre: string}
      */
     public function toArray(Request $request): array
     {
