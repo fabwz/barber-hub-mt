@@ -25,6 +25,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/bonos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar los bonos a la venta
+         * @description Lista, por nombre, los bonos que la barbería tiene a la venta, cada uno con su `id`, `nombre`, `sesiones`, `vigencia_dias`, `precio` en colones con el IVA de 13 % incluido y los `servicios` que cubre (`id` y `nombre`). El `id` es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`. Un bono retirado de la venta no aparece. Lo puede leer cualquier persona con sesión, tenga o no rol en la barbería: no crea ninguna membresía (el rol de cliente nace con la primera compra). `meta.bonos_activos` dice si la barbería tiene los bonos activados; con los bonos desactivados la lista viene vacía y comprar responde 409 `conflicto`. El dueño o un colaborador de esa barbería recibe 403 `prohibido`: sus bonos se administran con `GET /administracion/bonos`. Sin sesión, 401; una barbería inexistente, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.
+         */
+        get: operations["vouchers.on-sale.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/administracion/bonos": {
         parameters: {
             query?: never;
@@ -1013,6 +1033,20 @@ export interface components {
             /** @description `false` si está retirado de la venta. */
             activo: boolean;
         };
+        /** BonoALaVenta */
+        BonoALaVenta: {
+            /** @description Identificador del bono; es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`. */
+            id: string;
+            nombre: string;
+            /** @description Sesiones que trae el bono al comprarlo. Ejemplo: 5. */
+            sesiones: number;
+            /** @description Días de vigencia, que cuentan desde que se confirma el pago. Ejemplo: 90. */
+            vigencia_dias: number;
+            /** @description Precio en colones con el IVA de 13 % incluido. Ejemplo: 30000. */
+            precio: number;
+            /** @description Servicios que cubre, ordenados por nombre. Cada uno trae su `id` y su `nombre` actual (por ejemplo, Corte clásico). */
+            servicios: components["schemas"]["ServicioCubierto"][];
+        };
         /** BonoComprado */
         BonoComprado: {
             id: string;
@@ -1032,6 +1066,8 @@ export interface components {
             vence_en: string | null;
             /** @description Cada cambio del saldo, del más antiguo al más reciente, con la reserva a la que se liga (nula en la compra). */
             movimientos: unknown[];
+            /** @description Servicios que cubre el bono, ordenados por nombre, tal como los define hoy la barbería: si el bono ya no está a la venta, igual se muestran. Con ellos el cliente sabe con qué servicios puede reservar. */
+            servicios: components["schemas"]["ServicioCubierto"][];
         };
         /** BonoVendido */
         BonoVendido: {
@@ -1639,6 +1675,13 @@ export interface components {
             iva: number;
             activo: boolean;
         };
+        /** ServicioCubierto */
+        ServicioCubierto: {
+            /** @description Identificador del servicio. */
+            id: string;
+            /** @description Nombre actual del servicio. Ejemplo: Corte clásico. */
+            nombre: string;
+        };
         /** ServicioPublico */
         ServicioPublico: {
             id: string;
@@ -1762,6 +1805,44 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             422: components["responses"]["InvalidData"];
+        };
+    };
+    "vouchers.on-sale.index": {
+        parameters: {
+            query?: {
+                /** @description Número de página, desde 1. */
+                pagina?: number;
+                /** @description Elementos por página, de 1 a 50. Por defecto, 15. */
+                por_pagina?: number;
+            };
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `BonoALaVenta` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BonoALaVenta"][];
+                        meta: {
+                            pagina: number;
+                            por_pagina: number;
+                            total: number;
+                            ultima_pagina: number;
+                            bonos_activos: boolean;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
         };
     };
     "vouchers.definitions.index": {

@@ -30,7 +30,7 @@ final class SoldVoucherResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            ...array_diff_key(new PurchasedVoucherResource($this->view)->toArray($request), ['servicios' => true]),
+            ...new PurchasedVoucherResource($this->view)->record(),
             /** Nombre del cliente que lo compró. */
             'cliente_nombre' => $this->view->customerName ?? '',
         ];

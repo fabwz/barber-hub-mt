@@ -27,11 +27,26 @@ final class PurchasedVoucherResource extends JsonResource
     }
 
     /**
-     * Expose the voucher with its balance, its validity and the record that ties each change of the balance to its reservation.
+     * Expose the voucher with its balance, its validity, the record that ties each change of the balance to its reservation and the
+     * services it covers.
      *
-     * @return array{id: string, nombre: string, sesiones_totales: int, servicios: AnonymousResourceCollection, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: list<array{tipo: string, sesiones: int, reserva: string|null, fecha: string}>}
+     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: list<array{tipo: string, sesiones: int, reserva: string|null, fecha: string}>, servicios: AnonymousResourceCollection}
      */
     public function toArray(Request $request): array
+    {
+        return [
+            ...$this->record(),
+            /** Servicios que cubre el bono, ordenados por nombre, tal como los define hoy la barbería: si el bono ya no está a la venta, igual se muestran. Con ellos el cliente sabe con qué servicios puede reservar. */
+            'servicios' => CoveredServiceResource::collection($this->view->services ?? []),
+        ];
+    }
+
+    /**
+     * What both readers see of a voucher, without the covered services, which only the customer reads.
+     *
+     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: list<array{tipo: string, sesiones: int, reserva: string|null, fecha: string}>}
+     */
+    public function record(): array
     {
         $voucher = $this->view->voucher;
 
@@ -40,8 +55,6 @@ final class PurchasedVoucherResource extends JsonResource
             'nombre' => $voucher->name->value,
             /** Sesiones que trae el bono al comprarlo. Ejemplo: 5. */
             'sesiones_totales' => $voucher->sessionsCount->value,
-            /** Servicios que cubre el bono, ordenados por nombre, tal como los define hoy la barbería: si el bono ya no está a la venta, igual se muestran. Con ellos el cliente sabe con qué servicios puede reservar. */
-            'servicios' => CoveredServiceResource::collection($this->view->services ?? []),
             /** Sesiones que le quedan, igual a la suma de sus `movimientos`; 0 si ya venció. Ejemplo: 3. */
             'saldo' => $this->view->balance,
             /** `activo` mientras está vigente o `vencido` desde su fecha de vencimiento; se calcula al consultar, sin proceso de vencimiento. */
