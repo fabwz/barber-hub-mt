@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CalendarDays } from 'lucide-vue-next'
+import { CalendarDays, Ticket } from 'lucide-vue-next'
 
 import AiBookingBlock, { type BlockNotice } from '@/components/AiBookingBlock.vue'
 import BackLink from '@/components/BackLink.vue'
@@ -23,6 +23,7 @@ import { addDays, dateOf, formatShortDate, timeOf, todayInCostaRica } from '@/co
 import { useAvailability } from '@/composables/useAvailability'
 import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
 import { readStoredPayment } from '@/composables/usePayment'
+import { canPayWith, useVouchers } from '@/composables/useVouchers'
 import { useAiBookingStore, type BookingProposal } from '@/stores/aiBooking'
 import { useBookingStore } from '@/stores/booking'
 import { useSessionStore } from '@/stores/session'
@@ -37,6 +38,7 @@ const store = useShopStore()
 const booking = useBookingStore()
 const ai = useAiBookingStore()
 const session = useSessionStore()
+const vouchers = useVouchers()
 
 const link = computed(() => String(route.params.enlace))
 
@@ -71,6 +73,35 @@ watch(
   },
   { immediate: true },
 )
+
+// The vouchers of the person decide whether «Pagar con bono» is offered. They are read quietly: if
+// they cannot be read, nothing is offered and the booking goes on as usual.
+watch(
+  () => (store.status === 'ready' && session.isAuthenticated ? store.shop : null),
+  (shop) => {
+    if (shop) void vouchers.load(shop.id)
+  },
+  { immediate: true },
+)
+
+/** Owner and collaborator get 403: they are offered nothing about vouchers. */
+const staff = computed(() => vouchers.result.value === 'forbidden')
+
+/** How the reservation is paid: `bono` with a session of a voucher, `metodo` in the next step. */
+const payWith = ref('metodo')
+
+/** The vouchers are on, and one of the person's covers the service chosen. The API picks which. */
+const voucherOffer = computed(
+  () =>
+    session.isAuthenticated &&
+    vouchers.result.value === 'ready' &&
+    vouchers.enabled.value &&
+    booking.serviceId !== null &&
+    vouchers.mine.value.some((item) => canPayWith(item, booking.serviceId!)),
+)
+watch([voucherOffer, () => booking.serviceId], () => {
+  payWith.value = 'metodo'
+})
 
 // The date defaults to today and never stays in the past.
 watch(
@@ -197,6 +228,8 @@ const reservation = computed<PanelReservation | null>(() => {
     durationMinutes: data.duracion_minutos,
     status: data.estado === 'confirmada' ? 'confirmed' : 'temporary',
     expiresAt: data.expira_en,
+    paidWithVoucher: created.paidWithVoucher,
+    cancellationHours: data.plazo_cancelacion_horas,
   }
 })
 
@@ -207,6 +240,21 @@ const failure = computed<PanelFailure | null>(() => {
     return {
       title: 'Ese espacio ya no está disponible.',
       description: 'Elija uno de los espacios cercanos o cambie la hora.',
+    }
+  }
+  // The API refused the voucher (stable types): no reservation and no session were used.
+  if (error.type.endsWith('saldo-insuficiente')) {
+    return {
+      title: 'Su bono ya no tiene sesiones disponibles.',
+      description:
+        'No se reservó ni se usó ninguna sesión. Reserve de nuevo y pague con tarjeta o SINPE Móvil.',
+    }
+  }
+  if (error.type.endsWith('bono-vencido')) {
+    return {
+      title: 'Su bono vence antes de la fecha de la cita.',
+      description:
+        'No se reservó ni se usó ninguna sesión. Elija otra fecha, o reserve de nuevo y pague con tarjeta o SINPE Móvil.',
     }
   }
   return { title: 'No pudimos crear la reserva.', description: error.detail }
@@ -476,11 +524,18 @@ async function reserve(): Promise<void> {
     return
   }
   if (!service.value || !selection.value) return
-  await booking.reserve({
-    serviceName: service.value.nombre,
-    barberName: selection.value.barberName,
-  })
+  const withVoucher = voucherOffer.value && payWith.value === 'bono'
+  await booking.reserve(
+    { serviceName: service.value.nombre, barberName: selection.value.barberName },
+    { withVoucher },
+  )
   if (booking.error?.status === 401) await goToLogin()
+  const refused = booking.error?.type ?? ''
+  if (refused.endsWith('saldo-insuficiente') || refused.endsWith('bono-vencido')) {
+    // The balance or the validity changed: read the vouchers again and go back to the usual payment.
+    payWith.value = 'metodo'
+    if (store.shop) void vouchers.load(store.shop.id)
+  }
 }
 </script>
 
@@ -523,13 +578,21 @@ async function reserve(): Promise<void> {
         />
       </div>
       <div class="px-5 pt-6 pb-8 md:px-8 md:pt-8">
-        <div v-if="session.isAuthenticated" class="mb-4 flex justify-end">
+        <div v-if="session.isAuthenticated" class="mb-4 flex flex-wrap justify-end gap-2">
           <RouterLink
             :to="{ name: 'my-bookings', params: { enlace: link } }"
             class="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:border-line-hover"
           >
             <CalendarDays :size="16" :stroke-width="1.5" aria-hidden="true" />
             Mis reservas
+          </RouterLink>
+          <RouterLink
+            v-if="!staff"
+            :to="{ name: 'vouchers', params: { enlace: link } }"
+            class="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:border-line-hover"
+          >
+            <Ticket :size="16" :stroke-width="1.5" aria-hidden="true" />
+            Mis bonos
           </RouterLink>
         </div>
         <BookingPanel
@@ -538,6 +601,8 @@ async function reserve(): Promise<void> {
           v-model:barber="barberModel"
           v-model:date="dateModel"
           v-model:slot="slotModel"
+          v-model:pay-with="payWith"
+          :voucher-offer="voucherOffer"
           :has-service="service !== null"
           :barbers="availability.barbers.value"
           :days="days"
@@ -557,6 +622,8 @@ async function reserve(): Promise<void> {
           :missing="flagged"
           @restart="booking.clear()"
           @pay="goToPayment"
+          @view-bookings="router.push({ name: 'my-bookings', params: { enlace: link } })"
+          @view-vouchers="router.push({ name: 'vouchers', params: { enlace: link } })"
           @pick-alternative="pickAlternative"
         >
           <template #assistant>
