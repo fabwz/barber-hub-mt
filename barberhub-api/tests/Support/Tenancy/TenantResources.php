@@ -37,6 +37,7 @@ final class TenantResources
         'POST api/v1/barberias/{barberia}/reservas',
         'GET api/v1/barberias/{barberia}/mis-reservas',
         'GET api/v1/barberias/{barberia}/mis-bonos',
+        'GET api/v1/barberias/{barberia}/bonos',
         'POST api/v1/barberias/{barberia}/reservas/propuesta',
         'POST api/v1/barberias/{barberia}/bonos/{bono}/compras',
     ];
@@ -229,6 +230,7 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/administracion/bonos',
                 [TenantResource::LIST, TenantResource::SHOW, TenantResource::UPDATE],
                 ['activo' => false],
+                ['api/v1/barberias/{barberia}/bonos'],
             ),
             new TenantResource(
                 'voucher_definition_services',

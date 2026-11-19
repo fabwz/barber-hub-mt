@@ -287,6 +287,23 @@ final class PurchaseVoucherTest extends TestCase
         $this->assertSame('rejected', $this->theOnlyPayment()->status);
     }
 
+    /** The id of a voucher of the list on sale is the `{bono}` that starts the purchase, for a person who has no role yet (RF-27, UP-09). */
+    public function test_the_id_of_a_listed_voucher_starts_the_purchase(): void
+    {
+        $stranger = $this->insertUser('Dani Mora');
+        $this->gateway->leavesPending();
+        $this->actAs($stranger);
+
+        $listed = $this->getJson('/api/v1/barberias/'.$this->puraNavaja.'/bonos')->assertOk()->json('data.0.id');
+        $this->assertSame($this->voucher, $listed);
+        $this->assertSame(0, DB::table('memberships')->where('user_id', $stranger)->count());
+
+        $this->buy($listed)->assertCreated();
+
+        $this->assertSame($this->voucher, $this->theVoucher()->voucher_definition_id);
+        $this->assertSame(1, DB::table('memberships')->where('user_id', $stranger)->count());
+    }
+
     /** A voucher withdrawn from sale, or one that does not exist, answers 404 and creates nothing (RF-26). */
     public function test_a_withdrawn_or_missing_voucher_cannot_be_bought(): void
     {

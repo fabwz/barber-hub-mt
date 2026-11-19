@@ -25,4 +25,23 @@ final readonly class CatalogServicesAdapter implements CatalogServices
 
         return array_values(array_intersect($serviceIds, $known));
     }
+
+    /**
+     * Name the given services of the current barbershop through the Services module.
+     *
+     * @param  list<string>  $serviceIds
+     * @return array<string, string>
+     */
+    public function namesOf(array $serviceIds): array
+    {
+        $names = [];
+
+        foreach ($this->listServices->execute() as $service) {
+            if (in_array($service->id->value, $serviceIds, true)) {
+                $names[$service->id->value] = $service->name->value;
+            }
+        }
+
+        return $names;
+    }
 }

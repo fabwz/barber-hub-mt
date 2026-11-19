@@ -11,10 +11,25 @@ final class InMemoryCatalogServices implements CatalogServices
     /** @var list<string> */
     private array $known = [];
 
-    /** Make a service exist in the barbershop. */
-    public function add(string $serviceId): void
+    /** @var array<string, string> */
+    private array $names = [];
+
+    /** Make a service exist in the barbershop, with the name it is read by. */
+    public function add(string $serviceId, string $name = ''): void
     {
         $this->known[] = $serviceId;
+        $this->names[$serviceId] = $name === '' ? "Servicio {$serviceId}" : $name;
+    }
+
+    /**
+     * Name the given services that exist.
+     *
+     * @param  list<string>  $serviceIds
+     * @return array<string, string>
+     */
+    public function namesOf(array $serviceIds): array
+    {
+        return array_intersect_key($this->names, array_flip($serviceIds));
     }
 
     /**

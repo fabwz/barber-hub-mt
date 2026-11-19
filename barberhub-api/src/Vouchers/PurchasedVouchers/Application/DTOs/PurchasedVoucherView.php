@@ -13,12 +13,16 @@ use Src\Vouchers\PurchasedVouchers\Domain\Entities\VoucherMovement;
  */
 final readonly class PurchasedVoucherView
 {
-    /** @param  list<VoucherMovement>  $movements  The record of the voucher, in the order it was written. */
+    /**
+     * @param  list<VoucherMovement>  $movements  The record of the voucher, in the order it was written.
+     * @param  list<CoveredService>|null  $services  What the live definition covers, by name; none when the reader did not ask for it.
+     */
     public function __construct(
         public PurchasedVoucher $voucher,
         public array $movements,
         public int $balance,
         public bool $expired,
         public ?string $customerName,
+        public ?array $services = null,
     ) {}
 }

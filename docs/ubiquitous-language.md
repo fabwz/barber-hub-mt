@@ -131,7 +131,7 @@ Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La
 | Depósito a devolver | `RefundStatus::Due` | `due` | `a_devolver` |
 | Webhook | `WebhookEvent` | `webhook_events` | — |
 | Saldo pendiente por cobrar en el local | `outstandingBalance` | — (se calcula) | `saldo_pendiente` |
-| Bono (definición de la barbería) | `VoucherDefinition` | `voucher_definitions` | `bonos` |
+| Bono (definición de la barbería) | `VoucherDefinition` | `voucher_definitions` | `bonos` (recurso del dueño en `administracion/bonos`; el cliente lee los que están a la venta en `bonos`) |
 | Bono adquirido | `PurchasedVoucher` | `purchased_vouchers` | `mis-bonos` (recurso del cliente) y `administracion/bonos-vendidos` (recurso del dueño) |
 | Sesión | `Sessions` | `remaining_sessions` | `sesiones_restantes` |
 | Movimiento de saldo | `VoucherMovement` | `voucher_movements` | — |

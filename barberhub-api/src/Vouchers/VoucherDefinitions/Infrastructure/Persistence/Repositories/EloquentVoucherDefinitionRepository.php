@@ -12,6 +12,9 @@ use Illuminate\Support\Str;
 use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Money;
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
+use Src\Shared\Infrastructure\Persistence\EloquentPages;
 use Src\Vouchers\Shared\Domain\ValueObjects\SessionCount;
 use Src\Vouchers\Shared\Domain\ValueObjects\ValidityDays;
 use Src\Vouchers\Shared\Domain\ValueObjects\VoucherDefinitionId;
@@ -118,6 +121,36 @@ final readonly class EloquentVoucherDefinitionRepository implements VoucherDefin
             ->all());
     }
 
+    /** Page the definitions on sale of the current barbershop by name, with their services read in one query for the page. */
+    public function pageOnSale(PageRequest $page): Page
+    {
+        $onSale = EloquentPages::of(
+            $this->ofBarbershop()->where('is_active', true)->orderBy('name')->orderBy('id'),
+            $page,
+            fn (VoucherDefinitionModel $model): VoucherDefinitionModel => $model,
+        );
+        $services = $this->servicesOf(array_map(fn (VoucherDefinitionModel $model): string => $model->id, $onSale->items));
+
+        return $onSale->map(fn (VoucherDefinitionModel $model): VoucherDefinition => $this->toDomain($model, $services[$model->id] ?? []));
+    }
+
+    /**
+     * Read the definitions among the identifiers that belong to the current barbershop, on sale or withdrawn, with their services read in one query.
+     *
+     * @param  list<VoucherDefinitionId>  $ids
+     * @return list<VoucherDefinition>
+     */
+    public function findMany(array $ids): array
+    {
+        $keys = array_map(fn (VoucherDefinitionId $id): string => $id->value, $ids);
+        $models = $this->ofBarbershop()->whereIn('id', $keys)->orderBy('name')->orderBy('id')->get();
+        $services = $this->servicesOf(array_values(array_map(fn (VoucherDefinitionModel $model): string => $model->id, $models->all())));
+
+        return array_values($models
+            ->map(fn (VoucherDefinitionModel $model): VoucherDefinition => $this->toDomain($model, $services[$model->id] ?? []))
+            ->all());
+    }
+
     /** Look for a purchased voucher of the definition among those of the current barbershop. */
     public function hasPurchases(VoucherDefinitionId $id): bool
     {
@@ -160,6 +193,28 @@ final readonly class EloquentVoucherDefinitionRepository implements VoucherDefin
             new DateTimeImmutable($model->created_at),
             new DateTimeImmutable($model->updated_at),
         );
+    }
+
+    /**
+     * The services each of the definitions covers, in the current barbershop, read with one query.
+     *
+     * @param  list<string>  $definitionIds
+     * @return array<string, list<string>>
+     */
+    private function servicesOf(array $definitionIds): array
+    {
+        if ($definitionIds === []) {
+            return [];
+        }
+
+        return VoucherDefinitionServiceModel::query()
+            ->where('barbershop_id', $this->context->current()->value)
+            ->whereIn('voucher_definition_id', $definitionIds)
+            ->orderBy('id')
+            ->get(['voucher_definition_id', 'service_id'])
+            ->groupBy('voucher_definition_id')
+            ->map(fn (Collection $rows): array => array_values($rows->pluck('service_id')->all()))
+            ->all();
     }
 
     /** Delete the services the voucher no longer covers and add the new ones. */

@@ -70,6 +70,7 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `POST api/v1/barberias/{barberia}/reservas/propuesta` | Propuesta de IA (RF-37): no crea nada; dueño y colaborador reciben 403. |
 | `GET api/v1/barberias/{barberia}/mis-reservas` | Lectura de lo propio (CL-04): sin rol, lista vacía. |
 | `GET api/v1/barberias/{barberia}/mis-bonos` | Lectura de lo propio (RF-29, CL-04): sin rol, lista vacía; dueño y colaborador reciben 403 `prohibido`. Solo trae los bonos ya pagados de la persona. |
+| `GET api/v1/barberias/{barberia}/bonos` | Bonos a la venta con sus servicios cubiertos (RF-27, UP-09): una persona sin rol pasa y no se le crea ninguna membresía; dueño y colaborador reciben 403 `prohibido`. Un bono retirado no aparece. |
 | `POST api/v1/barberias/{barberia}/bonos/{bono}/compras` | Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403 `prohibido` y no se crea nada. Un bono que no existe, está retirado o es de otra barbería responde 404. |
 
 ## Rutas con rol (y propiedad del recurso)

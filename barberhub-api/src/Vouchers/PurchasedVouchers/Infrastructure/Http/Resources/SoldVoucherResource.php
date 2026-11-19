@@ -22,14 +22,15 @@ final class SoldVoucherResource extends JsonResource
     }
 
     /**
-     * Expose the voucher as the owner sees it: what the customer sees plus the name of the customer, never their email or phone.
+     * Expose the voucher as the owner sees it: what the customer sees, except the covered services that only the customer reads, plus
+     * the name of the customer, never their email or phone.
      *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
         return [
-            ...new PurchasedVoucherResource($this->view)->toArray($request),
+            ...array_diff_key(new PurchasedVoucherResource($this->view)->toArray($request), ['servicios' => true]),
             /** Nombre del cliente que lo compró. */
             'cliente_nombre' => $this->view->customerName ?? '',
         ];
