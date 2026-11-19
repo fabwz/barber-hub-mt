@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   canPayWith,
-  readMovements,
+  newestFirst,
   useVouchers,
   type PurchasedVoucher,
 } from '@/composables/useVouchers'
@@ -24,11 +24,12 @@ afterEach(() => vi.unstubAllGlobals())
 
 const voucher = (over: Record<string, unknown> = {}) => bought(over) as unknown as PurchasedVoucher
 
-describe('readMovements', () => {
-  it('returns the movements newest first, keeping type, sessions, reservation and date', () => {
-    const movements = readMovements(bought().movimientos)
+describe('newestFirst', () => {
+  it('returns the movements newest first, as the contract types them, without touching the original', () => {
+    const original = voucher().movimientos
+    const movements = newestFirst(original)
 
-    expect(movements.map((item) => item.type)).toEqual([
+    expect(movements.map((item) => item.tipo)).toEqual([
       'apartado',
       'reintegro',
       'apartado',
@@ -37,24 +38,17 @@ describe('readMovements', () => {
       'compra',
     ])
     expect(movements.at(-1)).toEqual({
-      type: 'compra',
-      sessions: 5,
-      reservationId: null,
-      at: '2030-01-04T08:00:00-06:00',
+      tipo: 'compra',
+      sesiones: 5,
+      reserva: null,
+      fecha: '2030-01-04T08:00:00-06:00',
     })
-    expect(movements[0]).toMatchObject({ sessions: -1, reservationId: 'r3' })
+    expect(movements[0]).toMatchObject({ sesiones: -1, reserva: 'r3' })
+    expect(original[0]!.tipo).toBe('compra')
   })
 
-  it('skips what is not a movement', () => {
-    expect(
-      readMovements([
-        null,
-        'x',
-        { tipo: 'otro', sesiones: 1, fecha: '2030-01-01T00:00:00-06:00' },
-        { tipo: 'compra', sesiones: 'cinco', fecha: '2030-01-01T00:00:00-06:00' },
-        { tipo: 'compra', sesiones: 5 },
-      ]),
-    ).toEqual([])
+  it('gives an empty list for a voucher with no movements', () => {
+    expect(newestFirst([])).toEqual([])
   })
 })
 

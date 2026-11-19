@@ -29,42 +29,12 @@ const PAGE_SIZE = 50
 /** Safety stop: 20 pages of 50 vouchers in one barbershop. */
 const MAX_PAGES = 20
 
-export type MovementType = 'compra' | 'apartado' | 'consumo' | 'reintegro'
+export type VoucherMovement = components['schemas']['MovimientoDeBono']
+export type MovementType = VoucherMovement['tipo']
 
-/**
- * A change of the balance of a purchased voucher. The contract leaves the items of `movimientos`
- * untyped, so they are read defensively here from what the API documents (tipo, sesiones, reserva,
- * fecha), like the 409 alternatives.
- */
-export interface VoucherMovement {
-  type: MovementType
-  /** Sessions it adds (positive) or takes from the balance (negative); 0 for a consumption. */
-  sessions: number
-  /** Reservation it belongs to; `null` for the purchase. */
-  reservationId: string | null
-  /** ISO 8601 instant, as the API delivers it. */
-  at: string
-}
-
-const MOVEMENT_TYPES: readonly string[] = ['compra', 'apartado', 'consumo', 'reintegro']
-
-/** The valid movements of a voucher, newest first (the API lists them oldest first). */
-export function readMovements(raw: unknown[]): VoucherMovement[] {
-  const movements = raw.flatMap((item): VoucherMovement[] => {
-    if (typeof item !== 'object' || item === null) return []
-    const { tipo, sesiones, reserva, fecha } = item as Record<string, unknown>
-    if (typeof tipo !== 'string' || !MOVEMENT_TYPES.includes(tipo)) return []
-    if (typeof sesiones !== 'number' || typeof fecha !== 'string' || fecha === '') return []
-    return [
-      {
-        type: tipo as MovementType,
-        sessions: sesiones,
-        reservationId: typeof reserva === 'string' && reserva !== '' ? reserva : null,
-        at: fecha,
-      },
-    ]
-  })
-  return movements.reverse()
+/** The movements of a voucher, newest first (the API lists them oldest first). */
+export function newestFirst(movements: VoucherMovement[]): VoucherMovement[] {
+  return [...movements].reverse()
 }
 
 /**
