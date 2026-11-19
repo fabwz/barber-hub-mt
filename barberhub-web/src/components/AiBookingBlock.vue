@@ -171,13 +171,13 @@ function chipLabel(slot: TimeSlot): string {
         <div v-else-if="state === 'loading'">
           <p class="text-sm text-fg-muted">Procesando su solicitud…</p>
           <div class="mt-3 flex flex-col gap-2.5" aria-hidden="true">
-            <div class="h-4 w-4/5 animate-pulse rounded-field bg-line motion-reduce:animate-none" />
-            <div class="h-4 w-3/5 animate-pulse rounded-field bg-line motion-reduce:animate-none" />
+            <div class="h-4 w-4/5 animate-pulse rounded-field bg-line" />
+            <div class="h-4 w-3/5 animate-pulse rounded-field bg-line" />
             <div class="mt-1.5 flex gap-2">
               <div
                 v-for="index in 3"
                 :key="index"
-                class="h-11 w-18 animate-pulse rounded-field bg-line motion-reduce:animate-none"
+                class="h-11 w-18 animate-pulse rounded-field bg-line"
               />
             </div>
           </div>

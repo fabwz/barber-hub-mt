@@ -18,11 +18,11 @@ describe('SkeletonBlock', () => {
     expect(blocks[0]?.classes()).toEqual(expect.arrayContaining(['bg-line', 'rounded-field']))
   })
 
-  it('pulses slowly and turns the animation off with prefers-reduced-motion', () => {
+  it('pulses slowly and turns the animation off when motion is reduced (main.css)', () => {
     const block = mount(SkeletonBlock).find('[aria-hidden="true"]')
 
     expect(block.classes()).toContain('animate-pulse')
-    expect(block.classes()).toContain('motion-reduce:animate-none')
+    expect(block.classes().join(' ')).not.toContain('motion-reduce')
   })
 
   it('imitates a text line, a row or a larger block', () => {

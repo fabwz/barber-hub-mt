@@ -46,6 +46,12 @@
   --radius-pill: 9999px;
 }
 
+/*
+ * Applies when the person chose a text size above 100 % (data-text-size is on <html>). Components
+ * use it to rearrange what no longer fits, as in `text-scaled:max-md:flex-col`.
+ */
+@custom-variant text-scaled (:where(:root:not([data-text-size='normal'])) &);
+
 /* Manrope, latin subset, weights 400 and 500 only (SIL OFL 1.1). */
 @font-face {
   font-family: 'Manrope';
@@ -66,6 +72,50 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* The glow in the corner of the page: bone at 4 % on the dark canvas. */
+    --page-glow: rgba(238, 240, 240, 0.04);
+  }
+
+  /*
+   * Light theme (DESIGN.md, «Tema claro»): the same token names and roles with other values.
+   * The accent is the navy of the light logo. data-theme is set on <html> by the preferences
+   * store and, before the first render, by the script in index.html.
+   */
+  :root[data-theme='light'] {
+    color-scheme: light;
+    --page-glow: rgba(0, 15, 45, 0.05);
+    --color-canvas: #f5f6f6;
+    --color-surface: #ffffff;
+    --color-elevated: #e8ebed;
+    --color-line: #dde0e2;
+    --color-line-strong: #c4c9cc;
+    --color-line-hover: #a9afb3;
+    --color-field: #7b8185;
+    --color-fg: #14181a;
+    --color-fg-muted: #4f5559;
+    --color-fg-subtle: #5d6366;
+    --color-accent: #000f2d;
+    --color-accent-hover: #2b3f69;
+    --color-btn-hover: #dce1e4;
+    --color-btn-active: #f0f2f3;
+    --color-danger: #a5231f;
+    --color-danger-surface: #fdeceb;
+    --color-danger-border: #c4413a;
+    --color-warning: #7a5300;
+    --color-warning-surface: #fbf0d6;
+  }
+
+  /*
+   * Text size (AC-03): the root font size scales every rem, so the whole interface grows with it.
+   * Percentages, not pixels, so they multiply the size the browser or the person already chose.
+   * The attribute is set by the preferences store and by the script in index.html.
+   */
+  :root[data-text-size='large'] {
+    font-size: 125%;
+  }
+
+  :root[data-text-size='xlarge'] {
+    font-size: 150%;
   }
 
   /*
@@ -74,8 +124,7 @@
    */
   body {
     background:
-      radial-gradient(120% 700px at 100% 100%, rgba(238, 240, 240, 0.04), rgba(238, 240, 240, 0))
-        fixed,
+      radial-gradient(120% 700px at 100% 100%, var(--page-glow), transparent) fixed,
       var(--color-canvas);
     color: var(--color-fg);
     font-family: var(--font-sans);
@@ -128,13 +177,33 @@
     scrollbar-color: var(--color-line-strong) transparent;
   }
 
+  /*
+   * Reduced motion (AC-04): no animation and no transition that is not essential (skeleton pulse,
+   * chevron turns, animated hover). Without a choice of the person the device decides
+   * (prefers-reduced-motion); with one, data-motion decides: «reduce» removes the motion even if
+   * the device allows it and «full» keeps it even if the device asks for less. Transitions end at
+   * once rather than being removed so that the Vue transitions still finish.
+   */
   @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
+    :root:not([data-motion='full']),
+    :root:not([data-motion='full']) *,
+    :root:not([data-motion='full']) *::before,
+    :root:not([data-motion='full']) *::after {
+      animation: none !important;
       transition-duration: 0.01ms !important;
-      animation-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
     }
+  }
+
+  :root[data-motion='reduce'],
+  :root[data-motion='reduce'] *,
+  :root[data-motion='reduce'] *::before,
+  :root[data-motion='reduce'] *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -153,8 +222,8 @@
  * gradient. The notch is centered on the logo: at the left on a phone, in the middle on desktop.
  */
 @utility banner-notch {
-  --notch-radius: 42px;
-  --notch-x: 36px;
+  --notch-radius: 2.625rem;
+  --notch-x: 2.25rem;
   -webkit-mask-image: radial-gradient(
     circle var(--notch-radius) at var(--notch-x) 100%,
     transparent calc(100% - 0.5px),
@@ -167,7 +236,21 @@
   );
 
   @media (min-width: 48rem) {
-    --notch-radius: 50px;
+    --notch-radius: 3.125rem;
     --notch-x: 50%;
+  }
+}
+
+/*
+ * Two columns of the preferences screen from 768 px: the first holds the theme and the motion
+ * switch, one under the other, and the second the text size, which spans both rows. The second row
+ * takes what is left, so the first column does not stretch when the second is taller.
+ */
+@utility preferences-columns {
+  @media (min-width: 48rem) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    row-gap: 2rem;
   }
 }
