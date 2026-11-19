@@ -52,6 +52,8 @@ Las rutas y los atributos JSON son parte de lo que ve quien consume la API, por 
 | Idioma de la cuenta | `Locale` | `locale` | `idioma` |
 | Recordatorios por correo | `remindersEnabled` | `reminders_enabled` | `recordatorios_correo` |
 | Token de acceso | `IssuedToken` | `personal_access_tokens` | `token` |
+| Operador de plataforma (condición de la cuenta, no un rol; propuesta, se confirma en su issue) | `PlatformOperator` | por confirmar (marca en `users` o tabla propia) | rutas bajo `plataforma` |
+| Barbería bloqueada (por falta de pago del alquiler; propuesta, se confirma en su issue) | `BarbershopStatus::Blocked` | por confirmar | `bloqueada` |
 
 Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La palabra nombra dos cosas distintas: el **rol** (`Role::Collaborator`, el permiso que tiene en la barbería) y el **perfil con agenda** (`Collaborator`, la persona que atiende). Un dueño con agenda propia (CO-02) conserva el rol `owner` y además tiene un perfil `Collaborator`.
 
@@ -157,6 +159,18 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 | Mañana, tarde, noche | `Morning`, `Afternoon`, `Evening` | — | `manana`, `tarde`, `noche` |
 | Registro técnico | `AuditLog` | `audit_log` | — |
 
+### Alquiler y bloqueo (previsto, M19)
+
+Nombres propuestos; cada uno se confirma cuando su issue lo crea.
+
+| Negocio | Código | Base de datos | API |
+| --- | --- | --- | --- |
+| Alquiler | `Rent` | — | `alquiler` |
+| Cuota (el alquiler de un mes) | `RentInstallment` | `rent_installments` | `cuotas` |
+| Vencimiento de la cuota | `dueOn` | `due_on` | `vence` |
+| Estado de la cuota (pendiente, pagada) | `InstallmentStatus` | `status` | `pendiente`, `pagada` |
+| Meses pendientes (se cuentan, no se guardan) | `pendingMonths()` | — (se calcula) | `meses_pendientes` |
+
 ### Mi cuenta y sus atajos (cliente web)
 
 | Negocio | Código | Base de datos | API |
@@ -184,9 +198,11 @@ La lista de roles es cerrada y se asigna por barbería (UP-01). Una persona tien
 
 | Rol | Valor en la base | Cómo se obtiene |
 | --- | --- | --- |
-| Dueño | `owner` | Al registrar la barbería (RF-01) |
+| Dueño | `owner` | Cuando el operador de plataforma registra la barbería y su cuenta (RF-01) |
 | Colaborador | `collaborator` | Lo crea el dueño, con una contraseña temporal o por invitación (UP-04) |
 | Cliente | `customer` | Se crea sola al primer uso de una operación de cliente en la barbería (UP-09) |
+
+El **operador de plataforma** no es un rol: no tiene fila en `memberships` y su acceso lo fija PL-01.
 
 Las abilities de los tokens de Sanctum y la matriz de permisos por rol se definen en #43 y se documentan en `docs/` en ese issue.
 
@@ -220,6 +236,7 @@ Un **tipo de error estable** es un tipo fijo de error RFC 9457 que el cliente we
 | `bono-vencido` | El bono no está vigente en la fecha de la cita (BO-06) |
 | `oferta-vencida` | La oferta caducó antes de la respuesta (LE-05) |
 | `bono-con-ventas` | El bono ya se vendió: sus sesiones, su vigencia y sus servicios no se cambian (RF-26) |
+| `barberia-bloqueada` | La barbería está bloqueada por falta de pago del alquiler (PL-08) |
 | `demasiadas-solicitudes` | Se superó el límite de solicitudes |
 | `error-interno` | Cualquier otro fallo, sin detalles técnicos |
 | `servicio-no-disponible` | El servicio no está disponible en este momento |

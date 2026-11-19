@@ -7,11 +7,11 @@ Documento organizado según la estructura de ISO/IEC/IEEE 29148:2018 para una es
 | Campo | Valor |
 | --- | --- |
 | Documento | `context/requirements.md` |
-| Versión | 1.7 |
-| Fecha | 16 de noviembre de 2026 |
+| Versión | 1.8 |
+| Fecha | 18 de noviembre de 2026 |
 | Estado | Para aprobación |
 | Documentos relacionados | `context/business-rules.md` (reglas de negocio), `docs/` (arquitectura, base de datos, modelo de datos y decisiones técnicas) |
-| Alcance de la versión | 54 requisitos funcionales, 28 requisitos no funcionales, 18 restricciones de diseño y 5 requisitos legales |
+| Alcance de la versión | 59 requisitos funcionales, 28 requisitos no funcionales, 18 restricciones de diseño y 5 requisitos legales |
 
 Reglas de mantenimiento: los requisitos y las reglas viven en este archivo y en `business-rules.md`; los issues los citan por su identificador; si algo cambia, se corrige primero el archivo. Los identificadores no se reutilizan.
 
@@ -52,13 +52,15 @@ BarberHub es una plataforma web multi-inquilino donde varias barberías administ
 | 14 | Más de un rol para una misma persona en una misma barbería. | D |
 | 15 | Pausar las reservas de una barbería (decisión de diseño): el dueño no puede suspender temporalmente las reservas nuevas; queda como pendiente opcional, fuera del alcance. | D |
 
+El alquiler de la plataforma (RF-57 a RF-59) corre también en el modo de pruebas (exclusión 1): no se procesa dinero real.
+
 ### 1.3 Definiciones, siglas y abreviaturas
 
 | Término | Significado |
 | --- | --- |
 | BarberHub | La plataforma: un único sistema donde conviven varias barberías. |
 | Barbería (inquilino) | Cada negocio registrado, con sus datos totalmente separados de los demás. En el código es `Barbershop`. |
-| Dueño, colaborador, cliente | Los tres roles del sistema. Una persona tiene un único rol en cada barbería. |
+| Dueño, colaborador, cliente | Los tres roles de barbería. Una persona tiene un único rol en cada barbería. El operador de plataforma no es un rol de barbería. |
 | Cliente asistido | Persona que el dueño registra para una reserva asistida, sin cuenta. |
 | Enlace público | Dirección propia de cada barbería, por la que sus clientes llegan a ella. |
 | Espacio | Intervalo de tiempo de un colaborador en el que cabe un servicio. |
@@ -87,10 +89,15 @@ BarberHub es una plataforma web multi-inquilino donde varias barberías administ
 | OpenAPI | Contrato de la API; se genera con Scramble. |
 | SINPE Móvil | Transferencias de dinero entre teléfonos del sistema bancario costarricense. |
 | IVA | Impuesto al valor agregado; en servicios, 13 %. |
+| Operador de plataforma | Persona que administra BarberHub como plataforma: registra barberías y sus dueños y controla su alquiler. No es un rol de barbería (PL-01). |
+| Alquiler | Cuota mensual que cada barbería paga a la plataforma por usarla. |
+| Cuota | El alquiler de un mes concreto de una barbería, con su fecha de vencimiento y su estado. |
+| Meses pendientes | Número de cuotas vencidas y sin pagar de una barbería. |
+| Barbería bloqueada | Barbería a la que la plataforma retiró el acceso por falta de pago del alquiler. |
 
 ### 1.4 Referencias
 
-- `context/business-rules.md`: reglas de negocio vigentes (identificadores CL, SV, CO, HO, DI, RE, CA, PA, BO, LE, UP, MT, NO, IA, SE y AC).
+- `context/business-rules.md`: reglas de negocio vigentes (identificadores CL, SV, CO, HO, DI, RE, CA, PA, BO, LE, UP, PL, MT, NO, IA, SE y AC).
 - ISO/IEC/IEEE 29148:2018, Systems and software engineering, Life cycle processes, Requirements engineering.
 - Web Content Accessibility Guidelines (WCAG) 2.2, W3C.
 - RFC 9457, Problem Details for HTTP APIs.
@@ -119,7 +126,7 @@ Se apoya en servicios externos: dos pasarelas de pago (ONVO Pay y PayPal), un pr
 
 | Módulo | Requisitos | Resumen |
 | --- | --- | --- |
-| Barbería y configuración | RF-01 a RF-09 | Alta, enlace público, servicios, horario, personal, bloqueos y políticas. |
+| Barbería y configuración | RF-01 a RF-09 | Alta por el operador, enlace público, servicios, horario, personal, bloqueos y políticas. |
 | Disponibilidad y reservas | RF-10 a RF-19 | Espacios reales, reservas sin duplicados, reprogramación, cancelación, atendida o ausente y expiración. |
 | Pagos | RF-20 a RF-25 | Cobro con dos pasarelas, confirmación por webhook, reembolsos e ingresos. |
 | Bonos prepagados | RF-26 a RF-29 | Definición, compra, uso sin saldo negativo y consulta. |
@@ -129,6 +136,7 @@ Se apoya en servicios externos: dos pasarelas de pago (ONVO Pay y PayPal), un pr
 | Identidad, acceso y datos | RF-38 a RF-46 | Cuentas, contraseñas, roles, aislamiento, datos de la cuenta e imágenes. |
 | Preferencias de la cuenta | RF-47 a RF-49 | Avisos, apariencia e idioma. |
 | Directorio de barberías | RF-54 | Lista pública y opcional de las barberías que su dueño activó, con búsqueda por nombre o ciudad. |
+| Plataforma y alquiler | RF-55 a RF-59 | Cuenta del operador, listado de barberías, alquiler mensual, bloqueo automático y pago del alquiler. |
 | Extras | RF-50 a RF-53 | Propinas, WhatsApp, Google Calendar y factura electrónica. |
 
 ### 2.3 Usuarios y características
@@ -138,12 +146,13 @@ Se apoya en servicios externos: dos pasarelas de pago (ONVO Pay y PayPal), un pr
 | Dueño | Administra una barbería. | Configurar su barbería, ver todas sus reservas e ingresos, reprogramar y cancelar reservas. | Ver o modificar datos de otra barbería. |
 | Colaborador | Barbero con agenda propia. | Ver su agenda y marcar lo que atendió. | Ver ingresos, la agenda de otros o configurar la barbería. |
 | Cliente | Persona que reserva. | Consultar disponibilidad, reservar, pagar, comprar bonos, cancelar y unirse a la lista de espera. | Ver reservas, pagos o bonos de otras personas. |
+| Operador de plataforma | Administra la plataforma. | Registrar barberías y crear la cuenta de su dueño; ver el estado del alquiler de cada barbería. | Ver servicios, reservas, pagos de clientes, bonos o clientes de una barbería; tener un rol en una barbería. |
 | Pasarela de pago | ONVO Pay o PayPal. | Confirmar pagos por webhook. | Cambiar datos de reservas por otra vía. |
 | Proveedor de IA | Servicio externo de lenguaje. | Devolver datos estructurados a partir de una frase. | Crear reservas. |
 | Servicio de correo | Entrega de mensajes. | Entregar confirmaciones, recordatorios y avisos. | No aplica. |
 | Planificador de tareas | Procesos automáticos en cola. | Expirar reservas, enviar recordatorios y avanzar la lista de espera. | No aplica. |
 
-Una persona tiene una sola cuenta y puede tener un rol distinto en cada barbería, pero un único rol en cada una (UP-07).
+Una persona tiene una sola cuenta y puede tener un rol distinto en cada barbería, pero un único rol en cada una (UP-07). El operador de plataforma es una condición de la cuenta, aparte de los roles de barbería (PL-01).
 
 ### 2.4 Restricciones generales
 
@@ -161,11 +170,12 @@ Una persona tiene una sola cuenta y puede tener un rol distinto en cada barberí
 - Cada barbería usa una sola pasarela a la vez.
 - La cuenta del cliente es global y los roles se asignan por barbería (CL-01, UP-01).
 - Existe autenticación básica desde el primer corte de trabajo, porque el aislamiento entre barberías se comprueba con sesiones distintas.
+- El operador de plataforma se crea por semilla o comando, nunca por la API pública (PL-01).
 - Los puntos pendientes de definir están en el apéndice B.
 
 ### 2.6 Priorización y planificación
 
-La clase de cada requisito fija su prioridad: **esencial** (39 requisitos), **complementaria** (10) y **extra** (4). Las complementarias se construyen después de las esenciales y los extras, después de todo lo demás. El trabajo se agrupa en 18 milestones con su fecha de entrega programada:
+La clase de cada requisito fija su prioridad: **esencial** (43 requisitos), **complementaria** (12) y **extra** (4). Las complementarias se construyen después de las esenciales y los extras, después de todo lo demás. El trabajo se agrupa en 19 milestones con su fecha de entrega programada:
 
 | Milestone | Contenido | Entrega programada |
 | --- | --- | --- |
@@ -187,6 +197,7 @@ La clase de cada requisito fija su prioridad: **esencial** (39 requisitos), **co
 | M16 Cliente web: bonos, lista de espera, agenda e ingresos | Pantallas de bonos, lista de espera, agenda en vivo e ingresos | 6 dic |
 | M17 Operación en producción y cierre | Despliegue automático, colas en producción, monitoreo y cierre | 6 dic |
 | M18 Extras | RF-50 a RF-53 | Sin fecha |
+| M19 Plataforma: operador, alquiler y bloqueo | Alta de barberías por el operador, cuotas de alquiler, bloqueo automático, ventana de alquiler y barbería bloqueada | Sin fecha |
 
 ## 3. Requisitos específicos
 
@@ -199,17 +210,18 @@ La guía visual del cliente web está pendiente de definir (apéndice B); las pa
 | Rol | Pantallas |
 | --- | --- |
 | Acceso (todos) | Registro, inicio de sesión, olvidé mi contraseña, crear nueva contraseña, elegir barbería, términos y condiciones, política de privacidad, "Esta barbería no existe" |
-| Cliente | Directorio de barberías (con búsqueda), barra de navegación del cliente (con menú de cuenta), reservar (con servicios con imagen), reservar con IA, resumen y pago, estado del pago y reserva confirmada, mis reservas, reprogramar o cancelar, bonos, lista de espera y ofertas, aviso emergente de ofertas |
-| Dueño | Agenda en vivo con panel de detalle de reserva, reserva asistida, servicios, horario, personal con invitaciones, bloqueos, negocio y políticas, bonos del negocio, ingresos, reembolsos |
+| Cliente | Directorio de barberías (con búsqueda), barra de navegación del cliente (con menú de cuenta), reservar (con servicios con imagen), reservar con IA, resumen y pago, estado del pago y reserva confirmada, mis reservas, reprogramar o cancelar, bonos, lista de espera y ofertas, aviso emergente de ofertas, barbería no disponible |
+| Dueño | Agenda en vivo con panel de detalle de reserva, reserva asistida, servicios, horario, personal con invitaciones, bloqueos, negocio y políticas, bonos del negocio, ingresos, reembolsos, alquiler (estado, meses pendientes y pago) |
 | Colaborador | Mi agenda en vivo con panel de detalle |
+| Operador | Iniciar sesión, cambiar la contraseña temporal, listado de barberías (con estado y meses pendientes), alta de barbería y dueño, detalle de una barbería (datos del dueño y alquiler) |
 | Común | Mi cuenta, con las pestañas Datos, Seguridad, Avisos (solo cliente), Apariencia e Idioma |
 
 #### 3.1.2 Interfaces con sistemas externos
 
 | Sistema | Uso | Protocolo | Requisitos |
 | --- | --- | --- | --- |
-| ONVO Pay | Cobros con tarjeta y SINPE Móvil; webhooks de confirmación | HTTPS, JSON | RF-20, RF-22, RF-23, RF-24 |
-| PayPal | Cobros con tarjeta; webhooks de confirmación | HTTPS, JSON | RF-20, RF-22, RF-23, RF-24 |
+| ONVO Pay | Cobros con tarjeta y SINPE Móvil; webhooks de confirmación | HTTPS, JSON | RF-20, RF-22, RF-23, RF-24, RF-59 |
+| PayPal | Cobros con tarjeta; webhooks de confirmación | HTTPS, JSON | RF-20, RF-22, RF-23, RF-24, RF-59 |
 | Proveedor de IA | Extracción de datos estructurados de una frase; límite de 10 s | HTTPS, JSON | RF-37 |
 | Servicio de correo | Correos transaccionales | SMTP o API | RF-06, RF-24, RF-33, RF-34, RF-41 |
 | WhatsApp Business Cloud (extra) | Avisos por WhatsApp | HTTPS, JSON | RF-51 |
@@ -224,7 +236,7 @@ La guía visual del cliente web está pendiente de definir (apéndice B); las pa
 
 ### 3.2 Requisitos funcionales
 
-Son 54 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, precondiciones, flujo, reglas de negocio relacionadas, criterios de aceptación y método de verificación. Los criterios usan datos de la barbería de referencia.
+Son 59 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, precondiciones, flujo, reglas de negocio relacionadas, criterios de aceptación y método de verificación. Los criterios usan datos de la barbería de referencia.
 
 **Plazos y umbrales comunes.** "En la misma operación" significa dentro de la misma solicitud, sin tareas diferidas. "Dentro de 60 s" se aplica a los correos. Las alternativas a un espacio no disponible son hasta 3 espacios del mismo día y servicio, los de inicio más próximo a la hora pedida.
 
@@ -232,13 +244,14 @@ Son 54 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, prec
 
 ##### RF-01 · Alta de la barbería y de su dueño
 - **Clase:** Esencial
-- **Enunciado:** El sistema deberá permitir registrar una barbería nueva y dejar a quien la registra como su dueño.
-- **Actores:** Dueño.
-- **Precondiciones:** La persona tiene una cuenta.
-- **Flujo:** 1) La persona indica nombre, ciudad y contacto y, de forma opcional, el logo y el banner (RF-46), la dirección y las redes sociales (WhatsApp, Instagram, Facebook y TikTok); el dueño puede editar estos datos después. 2) El sistema crea la barbería sin servicios, sin horario y con la modalidad de cobro "sin pago". 3) La persona queda como dueño.
-- **Reglas:** MT-01, MT-04, MT-09, UP-01, UP-05, UP-07.
+- **Enunciado:** El sistema deberá permitir al operador de plataforma registrar una barbería nueva y crear la cuenta de su dueño.
+- **Actores:** Operador de plataforma.
+- **Precondiciones:** Operador autenticado (RF-55).
+- **Flujo:** 1) El operador indica nombre, ciudad y contacto de la barbería y, de forma opcional, el logo y el banner (RF-46), la dirección y las redes sociales (WhatsApp, Instagram, Facebook y TikTok); el dueño puede editar estos datos después. 2) Indica nombre, correo y teléfono del dueño. 3) El sistema crea la barbería sin servicios, sin horario y con la modalidad de cobro "sin pago", genera su enlace público (RF-02) y crea su primera cuota de alquiler (RF-57). 4) Si el correo no tiene cuenta, el sistema la crea con una contraseña temporal que el operador comunica al dueño; si ya la tiene, le asigna el rol de dueño de la barbería nueva sin cambiar su contraseña. 5) La persona queda como dueño de esa barbería.
+- **Reglas:** MT-01, MT-04, MT-09, UP-01, UP-04, UP-05, UP-07, PL-01, PL-02.
 - **Criterios de aceptación:**
-  - Al registrar "Barbería Pura Navaja", la persona queda como su dueña.
+  - Al registrar "Barbería Pura Navaja" con el correo de Mauricio, Mauricio queda como su dueño y debe cambiar su contraseña temporal en el primer ingreso.
+  - Una persona que no es operador y registra una barbería recibe 403 con el tipo `prohibido`.
   - Una barbería sin servicio, sin colaborador o sin horario no ofrece espacios y muestra "Esta barbería aún no está lista para recibir reservas".
   - El dueño no ve ningún dato de otras barberías.
 - **Verificación:** Prueba automatizada.
@@ -860,11 +873,12 @@ Son 54 requisitos. Cada uno tiene su clase (prioridad), enunciado, actores, prec
 - **Actores:** Dueño, colaborador, cliente.
 - **Precondiciones:** Persona autenticada con acceso a más de una barbería.
 - **Flujo:** 1) Tras iniciar sesión, el sistema lista las barberías donde la persona tiene un rol, con ese rol. 2) La persona elige una. 3) Con una sola barbería, entra directamente. 4) La persona puede cambiar de barbería sin cerrar sesión.
-- **Reglas:** UP-07, UP-08.
+- **Reglas:** UP-07, UP-08, PL-09.
 - **Criterios de aceptación:**
   - Una persona dueña en Pura Navaja y clienta en Fade Lab ve ambas con su rol y entra a la elegida con los permisos de ese rol.
   - Con una sola barbería no ve la pantalla de selección.
   - La lista nunca incluye barberías donde la persona no tiene rol.
+  - Una barbería bloqueada sigue en la lista, con su estado (PL-09).
 - **Verificación:** Prueba automatizada.
 
 ##### RF-44 · Aislamiento de datos por barbería
@@ -1031,6 +1045,79 @@ Se construyen después de todo lo anterior, en este orden: RF-50, RF-51, RF-52 y
   - El dueño activa o desactiva la aparición y el cambio queda en el registro técnico; colaborador y cliente no pueden cambiarla.
 - **Verificación:** Prueba automatizada.
 
+#### 3.2.12 Plataforma y alquiler
+
+Los cinco requisitos de esta sección son los de la plataforma en sí: no pertenecen a ninguna barbería. Sus rutas no llevan `{barberia}` (RD-18).
+
+##### RF-55 · Cuenta y acceso del operador de plataforma
+- **Clase:** Esencial
+- **Enunciado:** El sistema deberá reconocer a una cuenta como operador de plataforma y darle acceso solo a las operaciones de plataforma.
+- **Actores:** Operador de plataforma.
+- **Precondiciones:** La cuenta fue marcada como operador por semilla o comando.
+- **Flujo:** 1) El operador inicia sesión (RF-39). 2) Si su contraseña es temporal, solo puede cambiarla (RF-40). 3) Accede a las rutas de plataforma, que no llevan `{barberia}`. 4) En cualquier ruta de una barbería, sin rol en ella, recibe 404.
+- **Reglas:** PL-01, PL-03, UP-06, UP-07.
+- **Criterios de aceptación:**
+  - Ninguna ruta de la API permite convertir una cuenta en operador.
+  - El operador que pide una ruta de barbería (por ejemplo, servicios) recibe 404, como cualquier persona sin rol.
+  - Un dueño, colaborador o cliente que pide una ruta de plataforma recibe 403 con el tipo `prohibido`.
+  - Una prueba por cada ruta de plataforma respalda la matriz de permisos (RF-42), que incluye al operador como actor.
+- **Verificación:** Prueba automatizada.
+
+##### RF-56 · Listado y detalle de barberías para el operador
+- **Clase:** Esencial
+- **Enunciado:** El sistema deberá mostrar al operador todas las barberías con su estado, su dueño y los meses pendientes de alquiler, y nada más de su operación.
+- **Actores:** Operador de plataforma.
+- **Precondiciones:** RF-55.
+- **Flujo:** 1) El operador abre "Barberías". 2) Ve nombre, ciudad, enlace, estado (activa o bloqueada), nombre, correo y teléfono del dueño y meses pendientes. 3) Puede filtrar por estado y buscar por nombre.
+- **Reglas:** PL-03, PL-05, MT-02.
+- **Criterios de aceptación:**
+  - La respuesta no incluye servicios, reservas, pagos de clientes, bonos, clientes ni colaboradores.
+  - Un filtro sin resultados muestra un estado vacío, no un error.
+- **Verificación:** Prueba automatizada.
+
+##### RF-57 · Alquiler mensual de la barbería
+- **Clase:** Esencial
+- **Enunciado:** El sistema deberá generar una cuota de alquiler por cada mes de cada barbería, con vencimiento en el día de su aniversario.
+- **Actores:** Planificador de tareas.
+- **Precondiciones:** La barbería existe.
+- **Flujo:** 1) Al registrarse la barbería se crea su primera cuota. 2) Una tarea diaria, en hora de Costa Rica, crea la cuota del mes siguiente cuando corresponde. 3) Una cuota vence el día del mes en que se dio de alta la barbería; si el mes no tiene ese día, el último día del mes. 4) Los meses pendientes son las cuotas vencidas sin pagar, contadas; no se guardan en un contador.
+- **Reglas:** PL-04, PL-05, PL-06, HO-03.
+- **Criterios de aceptación:**
+  - Una barbería dada de alta el 10 de noviembre tiene una cuota que vence el 10 de cada mes.
+  - Una barbería dada de alta el 31 de enero tiene la cuota de febrero con vencimiento el 28 (o el 29).
+  - Ejecutar la tarea dos veces el mismo día no duplica cuotas.
+  - Una barbería con tres cuotas vencidas sin pagar tiene 3 meses pendientes.
+- **Verificación:** Prueba automatizada.
+
+##### RF-58 · Bloqueo automático por falta de pago
+- **Clase:** Esencial
+- **Enunciado:** El sistema deberá bloquear una barbería el día siguiente al vencimiento de una cuota sin pagar y desbloquearla cuando no tenga meses pendientes.
+- **Actores:** Planificador de tareas.
+- **Precondiciones:** RF-57.
+- **Flujo:** 1) La tarea diaria busca las barberías con alguna cuota vencida sin pagar y las bloquea. 2) Al quedar pagadas todas las cuotas, la barbería se desbloquea en esa misma operación. 3) El bloqueo y el desbloqueo quedan en el registro técnico.
+- **Reglas:** PL-07, PL-08, PL-10, PL-11, PL-12, SE-04.
+- **Criterios de aceptación:**
+  - Una cuota que vence el 10 sin pagar bloquea la barbería el 11, sin días de gracia.
+  - Ejecutar la tarea dos veces seguidas produce el mismo resultado.
+  - Una barbería con todas sus cuotas pagadas no se bloquea.
+  - Las reservas confirmadas antes del bloqueo siguen vigentes y los avisos de pago de la pasarela se siguen procesando.
+- **Verificación:** Prueba automatizada.
+
+##### RF-59 · Barbería bloqueada y pago del alquiler
+- **Clase:** Complementaria
+- **Enunciado:** El sistema deberá, con la barbería bloqueada, mostrar al cliente que no está disponible y permitir al dueño ver su alquiler y pagarlo.
+- **Actores:** Cliente, dueño, colaborador; pasarela de pago.
+- **Precondiciones:** Barbería bloqueada (RF-58).
+- **Flujo:** 1) Las rutas públicas de la barbería responden con el error de tipo estable `barberia-bloqueada`. 2) El cliente ve "Esta barbería no está disponible en este momento"; si tiene reservas, bonos o filas en ella, ve además "Para administrar tus reservas actuales con esta barbería ingresa a:" y el acceso a "Mis reservas". 3) El colaborador no accede a nada de la barbería. 4) El dueño solo accede a la ventana "Alquiler", donde ve sus cuotas y los meses pendientes y paga; pagar liquida todas las pendientes. 5) La confirmación del pago llega por webhook verificado e idempotente (RF-22) y desbloquea la barbería.
+- **Reglas:** PL-06, PL-08, PL-09, PL-10, PL-11, PA-03, PA-05.
+- **Criterios de aceptación:**
+  - El cliente sin reservas, bonos ni filas en la barbería bloqueada no ve el acceso a "Mis reservas".
+  - Crear una reserva, comprar un bono o anotarse en una fila en una barbería bloqueada se rechaza con `barberia-bloqueada`.
+  - Un colaborador de una barbería bloqueada recibe `barberia-bloqueada` en cualquier operación.
+  - Pagar con 3 meses pendientes deja 0 y desbloquea la barbería.
+  - La redirección del navegador sin el aviso de la pasarela no desbloquea la barbería.
+- **Verificación:** Prueba automatizada y demostración.
+
 ### 3.3 Requisitos no funcionales
 
 Son 28 requisitos medibles. Los identificadores conservan su numeración original; los umbrales con origen D son decisiones del proyecto. La columna Entrega indica el milestone en que se cumple.
@@ -1060,7 +1147,7 @@ Son 28 requisitos medibles. Los identificadores conservan su numeración origina
 
 | ID | Requisito | Verificación | Origen | Entrega |
 | --- | --- | --- | --- | --- |
-| RNF-09 | Recordatorios, expiraciones, avisos y avance de la lista de espera corren en workers; una tarea fallida se reintenta hasta 3 veces y, si agota los intentos, queda visible en el monitoreo. | Prueba y monitoreo | C, D | M08 y M17 |
+| RNF-09 | Recordatorios, expiraciones, avisos, avance de la lista de espera y cuotas y bloqueos del alquiler corren en workers; una tarea fallida se reintenta hasta 3 veces y, si agota los intentos, queda visible en el monitoreo. | Prueba y monitoreo | C, D | M08 y M17 |
 | RNF-11 | La caída o lentitud de ONVO Pay, PayPal, el proveedor de IA o el correo no detiene el resto del sistema; cada llamada externa tiene un límite de 10 s y devuelve un error de tipo estable. | Pruebas con servicios simulados | C, D | M08, M09 y M13 |
 | RNF-17 | Todo error usa RFC 9457 y los casos de negocio tienen un tipo de error estable: `espacio-no-disponible`, `saldo-insuficiente`, `plazo-vencido`, `bono-vencido` y `oferta-vencida`. | Pruebas automatizadas | C | M03 |
 
@@ -1114,7 +1201,7 @@ Son 28 requisitos medibles. Los identificadores conservan su numeración origina
 | RD-15 | Toda configuración sensible en variables de entorno; `.env.example` sin valores reales. | C |
 | RD-16 | Zona horaria de la aplicación: America/Costa_Rica. | D |
 | RD-17 | Archivos subidos con validación de tipo y tamaño, guardados y servidos por barbería. | C |
-| RD-18 | En la API, `{barberia}` en las rutas es el UUID v7 de la barbería; el enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}`. No existe un encabezado de barbería activa y nunca se acepta la barbería en el cuerpo, en la consulta ni en un encabezado: el UUID de la ruta identifica el recurso y el contexto de barbería se establece solo después de verificar que la sesión tiene un rol en esa barbería; si no lo tiene o el recurso es de otra barbería, la respuesta es 404 (UP-06, MT-03). Esa regla tiene tres excepciones: (1) las operaciones de cliente que crean la primera membresía, que son crear una reserva (RF-11), comprar un bono (RF-27) y anotarse en una fila de espera (RF-30): una persona sin rol en la barbería puede hacerlas y el sistema crea su membresía de cliente en la misma transacción (UP-09), mientras que un dueño o colaborador de esa barbería recibe 403 con el tipo `prohibido` (UP-07); (2) la propuesta de IA (RF-37), que no crea ninguna reserva ni guarda datos: la puede pedir cualquier persona autenticada sin rol en la barbería, no crea la membresía y, si es dueño o colaborador de esa barbería, recibe 403 con el tipo `prohibido`; (3) las lecturas de datos propios (mis reservas, mis bonos y mis filas de espera) en una barbería donde la persona aún no tiene rol, que devuelven una lista vacía y no un error. El resto de las rutas sigue respondiendo 404 sin membresía. Las rutas públicas son la resolución del enlace, la lista de servicios activos y la consulta de disponibilidad, y solo exponen datos públicos. A ellas se suma, como excepción de lectura entre barberías, `GET /api/v1/directorio` (RF-54, MT-10): una lista opt-in de las barberías cuyo dueño activó su aparición, con solo nombre, ciudad, logo y enlace. | D |
+| RD-18 | En la API, `{barberia}` en las rutas es el UUID v7 de la barbería; el enlace público solo sirve para resolverla, con la ruta pública `GET /api/v1/enlaces/{enlace}`. No existe un encabezado de barbería activa y nunca se acepta la barbería en el cuerpo, en la consulta ni en un encabezado: el UUID de la ruta identifica el recurso y el contexto de barbería se establece solo después de verificar que la sesión tiene un rol en esa barbería; si no lo tiene o el recurso es de otra barbería, la respuesta es 404 (UP-06, MT-03). Esa regla tiene tres excepciones: (1) las operaciones de cliente que crean la primera membresía, que son crear una reserva (RF-11), comprar un bono (RF-27) y anotarse en una fila de espera (RF-30): una persona sin rol en la barbería puede hacerlas y el sistema crea su membresía de cliente en la misma transacción (UP-09), mientras que un dueño o colaborador de esa barbería recibe 403 con el tipo `prohibido` (UP-07); (2) la propuesta de IA (RF-37), que no crea ninguna reserva ni guarda datos: la puede pedir cualquier persona autenticada sin rol en la barbería, no crea la membresía y, si es dueño o colaborador de esa barbería, recibe 403 con el tipo `prohibido`; (3) las lecturas de datos propios (mis reservas, mis bonos y mis filas de espera) en una barbería donde la persona aún no tiene rol, que devuelven una lista vacía y no un error. El resto de las rutas sigue respondiendo 404 sin membresía. Las rutas públicas son la resolución del enlace, la lista de servicios activos y la consulta de disponibilidad, y solo exponen datos públicos. A ellas se suma, como excepción de lectura entre barberías, `GET /api/v1/directorio` (RF-54, MT-10): una lista opt-in de las barberías cuyo dueño activó su aparición, con solo nombre, ciudad, logo y enlace. El operador de plataforma (RF-55) no tiene membresía: sus rutas viven bajo `/api/v1/plataforma/...`, sin `{barberia}`, con su propio middleware, y en cualquier ruta con `{barberia}` recibe 404 (UP-06). Una barbería bloqueada (RF-58) responde con el tipo `barberia-bloqueada` en sus rutas públicas y en las de sus colaboradores y su dueño, salvo las del alquiler; las lecturas de datos propios del cliente (mis reservas, mis bonos y mis filas) siguen funcionando (PL-08, PL-09). | D |
 
 ### 3.5 Requisitos legales y de cumplimiento
 
@@ -1139,7 +1226,7 @@ Son 28 requisitos medibles. Los identificadores conservan su numeración origina
 
 ### 4.2 Cobertura de los requisitos funcionales
 
-Los 54 requisitos funcionales se verifican con al menos una prueba automatizada (54 de 54); 6 de ellos se complementan además con demostración o inspección. El método de cada uno consta en su ficha.
+Los 54 requisitos funcionales se verifican con al menos una prueba automatizada (59 de 59); 7 de ellos se complementan además con demostración o inspección. El método de cada uno consta en su ficha.
 
 ### 4.3 Criterios generales
 
@@ -1153,7 +1240,7 @@ Los 54 requisitos funcionales se verifican con al menos una prueba automatizada 
 
 | RF | Nombre | Clase | Reglas | API | Cliente web |
 | --- | --- | --- | --- | --- | --- |
-| RF-01 | Alta de la barbería y de su dueño | Esencial | MT-01, MT-04, UP-01, UP-05, UP-07 | M04 | M10 |
+| RF-01 | Alta de la barbería y de su dueño | Esencial | MT-01, MT-04, MT-09, UP-01, UP-04, UP-05, UP-07, PL-01, PL-02 | M04 y M19 | M10 y M19 |
 | RF-02 | Enlace público de la barbería | Esencial | MT-07, MT-08 | M04 | M10 |
 | RF-03 | Catálogo de servicios | Esencial | SV-01, SV-02, SV-03, SV-04, SV-05, SV-07, UP-03, MT-04 | M06 | M10 |
 | RF-04 | Horario de la barbería | Esencial | HO-01, HO-03, HO-04, UP-03 | M06 | M10 |
@@ -1195,7 +1282,7 @@ Los 54 requisitos funcionales se verifican con al menos una prueba automatizada 
 | RF-40 | Cambio de contraseña | Esencial | SE-01, SE-07, UP-04 | M05 | M10 y M15 |
 | RF-41 | Recuperación de contraseña | Complementaria | SE-05, SE-06, SE-07 | M14 | M14 |
 | RF-42 | Control de acceso por rol y propiedad | Esencial | UP-01, UP-02, UP-03, UP-06, UP-07, CO-04, CL-04, UP-09 | M05 | — |
-| RF-43 | Selección de barbería | Esencial | UP-07, UP-08 | M05 | M10 |
+| RF-43 | Selección de barbería | Esencial | UP-07, UP-08, PL-09 | M05 | M10 |
 | RF-44 | Aislamiento de datos por barbería | Esencial | MT-01, MT-02, MT-03, MT-04, MT-05, MT-06, UP-06 | M04 | — |
 | RF-45 | Datos de la cuenta | Complementaria | CL-02, CL-03 | M15 | M15 |
 | RF-46 | Carga de imágenes | Esencial | SV-06, SV-07, MT-05, MT-08 | M06 | M10 |
@@ -1207,6 +1294,11 @@ Los 54 requisitos funcionales se verifican con al menos una prueba automatizada 
 | RF-52 | Sincronización con Google Calendar | Extra | MT-02, CO-04 | M18 | M18 |
 | RF-53 | Factura electrónica | Extra | SV-02, PA-11 | M18 | M18 |
 | RF-54 | Directorio de barberías | Complementaria | MT-07, MT-10 | M06 | M16 |
+| RF-55 | Cuenta y acceso del operador de plataforma | Esencial | PL-01, PL-03, UP-06, UP-07 | M19 | M19 |
+| RF-56 | Listado y detalle de barberías para el operador | Esencial | PL-03, PL-05, MT-02 | M19 | M19 |
+| RF-57 | Alquiler mensual de la barbería | Esencial | PL-04, PL-05, PL-06, HO-03 | M19 | — |
+| RF-58 | Bloqueo automático por falta de pago | Esencial | PL-07, PL-08, PL-10, PL-11, PL-12, SE-04 | M19 | — |
+| RF-59 | Barbería bloqueada y pago del alquiler | Complementaria | PL-06, PL-08, PL-09, PL-10, PL-11, PA-03, PA-05 | M19 | M19 |
 
 ### 5.2 Reglas cubiertas por requisitos no funcionales o restricciones
 
@@ -1217,7 +1309,7 @@ Los 54 requisitos funcionales se verifican con al menos una prueba automatizada 
 | SE-02 | RNF-24, RD-15 |
 | SE-03 | RNF-17, RD-08 |
 
-Las 122 reglas vigentes de `business-rules.md` están cubiertas por al menos un requisito funcional, un requisito no funcional, una restricción o un requisito legal.
+Las 134 reglas vigentes de `business-rules.md` están cubiertas por al menos un requisito funcional, un requisito no funcional, una restricción o un requisito legal.
 
 ## Apéndice A. Equivalencia con la numeración anterior de los requisitos funcionales
 
@@ -1245,7 +1337,7 @@ Las 122 reglas vigentes de `business-rules.md` están cubiertas por al menos un 
 | RF-E1 | RF-50 | RF-E2 | RF-51 |
 | RF-E3 | RF-52 | RF-E4 | RF-53 |
 
-Requisitos nuevos sin equivalente anterior: RF-47, RF-48, RF-49 y RF-54.
+Requisitos nuevos sin equivalente anterior: RF-47, RF-48, RF-49, RF-54, RF-55, RF-56, RF-57, RF-58 y RF-59. El RF-01 cambia de actor: del alta por cualquier cuenta al alta por el operador de plataforma.
 
 ## Apéndice B. Puntos pendientes de definir
 
@@ -1259,12 +1351,14 @@ Requisitos nuevos sin equivalente anterior: RF-47, RF-48, RF-49 y RF-54.
 | PD-06 | Proveedor y modelo de IA | RF-37 | Pendiente |
 | PD-07 | Detalles de ONVO Pay (SINPE Móvil) y de PayPal (moneda y firma del webhook) | RF-20, RF-22, RF-23 | Parcial (PayPal cobra en dólares; los avisos de las pasarelas llegan en el Avance 2) |
 | PD-08 | Versión de la factura electrónica de Hacienda | RF-53 | Pendiente |
+| PD-09 | Monto y medio de cobro del alquiler de la plataforma | RF-57, RF-59 | Pendiente |
 
 ## Apéndice C. Historial de cambios
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
 | 1.3 | 14 de octubre de 2026 | Primera versión del documento en este formato. Divide los requisitos compuestos y los renumera de forma consecutiva (53 en total); concreta los valores ambiguos; incorpora la recuperación de contraseña, el aviso emergente de ofertas, "Mi cuenta" con avisos, apariencia e idioma, WCAG 2.2 AA, el aislamiento con seguridad a nivel de fila y la arquitectura hexagonal; reemplaza Pest por PHPUnit. |
+| 1.8 | 18 de noviembre de 2026 | Incorpora al operador de plataforma, el alquiler mensual por barbería y el bloqueo automático: reformula el RF-01 (el alta de barbería y de dueño la hace el operador), agrega RF-55 a RF-59, la categoría de reglas PL, el milestone M19, la excepción del operador en RD-18, la pantalla del operador y la de barbería no disponible, y el pendiente PD-09. Corrige la cuenta de requisitos por clase (43 esenciales, 12 complementarias y 4 extras). Sin otros cambios. |
 | 1.7 | 16 de noviembre de 2026 | Agrega el RF-54 (directorio de barberías, opcional por barbería) y la regla MT-10; retira la exclusión 13 (se conserva su número y remite al RF-54) y agrega la exclusión 15 (pausar las reservas de una barbería, fuera del alcance); RD-18 incluye `GET /api/v1/directorio` entre las rutas públicas; actualiza el resumen por grupo, las pantallas del cliente (directorio y barra de navegación) y la matriz de trazabilidad (API en M06, cliente web en M16). Sin otros cambios. |
 | 1.6 | 16 de octubre de 2026 | RNF-19 deja de exigir una declaración de uso de IA en cada pull request; la declaración de uso de IA se mantiene solo en el README (RNF-26). Sin otros cambios. |
 | 1.5 | 16 de octubre de 2026 | La membresía de cliente se crea al primer uso en la barbería (RF-11, RF-27 y RF-30), con 403 de tipo `prohibido` para quien ya es dueño o colaborador de ella (RF-42); RD-18 documenta las excepciones a la regla de 404 sin rol (operaciones que crean la primera membresía, propuesta de IA y lecturas propias con lista vacía); se agrega la regla UP-09. Sin otros cambios. |

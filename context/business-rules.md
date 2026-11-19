@@ -1,6 +1,6 @@
 # BarberHub: reglas de negocio
 
-Versión 1.6 (16 de noviembre de 2026). Contiene 122 reglas vigentes en 16 categorías. Define cómo funciona una barbería costarricense dentro de BarberHub, sin diseñar tablas, endpoints ni clases. Los requisitos que las aplican están en `requirements.md` y citan estas reglas por su identificador.
+Versión 1.7 (18 de noviembre de 2026). Contiene 134 reglas vigentes en 17 categorías. Define cómo funciona una barbería costarricense dentro de BarberHub, sin diseñar tablas, endpoints ni clases. Los requisitos que las aplican están en `requirements.md` y citan estas reglas por su identificador.
 
 ## 1. Cómo leer este documento
 
@@ -40,6 +40,11 @@ Los identificadores no se reutilizan. Una regla retirada deja su número vacío 
 | Registro técnico | Registro interno de acciones sensibles con autor, fecha y cambio, sin pantalla de consulta. |
 | Aviso | Mensaje al cliente, por correo o como aviso emergente dentro de la aplicación. |
 | Mi cuenta | Pantalla común a todos los roles con los datos, la seguridad, los avisos, la apariencia y el idioma de la persona. |
+| Operador de plataforma | Persona que administra BarberHub como plataforma: registra barberías y sus dueños y controla su alquiler. No es un rol de barbería (PL-01). |
+| Alquiler | Cuota mensual que cada barbería paga a la plataforma por usarla (PL-04). |
+| Cuota | El alquiler de un mes concreto de una barbería, con su fecha de vencimiento y su estado (PL-05). |
+| Meses pendientes | Número de cuotas vencidas y sin pagar de una barbería (PL-05). |
+| Barbería bloqueada | Barbería a la que la plataforma retiró el acceso por falta de pago del alquiler (PL-07, PL-08). |
 
 ## 3. Barbería de referencia: Pura Navaja
 
@@ -114,6 +119,9 @@ Lo que cambia entre barberías son parámetros, no reglas. La plataforma demostr
 | Envío de correos de confirmación, oferta, cancelación, reprogramación y reembolso | Dentro de 60 s | NO-01, NO-07, NO-09 |
 | Tiempo máximo de respuesta del proveedor de IA | 10 s | IA-05 |
 | Tamaños de texto | 100 %, 125 % y 150 % | AC-03 |
+| Alquiler de la barbería | Mensual, con un monto único para todas las barberías (pendiente de definir, PD-09) | PL-04 |
+| Vencimiento de la cuota | El día del mes en que se dio de alta la barbería; si el mes no tiene ese día, el último día del mes | PL-05 |
+| Bloqueo por falta de pago | El día siguiente al vencimiento, sin días de gracia | PL-07 |
 
 ### 4.2 Parámetros que configura cada barbería
 
@@ -267,15 +275,32 @@ Lo que cambia entre barberías son parámetros, no reglas. La plataforma demostr
 
 | ID | Regla | Origen |
 | --- | --- | --- |
-| UP-01 | Existen tres roles (dueño, colaborador, cliente) y el rol de una persona se asigna por barbería. | C, D |
+| UP-01 | Existen tres roles de barbería (dueño, colaborador, cliente), que se asignan por barbería, y una condición aparte de la cuenta, la de operador de plataforma (PL-01). | C, D |
 | UP-02 | Toda acción verifica el rol y que el recurso pertenezca al usuario o a su barbería. | C |
 | UP-03 | El dueño configura servicios, precios, horarios, personal, bonos, políticas y pasarela de su barbería, ve sus ingresos y cancela reservas; con RF-12 también crea reservas asistidas. | C |
-| UP-04 | Una cuenta de colaborador la crea el dueño con una contraseña temporal que debe cambiar en su primer ingreso; la invitación por correo (RF-06), válida por 7 días y de un solo uso, es complementaria. | D |
-| UP-05 | Una barbería siempre conserva al menos un dueño activo. | D |
+| UP-04 | Una cuenta de colaborador la crea el dueño, y la de un dueño nuevo la crea el operador de plataforma (PL-02), con una contraseña temporal que debe cambiar en su primer ingreso; la invitación por correo (RF-06), válida por 7 días y de un solo uso, es complementaria. | D |
+| UP-05 | Una barbería siempre conserva al menos un dueño activo; la barbería y su primer dueño los registra el operador de plataforma (PL-02). | D |
 | UP-06 | Pedir un recurso de otra barbería o de otra persona responde como si no existiera. | D |
 | UP-07 | Una persona tiene un único rol en cada barbería; puede tener un rol distinto en otra. | D |
 | UP-08 | Quien tiene acceso a más de una barbería elige con cuál entra; con una sola, entra directamente. | D |
 | UP-09 | La persona recibe su rol de cliente en una barbería la primera vez que reserva, compra un bono o se anota en una fila de espera en ella: el sistema crea esa membresía en la misma operación, y no antes. Quien ya es dueño o colaborador de esa barbería no puede recibir también el rol de cliente. | D |
+
+### Plataforma y alquiler (PL)
+
+| ID | Regla | Origen |
+| --- | --- | --- |
+| PL-01 | El operador de plataforma es una condición de la cuenta, no un rol de barbería: no tiene membresía, no se asigna por la API y se crea por semilla o comando. | D |
+| PL-02 | Solo el operador registra barberías y crea la cuenta de su dueño, con una contraseña temporal; ninguna otra cuenta puede registrar una barbería. Si el correo del dueño ya tiene cuenta, se le asigna el rol de dueño de la barbería nueva sin cambiar su contraseña. | C, D |
+| PL-03 | El operador ve únicamente los datos de la barbería (nombre, ciudad, enlace, estado y alquiler) y de su dueño (nombre, correo y teléfono); nunca servicios, reservas, pagos de clientes, bonos, clientes ni colaboradores. | C |
+| PL-04 | Cada barbería paga un alquiler mensual a la plataforma, con un monto único para todas (pendiente de definir, PD-09). Corre en modo de pruebas (PA-09). | C |
+| PL-05 | El alquiler se divide en cuotas mensuales que vencen el día del mes en que se dio de alta la barbería; si el mes no tiene ese día, vencen el último día del mes. Los meses pendientes se cuentan a partir de las cuotas vencidas sin pagar. | C, D |
+| PL-06 | Los meses pendientes se acumulan y un pago los liquida todos. El dueño paga el alquiler de su barbería; el operador ve el estado del alquiler, no el medio de pago del dueño. | C |
+| PL-07 | La barbería con una cuota vencida sin pagar se bloquea automáticamente el día siguiente al vencimiento, sin días de gracia. | C |
+| PL-08 | En una barbería bloqueada, el colaborador no accede a nada; el dueño solo accede a la ventana de alquiler; el cliente ve que la barbería no está disponible; y ninguna ruta pública ofrece disponibilidad ni permite reservar, comprar bonos o anotarse en una fila. | C, D |
+| PL-09 | El cliente que tiene reservas, bonos o filas en una barbería bloqueada ve un acceso a "Mis reservas"; sin ellos, no. La barbería bloqueada sigue en la lista de quien tiene un rol en ella (RF-43). | C, D |
+| PL-10 | El bloqueo no deshace nada: las reservas confirmadas, los avisos de pago de la pasarela, los reembolsos y los recordatorios previos al bloqueo se siguen procesando. | C, D |
+| PL-11 | Al quedar sin meses pendientes, la barbería se desbloquea en la misma operación del pago. | D |
+| PL-12 | El bloqueo y el desbloqueo quedan en el registro técnico (SE-04). | D |
 
 ### Multi-inquilino (MT)
 
@@ -379,6 +404,14 @@ No se reutilizan sus identificadores.
 | BO-09 (parte) | El vencimiento como movimiento de saldo | La vigencia se valida al reservar, sin proceso de vencimiento |
 
 ## Apéndice B. Historial de cambios
+
+### Versión 1.7
+
+| Cambio | Reglas |
+| --- | --- |
+| Reglas nuevas | PL-01 a PL-12: operador de plataforma, alquiler mensual y bloqueo por falta de pago |
+| Redacción actualizada | UP-01, UP-04, UP-05 |
+| Términos nuevos | "Operador de plataforma", "Alquiler", "Cuota", "Meses pendientes" y "Barbería bloqueada" en el glosario |
 
 ### Versión 1.6
 
