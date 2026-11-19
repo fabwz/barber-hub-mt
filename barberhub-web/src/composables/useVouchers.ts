@@ -8,6 +8,22 @@ export type PurchasedVoucher = components['schemas']['BonoComprado']
 /** Where a load stands: with its data (maybe none), or why it could not be. */
 export type VoucherListResult = 'ready' | 'forbidden' | 'error'
 
+/** The gateways a shop can collect through (PA-02). */
+export type VoucherGateway = 'onvo' | 'paypal'
+
+interface PaymentChannel {
+  gateway: VoucherGateway | null
+  methods: string[]
+}
+
+type OnSaleRead = PaymentChannel & { items: VoucherOnSale[]; enabled: boolean }
+
+/** The gateway and methods of the list; a gateway the client does not know is read as none. */
+function readChannel(gateway: string | null, methods: string[]): PaymentChannel {
+  if (gateway !== 'onvo' && gateway !== 'paypal') return { gateway: null, methods: [] }
+  return { gateway, methods }
+}
+
 /** Largest page the API allows; every page is asked for so the lists are complete. */
 const PAGE_SIZE = 50
 /** Safety stop: 20 pages of 50 vouchers in one barbershop. */
@@ -74,6 +90,10 @@ export function useVouchers() {
   const onSale = ref<VoucherOnSale[]>([])
   /** `meta.bonos_activos` of the list on sale; `false` until it is known. */
   const enabled = ref(false)
+  /** `meta.pasarela`: the gateway the shop collects through now; `null` if it does not charge (nothing can be bought). */
+  const gateway = ref<VoucherGateway | null>(null)
+  /** `meta.metodos_de_pago`: the methods that gateway admits, as the API names them. */
+  const methods = ref<string[]>([])
   const result = ref<VoucherListResult | null>(null)
   // Only the last call may write: an older one that ends later is dropped.
   let call = 0
@@ -93,11 +113,12 @@ export function useVouchers() {
     return all
   }
 
-  async function readOnSale(shopId: string): Promise<{ items: VoucherOnSale[]; enabled: boolean }> {
+  async function readOnSale(shopId: string): Promise<OnSaleRead> {
     const all: VoucherOnSale[] = []
     let page = 1
     let last = 1
     let active = false
+    let channel: PaymentChannel = { gateway: null, methods: [] }
     do {
       const { data } = await api.GET('/barberias/{barberia}/bonos', {
         params: { path: { barberia: shopId }, query: { pagina: page, por_pagina: PAGE_SIZE } },
@@ -105,9 +126,10 @@ export function useVouchers() {
       all.push(...data!.data)
       last = data!.meta.ultima_pagina
       active = data!.meta.bonos_activos
+      channel = readChannel(data!.meta.pasarela, data!.meta.metodos_de_pago)
       page += 1
     } while (page <= last && page <= MAX_PAGES)
-    return { items: all, enabled: active }
+    return { items: all, enabled: active, ...channel }
   }
 
   /** Loads what the screen needs: `which` limits it to one of the two lists. */
@@ -126,6 +148,8 @@ export function useVouchers() {
       if (selling !== null) {
         onSale.value = selling.items
         enabled.value = selling.enabled
+        gateway.value = selling.gateway
+        methods.value = selling.methods
       }
       result.value = 'ready'
     } catch (caught) {
@@ -135,5 +159,5 @@ export function useVouchers() {
     return result.value
   }
 
-  return { mine, onSale, enabled, result, load }
+  return { mine, onSale, enabled, gateway, methods, result, load }
 }

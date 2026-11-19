@@ -12,6 +12,7 @@ import {
   CUT,
   CUT_BEARD,
   DYE,
+  ONVO_SHELF,
   bought,
   expired,
   list,
@@ -81,7 +82,7 @@ describe('canPayWith', () => {
 
 describe('useVouchers', () => {
   it('loads both lists and whether the vouchers are on', async () => {
-    mockVoucherFetch({ onSale: () => jsonResponse(200, list([onSale()], { bonos_activos: true })) })
+    mockVoucherFetch({ onSale: () => jsonResponse(200, list([onSale()], ONVO_SHELF)) })
     const vouchers = useVouchers()
 
     expect(await vouchers.load('0190b1f0-0000-7000-8000-000000000001')).toBe('ready')

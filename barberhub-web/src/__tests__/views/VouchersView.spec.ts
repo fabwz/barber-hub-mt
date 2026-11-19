@@ -7,6 +7,9 @@ import { mountView } from '../helpers/mountView'
 import {
   VOUCHERS_PAGE,
   VOUCHER_ID,
+  FREE_SHELF,
+  ONVO_SHELF,
+  PAYPAL_SHELF,
   bought,
   expired,
   list,
@@ -156,7 +159,7 @@ describe('VouchersView: vouchers turned off', () => {
 
   it('says there is nothing on sale when the vouchers are on but none is published', async () => {
     const { wrapper } = await open({
-      onSale: () => jsonResponse(200, list([], { bonos_activos: true })),
+      onSale: () => jsonResponse(200, list([], ONVO_SHELF)),
     })
 
     expect(section(wrapper, 'Bonos a la venta').text()).toContain(
@@ -226,7 +229,7 @@ describe('VouchersView: loading, error and empty states', () => {
   it('shows the empty state of the vouchers bought and of the vouchers on sale', async () => {
     const { wrapper } = await open({
       mine: () => jsonResponse(200, list([])),
-      onSale: () => jsonResponse(200, list([], { bonos_activos: true })),
+      onSale: () => jsonResponse(200, list([], ONVO_SHELF)),
     })
 
     expect(wrapper.text()).toContain('Aún no tiene bonos')
@@ -243,9 +246,30 @@ describe('VouchersView: loading, error and empty states', () => {
           list([bought({ id: `b${page}` })], { pagina: page, ultima_pagina: 2 }),
         )
       },
-      onSale: () => jsonResponse(200, list([onSale()], { bonos_activos: true })),
+      onSale: () => jsonResponse(200, list([onSale()], ONVO_SHELF)),
     })
 
     expect(calls('GET', '/mis-bonos')).toHaveLength(2)
+  })
+})
+
+describe('VouchersView: a shop that does not charge', () => {
+  it('offers no voucher to buy, with the same state as an empty shelf', async () => {
+    const { wrapper } = await open({
+      onSale: () => jsonResponse(200, list([onSale()], FREE_SHELF)),
+    })
+
+    expect(section(wrapper, 'Bonos a la venta').text()).toContain(
+      'Esta barbería no tiene bonos a la venta',
+    )
+    expect(wrapper.text()).not.toContain('Comprar bono')
+  })
+
+  it('still offers the vouchers to a shop that collects with PayPal', async () => {
+    const { wrapper } = await open({
+      onSale: () => jsonResponse(200, list([onSale()], PAYPAL_SHELF)),
+    })
+
+    expect(wrapper.text()).toContain('Comprar bono')
   })
 })

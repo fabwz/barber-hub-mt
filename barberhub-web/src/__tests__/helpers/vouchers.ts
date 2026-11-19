@@ -73,6 +73,23 @@ export function expired(over: Record<string, unknown> = {}) {
   })
 }
 
+/** The `meta` of the list on sale of a shop that sells vouchers and collects with ONVO Pay. */
+export const ONVO_SHELF = {
+  bonos_activos: true,
+  pasarela: 'onvo',
+  metodos_de_pago: ['tarjeta', 'sinpe_movil'],
+}
+
+/** The same, for a shop that collects with PayPal (only the card, typed on PayPal's page). */
+export const PAYPAL_SHELF = {
+  bonos_activos: true,
+  pasarela: 'paypal',
+  metodos_de_pago: ['tarjeta'],
+}
+
+/** The same, for a shop that does not charge. */
+export const FREE_SHELF = { bonos_activos: true, pasarela: null, metodos_de_pago: [] }
+
 export function list(items: unknown[], meta: Record<string, unknown> = {}) {
   return {
     data: items,
@@ -133,7 +150,7 @@ export function mockVoucherFetch(handlers: VoucherHandlers = {}) {
     if (route === `GET ${BASE}/bonos`) {
       return handlers.onSale
         ? handlers.onSale(input)
-        : jsonResponse(200, list([onSale()], { bonos_activos: true }))
+        : jsonResponse(200, list([onSale()], ONVO_SHELF))
     }
     if (route === `GET ${BASE}/mis-bonos`) {
       return handlers.mine ? handlers.mine(input) : jsonResponse(200, list([bought()]))
