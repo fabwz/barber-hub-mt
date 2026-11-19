@@ -158,7 +158,7 @@
         "/barberias/{barberia}/bonos": {
             "get": {
                 "operationId": "vouchers.on-sale.index",
-                "description": "Lista, por nombre, los bonos que la barber\u00eda tiene a la venta, cada uno con su `id`, `nombre`, `sesiones`, `vigencia_dias`, `precio` en colones con el IVA de 13 % incluido y los `servicios` que cubre (`id` y `nombre`). El `id` es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`. Un bono retirado de la venta no aparece. Lo puede leer cualquier persona con sesi\u00f3n, tenga o no rol en la barber\u00eda: no crea ninguna membres\u00eda (el rol de cliente nace con la primera compra). `meta.bonos_activos` dice si la barber\u00eda tiene los bonos activados; con los bonos desactivados la lista viene vac\u00eda y comprar responde 409 `conflicto`. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`: sus bonos se administran con `GET /administracion/bonos`. Sin sesi\u00f3n, 401; una barber\u00eda inexistente, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.",
+                "description": "Lista, por nombre, los bonos que la barber\u00eda tiene a la venta, cada uno con su `id`, `nombre`, `sesiones`, `vigencia_dias`, `precio` en colones con el IVA de 13 % incluido y los `servicios` que cubre (`id` y `nombre`). El `id` es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`. Un bono retirado de la venta no aparece. Lo puede leer cualquier persona con sesi\u00f3n, tenga o no rol en la barber\u00eda: no crea ninguna membres\u00eda (el rol de cliente nace con la primera compra). `meta.bonos_activos` dice si la barber\u00eda tiene los bonos activados; con los bonos desactivados la lista viene vac\u00eda y comprar responde 409 `conflicto`. `meta.pasarela` es la pasarela con la que la barber\u00eda cobra hoy (`onvo` o `paypal`; nula si la barber\u00eda no cobra) y `meta.metodos_de_pago` los m\u00e9todos que esa pasarela admite (`tarjeta` y `sinpe_movil` con ONVO, solo `tarjeta` con PayPal; lista vac\u00eda si `pasarela` es nula), con el mismo c\u00e1lculo que las reservas; se informan igual con los bonos desactivados. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`: sus bonos se administran con `GET /administracion/bonos`. Sin sesi\u00f3n, 401; una barber\u00eda inexistente, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.",
                 "summary": "Listar los bonos a la venta",
                 "tags": [
                     "Bonos a la venta"
@@ -224,6 +224,18 @@
                                                 },
                                                 "bonos_activos": {
                                                     "type": "boolean"
+                                                },
+                                                "pasarela": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "metodos_de_pago": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
                                                 }
                                             },
                                             "required": [
@@ -231,7 +243,9 @@
                                                 "por_pagina",
                                                 "total",
                                                 "ultima_pagina",
-                                                "bonos_activos"
+                                                "bonos_activos",
+                                                "pasarela",
+                                                "metodos_de_pago"
                                             ]
                                         }
                                     },
@@ -3752,7 +3766,9 @@
                     "movimientos": {
                         "type": "array",
                         "description": "Cada cambio del saldo, del m\u00e1s antiguo al m\u00e1s reciente, con la reserva a la que se liga (nula en la compra).",
-                        "items": {}
+                        "items": {
+                            "$ref": "#/components/schemas/MovimientoDeBono"
+                        }
                     },
                     "servicios": {
                         "type": "array",
@@ -3817,7 +3833,9 @@
                     "movimientos": {
                         "type": "array",
                         "description": "Cada cambio del saldo, del m\u00e1s antiguo al m\u00e1s reciente, con la reserva a la que se liga (nula en la compra).",
-                        "items": {}
+                        "items": {
+                            "$ref": "#/components/schemas/MovimientoDeBono"
+                        }
                     },
                     "cliente_nombre": {
                         "type": "string",
@@ -4523,6 +4541,43 @@
                     "rol"
                 ],
                 "title": "MiBarberia"
+            },
+            "MovimientoDeBono": {
+                "type": "object",
+                "properties": {
+                    "tipo": {
+                        "type": "string",
+                        "description": "`compra`, `apartado`, `consumo` o `reintegro`.",
+                        "enum": [
+                            "compra",
+                            "apartado",
+                            "consumo",
+                            "reintegro"
+                        ]
+                    },
+                    "sesiones": {
+                        "type": "integer",
+                        "description": "Sesiones que suma o resta al saldo: la compra suma las del bono, el apartado resta 1, el reintegro suma 1 y el consumo no cambia nada (0)."
+                    },
+                    "reserva": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Identificador de la reserva ligada; nulo en la compra."
+                    },
+                    "fecha": {
+                        "type": "string",
+                        "description": "Cu\u00e1ndo se escribi\u00f3 el movimiento, ISO 8601 con el desfase de Costa Rica (-06:00). Ejemplo: 2030-03-01T08:00:00-06:00."
+                    }
+                },
+                "required": [
+                    "tipo",
+                    "sesiones",
+                    "reserva",
+                    "fecha"
+                ],
+                "title": "MovimientoDeBono"
             },
             "PagarReserva": {
                 "type": "object",
