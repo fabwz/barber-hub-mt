@@ -24,6 +24,8 @@ interface Props {
   unreachable?: boolean
   /** A status request is in flight. */
   checking?: boolean
+  /** What is being paid: a reservation (default) or a voucher. */
+  subject?: 'reservation' | 'voucher'
 }
 
 const {
@@ -34,6 +36,7 @@ const {
   refundPending = false,
   unreachable = false,
   checking = false,
+  subject = 'reservation',
 } = defineProps<Props>()
 
 const emit = defineEmits<{
@@ -66,6 +69,8 @@ const rejection = computed(() => {
   return `Motivo: ${/[.!?]$/.test(text) ? text : `${text}.`}`
 })
 
+const voucher = computed(() => subject === 'voucher')
+
 // Moving to one of these screens takes the focus to its title, so a screen reader reads it.
 const FOCUSED: Kind[] = ['refund', 'verifying', 'rejected', 'failed']
 
@@ -86,13 +91,18 @@ watch(kind, (next) => {
     <!-- PA-07: paid, but the reservation had expired. Not a success: the refund is handled with the shop. -->
     <NoticeBanner v-if="kind === 'refund'" variant="error">
       <p data-status-title tabindex="-1" class="font-medium outline-offset-2">
-        Recibimos su pago, pero la reserva no pudo confirmarse.
+        <template v-if="voucher">Recibimos su pago, pero el bono no pudo activarse.</template>
+        <template v-else>Recibimos su pago, pero la reserva no pudo confirmarse.</template>
       </p>
-      <p class="mt-1 text-fg-muted">
+      <p v-if="voucher" class="mt-1 text-fg-muted">
+        Su pago de {{ colones(amount) }} queda pendiente de devolución y la gestionará la barbería
+        con usted.
+      </p>
+      <p v-else class="mt-1 text-fg-muted">
         Su pago de {{ colones(amount) }} llegó cuando la reserva ya había vencido. El pago queda
         pendiente de devolución y la gestionará la barbería con usted.
       </p>
-      <template #action>
+      <template v-if="!voucher" #action>
         <BaseButton variant="secondary" @click="emit('anotherSpace')">
           Elegir otro espacio
         </BaseButton>
@@ -153,7 +163,9 @@ watch(kind, (next) => {
         No pudimos cobrar su pago.
       </p>
       <p class="mt-1 text-fg-muted">
-        {{ rejection }} Su reserva se mantiene; elija otro método para pagarla.
+        {{ rejection }}
+        <template v-if="voucher">No se le cobró ni se activó el bono; elija otro método.</template>
+        <template v-else>Su reserva se mantiene; elija otro método para pagarla.</template>
       </p>
       <template #action>
         <BaseButton variant="secondary" @click="emit('retry')">Elegir otro método</BaseButton>
@@ -166,7 +178,13 @@ watch(kind, (next) => {
         No se pudo procesar su pago.
       </p>
       <p class="mt-1 text-fg-muted">
-        {{ rejection }} Su reserva se mantiene; puede intentarlo de nuevo o elegir otro método.
+        {{ rejection }}
+        <template v-if="voucher"
+          >El bono no se activó; puede intentarlo de nuevo o elegir otro método.</template
+        >
+        <template v-else
+          >Su reserva se mantiene; puede intentarlo de nuevo o elegir otro método.</template
+        >
       </p>
       <template #action>
         <BaseButton variant="secondary" @click="emit('retry')">Intentar de nuevo</BaseButton>
