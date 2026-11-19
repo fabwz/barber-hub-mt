@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Ellipsis } from 'lucide-vue-next'
 
 interface Props {
   variant?: 'primary' | 'secondary'
@@ -8,6 +7,7 @@ interface Props {
   size?: 'default' | 'large'
   type?: 'button' | 'submit' | 'reset'
   disabled?: boolean
+  /** Blocks the button and adds «…» after the label; the label itself carries no dots. */
   loading?: boolean
 }
 
@@ -37,8 +37,8 @@ const classes = computed(() => [
     :disabled="disabled || loading"
     :aria-busy="loading ? 'true' : undefined"
   >
-    <Ellipsis v-if="loading" :size="16" :stroke-width="1.5" aria-hidden="true" />
-    <slot v-else name="icon" />
-    <slot />
+    <slot v-if="!loading" name="icon" />
+    <!-- Loading: the three dots go only after the label, never before it. -->
+    <span><slot /><span v-if="loading" aria-hidden="true">…</span></span>
   </button>
 </template>
