@@ -189,7 +189,7 @@ Los requisitos concretos salen del contrato y de las reglas del negocio (SE-07: 
 Una fila con un ícono de información de 16 px y texto, sin color de estado, dentro de una tarjeta de 16 px con borde de 1 px `line` y relleno `surface`. Se usa para indicar que un contenido es de ejemplo. La primera frase va en peso 500 y la segunda en `fg-muted`.
 
 ### Etiqueta de estado
-Solo el texto, sin punto ni relleno, en 14 px y peso 500 (`fg-muted` en «Expirada» y «Reembolsado»). Así el estado nunca depende del color ni del tono, porque lo dice la palabra. **Es la misma etiqueta en todas las pantallas** (Mis reservas, detalle, confirmación, pago y agenda): un único componente, sin variantes. En el detalle de una reserva va bajo el título, a la izquierda, y no a la derecha. Ninguna etiqueta lleva punto de color (ni el amarillo de «Pago pendiente»).
+Solo el texto, sin punto ni relleno, en 14 px y peso 500 (`fg-muted` en «Expirada» y «Reembolsado»). Así el estado nunca depende del color ni del tono, porque lo dice la palabra. **Es la misma etiqueta en todas las pantallas** (Mis reservas, detalle, confirmación, pago, agenda y bonos): un único componente, sin variantes. En el detalle de una reserva va bajo el título, a la izquierda, y no a la derecha. Ninguna etiqueta lleva punto de color (ni el amarillo de «Pago pendiente»).
 
 | Estado de la reserva | Texto | Texto en |
 |---|---|---|
@@ -208,7 +208,12 @@ Solo el texto, sin punto ni relleno, en 14 px y peso 500 (`fg-muted` en «Expira
 | Fallido | Pago fallido | `fg` |
 | Reembolsado | Reembolsado | `fg-muted` |
 
-La interfaz usa estos textos y no «Pagado», que no es un estado del sistema.
+| Estado del bono | Texto | Texto en |
+|---|---|---|
+| Activo | Activo | `fg` |
+| Vencido | Vencido | `fg-muted` |
+
+La interfaz usa estos textos y no «Pagado», que no es un estado del sistema. El diseño de los bonos dibuja un punto (relleno hueso o hueco) junto a «Activo» y «Vencido»: se omite, porque esta etiqueta es una sola y no lleva punto; la palabra ya dice el estado.
 
 **Dónde no se muestra:** en la pantalla de pago no se muestra «Pago aprobado», porque el aviso «Su pago de ₡X fue aprobado.» ya lo dice. Tampoco «Pendiente de pago» en el resumen de una reserva temporal: lo dice la cuenta regresiva. «Pago pendiente», «Pago rechazado» y «Pago fallido» sí se muestran.
 
@@ -362,6 +367,34 @@ Rutas `/b/:enlace/mis-reservas` y `/b/:enlace/mis-reservas/:reserva`. Diseño de
 - **Volver:** en escritorio hay un botón «Volver» sobre la tarjeta (en el detalle, «Mis reservas»). En «Mis reservas» regresa a la pantalla anterior del navegador (la reserva confirmada, la barbería…) y, si no hay ninguna, a la barbería.
 - **Acceso desde la barbería:** con sesión iniciada, «Mis reservas» es un botón secundario (borde `line-strong`, ícono de calendario de 16 px) arriba a la derecha de «Reservar cita».
 - **Celular:** una sola columna, igual que antes.
+
+## Bonos (pantallas del cliente)
+
+Rutas `/b/:enlace/bonos` (Mis bonos y bonos a la venta) y `/b/:enlace/bonos/:bono/compra` (compra). Diseño de origen: las láminas 14 a 16 de la v7 (Mis bonos, compra de un bono y reservar con bono). Todo sale de la API tal cual: saldo, estado, vencimiento, precio, vigencia y servicios cubiertos nunca se calculan en el cliente.
+
+- **Acceso:** con sesión iniciada, «Mis bonos» es un botón secundario (ícono de ticket de 16 px) junto a «Mis reservas», arriba a la derecha de «Reservar cita». El dueño y el colaborador (403 `prohibido`) no lo ven y, si abren la dirección, solo leen «Esta lista es para clientes».
+- **Mis bonos y bonos a la venta:** una tarjeta de 16 px con borde `line` y 32 px de padding en escritorio, con el título «Bonos». Dos columnas separadas por una línea de 1 px: «Mis bonos» a la izquierda y «Bonos a la venta» a la derecha. En celular, una sola columna en ese orden. Debajo de las tarjetas de venta: «Los bonos solo sirven en {barbería}. Las sesiones que no use antes del vencimiento se pierden.» (14 px, `fg-subtle`).
+- **Estados:** cargando (esqueleto, `aria-busy`); error («No pudimos cargar sus bonos.» con «Reintentar»); sin bonos comprados («Aún no tiene bonos»; lo mismo ve quien no tiene rol, nunca un error); sin bonos a la venta («Esta barbería no tiene bonos a la venta»); bonos desactivados (`bonos_activos` falso: «Esta barbería no ofrece bonos por ahora. No puede comprar bonos aquí. Los que ya compró siguen visibles y puede usarlos.», sin botones de compra).
+
+### Tarjeta de bono
+Tarjeta de 16 px (`surface`, borde `line`, 16 px de padding): el nombre en peso 500 y, a la derecha, la etiqueta de estado («Activo» o «Vencido», ver «Etiqueta de estado»); el saldo en 18 px y peso 500 («3 de 5 sesiones»); el vencimiento en 14 px `fg-muted` («Vence el mar 5 mar 2030»); y los servicios cubiertos en 14 px `fg-muted`. **Vencido:** el saldo es «0 sesiones» en `fg-muted` y la fecha dice «Venció el …» (el diseño dice «Vence el» también en el vencido; se usa el pasado, como en el aviso de reserva).
+
+### Fila «Movimientos»
+Botón plano de 44 px y ancho completo con una línea superior de 1 px y un chevron de 18 px que gira 180° en 150 ms (sin animación con `prefers-reduced-motion`), con `aria-expanded` y `aria-controls`. Expandida, una lista de filas de 56 px: el tipo en peso 500 (Compra, Apartado, Consumo, Reintegro), la fecha en `fg-muted` y, a la derecha, el cambio con su signo («+5 sesiones», «−1 sesión», «0 sesiones»), separadas por líneas de 1 px, de la más reciente a la más antigua. El diseño muestra «1 sesión» sin signo en todos; se usa el signo que entrega la API para que un apartado no se lea igual que un reintegro.
+
+### Tarjeta de bono a la venta
+Tarjeta de 16 px con filas Sesiones, Vigencia y Servicios cubiertos separadas por líneas `line-strong`, y al pie el precio en 18 px con «IVA incluido» en `fg-subtle` y el botón secundario «Comprar bono» (un enlace con el aspecto del botón; su nombre accesible incluye el del bono).
+
+### Compra de un bono (Resumen y pago)
+Misma estructura que «Resumen y pago» de la reserva: celular en una columna, escritorio en dos (a la izquierda «Su bono», a la derecha «Método de pago») y una barra de pago al pie. El resumen del bono es una tarjeta `surface` con filas Bono, Sesiones, Vigencia («60 días» y, en `fg-muted`, «Cuenta desde que se confirme el pago»), Servicios cubiertos y Total (con «IVA incluido»). Debajo: «El bono solo sirve en {barbería}. Se paga el precio completo ahora: sin depósito ni saldo en el local.» Sin cuenta regresiva ni «Cambiar reserva», porque un bono no retiene nada. Métodos: tarjeta y SINPE Móvil, con los mismos formularios; los datos de la tarjeta nunca llegan a nuestra API.
+- **Confirmación:** el bono se activa solo cuando la consulta del estado del pago a la API dice «aprobado» (se consulta cada 3 segundos; nunca por la dirección ni por lo que reporte el navegador). Mientras tanto: «Pago pendiente», «Esperando la confirmación de su pago…» y «Verificar ahora». Los estados rechazado, fallido, verificando y devolución pendiente son los de la pantalla de pago con el texto del bono («No se le cobró ni se activó el bono; elija otro método.», «Recibimos su pago, pero el bono no pudo activarse.»).
+- **Bono activado:** marca de check en `accent` y un único `h1` «Bono activado» (24 px, peso 400, con el foco), «Su pago de ₡X fue aprobado y el bono ya está activo.» y el resumen (Bono, Sesiones, «Vence el» con la fecha de «Mis bonos», Servicios cubiertos), con «Ver mis bonos» y «Volver a la barbería».
+- **Sin permiso o sin oferta:** bonos desactivados («Esta barbería no ofrece bonos por ahora»), bono retirado de la venta («Este bono ya no está a la venta») y dueño o colaborador («Esta compra es para clientes») muestran un estado vacío y ningún formulario.
+
+### Opción «Pagar con bono» (panel de reserva)
+Opción de `radiogroup` de 16 px (la misma ficha de método de pago: marca circular de 20 px, descripción en `fg-muted`) en «Forma de pago», sobre la barra inferior del panel de reserva de la portada. Se ofrece solo si la barbería tiene los bonos activos y la persona tiene un bono activo con sesiones que cubre el servicio elegido (los servicios cubiertos los entrega la API). Dos opciones: «Pagar con bono» («Se usará 1 sesión de un bono que cubra este servicio; sin depósito.») y «Pagar con tarjeta o SINPE Móvil» («Elegirá el método en el siguiente paso.»), esta última elegida por defecto. Con el bono elegido, el botón dice «Confirmar con bono» y la barra muestra «Pago 1 sesión de su bono» en lugar del precio. La API elige el bono (el que vence antes); el cliente no lo recalcula ni lo nombra.
+- **Reserva confirmada con bono:** el panel muestra el resumen con «Confirmada», el aviso «Se usó 1 sesión de su bono.», el plazo real de la reserva («Puede cancelar o cambiar la hora sin costo hasta N horas antes de la cita. Si cancela a tiempo, la sesión vuelve a su bono. Cada barbería define este plazo.») y «Ver mis reservas» y «Ver mis bonos». No hay cuenta regresiva.
+- **Errores estables:** `saldo-insuficiente` («Su bono ya no tiene sesiones disponibles.») y `bono-vencido` («Su bono vence antes de la fecha de la cita.») usan el aviso rojo de siempre con «No se reservó ni se usó ninguna sesión.» y la salida (pagar con tarjeta o SINPE Móvil, o elegir otra fecha); la opción vuelve a «Pagar con tarjeta o SINPE Móvil» y los bonos se leen de nuevo. La API no deja reserva, sesión apartada ni espacio retenido cuando falla.
 
 ## Voz del texto
 
@@ -519,5 +552,6 @@ Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg
 - **Tema claro:** se deriva de estos mismos tokens, que ya están como variables. Hasta entonces, la interfaz es solo oscura.
 - **Por confirmar con ONVO:** los formatos de la identificación del SINPE Móvil de cada tipo (tabla de «Campo de texto»).
 - **Pantalla de pago:** la fila «Sucursal» y el banner y el logo de la cabecera dependen de que la API los entregue; el pago muestra la cabecera con los mismos datos de ejemplo que la portada.
+- **Bonos (láminas 14 a 16):** se omitió lo que la API no entrega. (1) Pagar con PayPal en la compra: el contrato de la compra solo admite tarjeta y SINPE Móvil y el bono no informa la pasarela. (2) El nombre, el saldo y el vencimiento del bono dentro de la opción «Pagar con bono», y «No vale para {fecha}»: la API elige el bono al reservar y el cliente no lo recalcula; si el bono vence antes de la cita, la API responde `bono-vencido`. (3) «Le quedan N» tras reservar con bono: la reserva creada no trae el saldo restante (se ve en «Mis bonos»). (4) La hora exacta límite de cancelación («hasta el jue 5 nov, 06:30»): se muestra el plazo real en horas (`plazo_cancelacion_horas`). (5) «Su espacio se mantiene» en los errores de bono: la API no crea la reserva cuando falla, así que el aviso dice que no se reservó nada. (6) El punto de «Activo» y «Vencido» (ver «Etiqueta de estado»). (7) «Sucursal», como en el resto de pantallas.
 - **Pantallas por diseñar:** resultado del pago y reserva confirmada, Mis reservas con detalle, cancelar y reprogramar, elegir negocio, y del dueño: servicios, cobro y datos del negocio.
 - **Logo, banner, dirección y redes** dependen de los endpoints de datos públicos del negocio y de la subida de archivos. Mientras tanto, la portada muestra datos de ejemplo (banner y logo neutros, dirección y redes ficticias) marcados como temporales en `ShopView.vue`.
