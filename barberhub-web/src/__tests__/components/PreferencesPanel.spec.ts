@@ -200,7 +200,7 @@ describe('PreferencesPanel — persistence', () => {
   })
 
   it('works when the browser blocks the storage', async () => {
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new DOMException('blocked', 'QuotaExceededError')
     })
     const wrapper = build()

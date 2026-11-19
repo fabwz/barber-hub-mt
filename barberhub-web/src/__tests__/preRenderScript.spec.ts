@@ -74,7 +74,7 @@ describe('script in index.html (before the first render)', () => {
     expect(runScript).not.toThrow()
     expect(root.dataset.theme).toBe('light')
 
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new DOMException('blocked', 'SecurityError')
     })
     reset()

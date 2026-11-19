@@ -205,10 +205,10 @@ describe('preferences store — persistence', () => {
 describe('preferences store — without storage', () => {
   it('does not break when reading fails and keeps working in memory', () => {
     fakeDevice({ dark: true })
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new DOMException('blocked', 'SecurityError')
     })
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new DOMException('blocked', 'QuotaExceededError')
     })
 
