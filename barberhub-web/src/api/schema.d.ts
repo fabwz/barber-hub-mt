@@ -498,6 +498,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/filas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anotarse en la lista de espera
+         * @description Anota a la persona de la sesión en la fila de un `servicio` activo en una `fecha` (`AAAA-MM-DD`, hoy o posterior en Costa Rica), con el `barbero` indicado o con cualquiera si se omite o va nulo. La fila nace `esperando` y su `ingreso` (la hora de la petición) la ordena: el primero en entrar es el primero en recibir una oferta. Solo se anota quien no tiene dónde reservar: si hay espacios disponibles para esa combinación, la petición se rechaza con 409 `conflicto` y el miembro `espacios` trae hasta 3, los de inicio más próximo, con `barbero`, `inicio` y `fin` (ISO 8601), para que reserve uno con `POST /reservas`; no se crea ninguna fila. Cada persona tiene como máximo 3 filas activas (`esperando` u `ofrecida`) por barbería: la cuarta responde 409 `conflicto`, también cuando dos anotaciones llegan a la vez (el bloqueo por persona las atiende una tras otra). Repetir la misma combinación de servicio, día y barbero con una fila activa responde 409 `conflicto`. Con la lista de espera desactivada por la barbería (`lista_espera_activa` en `false`) responde 409 `conflicto`. Una persona sin rol en la barbería queda como cliente con su primera fila; si la anotación falla no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito o una fecha pasada, 422 `datos-invalidos` con el campo. La oferta del espacio liberado todavía no se aplica.
+         */
+        post: operations["waitlist.entries.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/barberias/{barberia}/mis-filas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar mis filas de espera
+         * @description Lista, de la que entró primero a la última, las filas activas (`esperando` u `ofrecida`) que la persona de la sesión tiene en la barbería: a lo sumo 3, así que no va paginada. No muestra filas de otras personas. Una persona que todavía no se anotó ahí recibe la lista vacía, no un error. El dueño o un colaborador de esa barbería recibe 403 `prohibido`.
+         */
+        get: operations["waitlist.entries.mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/barberias/{barberia}/filas/{fila}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Salir de la lista de espera
+         * @description Saca a la persona de una de sus filas en cualquier momento, también con la lista de espera desactivada: la fila queda `retirada` (no se borra) y deja de contar para el máximo de 3. Repetir la petición responde 204 igual y no cambia nada. Una fila ya `cumplida` con una reserva responde 409 `conflicto`. Una fila que no existe, de otra persona o de otra barbería, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`: una persona nunca ve ni modifica las filas de otras. El dueño o un colaborador de esa barbería recibe 403 `prohibido`.
+         */
+        delete: operations["waitlist.entries.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mis-barberias": {
         parameters: {
             query?: never;
@@ -987,6 +1047,24 @@ export interface components {
             /** @description `false` inactiva el servicio y `true` lo vuelve a activar; un servicio nunca se borra. */
             activo?: boolean;
         };
+        /** AnotarseEnFila */
+        AnotarseEnFila: {
+            /**
+             * Format: uuid
+             * @description Identificador del servicio activo de la barbería.
+             */
+            servicio: string;
+            /**
+             * Format: date
+             * @description Día que busca, fecha de Costa Rica `AAAA-MM-DD`, de hoy en adelante.
+             */
+            fecha: string;
+            /**
+             * Format: uuid
+             * @description Identificador del barbero; nulo u omitido significa «cualquiera».
+             */
+            barbero?: string | null;
+        };
         /** Barberia */
         Barberia: {
             id: string;
@@ -1272,6 +1350,23 @@ export interface components {
             barberos: unknown[];
             /** @description Si el día no tiene espacios, hasta 3 días siguientes que sí los tienen; si no, una lista vacía. */
             dias_siguientes: unknown[];
+        };
+        /** FilaDeEspera */
+        FilaDeEspera: {
+            id: string;
+            /** @description Identificador del servicio por el que espera. */
+            servicio: string;
+            /** @description Identificador del barbero que pidió; nulo significa «cualquiera». */
+            barbero: string | null;
+            /** @description Día que busca, `AAAA-MM-DD`. */
+            fecha: string;
+            /**
+             * @description `esperando` mientras espera su turno u `ofrecida` cuando ya tiene un espacio ofrecido.
+             * @enum {string}
+             */
+            estado: "esperando" | "ofrecida" | "cumplida" | "retirada";
+            /** @description Cuándo entró a la fila, ISO 8601 con el desfase de Costa Rica (-06:00); ordena la fila: primero en entrar, primero en recibir una oferta. Ejemplo: 2030-03-01T08:00:00-06:00. */
+            ingreso: string;
         };
         /** Franja */
         Franja: {
@@ -2725,6 +2820,86 @@ export interface operations {
                         data: components["schemas"]["ReporteIngresos"];
                     };
                 };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "waitlist.entries.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnotarseEnFila"];
+            };
+        };
+        responses: {
+            /** @description `FilaDeEspera` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["FilaDeEspera"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "waitlist.entries.mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `FilaDeEspera` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["FilaDeEspera"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "waitlist.entries.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                fila: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
