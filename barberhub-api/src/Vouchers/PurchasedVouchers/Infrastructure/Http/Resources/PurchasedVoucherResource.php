@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Src\Vouchers\PurchasedVouchers\Application\DTOs\PurchasedVoucherView;
 use Src\Vouchers\PurchasedVouchers\Domain\Entities\VoucherMovement;
@@ -26,11 +27,26 @@ final class PurchasedVoucherResource extends JsonResource
     }
 
     /**
-     * Expose the voucher with its balance, its validity and the record that ties each change of the balance to its reservation.
+     * Expose the voucher with its balance, its validity, the record that ties each change of the balance to its reservation and the
+     * services it covers.
+     *
+     * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: list<array{tipo: string, sesiones: int, reserva: string|null, fecha: string}>, servicios: AnonymousResourceCollection}
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            ...$this->record(),
+            /** Servicios que cubre el bono, ordenados por nombre, tal como los define hoy la barbería: si el bono ya no está a la venta, igual se muestran. Con ellos el cliente sabe con qué servicios puede reservar. */
+            'servicios' => CoveredServiceResource::collection($this->view->services ?? []),
+        ];
+    }
+
+    /**
+     * What both readers see of a voucher, without the covered services, which only the customer reads.
      *
      * @return array{id: string, nombre: string, sesiones_totales: int, saldo: int, estado: string, activado_en: string|null, vence_en: string|null, movimientos: list<array{tipo: string, sesiones: int, reserva: string|null, fecha: string}>}
      */
-    public function toArray(Request $request): array
+    public function record(): array
     {
         $voucher = $this->view->voucher;
 

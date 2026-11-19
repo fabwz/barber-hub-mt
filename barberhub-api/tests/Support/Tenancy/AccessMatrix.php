@@ -100,6 +100,7 @@ final class AccessMatrix
             "POST {$base}/reservas/propuesta" => RouteRule::firstUse(self::FIRST_USE, 'Propuesta de IA (RF-37): no crea nada; dueño y colaborador reciben 403.'),
             "GET {$base}/mis-reservas" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (CL-04): sin rol, lista vacía.'),
             "GET {$base}/mis-bonos" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (RF-29, CL-04): sin rol, lista vacía.'),
+            "GET {$base}/bonos" => RouteRule::firstUse(self::FIRST_USE, 'Bonos a la venta con sus servicios (RF-27, UP-09): sin rol pasa y no se crea membresía; dueño y colaborador reciben 403.'),
             "POST {$base}/bonos/{bono}/compras" => RouteRule::firstUse(self::FIRST_USE, 'Comprar un bono crea el rol de cliente en la misma transacción (RF-27, UP-09); dueño y colaborador reciben 403.'),
 
             // Reservations.

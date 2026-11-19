@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Src\Vouchers\VoucherDefinitions\Domain\Contracts;
 
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Vouchers\Shared\Domain\ValueObjects\VoucherDefinitionId;
 use Src\Vouchers\VoucherDefinitions\Domain\Entities\VoucherDefinition;
 use Src\Vouchers\VoucherDefinitions\Domain\ValueObjects\ServiceId;
@@ -31,6 +33,22 @@ interface VoucherDefinitionRepository
      * @return list<VoucherDefinition>
      */
     public function all(): array;
+
+    /**
+     * One page of the definitions of the current barbershop that are on sale, ordered by name; the withdrawn ones are left out.
+     *
+     * @return Page<VoucherDefinition>
+     */
+    public function pageOnSale(PageRequest $page): Page;
+
+    /**
+     * The definitions among the given identifiers that belong to the current barbershop, on sale or withdrawn; an identifier that is
+     * not found is left out.
+     *
+     * @param  list<VoucherDefinitionId>  $ids
+     * @return list<VoucherDefinition>
+     */
+    public function findMany(array $ids): array;
 
     /** Tell whether a customer of the current barbershop has bought the voucher, paid or not (RF-26). */
     public function hasPurchases(VoucherDefinitionId $id): bool;

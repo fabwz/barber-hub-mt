@@ -13,4 +13,12 @@ interface CatalogServices
      * @return list<string>
      */
     public function existingAmong(array $serviceIds): array;
+
+    /**
+     * The name of each of the given services that exists in the current barbershop, active or not, indexed by its identifier.
+     *
+     * @param  list<string>  $serviceIds
+     * @return array<string, string>
+     */
+    public function namesOf(array $serviceIds): array;
 }

@@ -95,6 +95,10 @@
             "description": "Administraci\u00f3n de los bonos que vende la barber\u00eda, por su due\u00f1o."
         },
         {
+            "name": "Bonos a la venta",
+            "description": "Los bonos que vende una barber\u00eda y los servicios que cubre cada uno, para que el cliente elija cu\u00e1l comprar."
+        },
+        {
             "name": "Saldo de bonos",
             "description": "Consulta del saldo y la vigencia de los bonos comprados: el cliente ve los suyos y el due\u00f1o, los vendidos en su barber\u00eda."
         }
@@ -147,6 +151,103 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/bonos": {
+            "get": {
+                "operationId": "vouchers.on-sale.index",
+                "description": "Lista, por nombre, los bonos que la barber\u00eda tiene a la venta, cada uno con su `id`, `nombre`, `sesiones`, `vigencia_dias`, `precio` en colones con el IVA de 13 % incluido y los `servicios` que cubre (`id` y `nombre`). El `id` es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`. Un bono retirado de la venta no aparece. Lo puede leer cualquier persona con sesi\u00f3n, tenga o no rol en la barber\u00eda: no crea ninguna membres\u00eda (el rol de cliente nace con la primera compra). `meta.bonos_activos` dice si la barber\u00eda tiene los bonos activados; con los bonos desactivados la lista viene vac\u00eda y comprar responde 409 `conflicto`. El due\u00f1o o un colaborador de esa barber\u00eda recibe 403 `prohibido`: sus bonos se administran con `GET /administracion/bonos`. Sin sesi\u00f3n, 401; una barber\u00eda inexistente, 404 `no-encontrado`. Va paginada con `pagina` y `por_pagina` (hasta 50, 15 por defecto) y `meta` trae el total.",
+                "summary": "Listar los bonos a la venta",
+                "tags": [
+                    "Bonos a la venta"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "N\u00famero de p\u00e1gina, desde 1.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "por_pagina",
+                        "in": "query",
+                        "description": "Elementos por p\u00e1gina, de 1 a 50. Por defecto, 15.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `BonoALaVenta`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BonoALaVenta"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "por_pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "ultima_pagina": {
+                                                    "type": "integer"
+                                                },
+                                                "bonos_activos": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "pagina",
+                                                "por_pagina",
+                                                "total",
+                                                "ultima_pagina",
+                                                "bonos_activos"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             }
@@ -3569,6 +3670,46 @@
                 ],
                 "title": "Bono"
             },
+            "BonoALaVenta": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Identificador del bono; es el `{bono}` de `POST /barberias/{barberia}/bonos/{bono}/compras`."
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "sesiones": {
+                        "type": "integer",
+                        "description": "Sesiones que trae el bono al comprarlo. Ejemplo: 5."
+                    },
+                    "vigencia_dias": {
+                        "type": "integer",
+                        "description": "D\u00edas de vigencia, que cuentan desde que se confirma el pago. Ejemplo: 90."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Precio en colones con el IVA de 13 % incluido. Ejemplo: 30000."
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "description": "Servicios que cubre, ordenados por nombre. Cada uno trae su `id` y su `nombre` actual (por ejemplo, Corte cl\u00e1sico).",
+                        "items": {
+                            "$ref": "#/components/schemas/ServicioCubierto"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "sesiones",
+                    "vigencia_dias",
+                    "precio",
+                    "servicios"
+                ],
+                "title": "BonoALaVenta"
+            },
             "BonoComprado": {
                 "type": "object",
                 "properties": {
@@ -3612,6 +3753,13 @@
                         "type": "array",
                         "description": "Cada cambio del saldo, del m\u00e1s antiguo al m\u00e1s reciente, con la reserva a la que se liga (nula en la compra).",
                         "items": {}
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "description": "Servicios que cubre el bono, ordenados por nombre, tal como los define hoy la barber\u00eda: si el bono ya no est\u00e1 a la venta, igual se muestran. Con ellos el cliente sabe con qu\u00e9 servicios puede reservar.",
+                        "items": {
+                            "$ref": "#/components/schemas/ServicioCubierto"
+                        }
                     }
                 },
                 "required": [
@@ -3622,7 +3770,8 @@
                     "estado",
                     "activado_en",
                     "vence_en",
-                    "movimientos"
+                    "movimientos",
+                    "servicios"
                 ],
                 "title": "BonoComprado"
             },
@@ -5526,6 +5675,24 @@
                     "activo"
                 ],
                 "title": "Servicio"
+            },
+            "ServicioCubierto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Identificador del servicio."
+                    },
+                    "nombre": {
+                        "type": "string",
+                        "description": "Nombre actual del servicio. Ejemplo: Corte cl\u00e1sico."
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre"
+                ],
+                "title": "ServicioCubierto"
             },
             "ServicioPublico": {
                 "type": "object",

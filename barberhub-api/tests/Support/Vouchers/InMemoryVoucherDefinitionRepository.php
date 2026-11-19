@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support\Vouchers;
 
+use Src\Shared\Domain\ValueObjects\Page;
+use Src\Shared\Domain\ValueObjects\PageRequest;
 use Src\Vouchers\Shared\Domain\ValueObjects\VoucherDefinitionId;
 use Src\Vouchers\VoucherDefinitions\Domain\Contracts\VoucherDefinitionRepository;
 use Src\Vouchers\VoucherDefinitions\Domain\Entities\VoucherDefinition;
@@ -54,6 +56,27 @@ final class InMemoryVoucherDefinitionRepository implements VoucherDefinitionRepo
         usort($definitions, fn (VoucherDefinition $a, VoucherDefinition $b): int => $a->name->value <=> $b->name->value);
 
         return $definitions;
+    }
+
+    /** Page the stored definitions that are on sale, ordered by name. */
+    public function pageOnSale(PageRequest $page): Page
+    {
+        $onSale = array_values(array_filter($this->all(), fn (VoucherDefinition $definition): bool => $definition->isActive));
+
+        return new Page(array_slice($onSale, $page->offset(), $page->size), count($onSale), $page);
+    }
+
+    /**
+     * The stored definitions among the identifiers, on sale or not, ordered by name.
+     *
+     * @param  list<VoucherDefinitionId>  $ids
+     * @return list<VoucherDefinition>
+     */
+    public function findMany(array $ids): array
+    {
+        $keys = array_map(fn (VoucherDefinitionId $id): string => $id->value, $ids);
+
+        return array_values(array_filter($this->all(), fn (VoucherDefinition $definition): bool => in_array($definition->id->value, $keys, true)));
     }
 
     /**

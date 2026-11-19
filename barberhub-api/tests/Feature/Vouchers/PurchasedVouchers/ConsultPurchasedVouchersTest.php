@@ -7,6 +7,7 @@ namespace Tests\Feature\Vouchers\PurchasedVouchers;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Src\Shared\Domain\Contracts\Clock;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Shared\MutableClock;
@@ -73,6 +74,49 @@ final class ConsultPurchasedVouchersTest extends TestCase
             ->assertJsonPath('data.0.activado_en', '2030-03-01T08:00:00-06:00')
             ->assertJsonPath('data.0.vence_en', '2030-05-30T08:00:00-06:00')
             ->assertJsonMissingPath('data.0.cliente_nombre');
+    }
+
+    /** Each voucher shows the services its definition covers now, by id and name, with no copy stored in the voucher (BO-06, RF-29). */
+    public function test_each_voucher_shows_the_services_it_covers(): void
+    {
+        $this->scopeQueriesTo($this->puraNavaja);
+        $beard = $this->insertService($this->puraNavaja, 'Barba', 30, 4000);
+        $combo = $this->insertVoucherDefinition($this->puraNavaja, [$this->degradado, $beard], 'Bono combo');
+        $first = $this->insertPurchasedVoucher($this->puraNavaja, $this->anaMembership, $this->definition);
+        $second = $this->insertPurchasedVoucher($this->puraNavaja, $this->anaMembership, $combo);
+        // The second one was activated later, so it comes first.
+        DB::table('purchased_vouchers')->where('id', $second)->update(['activated_at' => '2030-03-02 08:00:00-06']);
+
+        $response = $this->sendAs('customer', 'GET', $this->mine($this->puraNavaja))->assertOk();
+
+        $this->assertSame([$second, $first], $response->json('data.*.id'));
+        $response->assertJsonPath('data.0.servicios', [['id' => $beard, 'nombre' => 'Barba'], ['id' => $this->degradado, 'nombre' => 'Degradado']])
+            ->assertJsonPath('data.1.servicios', [['id' => $this->degradado, 'nombre' => 'Degradado']]);
+        $this->assertSame([], array_diff(['id', 'nombre', 'sesiones_totales', 'servicios', 'saldo', 'estado', 'activado_en', 'vence_en', 'movimientos'], array_keys($response->json('data.0'))));
+        // The purchased voucher stores no copy of them.
+        $this->assertFalse(Schema::hasColumn('purchased_vouchers', 'services'));
+    }
+
+    /** What the voucher covers is read from the live definition: the voucher of a definition withdrawn from sale still shows it, and a change in the name shows (BO-06). */
+    public function test_the_services_come_from_the_live_definition_even_if_it_was_withdrawn(): void
+    {
+        $voucher = $this->insertPurchasedVoucher($this->puraNavaja, $this->anaMembership, $this->definition);
+        $this->scopeQueriesTo($this->puraNavaja);
+        DB::table('voucher_definitions')->where('id', $this->definition)->update(['is_active' => false]);
+        DB::table('services')->where('id', $this->degradado)->update(['name' => 'Degradado clásico', 'is_active' => false]);
+
+        $this->assertNotContains($this->definition, $this->sendAs('customer', 'GET', '/api/v1/barberias/'.$this->puraNavaja.'/bonos')->json('data.*.id'));
+        $this->sendAs('customer', 'GET', $this->mine($this->puraNavaja))->assertOk()
+            ->assertJsonPath('data.0.id', $voucher)
+            ->assertJsonPath('data.0.servicios', [['id' => $this->degradado, 'nombre' => 'Degradado clásico']]);
+    }
+
+    /** The owner reads the vouchers sold as before: the covered services are for the customer's reading. */
+    public function test_the_owner_view_of_the_sold_vouchers_does_not_change(): void
+    {
+        $this->insertPurchasedVoucher($this->puraNavaja, $this->anaMembership, $this->definition);
+
+        $this->sendAs('owner', 'GET', $this->sold($this->puraNavaja))->assertOk()->assertJsonMissingPath('data.0.servicios');
     }
 
     /** A customer sees their own vouchers and never those of another person, in this barbershop or another (CL-04). */
