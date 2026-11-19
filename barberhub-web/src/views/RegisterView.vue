@@ -349,7 +349,7 @@ async function submit(): Promise<void> {
           </div>
 
           <BaseButton type="submit" size="large" class="mt-8 w-full" :loading="loading">
-            {{ loading ? 'Creando cuenta…' : 'Crear cuenta' }}
+            {{ loading ? 'Creando cuenta' : 'Crear cuenta' }}
           </BaseButton>
         </form>
 

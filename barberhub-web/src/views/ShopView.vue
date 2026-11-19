@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { CalendarDays } from 'lucide-vue-next'
 
 import AiBookingBlock, { type BlockNotice } from '@/components/AiBookingBlock.vue'
+import BackLink from '@/components/BackLink.vue'
 import BookingPanel, {
   type PanelFailure,
   type PanelMissing,
@@ -485,6 +486,10 @@ async function reserve(): Promise<void> {
 
 <template>
   <main :aria-busy="store.status === 'loading'" class="mx-auto w-full max-w-7xl">
+    <!-- The way back to the directory, in every state of the screen. -->
+    <div class="px-5 pt-4 md:px-8 md:pt-6">
+      <BackLink :to="{ name: 'directory' }" class="-ml-3" />
+    </div>
     <div v-if="store.status === 'loading' || store.status === 'idle'" class="px-5 md:px-8">
       <span class="sr-only">Cargando</span>
       <!-- Skeleton with the shape of the header -->

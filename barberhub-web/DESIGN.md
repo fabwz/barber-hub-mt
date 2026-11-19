@@ -29,7 +29,7 @@ Este documento es la fuente de verdad visual del cliente web (`barberhub-web`: V
 | `fg` | `#eef0f0` | snow | Texto principal |
 | `fg-muted` | `#9a9d9e` | silver | Texto secundario |
 | `fg-subtle` | `#85888a` | smoke | Texto terciario: solo sobre `canvas` y `surface` |
-| `accent` | `#ece6d6` | bone | Foco, check de selección, punto de «confirmada», página activa, logo |
+| `accent` | `#ece6d6` | bone | Foco, check de selección, página activa, logo |
 | `accent-hover` | `#cfc8b5` | bone-hover | Enlaces al pasar el cursor |
 | `btn-hover` | `#2e373c` | — | Relleno del botón tonal al pasar el cursor |
 | `btn-active` | `#20262a` | — | Relleno del botón tonal presionado |
@@ -112,6 +112,8 @@ Píldora de `48 px` de alto en flujos de pago y `44 px` en el resto. Relleno `el
 ### Botón secundario
 Píldora transparente, borde de 1 px `line-strong`, texto `fg` en peso 400. Hover: borde `line-hover`.
 
+**Botón en carga.** Vale para los dos botones y lo resuelve el componente compartido, no cada pantalla. Mientras carga queda deshabilitado, con `aria-busy` y cursor de progreso, y el texto lleva **tres puntos solo al final** («Ingresando…», «Creando cuenta…», «Reservar…»). **Nunca hay ícono ni puntos antes del texto**: tampoco se muestra el ícono propio del botón. Los puntos son decoración (`aria-hidden`); el nombre accesible es el texto sin ellos. Las pantallas escriben el texto sin puntos y el botón los agrega.
+
 ### Enlace
 Texto `fg` con subrayado. Hover: `accent-hover`. Nunca se resalta con hueso en reposo.
 
@@ -187,30 +189,28 @@ Los requisitos concretos salen del contrato y de las reglas del negocio (SE-07: 
 Una fila con un ícono de información de 16 px y texto, sin color de estado, dentro de una tarjeta de 16 px con borde de 1 px `line` y relleno `surface`. Se usa para indicar que un contenido es de ejemplo. La primera frase va en peso 500 y la segunda en `fg-muted`.
 
 ### Etiqueta de estado
-Un punto de 8 px y el texto, sin relleno. Nunca solo color.
+Solo el texto, sin punto ni relleno, en 14 px y peso 500 (`fg-muted` en «Expirada» y «Reembolsado»). Así el estado nunca depende del color ni del tono, porque lo dice la palabra. **Es la misma etiqueta en todas las pantallas** (Mis reservas, detalle, confirmación, pago y agenda): un único componente, sin variantes. En el detalle de una reserva va bajo el título, a la izquierda, y no a la derecha. Ninguna etiqueta lleva punto de color (ni el amarillo de «Pago pendiente»).
 
-**Variante solo texto.** En «Mis reservas» y en el detalle de una reserva el estado se muestra **solo con el texto**, sin punto, en 14 px y peso 500 (`fg-muted` en «Expirada»). En el detalle va bajo el título, a la izquierda, y no a la derecha. Así el estado nunca depende del color, porque lo dice la palabra. La tabla de abajo sigue valiendo para la confirmación, el pago y la agenda, que mantienen el punto.
-
-| Estado de la reserva | Texto | Punto |
+| Estado de la reserva | Texto | Texto en |
 |---|---|---|
-| Temporal | Pendiente de pago | `warning` |
-| Confirmada | Confirmada | `accent` |
-| Completada | Atendida | `accent` |
-| Ausente | Ausente | `danger` |
-| Cancelada (por el cliente o por la barbería) | Cancelada | `danger` |
-| Expirada | Expirada | Anillo de 1 px `fg-muted`, sin relleno; texto `fg-muted` |
+| Temporal | Pendiente de pago | `fg` |
+| Confirmada | Confirmada | `fg` |
+| Completada | Atendida | `fg` |
+| Ausente | Ausente | `fg` |
+| Cancelada (por el cliente o por la barbería) | Cancelada | `fg` |
+| Expirada | Expirada | `fg-muted` |
 
-| Estado del pago | Texto | Punto |
+| Estado del pago | Texto | Texto en |
 |---|---|---|
-| Pendiente | Pago pendiente | `warning` |
-| Aprobado | Pago aprobado | `accent` |
-| Rechazado | Pago rechazado | `danger` |
-| Fallido | Pago fallido | `danger` |
-| Reembolsado | Reembolsado | Anillo de 1 px `fg-muted` |
+| Pendiente | Pago pendiente | `fg` |
+| Aprobado | Pago aprobado | `fg` |
+| Rechazado | Pago rechazado | `fg` |
+| Fallido | Pago fallido | `fg` |
+| Reembolsado | Reembolsado | `fg-muted` |
 
 La interfaz usa estos textos y no «Pagado», que no es un estado del sistema.
 
-**Dónde no se muestra:** en la pantalla de pago no se muestra «Pago aprobado», porque su punto `accent` (hueso) no se distingue del texto y el aviso «Su pago de ₡X fue aprobado.» ya lo dice. Tampoco «Pendiente de pago» en el resumen de una reserva temporal: lo dice la cuenta regresiva. «Pago pendiente» (amarillo) y «Pago rechazado» o «fallido» (rojo) sí se muestran.
+**Dónde no se muestra:** en la pantalla de pago no se muestra «Pago aprobado», porque el aviso «Su pago de ₡X fue aprobado.» ya lo dice. Tampoco «Pendiente de pago» en el resumen de una reserva temporal: lo dice la cuenta regresiva. «Pago pendiente», «Pago rechazado» y «Pago fallido» sí se muestran.
 
 ### Fila de agenda
 Plana, sin tarjeta. Columnas: rango de hora (tabular), cliente, servicio y etiqueta de estado. Separadas por líneas de 1 px `line`. Seleccionada: relleno `elevated` con radio de 8 px, sin borde, texto en peso 500. En la vista por día, la **hora actual** se marca con un punto de 9 px y una línea de 1 px, ambos en `accent`.
@@ -278,6 +278,7 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 ### Panel de reserva (portada de la barbería)
 Se muestra bajo la cabecera, en la misma pantalla (`/b/:enlace`). En escritorio es un único recuadro de 16 px con borde `line`, 32 px de padding y 32 px de separación respecto de la cabecera; en celular no hay recuadro y todo va en una columna.
 - **Título:** «Reservar cita» (24 px, peso 400) con una línea `line` debajo en escritorio.
+- **Volver:** arriba de la pantalla, antes de la cabecera, un botón «Volver» (navegación con apariencia de botón: píldora de 44 px con chevron, sin subrayado, foco visible) que lleva al directorio «Barberías» (`/barberias`). Se muestra en todos los estados de la pantalla (cargando, error, no existe y lista) y es el mismo componente `BackLink`. Es un enlace al directorio, no «atrás» del navegador: si se llegó por el enlace directo de la barbería, igual lleva al directorio.
 - **Dos columnas iguales** separadas por una línea de 1 px y 32 px de espacio a cada lado. Izquierda: «Servicio» (la fila de servicio de arriba) y «Barbero». Derecha: «Fecha» y «Hora». En celular el orden es el mismo, apilado. Los títulos de paso son de 18 px, peso 500.
 - **Barbero:** un `select` de 52 px, radio de 8 px, borde `field`, texto de 16 px en peso 500 y chevron de 18 px. La primera opción es «Sin preferencia».
 - **Sin servicio elegido:** la columna derecha muestra un círculo de 56 px (borde `line-strong`, relleno `surface`) con un ícono de calendario de 24 px, el título «Elija un servicio» (18 px, peso 500) y una línea de 14 px en `fg-muted`.
@@ -320,7 +321,7 @@ Ruta `/b/:enlace/pago/:reserva`. Diseño de origen: 6n a 6q (celular) y 9a a 9d 
   - **Cargando:** esqueleto de un bloque y dos filas, con `aria-busy`.
   - **Vacío:** «No tiene una cita en curso» y «Elija servicio, barbero, fecha y hora. El resumen y el pago aparecen aquí.» con el botón «Reservar cita». En escritorio va centrado con el círculo de 56 px y el ícono de calendario; en celular, a la izquierda entre dos líneas.
   - **Error:** «Error: no pudimos cargar su reserva.» y «Reintentar».
-  - **Esperando:** punto amarillo y «Pago pendiente», «Esperando la confirmación de su pago…» y el botón «Verificar ahora». La página consulta sola cada 3 segundos. Con SINPE Móvil se muestran antes las instrucciones: número de destino y monto exacto, cada uno con su botón «Copiar» (que pasa a «Copiado» con un check).
+  - **Esperando:** la etiqueta «Pago pendiente» (solo texto), «Esperando la confirmación de su pago…» y el botón «Verificar ahora». La página consulta sola cada 3 segundos. Con SINPE Móvil se muestran antes las instrucciones: número de destino y monto exacto, cada uno con su botón «Copiar» (que pasa a «Copiado» con un check).
   - **Pago rechazado (tarjeta, SINPE Móvil o PayPal):** aviso de error sin borde con el título «No pudimos cobrar su pago.», «Motivo: …» y «Su reserva se mantiene; elija otro método para pagarla.», y el botón «Elegir otro método», que no pierde la reserva. Con tarjeta el motivo es siempre «su tarjeta fue rechazada» (el texto de la pasarela viene en su idioma y no se muestra); con SINPE Móvil o PayPal es el de la API, o una frase genérica si no viene. La cuenta regresiva sigue a la vista mientras la reserva esté vigente. Un pago fallido (no rechazado) dice «No se pudo procesar su pago.» y ofrece «Intentar de nuevo». El mensaje «Su tarjeta ha sido rechazada. Por favor, pruebe con otra tarjeta o pague con SINPE Móvil.» queda solo para cuando la pasarela no acepta los datos de la tarjeta antes del cobro (en el formulario, bajo el número, con borde `danger-border` de campo).
   - **Estamos verificando su pago:** panel `surface` con borde `line` (no es un error), ícono de reloj, título en peso 500 y «El proveedor de pago no ha respondido. Su pago queda en verificación y no se cobrará dos veces. Puede consultarlo de nuevo cuando quiera.», con «Verificar ahora». Aparece con un 503 al consultar el estado o con el pago aún pendiente tras agotarse la espera del sondeo (3 minutos). Mientras haya un pago pendiente no se puede iniciar otro cobro.
   - **Reserva vencida:** aviso de error sin borde con «La reserva temporal venció.», «Pasó el plazo para pagar sin que el pago se confirmara, y el espacio se liberó. Elija otro espacio para reservar.» y «Elegir otro espacio», que vuelve a la barbería con el servicio, el barbero y el día elegidos. Si el pago se aprobó pero la reserva ya había vencido (devolución pendiente) no se presenta como éxito: «Recibimos su pago, pero la reserva no pudo confirmarse.», con la devolución a cargo de la barbería, y también «Elegir otro espacio».
@@ -376,7 +377,7 @@ Rutas `/b/:enlace/mis-reservas` y `/b/:enlace/mis-reservas/:reserva`. Diseño de
 
 - WCAG 2.2 AA: texto de al menos 4,5:1, componentes y foco de al menos 3:1.
 - Objetivos de 44 px como mínimo.
-- Ningún estado depende solo del color o del tono: la selección lleva check o indicador, y los estados llevan texto (con punto, salvo en «Mis reservas» y en el detalle de una reserva, donde va solo el texto). Excepción decidida: los chips de hora y de fecha (relleno, peso 500 y `aria-pressed`, sin check).
+- Ningún estado depende solo del color o del tono: la selección lleva check o indicador, y los estados llevan texto (solo el texto, sin punto, en todas las pantallas). Excepción decidida: los chips de hora y de fecha (relleno, peso 500 y `aria-pressed`, sin check).
 - `<html lang="es-CR">`. Un solo `h1` por pantalla.
 - Chips como `aria-pressed`; servicios y métodos de pago como `radiogroup`; página activa con `aria-current="page"`; avisos con `role="status"` o `role="alert"`; zonas que cargan con `aria-busy`.
 - Todo funciona con teclado y respeta `prefers-reduced-motion`.
@@ -392,7 +393,7 @@ Rutas `/b/:enlace/mis-reservas` y `/b/:enlace/mis-reservas/:reserva`. Diseño de
 
 ### Hacer
 - Separar superficies con líneas de 1 px y cambios de superficie.
-- Usar el hueso solo en foco, check de selección, punto de «confirmada», página activa y logo.
+- Usar el hueso solo en foco, check de selección, página activa y logo.
 - Marcar la selección con tono, borde discreto y un check o indicador (los chips de hora y de fecha, con relleno y peso 500).
 - Mantener un único botón principal por región.
 - Usar Manrope en pesos 400 y 500, con cifras tabulares en datos.

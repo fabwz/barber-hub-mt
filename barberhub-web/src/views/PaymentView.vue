@@ -715,10 +715,9 @@ onMounted(() => void load())
               size="large"
               class="w-full text-base! tabular-nums md:w-70"
               :class="busy ? 'animate-pulse cursor-progress motion-reduce:animate-none' : ''"
-              :disabled="busy"
-              :aria-busy="busy ? 'true' : undefined"
+              :loading="busy"
             >
-              <template v-if="busy">Procesando pago…</template>
+              <template v-if="busy">Procesando pago</template>
               <template v-else
                 >{{ payVerb
                 }}<span v-if="amountInButton" class="md:hidden">{{

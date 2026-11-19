@@ -275,7 +275,7 @@ onMounted(() => void load())
         <div v-else-if="reservation" class="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-8">
           <div class="flex flex-col gap-1 md:col-span-2 md:border-b md:border-line md:pb-6">
             <h1 ref="title" tabindex="-1" class="w-fit text-2xl outline-offset-4">Su reserva</h1>
-            <StatusLabel :status="statusKeyOf(reservation.estado)" plain />
+            <StatusLabel :status="statusKeyOf(reservation.estado)" />
           </div>
 
           <NoticeBanner v-if="notice" class="md:col-span-2">{{ notice }}</NoticeBanner>

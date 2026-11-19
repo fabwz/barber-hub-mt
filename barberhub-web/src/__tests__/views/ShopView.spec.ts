@@ -13,6 +13,26 @@ afterEach(() => {
 })
 
 describe('ShopView', () => {
+  it('has a «Volver» link to the directory that stays in every state', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    mockFetch(async (request) => {
+      await gate
+      return shopHandler(request)
+    })
+    const { wrapper } = await mountView(ShopView, '/b/pura-navaja')
+    const back = () => wrapper.findAll('a').find((link) => link.text() === 'Volver')
+
+    // Loading
+    expect(back()?.attributes('href')).toBe('/barberias')
+
+    // Ready
+    release()
+    await flushPromises()
+    expect(back()?.attributes('href')).toBe('/barberias')
+    expect(back()?.classes()).toContain('min-h-11')
+  })
+
   it('shows skeletons while loading, then the header and the catalog', async () => {
     let release: () => void = () => {}
     const gate = new Promise<void>((resolve) => (release = resolve))
@@ -49,7 +69,8 @@ describe('ShopView', () => {
 
     const main = wrapper.get('main')
     expect(main.classes()).toEqual(expect.arrayContaining(['mx-auto', 'max-w-7xl']))
-    const [top, body] = main.findAll(':scope > div')
+    // The first block is the row with «Volver»; then come the header and the booking box.
+    const [, top, body] = main.findAll(':scope > div')
     expect(top!.classes()).toEqual(expect.arrayContaining(['border-b', 'px-5', 'md:px-8']))
     expect(top!.get('header').exists()).toBe(true)
     expect(body!.classes()).toEqual(expect.arrayContaining(['px-5', 'md:px-8']))

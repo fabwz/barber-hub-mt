@@ -236,7 +236,7 @@ onMounted(() => void start())
                         <span class="ml-2 tabular-nums">{{ whenOf(item).time }}</span>
                       </span>
                       <span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                        <StatusLabel :status="statusKeyOf(item.estado)" plain />
+                        <StatusLabel :status="statusKeyOf(item.estado)" />
                         <span v-if="moneyOf(item)" class="text-fg-muted">
                           {{ moneyOf(item)!.label }}
                           <span class="ml-2 text-fg tabular-nums">{{

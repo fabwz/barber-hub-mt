@@ -167,7 +167,7 @@ async function submit(): Promise<void> {
             :loading="loading"
             :disabled="countdown.active.value"
           >
-            {{ loading ? 'Ingresando…' : 'Ingresar' }}
+            {{ loading ? 'Ingresando' : 'Ingresar' }}
           </BaseButton>
         </form>
 

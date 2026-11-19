@@ -30,6 +30,32 @@ describe('BaseButton', () => {
     expect(wrapper.emitted('click')).toBeUndefined()
   })
 
+  it('shows the three dots only after the label while loading', () => {
+    const wrapper = mount(BaseButton, {
+      props: { loading: true },
+      slots: { default: 'Ingresando', icon: '<svg data-testid="icon" />' },
+    })
+
+    expect(wrapper.text()).toBe('Ingresando…')
+    expect(wrapper.text().startsWith('…')).toBe(false)
+    // Nothing is drawn before the label: no loading indicator and not the icon either.
+    expect(wrapper.find('svg').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="icon"]').exists()).toBe(false)
+    // The dots are decoration: the accessible name stays the label.
+    expect(wrapper.get('[aria-hidden="true"]').text()).toBe('…')
+  })
+
+  it('adds the dots to a label that does not change and removes them at rest', async () => {
+    const wrapper = mount(BaseButton, { props: { loading: true }, slots: { default: 'Reservar' } })
+
+    expect(wrapper.text()).toBe('Reservar…')
+
+    await wrapper.setProps({ loading: false })
+
+    expect(wrapper.text()).toBe('Reservar')
+    expect(wrapper.find('[aria-hidden="true"]').exists()).toBe(false)
+  })
+
   it('has no aria-busy at rest', () => {
     expect(mount(BaseButton).attributes('aria-busy')).toBeUndefined()
   })

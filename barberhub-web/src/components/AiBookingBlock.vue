@@ -152,8 +152,9 @@ function chipLabel(slot: TimeSlot): string {
           size="large"
           class="mt-4 w-full md:w-50 disabled:border-line! disabled:bg-surface! disabled:text-fg-muted! disabled:opacity-100!"
           :disabled="!canSubmit"
+          :loading="loading"
         >
-          {{ loading ? 'Generando propuesta…' : 'Generar propuesta' }}
+          {{ loading ? 'Generando propuesta' : 'Generar propuesta' }}
         </BaseButton>
       </form>
 
