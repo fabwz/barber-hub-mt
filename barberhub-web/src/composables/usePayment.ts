@@ -59,6 +59,43 @@ function text(value: unknown): string | null {
   return typeof value === 'string' && value !== '' ? value : null
 }
 
+/** The voucher purchase in progress lives in sessionStorage under this key. Never card data. */
+export const VOUCHER_PAYMENT_STORAGE_KEY = 'barberhub.voucher-payment'
+
+/** What is kept to resume the purchase of a voucher after a redirect or a reload. */
+export interface StoredVoucherPayment {
+  enlace: string
+  bono: string
+  pago: string
+  metodo: string
+}
+
+export function readStoredVoucherPayment(): StoredVoucherPayment | null {
+  try {
+    const raw = globalThis.sessionStorage.getItem(VOUCHER_PAYMENT_STORAGE_KEY)
+    if (raw === null) return null
+    const data: unknown = JSON.parse(raw)
+    if (typeof data !== 'object' || data === null) return null
+    const record = data as Record<string, unknown>
+    const enlace = text(record.enlace)
+    const bono = text(record.bono)
+    const pago = text(record.pago)
+    const metodo = text(record.metodo)
+    return enlace && bono && pago && metodo ? { enlace, bono, pago, metodo } : null
+  } catch {
+    return null
+  }
+}
+
+export function writeStoredVoucherPayment(value: StoredVoucherPayment | null): void {
+  try {
+    if (value === null) globalThis.sessionStorage.removeItem(VOUCHER_PAYMENT_STORAGE_KEY)
+    else globalThis.sessionStorage.setItem(VOUCHER_PAYMENT_STORAGE_KEY, JSON.stringify(value))
+  } catch {
+    // No storage (blocked, private window): the purchase is resumed only from memory.
+  }
+}
+
 export function readStoredPayment(): StoredPayment | null {
   try {
     const raw = globalThis.sessionStorage.getItem(PAYMENT_STORAGE_KEY)
@@ -104,7 +141,7 @@ export function redirectTo(url: string): boolean {
 
 type SetupFailure = 'configuracion' | 'tarjeta-rechazada' | 'red'
 
-class PaymentSetupError extends Error {
+export class PaymentSetupError extends Error {
   readonly kind: SetupFailure
   constructor(kind: SetupFailure) {
     super(kind)
@@ -113,7 +150,7 @@ class PaymentSetupError extends Error {
   }
 }
 
-function setupApiError(error: PaymentSetupError): ApiError {
+export function setupApiError(error: PaymentSetupError): ApiError {
   if (error.kind === 'configuracion') {
     return new ApiError({
       status: 0,
@@ -191,6 +228,32 @@ export async function createOnvoPaymentMethod(
 }
 
 /**
+ * The body of a payment, the same for a reservation and for a voucher. The card is exchanged for a
+ * token at ONVO first, so only an identifier reaches our API.
+ */
+export async function buildPaymentBody(
+  input: Pick<SubmitInput, 'method' | 'gateway' | 'card' | 'sinpe' | 'billingEmail' | 'onCardUsed'>,
+): Promise<components['schemas']['PagarReserva']> {
+  if (input.method === 'sinpe_movil' && input.sinpe) {
+    return {
+      metodo: 'sinpe_movil',
+      telefono: input.sinpe.phone,
+      identificacion: input.sinpe.identification,
+      tipo_identificacion: input.sinpe
+        .idType as components['schemas']['PagarReserva']['tipo_identificacion'],
+    }
+  }
+  if (input.method === 'tarjeta' && input.gateway === 'onvo') {
+    if (!input.card) throw new PaymentSetupError('tarjeta-rechazada')
+    const token = await createOnvoPaymentMethod(input.card, input.billingEmail)
+    input.onCardUsed?.()
+    return { metodo: 'tarjeta', token }
+  }
+  // PayPal collects the card on its own page: only the method travels.
+  return { metodo: input.method }
+}
+
+/**
  * Pays a temporary reservation (RF-20): creates the payment, keeps what is needed to resume it and
  * reads its status. The amount is never sent: the server calculates it.
  */
@@ -202,26 +265,6 @@ export function usePayment() {
   const redirecting = ref(false)
   const error = ref<ApiError | null>(null)
 
-  async function buildBody(input: SubmitInput): Promise<components['schemas']['PagarReserva']> {
-    if (input.method === 'sinpe_movil' && input.sinpe) {
-      return {
-        metodo: 'sinpe_movil',
-        telefono: input.sinpe.phone,
-        identificacion: input.sinpe.identification,
-        tipo_identificacion: input.sinpe
-          .idType as components['schemas']['PagarReserva']['tipo_identificacion'],
-      }
-    }
-    if (input.method === 'tarjeta' && input.gateway === 'onvo') {
-      if (!input.card) throw new PaymentSetupError('tarjeta-rechazada')
-      const token = await createOnvoPaymentMethod(input.card, input.billingEmail)
-      input.onCardUsed?.()
-      return { metodo: 'tarjeta', token }
-    }
-    // PayPal collects the card on its own page: only the method travels.
-    return { metodo: input.method }
-  }
-
   /**
    * Creates the payment. A double click does not create two: while a request is in flight the call
    * is ignored, and an active payment is resumed instead of asking for another one.
@@ -232,7 +275,7 @@ export function usePayment() {
     submitting.value = true
     error.value = null
     try {
-      const body = await buildBody(input)
+      const body = await buildPaymentBody(input)
       const { data } = await api.POST('/barberias/{barberia}/reservas/{reserva}/pagos', {
         params: { path: { barberia: input.shopId, reserva: input.reservationId } },
         body,
@@ -241,6 +284,8 @@ export function usePayment() {
       const created = (data as unknown as { data: Payment }).data
       payment.value = created
       paymentId.value = created.id
+      // Only one payment is resumed after a redirect: the latest one.
+      writeStoredVoucherPayment(null)
       writeStoredPayment({
         enlace: input.enlace,
         reserva: input.reservationId,
