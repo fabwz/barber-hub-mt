@@ -3,8 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
     <title>BarberHub</title>
+    <script>
+      // Appearance preferences (theme, text size, motion), applied before the first render so the
+      // page never flashes the wrong theme. The same rules as src/stores/preferences.ts, which
+      // takes over once the app starts; a test keeps both in step.
+      ;(function () {
+        var root = document.documentElement
+        var saved = {}
+        try {
+          saved = JSON.parse(localStorage.getItem('barberhub.preferences')) || {}
+        } catch (error) {}
+        function device(query, fallback) {
+          return typeof window.matchMedia === 'function'
+            ? window.matchMedia(query).matches
+            : fallback
+        }
+        var theme = saved.theme === 'light' || saved.theme === 'dark' ? saved.theme : null
+        root.dataset.theme =
+          theme || (device('(prefers-color-scheme: dark)', true) ? 'dark' : 'light')
+        root.dataset.textSize =
+          saved.textSize === 'large' || saved.textSize === 'xlarge' ? saved.textSize : 'normal'
+        if (typeof saved.reduceMotion === 'boolean') {
+          root.dataset.motion = saved.reduceMotion ? 'reduce' : 'full'
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
