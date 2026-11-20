@@ -127,4 +127,65 @@ final class EloquentWaitlistEntryRepositoryTest extends TestCase
         $this->assertSame(0, $this->repository->countActiveOfCustomer(new CustomerMembershipId($this->bea)));
         $this->assertSame([], $this->repository->activeOfCustomer($ana));
     }
+
+    /** The line of a day lists the rows that wait for the collaborator or for any, in the order they joined, and nothing else (LE-02, LE-03). */
+    public function test_the_line_of_a_day_lists_the_rows_that_wait_for_the_collaborator_or_any(): void
+    {
+        [, $luis] = $this->insertCustomer($this->puraNavaja, 'Luis Mora');
+        $late = $this->insertWaitlistEntry($this->puraNavaja, $this->ana, $this->degradado, date: '2030-03-05', joinedAt: '2030-03-01 10:00:00-06');
+        $daniela = $this->insertWaitlistEntry($this->puraNavaja, $luis, $this->degradado, $this->daniela, '2030-03-05', joinedAt: '2030-03-01 09:00:00-06');
+        $any = $this->insertWaitlistEntry($this->puraNavaja, $luis, $this->degradado, date: '2030-03-05', joinedAt: '2030-03-01 08:00:00-06');
+        $this->insertWaitlistEntry($this->puraNavaja, $luis, $this->degradado, $this->kevin, '2030-03-05', joinedAt: '2030-03-01 07:00:00-06');
+        $this->insertWaitlistEntry($this->puraNavaja, $luis, $this->degradado, date: '2030-03-06', joinedAt: '2030-03-01 07:00:00-06');
+        $this->insertWaitlistEntry($this->puraNavaja, $luis, $this->degradado, date: '2030-03-05', status: 'offered', joinedAt: '2030-03-01 06:00:00-06');
+        $this->insertWaitlistEntry($this->puraNavaja, $luis, $this->degradado, date: '2030-03-05', status: 'left', joinedAt: '2030-03-01 06:00:00-06');
+        $this->insertWaitlistEntry($this->fadeLab, $this->bea, $this->corte, date: '2030-03-05', joinedAt: '2030-03-01 05:00:00-06');
+        $this->scopeQueriesTo($this->puraNavaja);
+
+        $ids = array_map(fn (WaitlistEntry $entry): string => $entry->id->value, $this->repository->waitingFor(DesiredDate::of('2030-03-05'), new CollaboratorId($this->daniela)));
+
+        $this->assertSame([$any, $daniela, $late], $ids);
+    }
+
+    /** Two rows of the same instant come out by identifier, so the order is the same every time (LE-02). */
+    public function test_a_tie_in_the_line_is_broken_by_the_identifier(): void
+    {
+        $first = $this->insertWaitlistEntry($this->puraNavaja, $this->ana, $this->degradado, date: '2030-03-05', joinedAt: '2030-03-01 08:00:00-06');
+        $second = $this->insertWaitlistEntry($this->puraNavaja, $this->ana, $this->degradado, $this->daniela, '2030-03-05', joinedAt: '2030-03-01 08:00:00-06');
+        $this->scopeQueriesTo($this->puraNavaja);
+
+        $ids = array_map(fn (WaitlistEntry $entry): string => $entry->id->value, $this->repository->waitingFor(DesiredDate::of('2030-03-05'), new CollaboratorId($this->daniela)));
+
+        $this->assertSame([$first, $second], $ids);
+    }
+
+    /** A row is found and locked by its identifier among those of the barbershop, whoever owns it; one of another barbershop is not found (MT-02, MT-03). */
+    public function test_a_row_is_found_by_its_identifier_in_the_barbershop(): void
+    {
+        $own = $this->insertWaitlistEntry($this->puraNavaja, $this->ana, $this->degradado);
+        $foreign = $this->insertWaitlistEntry($this->fadeLab, $this->bea, $this->corte);
+        $this->scopeQueriesTo($this->puraNavaja);
+
+        $this->assertSame($own, $this->repository->findForUpdate(new WaitlistEntryId($own))?->id->value);
+        $this->assertNull($this->repository->findForUpdate(new WaitlistEntryId($foreign)));
+    }
+
+    /** An offer and the return to the line are saved as changes of status, and the row keeps the place it joined with (RF-31, LE-05). */
+    public function test_an_offer_and_the_return_to_the_line_are_saved(): void
+    {
+        $id = $this->insertWaitlistEntry($this->puraNavaja, $this->ana, $this->degradado, joinedAt: '2030-03-01 08:00:00-06');
+        $this->scopeQueriesTo($this->puraNavaja);
+
+        $entry = $this->repository->findForUpdate(new WaitlistEntryId($id)) ?? $this->fail('The row was not found.');
+        $entry->offer(new DateTimeImmutable('2030-03-05 11:00:00'));
+        $this->repository->save($entry);
+        $this->assertSame('offered', DB::table('waitlist_entries')->where('id', $id)->value('status'));
+
+        $entry = $this->repository->findForUpdate(new WaitlistEntryId($id)) ?? $this->fail('The row was not found.');
+        $entry->returnToLine(new DateTimeImmutable('2030-03-05 11:15:00'));
+        $this->repository->save($entry);
+
+        $this->assertSame('waiting', DB::table('waitlist_entries')->where('id', $id)->value('status'));
+        $this->assertSame('2030-03-01 08:00:00-06', DB::table('waitlist_entries')->where('id', $id)->value('joined_at'));
+    }
 }

@@ -21,6 +21,7 @@ use Src\Reservations\Reservations\Application\DTOs\BookableService;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
 use Src\Reservations\Reservations\Application\UseCases\ExpireOverdueReservations;
+use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
@@ -37,7 +38,10 @@ use Src\Shared\Domain\ValueObjects\UserId;
 use Src\Vouchers\PurchasedVouchers\Domain\Exceptions\InsufficientBalanceException;
 use Tests\Support\Identity\InMemoryMembershipRepository;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Reservations\RecordingReservationExpiries;
 use Tests\Support\Reservations\RecordingReservationVouchers;
+use Tests\Support\Shared\FixedBarbershopContext;
+use Tests\Support\Shared\RecordingDomainEvents;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
 /** Daniela's space of 10:00 is booked by Ana in a barbershop with no payment policy yet (RF-11, RE-01, RE-02, RE-06, RE-07, SV-03, UP-09). */
@@ -58,6 +62,10 @@ final class CreateReservationTest extends TestCase
     private RecordingTransactionRunner $transaction;
 
     private RecordingReservationVouchers $vouchers;
+
+    private RecordingDomainEvents $events;
+
+    private RecordingReservationExpiries $expiries;
 
     /** @var list<string> What happened, in order. */
     private array $calls = [];
@@ -87,6 +95,8 @@ final class CreateReservationTest extends TestCase
         $this->memberships = new InMemoryMembershipRepository;
         $this->transaction = new RecordingTransactionRunner;
         $this->vouchers = new RecordingReservationVouchers;
+        $this->events = new RecordingDomainEvents;
+        $this->expiries = new RecordingReservationExpiries;
         $test = $this;
 
         $services = new class($test) implements BookableServices
@@ -157,7 +167,7 @@ final class CreateReservationTest extends TestCase
             }
         };
 
-        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations), $this->transaction, $this->vouchers);
+        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID))), $this->transaction, $this->vouchers, $this->expiries);
     }
 
     /** The reservation is confirmed at once with the copies of the service, and its history has creation and confirmation (RE-07, SV-03, RE-09). */
@@ -199,6 +209,42 @@ final class CreateReservationTest extends TestCase
         $this->assertSame(ReservationStatus::Expired, $stale->status);
         $this->assertTrue($this->reservations->history($stale->id)[1]->author->isSystem());
         $this->assertSame(ReservationStatus::Confirmed, $fresh->status);
+    }
+
+    /** A temporary reservation leaves a task for the instant its payment window closes, and the reservation that is confirmed at once leaves none (RE-05, RE-07). */
+    public function test_only_a_temporary_reservation_schedules_its_expiry(): void
+    {
+        $confirmed = $this->createReservation->execute($this->command(self::at('2030-03-06 10:00')), self::at('2030-03-01 07:00'));
+        $this->assertSame([], $this->expiries->scheduled());
+        $this->assertSame(ReservationStatus::Confirmed, $confirmed->status);
+
+        $this->paymentRequired = true;
+        $temporary = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+
+        $scheduled = $this->expiries->scheduled();
+        $this->assertCount(1, $scheduled);
+        $this->assertSame($temporary->id->value, $scheduled[0][0]);
+        $this->assertEquals(self::at('2030-03-01 08:10'), $scheduled[0][1]);
+    }
+
+    /** The temporary reservation that expires on the way announces its space as released, once, for the waitlist (RE-05, RF-31). */
+    public function test_the_expired_reservation_announces_its_space(): void
+    {
+        $this->paymentRequired = true;
+        $stale = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+        $this->paymentRequired = false;
+        $this->assertSame([], $this->events->all());
+
+        $this->createReservation->execute($this->command(), self::at('2030-03-01 08:10'));
+        $this->createReservation->execute($this->command(self::at('2030-03-06 10:00')), self::at('2030-03-01 08:11'));
+
+        $released = $this->events->of(SpaceReleased::class);
+        $this->assertCount(1, $released);
+        $this->assertSame(self::BARBERSHOP_ID, $released[0]->barbershopId);
+        $this->assertSame($stale->id->value, $released[0]->reservationId);
+        $this->assertSame(self::DANIELA_ID, $released[0]->collaboratorId);
+        $this->assertEquals($stale->interval->start, $released[0]->startsAt);
+        $this->assertEquals($stale->blockedUntil, $released[0]->endsAt);
     }
 
     /** The collaborator is locked before the availability is checked again, and the membership comes after the check (RE-01, UP-09). */

@@ -154,8 +154,11 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 | Mis filas activas | `ListMyWaitlistEntries` | — | `mis-filas` |
 | Espacio libre que se muestra en lugar de anotarse | `OpenSpace` | — | `espacios` |
 | Oferta | `Offer` | `waitlist_offers` | `ofertas` |
-| Estado de la oferta | `OfferStatus` | `status` | `estado` |
-| Persona compatible | `isCompatibleWith()` | — | — |
+| Estado de la oferta (pendiente, aceptada, rechazada, vencida) | `OfferStatus` (`Pending`, `Accepted`, `Rejected`, `Expired`) | `waitlist_offers.status` (`pending`, `accepted`, `rejected`, `expired`) | `estado` |
+| Espacio liberado (el tiempo que dejó una reserva cancelada, vencida o movida) | `ReleasedSpace`; evento `SpaceReleased` | — | — |
+| Persona que espera, vista desde las ofertas | `WaitingCustomer` | — | — |
+| Persona compatible | `WaitingCustomer::isCompatibleWith()` | — | — |
+| Oferta creada, oferta vencida (hechos que avisan) | `OfferCreated`, `OfferExpired` | — | — |
 | Aviso | `Notification` | — | — |
 | Recordatorio | `Reminder` | `reservation_reminders` | — |
 | Aviso emergente | `Realtime` | — | — |

@@ -89,6 +89,32 @@ final readonly class EloquentWaitlistEntryRepository implements WaitlistEntryRep
         return $model === null ? null : $this->toDomain($model);
     }
 
+    /** Find the row among those of the current barbershop, locking it until the transaction ends. */
+    public function findForUpdate(WaitlistEntryId $id): ?WaitlistEntry
+    {
+        $model = $this->ofBarbershop()->lockForUpdate()->find($id->value);
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
+    /**
+     * Read the waiting rows of a day that ask for the collaborator or for any, in the order they joined.
+     *
+     * @return list<WaitlistEntry>
+     */
+    public function waitingFor(DesiredDate $date, CollaboratorId $collaborator): array
+    {
+        $models = $this->ofBarbershop()
+            ->where('status', WaitlistStatus::Waiting->value)
+            ->where('desired_date', $date->value)
+            ->where(fn (Builder $asks): Builder => $asks->whereNull('collaborator_id')->orWhere('collaborator_id', $collaborator->value))
+            ->orderBy('joined_at')
+            ->orderBy('id')
+            ->get();
+
+        return array_values($models->map(fn (WaitlistEntryModel $model): WaitlistEntry => $this->toDomain($model))->all());
+    }
+
     /**
      * Read the active rows of the customer in the order they joined; the identifier breaks the tie between two of the same instant.
      *

@@ -35,6 +35,20 @@ interface WaitlistEntryRepository
     public function findOfCustomerForUpdate(WaitlistEntryId $id, CustomerMembershipId $customer): ?WaitlistEntry;
 
     /**
+     * Find a row among those of the current barbershop, whoever owns it, and lock it until the transaction ends. The line uses it to offer a
+     * space (RF-31): it is not scoped to a customer because the process that offers acts for the barbershop, not for a person.
+     */
+    public function findForUpdate(WaitlistEntryId $id): ?WaitlistEntry;
+
+    /**
+     * The rows of the current barbershop that wait for a day with the collaborator or with any, in the order they joined (LE-02): the
+     * identifier breaks the tie between two of the same instant. A row that already has an offer is not waiting, so it is not listed.
+     *
+     * @return list<WaitlistEntry>
+     */
+    public function waitingFor(DesiredDate $date, CollaboratorId $collaborator): array;
+
+    /**
      * The active rows of a customer in the current barbershop, in the order they joined.
      *
      * @return list<WaitlistEntry>

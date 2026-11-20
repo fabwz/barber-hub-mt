@@ -12,8 +12,10 @@ use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Shared\Domain\Contracts\BarbershopFileStorage;
 use Src\Shared\Domain\Contracts\Clock;
 use Src\Shared\Domain\Contracts\DatabaseHealth;
+use Src\Shared\Domain\Contracts\DomainEvents;
 use Src\Shared\Domain\Contracts\QueueHealth;
 use Src\Shared\Domain\Contracts\TransactionRunner;
+use Src\Shared\Infrastructure\Events\LaravelDomainEvents;
 use Src\Shared\Infrastructure\Health\LaravelQueueHealth;
 use Src\Shared\Infrastructure\Health\PostgresDatabaseHealth;
 use Src\Shared\Infrastructure\OpenApi\ProblemResponsesTransformer;
@@ -33,6 +35,7 @@ final class SharedServiceProvider extends ServiceProvider
         $this->app->bind(Clock::class, fn (): Clock => new SystemClock(new DateTimeZone(config('app.timezone'))));
         $this->app->bind(TransactionRunner::class, DatabaseTransactionRunner::class);
         $this->app->bind(AuditLog::class, DatabaseAuditLog::class);
+        $this->app->bind(DomainEvents::class, LaravelDomainEvents::class);
         $this->app->bind(DatabaseHealth::class, PostgresDatabaseHealth::class);
         $this->app->bind(QueueHealth::class, LaravelQueueHealth::class);
     }

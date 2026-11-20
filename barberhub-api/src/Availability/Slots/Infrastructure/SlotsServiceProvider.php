@@ -11,7 +11,6 @@ use Src\Availability\Slots\Application\Contracts\ServiceCatalog;
 use Src\Availability\Slots\Application\Contracts\StaffRoster;
 use Src\Availability\Slots\Infrastructure\Collaborators\CollaboratorsStaffRoster;
 use Src\Availability\Slots\Infrastructure\OpeningHours\OpeningHoursBarbershopHours;
-use Src\Availability\Slots\Infrastructure\Reservations\ReservationsBlockedIntervals;
 use Src\Availability\Slots\Infrastructure\Services\ServicesServiceCatalog;
 
 final class SlotsServiceProvider extends ServiceProvider
@@ -25,6 +24,6 @@ final class SlotsServiceProvider extends ServiceProvider
         ServiceCatalog::class => ServicesServiceCatalog::class,
         BarbershopHours::class => OpeningHoursBarbershopHours::class,
         StaffRoster::class => CollaboratorsStaffRoster::class,
-        BlockedIntervals::class => ReservationsBlockedIntervals::class,
+        BlockedIntervals::class => ReservationsAndOffersBlockedIntervals::class,
     ];
 }
