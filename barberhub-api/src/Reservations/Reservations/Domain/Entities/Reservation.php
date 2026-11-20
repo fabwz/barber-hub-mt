@@ -61,7 +61,8 @@ final class Reservation
      * Create a reservation. It starts temporary (RE-05); one that needs no payment is confirmed right after (RE-07).
      * It keeps the price, the duration and the cancellation deadline in force now (SV-03, CA-01), ends when the service
      * does and blocks the collaborator five minutes more for cleaning (DI-01). The creation is the first entry of its history.
-     * While it is temporary it expires once the payment window passes, counted from its creation (RE-05).
+     * While it is temporary it expires once the payment window passes, counted from its creation (RE-05); the offer of the waitlist gives it
+     * its own limit instead, the end of the 15 minutes of the offer (LE-04), when `$payUntil` is given.
      */
     public static function create(
         ReservationId $id,
@@ -74,6 +75,7 @@ final class Reservation
         int $cancellationDeadlineHours,
         Author $author,
         DateTimeImmutable $at,
+        ?DateTimeImmutable $payUntil = null,
     ): self {
         if ($price->colones <= 0) {
             throw new InvalidValueException('reservations.price_invalid');
@@ -97,7 +99,7 @@ final class Reservation
             $cancellationDeadlineHours,
             0,
             ReservationStatus::Temporary,
-            $at->modify('+'.self::PAYMENT_WINDOW_MINUTES.' minutes'),
+            $payUntil ?? $at->modify('+'.self::PAYMENT_WINDOW_MINUTES.' minutes'),
             null,
             [new ReservationStatusChange(null, ReservationStatus::Temporary, $author, $at)],
         );

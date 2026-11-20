@@ -16,6 +16,7 @@ use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\ReservationConfirmed;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
@@ -24,13 +25,16 @@ use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
+use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
+use Src\Shared\Domain\Contracts\BarbershopContext;
+use Src\Shared\Domain\Contracts\DomainEvents;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CreateReservation
 {
-    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations, the transaction port, the vouchers port and the port that schedules the expiry of a temporary reservation. */
+    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations, the transaction port, the vouchers port, the port that schedules the expiry of a temporary reservation, the events of the domain and the barbershop of the operation. */
     public function __construct(
         private ReservationRepository $reservations,
         private BookableServices $services,
@@ -43,6 +47,8 @@ final readonly class CreateReservation
         private TransactionRunner $transaction,
         private ReservationVouchers $vouchers,
         private ReservationExpiries $expiries,
+        private DomainEvents $events,
+        private BarbershopContext $context,
     ) {}
 
     /**
@@ -61,7 +67,10 @@ final readonly class CreateReservation
      * covers the service is set aside in the same transaction, the one that expires first (BO-04, BO-08); if none can be, the
      * transaction is rolled back and nothing is left, not even the membership. In a barbershop that does not charge there is nothing
      * to replace, so asking for a voucher is rejected before anything is written and no session is used. When the space is taken, by the check or by the exclusion of the database
-     * (the second barrier, ADR 0009), the error carries up to 3 alternatives, read after the rollback (RE-02).
+     * (the second barrier, ADR 0009), the error carries up to 3 alternatives, read after the rollback (RE-02). A reservation that is confirmed
+     * here announces it (ReservationConfirmed), so the lines of the waitlist that the person waits in for that service and day are left (LE-06).
+     * The waitlist, when it books the space of an offer, gives the identifier the reservation will have and the limit of its payment, the end of
+     * the 15 minutes of the offer (LE-04); nobody else does.
      *
      * @throws SlotUnavailableException
      * @throws OverlappingReservationException
@@ -87,7 +96,7 @@ final readonly class CreateReservation
 
                 $customer = new CustomerMembershipId($this->customers->ensure($command->userId));
                 $reservation = Reservation::create(
-                    $this->reservations->nextId(),
+                    $command->reservationId === null ? $this->reservations->nextId() : new ReservationId($command->reservationId),
                     new CollaboratorId($command->collaboratorId),
                     new ServiceId($command->serviceId),
                     $customer,
@@ -97,6 +106,7 @@ final readonly class CreateReservation
                     $this->deadlines->current(),
                     $author,
                     $now,
+                    $command->payUntil,
                 );
 
                 if ($this->reservations->hasConfirmedOverlapping($customer, $reservation->interval)) {
@@ -121,6 +131,16 @@ final readonly class CreateReservation
 
                 if ($reservation->expiresAt !== null) {
                     $this->expiries->schedule($reservation->id->value, $reservation->expiresAt);
+                } else {
+                    $this->events->publish(new ReservationConfirmed(
+                        $this->context->current()->value,
+                        $reservation->id->value,
+                        $reservation->customerMembershipId->value,
+                        $reservation->serviceId->value,
+                        $reservation->collaboratorId->value,
+                        $reservation->interval->start,
+                        $reservation->interval->end,
+                    ));
                 }
 
                 return $reservation;

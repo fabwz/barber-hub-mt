@@ -21,6 +21,7 @@ use Src\Reservations\Reservations\Application\DTOs\BookableService;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
 use Src\Reservations\Reservations\Application\UseCases\ExpireOverdueReservations;
+use Src\Reservations\Reservations\Domain\Events\ReservationConfirmed;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
@@ -167,7 +168,7 @@ final class CreateReservationTest extends TestCase
             }
         };
 
-        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID))), $this->transaction, $this->vouchers, $this->expiries);
+        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID))), $this->transaction, $this->vouchers, $this->expiries, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID)));
     }
 
     /** The reservation is confirmed at once with the copies of the service, and its history has creation and confirmation (RE-07, SV-03, RE-09). */
@@ -245,6 +246,42 @@ final class CreateReservationTest extends TestCase
         $this->assertSame(self::DANIELA_ID, $released[0]->collaboratorId);
         $this->assertEquals($stale->interval->start, $released[0]->startsAt);
         $this->assertEquals($stale->blockedUntil, $released[0]->endsAt);
+    }
+
+    /** A reservation confirmed on the spot announces it, with its customer, service and interval, and a temporary one does not (RE-07, LE-06). */
+    public function test_a_confirmed_reservation_announces_it_and_a_temporary_one_does_not(): void
+    {
+        $this->paymentRequired = true;
+        $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+        $this->assertCount(0, $this->events->of(ReservationConfirmed::class));
+
+        $this->paymentRequired = false;
+        $reservation = $this->createReservation->execute($this->command(self::at('2030-03-06 10:00')), self::at('2030-03-01 08:01'));
+
+        $announced = $this->events->of(ReservationConfirmed::class);
+        $this->assertCount(1, $announced);
+        $this->assertSame(self::BARBERSHOP_ID, $announced[0]->barbershopId);
+        $this->assertSame($reservation->id->value, $announced[0]->reservationId);
+        $this->assertSame($reservation->customerMembershipId->value, $announced[0]->customerMembershipId);
+        $this->assertSame(self::SERVICE_ID, $announced[0]->serviceId);
+        $this->assertEquals(self::at('2030-03-06 10:00'), $announced[0]->startsAt);
+        $this->assertEquals(self::at('2030-03-06 10:45'), $announced[0]->endsAt);
+    }
+
+    /** The waitlist names the identifier of the reservation and the limit of its payment, which replaces the 10 minutes (LE-04, RE-05). */
+    public function test_the_waitlist_gives_the_identifier_and_the_payment_limit(): void
+    {
+        $this->paymentRequired = true;
+        $id = '0192f3a0-0000-7000-8000-000000000001';
+
+        $reservation = $this->createReservation->execute(
+            new CreateReservationCommand(self::ANA_ID, self::SERVICE_ID, self::DANIELA_ID, self::at('2030-03-05 10:00'), false, $id, self::at('2030-03-01 08:15')),
+            self::at('2030-03-01 08:00'),
+        );
+
+        $this->assertSame($id, $reservation->id->value);
+        $this->assertEquals(self::at('2030-03-01 08:15'), $reservation->expiresAt);
+        $this->assertEquals(self::at('2030-03-01 08:15'), $this->expiries->scheduled()[0][1]);
     }
 
     /** The collaborator is locked before the availability is checked again, and the membership comes after the check (RE-01, UP-09). */
