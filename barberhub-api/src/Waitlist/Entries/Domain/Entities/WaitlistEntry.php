@@ -6,6 +6,7 @@ namespace Src\Waitlist\Entries\Domain\Entities;
 
 use DateTimeImmutable;
 use Src\Waitlist\Entries\Domain\Exceptions\EntryNotLeavableException;
+use Src\Waitlist\Entries\Domain\Exceptions\EntryNotOfferedException;
 use Src\Waitlist\Entries\Domain\Exceptions\EntryNotWaitingException;
 use Src\Waitlist\Entries\Domain\ValueObjects\CollaboratorId;
 use Src\Waitlist\Entries\Domain\ValueObjects\CustomerMembershipId;
@@ -110,6 +111,26 @@ final class WaitlistEntry
         }
 
         $this->status = WaitlistStatus::Waiting;
+        $this->updatedAt = $at;
+    }
+
+    /**
+     * The offer of the row ended with a reservation (RF-32): the row is fulfilled and leaves the line for good. Doing it twice changes nothing; a
+     * row that is not offered, such as one the customer left while the offer was pending, has no offer to fulfil.
+     *
+     * @throws EntryNotOfferedException
+     */
+    public function fulfill(DateTimeImmutable $at): void
+    {
+        if ($this->status === WaitlistStatus::Fulfilled) {
+            return;
+        }
+
+        if ($this->status !== WaitlistStatus::Offered) {
+            throw EntryNotOfferedException::create();
+        }
+
+        $this->status = WaitlistStatus::Fulfilled;
         $this->updatedAt = $at;
     }
 

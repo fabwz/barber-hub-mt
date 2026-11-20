@@ -21,7 +21,8 @@ final readonly class EloquentOfferedSpaceReader implements OfferedSpaceReader
 
     /**
      * Read the spaces of the pending offers of some collaborators that overlap a window. An offer counts only while its 15 minutes are
-     * open at `$now`, even if its task has not marked it expired yet (DI-05, LE-05).
+     * open at `$now`, even if its task has not marked it expired yet (DI-05, LE-05). An offer the person accepted has a reservation, and from then
+     * on the reservation holds the time, so the offer holds nothing: that is what lets the offer be booked without colliding with itself (RF-32).
      *
      * @param  list<string>  $collaboratorIds
      * @return array<string, list<TimeInterval>>
@@ -32,6 +33,7 @@ final readonly class EloquentOfferedSpaceReader implements OfferedSpaceReader
             ->where('barbershop_id', $this->context->current()->value)
             ->whereIn('collaborator_id', $collaboratorIds)
             ->where('status', OfferStatus::Pending->value)
+            ->whereNull('reservation_id')
             ->where('expires_at', '>', $now->format(self::INSTANT_FORMAT))
             ->where('starts_at', '<', $window->end->format(self::INSTANT_FORMAT))
             ->where('ends_at', '>', $window->start->format(self::INSTANT_FORMAT))

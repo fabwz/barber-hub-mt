@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $status
  * @property string|null $responded_at
  * @property string $created_at
+ * @property string|null $reservation_id
  */
 #[Table('waitlist_offers')]
 #[Fillable([
@@ -36,6 +37,7 @@ use Illuminate\Database\Eloquent\Model;
     'status',
     'responded_at',
     'created_at',
+    'reservation_id',
 ])]
 final class WaitlistOfferModel extends Model
 {

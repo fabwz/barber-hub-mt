@@ -38,6 +38,9 @@ final class ReservationMigrationTest extends TestCase
     // The column that points at the voucher a reservation uses goes before the vouchers when rolling back and after them when applying again.
     private const string RESERVATION_VOUCHER = '2026_11_16_100000_add_purchased_voucher_to_reservations_table';
 
+    // The column that points an offer of the waitlist at the reservation that answers it goes before the reservations when rolling back and after them when applying again.
+    private const string OFFER_RESERVATION = '2026_11_19_120000_add_reservation_to_waitlist_offers_table';
+
     /** Rolling back drops both tables with their constraints and policies and keeps the extension; applying again brings them back. */
     public function test_migration_rolls_back_and_applies_again_without_leftovers(): void
     {
@@ -52,10 +55,12 @@ final class ReservationMigrationTest extends TestCase
         $purchasedVouchers = require base_path('database/migrations/'.self::PURCHASED_VOUCHERS.'.php');
         $voucherPayments = require base_path('database/migrations/'.self::VOUCHER_PAYMENTS.'.php');
         $reservationVoucher = require base_path('database/migrations/'.self::RESERVATION_VOUCHER.'.php');
+        $offerReservation = require base_path('database/migrations/'.self::OFFER_RESERVATION.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $offerReservation->down();
             $reservationVoucher->down();
             $voucherPayments->down();
             $purchasedVouchers->down();
@@ -81,6 +86,7 @@ final class ReservationMigrationTest extends TestCase
             $purchasedVouchers->up();
             $voucherPayments->up();
             $reservationVoucher->up();
+            $offerReservation->up();
 
             $this->assertTrue($schema->hasTable('reservations'));
             $this->assertTrue($schema->hasTable('reservation_status_history'));

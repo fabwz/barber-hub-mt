@@ -54,6 +54,9 @@ final class OpeningHoursMigrationTest extends TestCase
     // The offers point at the waitlist rows, so they go before them when rolling back and after them when applying again.
     private const string WAITLIST_OFFERS = '2026_11_19_110000_create_waitlist_offers_table';
 
+    // The offers point at the reservation that answers them, so that column goes before the offers and the reservations when rolling back and after them when applying again.
+    private const string OFFER_RESERVATION = '2026_11_19_120000_add_reservation_to_waitlist_offers_table';
+
     /** Rolling back drops both tables, the range type and the extension; applying again brings them back. */
     public function test_migrations_roll_back_and_apply_again_without_leftovers(): void
     {
@@ -61,6 +64,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         $this->asOwner(function (): void {
+            $this->apply(self::OFFER_RESERVATION, 'down');
             $this->apply(self::WAITLIST_OFFERS, 'down');
             $this->apply(self::WAITLIST_ENTRIES, 'down');
             $this->apply(self::RESERVATION_VOUCHER, 'down');
@@ -97,6 +101,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::RESERVATION_VOUCHER, 'up');
             $this->apply(self::WAITLIST_ENTRIES, 'up');
             $this->apply(self::WAITLIST_OFFERS, 'up');
+            $this->apply(self::OFFER_RESERVATION, 'up');
         });
 
         $this->assertTrue($schema->hasTable('opening_hours'));
@@ -111,6 +116,7 @@ final class OpeningHoursMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
 
         $this->asOwner(function () use ($admin): void {
+            $this->apply(self::OFFER_RESERVATION, 'down');
             $this->apply(self::WAITLIST_OFFERS, 'down');
             $this->apply(self::WAITLIST_ENTRIES, 'down');
             $this->apply(self::RESERVATION_VOUCHER, 'down');
@@ -141,6 +147,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::RESERVATION_VOUCHER, 'up');
             $this->apply(self::WAITLIST_ENTRIES, 'up');
             $this->apply(self::WAITLIST_OFFERS, 'up');
+            $this->apply(self::OFFER_RESERVATION, 'up');
         });
 
         $this->assertSame(1, $admin->table('pg_type')->where('typname', 'timerange')->count());

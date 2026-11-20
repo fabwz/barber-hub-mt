@@ -52,7 +52,7 @@ final class WaitlistOffersSchemaTest extends TestCase
     public function test_the_table_has_its_columns_and_a_forced_policy(): void
     {
         $this->assertSame(
-            ['id', 'barbershop_id', 'waitlist_entry_id', 'collaborator_id', 'starts_at', 'ends_at', 'expires_at', 'status', 'responded_at', 'created_at'],
+            ['id', 'barbershop_id', 'waitlist_entry_id', 'collaborator_id', 'starts_at', 'ends_at', 'expires_at', 'status', 'responded_at', 'created_at', 'reservation_id'],
             Schema::getColumnListing('waitlist_offers'),
         );
         $admin = DB::connection('pgsql_admin');

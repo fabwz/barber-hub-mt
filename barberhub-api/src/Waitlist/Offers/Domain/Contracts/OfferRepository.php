@@ -9,6 +9,7 @@ use Src\Shared\Domain\ValueObjects\TimeInterval;
 use Src\Waitlist\Offers\Domain\Entities\Offer;
 use Src\Waitlist\Offers\Domain\ValueObjects\CollaboratorId;
 use Src\Waitlist\Offers\Domain\ValueObjects\OfferId;
+use Src\Waitlist\Offers\Domain\ValueObjects\ReservationId;
 use Src\Waitlist\Offers\Domain\ValueObjects\WaitlistEntryId;
 
 interface OfferRepository
@@ -24,6 +25,21 @@ interface OfferRepository
 
     /** Find an offer among those of the current barbershop and lock its row until the transaction ends, so a task and an answer run one after the other. */
     public function findForUpdate(OfferId $id): ?Offer;
+
+    /** Find the offer that the reservation answers among those of the current barbershop and lock its row until the transaction ends; none if no offer points at it. */
+    public function findByReservationForUpdate(ReservationId $reservation): ?Offer;
+
+    /** Find the pending offer of a row of the line among those of the current barbershop, whether or not its time is up, without locking it; none if the row has no pending offer. */
+    public function pendingOfEntry(WaitlistEntryId $entry): ?Offer;
+
+    /**
+     * The pending offers, inside their 15 minutes at the instant, of some rows of the line among those of the current barbershop, from the one
+     * that was made first.
+     *
+     * @param  list<WaitlistEntryId>  $entries
+     * @return list<Offer>
+     */
+    public function pendingOfEntries(array $entries, DateTimeImmutable $now): array;
 
     /**
      * Whether the row of the line already had an offer, in any state, for a space of the collaborator that shares some minute with the

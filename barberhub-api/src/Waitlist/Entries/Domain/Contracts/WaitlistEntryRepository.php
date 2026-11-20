@@ -31,6 +31,9 @@ interface WaitlistEntryRepository
     /** Whether the customer already has an active row for the same service, day and collaborator (or any, when null) in the current barbershop. */
     public function hasActiveFor(CustomerMembershipId $customer, ServiceId $service, ?CollaboratorId $collaborator, DesiredDate $date): bool;
 
+    /** Find a row among those of the current barbershop, whoever owns it, without locking it. */
+    public function find(WaitlistEntryId $id): ?WaitlistEntry;
+
     /** Find a row of a customer among those of the current barbershop and lock it until the transaction ends; none if it is not theirs (CL-04). */
     public function findOfCustomerForUpdate(WaitlistEntryId $id, CustomerMembershipId $customer): ?WaitlistEntry;
 

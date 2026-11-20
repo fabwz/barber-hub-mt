@@ -70,6 +70,12 @@ final class InMemoryWaitlistEntryRepository implements WaitlistEntryRepository
     }
 
     /** The row of the barbershop, whoever owns it. */
+    public function find(WaitlistEntryId $id): ?WaitlistEntry
+    {
+        return $this->entries[$id->value] ?? null;
+    }
+
+    /** The row of the barbershop, whoever owns it. */
     public function findForUpdate(WaitlistEntryId $id): ?WaitlistEntry
     {
         return $this->entries[$id->value] ?? null;

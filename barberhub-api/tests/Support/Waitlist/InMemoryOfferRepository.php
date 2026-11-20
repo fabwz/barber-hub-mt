@@ -10,6 +10,8 @@ use Src\Waitlist\Offers\Domain\Contracts\OfferRepository;
 use Src\Waitlist\Offers\Domain\Entities\Offer;
 use Src\Waitlist\Offers\Domain\ValueObjects\CollaboratorId;
 use Src\Waitlist\Offers\Domain\ValueObjects\OfferId;
+use Src\Waitlist\Offers\Domain\ValueObjects\OfferStatus;
+use Src\Waitlist\Offers\Domain\ValueObjects\ReservationId;
 use Src\Waitlist\Offers\Domain\ValueObjects\WaitlistEntryId;
 
 /** The offers of the test, in memory, with the same questions the real repository answers. */
@@ -42,6 +44,32 @@ final class InMemoryOfferRepository implements OfferRepository
     public function findForUpdate(OfferId $id): ?Offer
     {
         return $this->offers[$id->value] ?? null;
+    }
+
+    /** The offer that points at the reservation. */
+    public function findByReservationForUpdate(ReservationId $reservation): ?Offer
+    {
+        return array_find($this->offers, fn (Offer $offer): bool => $offer->reservationId?->equals($reservation) === true);
+    }
+
+    /** The pending offer of the row. */
+    public function pendingOfEntry(WaitlistEntryId $entry): ?Offer
+    {
+        return array_find($this->offers, fn (Offer $offer): bool => $offer->entryId->equals($entry) && $offer->status === OfferStatus::Pending);
+    }
+
+    /**
+     * The pending offers of the rows inside their time.
+     *
+     * @param  list<WaitlistEntryId>  $entries
+     * @return list<Offer>
+     */
+    public function pendingOfEntries(array $entries, DateTimeImmutable $now): array
+    {
+        return array_values(array_filter(
+            $this->offers,
+            fn (Offer $offer): bool => $offer->holdsSpaceAt($now) && array_any($entries, fn (WaitlistEntryId $entry): bool => $offer->entryId->equals($entry)),
+        ));
     }
 
     /** Whether an offer of the row, in any state, is for the same collaborator and shares a minute with the space. */

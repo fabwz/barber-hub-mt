@@ -14,6 +14,7 @@ use Src\Waitlist\Offers\Domain\Entities\Offer;
 use Src\Waitlist\Offers\Domain\ValueObjects\CollaboratorId;
 use Src\Waitlist\Offers\Domain\ValueObjects\OfferId;
 use Src\Waitlist\Offers\Domain\ValueObjects\OfferStatus;
+use Src\Waitlist\Offers\Domain\ValueObjects\ReservationId;
 use Src\Waitlist\Offers\Domain\ValueObjects\WaitlistEntryId;
 use Src\Waitlist\Offers\Infrastructure\Persistence\Models\WaitlistOfferModel;
 
@@ -31,7 +32,7 @@ final readonly class EloquentOfferRepository implements OfferRepository
         return new OfferId((string) Str::uuid7());
     }
 
-    /** Write the offer: a new one is inserted and an existing one changes only its status and its answer instant. */
+    /** Write the offer: a new one is inserted and an existing one changes only its status, its answer instant and the reservation that answers it. */
     public function save(Offer $offer): void
     {
         $model = $this->ofBarbershop()->find($offer->id->value);
@@ -49,12 +50,13 @@ final readonly class EloquentOfferRepository implements OfferRepository
                 'status' => $offer->status->value,
                 'responded_at' => $respondedAt,
                 'created_at' => self::instant($offer->createdAt),
+                'reservation_id' => $offer->reservationId?->value,
             ]);
 
             return;
         }
 
-        $model->update(['status' => $offer->status->value, 'responded_at' => $respondedAt]);
+        $model->update(['status' => $offer->status->value, 'responded_at' => $respondedAt, 'reservation_id' => $offer->reservationId?->value]);
     }
 
     /** Find the offer among those of the current barbershop. */
@@ -71,6 +73,49 @@ final readonly class EloquentOfferRepository implements OfferRepository
         $model = $this->ofBarbershop()->lockForUpdate()->find($id->value);
 
         return $model === null ? null : $this->toDomain($model);
+    }
+
+    /** Find the offer that points at the reservation among those of the current barbershop, locking its row until the transaction ends. */
+    public function findByReservationForUpdate(ReservationId $reservation): ?Offer
+    {
+        $model = $this->ofBarbershop()->where('reservation_id', $reservation->value)->lockForUpdate()->first();
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
+    /** Find the pending offer of the row, whatever its time, without locking it. */
+    public function pendingOfEntry(WaitlistEntryId $entry): ?Offer
+    {
+        $model = $this->ofBarbershop()
+            ->where('waitlist_entry_id', $entry->value)
+            ->where('status', OfferStatus::Pending->value)
+            ->orderBy('created_at')
+            ->first();
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
+    /**
+     * Read the pending offers of the rows that are still inside their time, from the oldest.
+     *
+     * @param  list<WaitlistEntryId>  $entries
+     * @return list<Offer>
+     */
+    public function pendingOfEntries(array $entries, DateTimeImmutable $now): array
+    {
+        if ($entries === []) {
+            return [];
+        }
+
+        $models = $this->ofBarbershop()
+            ->whereIn('waitlist_entry_id', array_map(fn (WaitlistEntryId $entry): string => $entry->value, $entries))
+            ->where('status', OfferStatus::Pending->value)
+            ->where('expires_at', '>', self::instant($now))
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        return array_values($models->map(fn (WaitlistOfferModel $model): Offer => $this->toDomain($model))->all());
     }
 
     /** Whether an offer of the row, whatever its state, is for the same collaborator and shares some minute with the space. */
@@ -121,6 +166,7 @@ final readonly class EloquentOfferRepository implements OfferRepository
             OfferStatus::from($model->status),
             $model->responded_at === null ? null : new DateTimeImmutable($model->responded_at),
             new DateTimeImmutable($model->created_at),
+            $model->reservation_id === null ? null : new ReservationId($model->reservation_id),
         );
     }
 
