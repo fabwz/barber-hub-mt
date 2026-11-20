@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\UseCases\CancelReservation;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
@@ -21,12 +22,15 @@ use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
 use Src\Shared\Domain\ValueObjects\AuditAction;
+use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Reservations\InMemoryReservationRepository;
 use Tests\Support\Reservations\RecordingReservationVouchers;
+use Tests\Support\Shared\FixedBarbershopContext;
 use Tests\Support\Shared\InMemoryAuditLog;
+use Tests\Support\Shared\RecordingDomainEvents;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
 /** Who may cancel which reservation, how the cancellation is classified and why repeating it changes nothing (RF-16, CA-01, CA-04, CA-06). */
@@ -40,6 +44,10 @@ final class CancelReservationTest extends TestCase
 
     private const string OWNER_USER = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d48';
 
+    private const string BARBERSHOP = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d10';
+
+    private const string COLLABORATOR = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d55';
+
     private InMemoryReservationRepository $reservations;
 
     private RecordingTransactionRunner $transaction;
@@ -47,6 +55,8 @@ final class CancelReservationTest extends TestCase
     private InMemoryAuditLog $audit;
 
     private RecordingReservationVouchers $vouchers;
+
+    private RecordingDomainEvents $events;
 
     private string $reservationId;
 
@@ -59,9 +69,10 @@ final class CancelReservationTest extends TestCase
         $this->transaction = new RecordingTransactionRunner;
         $this->audit = new InMemoryAuditLog;
         $this->vouchers = new RecordingReservationVouchers;
+        $this->events = new RecordingDomainEvents;
         $reservation = Reservation::create(
             $this->reservations->nextId(),
-            new CollaboratorId('0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d55'),
+            new CollaboratorId(self::COLLABORATOR),
             new ServiceId('0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d33'),
             new CustomerMembershipId(self::ANA_ROLE),
             self::at('2030-03-05 10:00'),
@@ -109,6 +120,48 @@ final class CancelReservationTest extends TestCase
         $this->assertSame(CancellationClass::OnTime, $second->class);
         $this->assertSame([2, 1], $this->reservations->entriesPerSave);
         $this->assertCount(3, $this->reservations->history(new ReservationId($this->reservationId)));
+    }
+
+    /** A cancellation announces the time the reservation held, cleaning included, as released, for the waitlist (CA-07, RF-31). */
+    public function test_a_cancellation_announces_the_released_space(): void
+    {
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+
+        $released = $this->events->of(SpaceReleased::class);
+        $this->assertCount(1, $released);
+        $this->assertSame(self::BARBERSHOP, $released[0]->barbershopId);
+        $this->assertSame($this->reservationId, $released[0]->reservationId);
+        $this->assertSame(self::COLLABORATOR, $released[0]->collaboratorId);
+        $this->assertEquals(self::at('2030-03-05 10:00'), $released[0]->startsAt);
+        $this->assertEquals(self::at('2030-03-05 10:50'), $released[0]->endsAt);
+    }
+
+    /** The cancellation of the barbershop frees the space the same way. */
+    public function test_the_cancellation_of_the_barbershop_announces_it_too(): void
+    {
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, self::at('2030-03-05 09:00'));
+
+        $this->assertCount(1, $this->events->of(SpaceReleased::class));
+    }
+
+    /** Repeating the cancellation announces nothing more, so a retry does not offer the space twice (CA-06). */
+    public function test_a_repeat_announces_nothing_more(): void
+    {
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:30'));
+
+        $this->assertCount(1, $this->events->of(SpaceReleased::class));
+    }
+
+    /** A cancellation that is refused frees nothing and announces nothing. */
+    public function test_a_refused_cancellation_announces_nothing(): void
+    {
+        try {
+            $this->useCase()->execute(self::LUIS_USER, false, $this->reservationId, self::at('2030-03-02 09:00'));
+            $this->fail('Another customer cancelled the reservation.');
+        } catch (ReservationNotFoundException) {
+            $this->assertSame([], $this->events->all());
+        }
     }
 
     /** The customer of another reservation reads it as a missing one, and nothing changes (UP-06). */
@@ -251,7 +304,7 @@ final class CancelReservationTest extends TestCase
             }
         };
 
-        return new CancelReservation($this->reservations, $customers, $this->transaction, $this->audit, $this->vouchers);
+        return new CancelReservation($this->reservations, $customers, $this->transaction, $this->audit, $this->vouchers, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP)));
     }
 
     private static function at(string $moment): DateTimeImmutable

@@ -30,6 +30,7 @@ use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
 use Src\Reservations\Reservations\Application\Contracts\ProposableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\ProposableServices;
 use Src\Reservations\Reservations\Application\Contracts\ProposalAvailability;
+use Src\Reservations\Reservations\Application\Contracts\ReservationExpiries;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExtractor;
 use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
@@ -57,6 +58,7 @@ use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentChannel
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentAttendedServiceTotals;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentBlockedIntervalReader;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
+use Src\Reservations\Reservations\Infrastructure\Queue\QueuedReservationExpiries;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesActiveServiceNames;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesBookableServices;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesProposableServices;
@@ -95,6 +97,7 @@ final class ReservationsServiceProvider extends ServiceProvider
         ProposableCollaborators::class => CollaboratorsProposableCollaborators::class,
         ProposalAvailability::class => AvailabilityProposalAvailability::class,
         ReservationVouchers::class => VouchersReservationVouchers::class,
+        ReservationExpiries::class => QueuedReservationExpiries::class,
     ];
 
     /** Limit the proposals by phrase to 10 a minute per person (RF-37): each one spends a call of the free tier of the provider. */

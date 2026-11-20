@@ -10,6 +10,7 @@ use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
@@ -19,12 +20,14 @@ use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedExceptio
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
+use Src\Shared\Domain\Contracts\BarbershopContext;
+use Src\Shared\Domain\Contracts\DomainEvents;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class RescheduleReservation
 {
-    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations and the transaction port. */
+    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations, the transaction port, the events of the domain and the barbershop of the operation. */
     public function __construct(
         private ReservationRepository $reservations,
         private CustomerDirectory $customers,
@@ -32,6 +35,8 @@ final readonly class RescheduleReservation
         private FreeSlots $slots,
         private ExpireOverdueReservations $expireOverdue,
         private TransactionRunner $transaction,
+        private DomainEvents $events,
+        private BarbershopContext $context,
     ) {}
 
     /**
@@ -43,7 +48,9 @@ final readonly class RescheduleReservation
      * taken, by the check or by the exclusion of the database (the second barrier, ADR 0009), nothing changes and the error
      * carries up to 3 alternatives, read after the rollback (RE-02). Freeing the old space is the same update: the exclusion
      * covers only the new one. A customer moves only their own; the owner any of the barbershop, with no deadline (CA-01,
-     * CA-07); another customer's reads like a missing one (UP-06). The deposit is not charged again (CA-05) and the
+     * CA-07); another customer's reads like a missing one (UP-06). Once it moved, the time it held before is announced as released
+     * (SpaceReleased) for the waitlist (RF-31); if the new time still overlaps the old one, the waitlist finds the old space is not whole
+     * and offers nothing. The deposit is not charged again (CA-05) and the
      * notice to the customer when the owner moves it (CA-08) is #96; neither exists yet.
      *
      * @throws ReservationNotFoundException
@@ -70,6 +77,10 @@ final readonly class RescheduleReservation
                 $service = $reservation->serviceId->value;
                 $target = $collaboratorId ?? $reservation->collaboratorId->value;
 
+                $releasedCollaborator = $reservation->collaboratorId->value;
+                $releasedFrom = $reservation->interval->start;
+                $releasedUntil = $reservation->blockedUntil;
+
                 $reservation->reschedule(new CollaboratorId($target), $startsAt, $isOwner, $now, Author::person(new UserId($userId)));
                 $this->collaborators->lock($target);
                 $this->expireOverdue->execute($target, $now);
@@ -83,6 +94,7 @@ final readonly class RescheduleReservation
                 }
 
                 $this->reservations->save($reservation);
+                $this->events->publish(new SpaceReleased($this->context->current()->value, $reservation->id->value, $releasedCollaborator, $releasedFrom, $releasedUntil));
 
                 return $reservation;
             });

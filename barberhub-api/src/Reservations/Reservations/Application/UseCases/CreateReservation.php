@@ -11,6 +11,7 @@ use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
 use Src\Reservations\Reservations\Application\Contracts\CustomerMemberships;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
+use Src\Reservations\Reservations\Application\Contracts\ReservationExpiries;
 use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
@@ -29,7 +30,7 @@ use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CreateReservation
 {
-    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations, the transaction port and the vouchers port. */
+    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations, the transaction port, the vouchers port and the port that schedules the expiry of a temporary reservation. */
     public function __construct(
         private ReservationRepository $reservations,
         private BookableServices $services,
@@ -41,6 +42,7 @@ final readonly class CreateReservation
         private ExpireOverdueReservations $expireOverdue,
         private TransactionRunner $transaction,
         private ReservationVouchers $vouchers,
+        private ReservationExpiries $expiries,
     ) {}
 
     /**
@@ -51,7 +53,8 @@ final readonly class CreateReservation
      * was. Right after it locks the collaborator and before it checks the space, it expires the temporary reservations of
      * that collaborator whose payment window closed, so the exclusion of the database does not collide with them (RE-05).
      * If the barbershop charges, the reservation stays temporary and expires 10 minutes after it was made unless its
-     * payment confirms it (RE-05, PA-06); if not, it is confirmed right away (RE-07), so its history has two entries:
+     * payment confirms it (RE-05, PA-06), and a task is left for that moment so it expires on time and frees its space for the
+     * waitlist even if nobody asks for the collaborator; if not, it is confirmed right away (RE-07), so its history has two entries:
      * creation and confirmation. If anything fails the transaction is
      * rolled back and no membership is left. When the customer pays with a voucher (RF-28) and the barbershop charges, the
      * reservation is confirmed right away without a deposit (RE-07) and, once it is stored, a session of a valid voucher that
@@ -115,6 +118,10 @@ final readonly class CreateReservation
                 }
 
                 $this->reservations->save($reservation);
+
+                if ($reservation->expiresAt !== null) {
+                    $this->expiries->schedule($reservation->id->value, $reservation->expiresAt);
+                }
 
                 return $reservation;
             });

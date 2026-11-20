@@ -13,6 +13,7 @@ use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Application\UseCases\ExpireOverdueReservations;
 use Src\Reservations\Reservations\Application\UseCases\RescheduleReservation;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
@@ -25,11 +26,14 @@ use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
 use Src\Reservations\Reservations\Domain\ValueObjects\SlotAlternative;
+use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Shared\FixedBarbershopContext;
+use Tests\Support\Shared\RecordingDomainEvents;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
 /** Who may move which reservation, in what order the use case locks and revalidates, and what it does when the space is taken (RF-15, RE-08, CA-01, CA-07). */
@@ -49,6 +53,8 @@ final class RescheduleReservationTest extends TestCase
 
     private const string SERVICE = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d33';
 
+    private const string BARBERSHOP = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d10';
+
     /** @var list<string> What happened, in order. */
     public array $calls = [];
 
@@ -60,6 +66,8 @@ final class RescheduleReservationTest extends TestCase
 
     private RecordingTransactionRunner $transaction;
 
+    private RecordingDomainEvents $events;
+
     private string $reservationId;
 
     /** Ana has a confirmed reservation with Daniela on 5 March at 10:00, with a deadline of 4 hours. */
@@ -69,6 +77,7 @@ final class RescheduleReservationTest extends TestCase
 
         $this->reservations = new InMemoryReservationRepository;
         $this->transaction = new RecordingTransactionRunner;
+        $this->events = new RecordingDomainEvents;
         $reservation = Reservation::create(
             $this->reservations->nextId(),
             new CollaboratorId(self::DANIELA),
@@ -96,6 +105,33 @@ final class RescheduleReservationTest extends TestCase
         $this->assertSame(1, $moved->rescheduleCount);
         $this->assertSame([2, 1], $this->reservations->entriesPerSave);
         $this->assertSame(1, $this->transaction->committed());
+    }
+
+    /** Moving a reservation announces the time it held before as released, whole and with its cleaning, for the waitlist (RF-31). */
+    public function test_moving_announces_the_space_it_held_before(): void
+    {
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-05 11:00'), self::KEVIN, self::at('2030-03-04 09:00'));
+
+        $released = $this->events->of(SpaceReleased::class);
+        $this->assertCount(1, $released);
+        $this->assertSame(self::BARBERSHOP, $released[0]->barbershopId);
+        $this->assertSame($this->reservationId, $released[0]->reservationId);
+        $this->assertSame(self::DANIELA, $released[0]->collaboratorId, 'It is the space of the collaborator it left, not the one it went to.');
+        $this->assertEquals(self::at('2030-03-05 10:00'), $released[0]->startsAt);
+        $this->assertEquals(self::at('2030-03-05 10:50'), $released[0]->endsAt);
+    }
+
+    /** A move that is refused changes nothing, so it frees nothing and announces nothing. */
+    public function test_a_refused_move_announces_nothing(): void
+    {
+        $this->free = false;
+
+        try {
+            $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-05 11:00'), null, self::at('2030-03-04 09:00'));
+            $this->fail('The space was taken.');
+        } catch (SlotUnavailableException) {
+            $this->assertSame([], $this->events->all());
+        }
     }
 
     /** Naming another collaborator locks and revalidates that one (RF-15). */
@@ -241,7 +277,9 @@ final class RescheduleReservationTest extends TestCase
             }
         };
 
-        return new RescheduleReservation($this->reservations, $customers, $lock, $slots, new ExpireOverdueReservations($this->reservations), $this->transaction);
+        $context = new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP));
+
+        return new RescheduleReservation($this->reservations, $customers, $lock, $slots, new ExpireOverdueReservations($this->reservations, $this->events, $context), $this->transaction, $this->events, $context);
     }
 
     private static function at(string $moment): DateTimeImmutable

@@ -10,6 +10,7 @@ use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\DTOs\CancelledReservation;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
@@ -17,6 +18,8 @@ use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Shared\Domain\Contracts\AuditLog;
+use Src\Shared\Domain\Contracts\BarbershopContext;
+use Src\Shared\Domain\Contracts\DomainEvents;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Shared\Domain\ValueObjects\AuditAction;
 use Src\Shared\Domain\ValueObjects\AuditEntry;
@@ -24,13 +27,15 @@ use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CancelReservation
 {
-    /** Receive the reservation repository, the port that finds the customer role, the transaction port, the technical record and the vouchers port. */
+    /** Receive the reservation repository, the port that finds the customer role, the transaction port, the technical record, the vouchers port, the events of the domain and the barbershop of the operation. */
     public function __construct(
         private ReservationRepository $reservations,
         private CustomerDirectory $customers,
         private TransactionRunner $transaction,
         private AuditLog $audit,
         private ReservationVouchers $vouchers,
+        private DomainEvents $events,
+        private BarbershopContext $context,
     ) {}
 
     /**
@@ -74,6 +79,13 @@ final readonly class CancelReservation
 
             $class = $reservation->classifyCancellation($now);
             $this->settleVoucherSession($reservation, $class, $now);
+            $this->events->publish(new SpaceReleased(
+                $this->context->current()->value,
+                $reservation->id->value,
+                $reservation->collaboratorId->value,
+                $reservation->interval->start,
+                $reservation->blockedUntil,
+            ));
 
             return new CancelledReservation($reservation, $class);
         });
