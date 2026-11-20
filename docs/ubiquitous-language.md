@@ -159,6 +159,11 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 | Persona que espera, vista desde las ofertas | `WaitingCustomer` | — | — |
 | Persona compatible | `WaitingCustomer::isCompatibleWith()` | — | — |
 | Oferta creada, oferta vencida (hechos que avisan) | `OfferCreated`, `OfferExpired` | — | — |
+| Mis ofertas (las que aún se pueden responder) | `ListMyOffers`, `OfferView` | — | `mis-ofertas` |
+| Aceptar una oferta | `AcceptOffer`, `Offer::accept()` | `waitlist_offers.status = 'accepted'` | `aceptacion` (con `con_bono`) |
+| Rechazar una oferta | `RejectOffer`, `Offer::reject()` | `waitlist_offers.status = 'rejected'` | `rechazo` |
+| Reserva que responde una oferta | `Offer::answerWith()`, `OfferedBookings` | `waitlist_offers.reservation_id` | `reserva` |
+| Reserva confirmada (hecho que acepta la oferta y saca de las filas del día) | `ReservationConfirmed` | — | — |
 | Aviso | `Notification` | — | — |
 | Recordatorio | `Reminder` | `reservation_reminders` | — |
 | Aviso emergente | `Realtime` | — | — |

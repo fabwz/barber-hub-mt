@@ -81,6 +81,14 @@ final readonly class EloquentWaitlistEntryRepository implements WaitlistEntryRep
         return ($collaborator === null ? $query->whereNull('collaborator_id') : $query->where('collaborator_id', $collaborator->value))->exists();
     }
 
+    /** Find the row among those of the current barbershop, without locking it. */
+    public function find(WaitlistEntryId $id): ?WaitlistEntry
+    {
+        $model = $this->ofBarbershop()->find($id->value);
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     /** Find the row among those of the customer in the current barbershop, locking it until the transaction ends. */
     public function findOfCustomerForUpdate(WaitlistEntryId $id, CustomerMembershipId $customer): ?WaitlistEntry
     {

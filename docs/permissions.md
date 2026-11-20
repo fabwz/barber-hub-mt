@@ -75,6 +75,9 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `POST api/v1/barberias/{barberia}/filas` | Anotarse en la lista de espera crea el rol de cliente en la misma transacción (RF-30, UP-09); dueño y colaborador reciben 403 `prohibido` y no se crea nada. Con espacios disponibles, con 3 filas activas ya, con una fila igual o con la lista desactivada responde 409 `conflicto`. Un servicio o un barbero que no existe o es de otra barbería responde 404. |
 | `GET api/v1/barberias/{barberia}/mis-filas` | Lectura de lo propio (RF-30, CL-04): sin rol, lista vacía; dueño y colaborador reciben 403 `prohibido`. Solo trae las filas activas de la persona. |
 | `DELETE api/v1/barberias/{barberia}/filas/{fila}` | Solo el cliente sale de su propia fila (RF-30, CL-04): la de otra persona, la que no existe, la de otra barbería y quien no tiene rol responden el mismo 404; dueño y colaborador reciben 403 `prohibido`. |
+| `GET api/v1/barberias/{barberia}/mis-ofertas` | Lectura de lo propio (RF-32, CL-04): sin rol, lista vacía; dueño y colaborador reciben 403 `prohibido`. Solo trae las ofertas `pendiente` de la persona que siguen dentro de sus 15 minutos. |
+| `POST api/v1/barberias/{barberia}/ofertas/{oferta}/aceptacion` | Solo el cliente acepta su propia oferta (RF-32, CL-04): la de otra persona, la que no existe, la de otra barbería y quien no tiene rol responden el mismo 404; dueño y colaborador reciben 403 `prohibido`. Una oferta pasada de sus 15 minutos responde 409 `oferta-vencida`. En la matriz, la oferta del escenario está vencida, así que su dueña recibe ese 409. |
+| `POST api/v1/barberias/{barberia}/ofertas/{oferta}/rechazo` | Igual que la aceptación: solo el cliente rechaza su propia oferta (RF-32, CL-04); otra persona, otra barbería o sin rol, 404; dueño y colaborador, 403 `prohibido`. La oferta vencida del escenario da 409 `oferta-vencida`. |
 
 ## Rutas con rol (y propiedad del recurso)
 

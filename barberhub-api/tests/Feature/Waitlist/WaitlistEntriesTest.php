@@ -40,8 +40,9 @@ final class WaitlistEntriesTest extends TestCase
         DB::table('barbershops')->update(['waitlist_enabled' => true]);
         $this->newcomer = $this->insertUser('Nora Vega');
         $this->tokens['newcomer'] = UserModel::query()->findOrFail($this->newcomer)->createToken('prueba')->plainTextToken;
-        // The scenario gives Ana a row; these tests start from an empty line unless they say so.
+        // The scenario gives Ana rows and an offer; these tests start from an empty line unless they say so.
         $this->scopeQueriesTo($this->puraNavaja);
+        DB::table('waitlist_offers')->delete();
         $this->entries()->delete();
     }
 

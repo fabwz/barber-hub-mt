@@ -18,6 +18,7 @@ use Tests\Support\Reservations\SeedsBookableBarbershops;
 use Tests\Support\Reservations\SeedsReservations;
 use Tests\Support\Shared\FixedBarbershopContext;
 use Tests\Support\Shared\MutableClock;
+use Tests\Support\Shared\RecordingDomainEvents;
 use Tests\TestCase;
 
 /**
@@ -232,7 +233,9 @@ final class ReservationExpirationTest extends TestCase
     {
         $this->scopeQueriesTo($this->puraNavaja);
 
-        return new ConfirmReservation(new EloquentReservationRepository(new FixedBarbershopContext(new BarbershopId($this->puraNavaja))));
+        $context = new FixedBarbershopContext(new BarbershopId($this->puraNavaja));
+
+        return new ConfirmReservation(new EloquentReservationRepository($context), new RecordingDomainEvents, $context);
     }
 
     /** Move the clock of the application. */

@@ -69,6 +69,7 @@ trait BuildsAccessScenario
             'cierre' => $this->insertClosure($this->puraNavaja),
             'bono' => $this->insertVoucherDefinition($this->puraNavaja, [$this->degradado]),
             'fila' => $this->insertWaitlistEntry($this->puraNavaja, $this->anaMembership, $this->degradado),
+            'oferta' => $this->insertLostOffer($this->puraNavaja, $this->anaMembership, $this->degradado, $this->daniela),
         ];
         $danielaAccount = (string) DB::table('collaborators')->where('id', $this->daniela)->value('user_id');
         $kevinAccount = (string) DB::table('collaborators')->where('id', $this->kevin)->value('user_id');
@@ -87,6 +88,7 @@ trait BuildsAccessScenario
             'cierre' => $this->insertClosure($this->fadeLab),
             'bono' => $this->insertVoucherDefinition($this->fadeLab, [$this->corte]),
             'fila' => $this->insertWaitlistEntry($this->fadeLab, $beaMembership, $this->corte),
+            'oferta' => $this->insertLostOffer($this->fadeLab, $beaMembership, $this->corte, $this->mauricio),
         ];
         $mauricioAccount = (string) DB::table('collaborators')->where('id', $this->mauricio)->value('user_id');
         $this->scopeQueriesTo(null);
@@ -177,6 +179,23 @@ trait BuildsAccessScenario
     }
 
     /**
+     * An offer of a customer that is past its 15 minutes, with the row it was made to, which keeps the offered state: the owner of the offer reaches it
+     * and the rule that refuses an answer after the time answers, so the matrix does not book or move anything (LE-04, LE-05).
+     */
+    private function insertLostOffer(string $barbershopId, string $membershipId, string $serviceId, string $collaboratorId): string
+    {
+        $entryId = $this->insertWaitlistEntry($barbershopId, $membershipId, $serviceId, date: '2030-03-06', status: 'offered');
+        $id = (string) Str::uuid7();
+        DB::table('waitlist_offers')->insert([
+            'id' => $id, 'barbershop_id' => $barbershopId, 'waitlist_entry_id' => $entryId, 'collaborator_id' => $collaboratorId,
+            'starts_at' => '2030-03-06 10:00:00-06', 'ends_at' => '2030-03-06 10:50:00-06', 'expires_at' => '2020-01-01 08:15:00-06',
+            'status' => 'pending', 'created_at' => '2020-01-01 08:00:00-06',
+        ]);
+
+        return $id;
+    }
+
+    /**
      * Every row that matters of both barbershops, as each one sees it, to compare before and after a refused request.
      *
      * @return array<string, string>
@@ -188,7 +207,7 @@ trait BuildsAccessScenario
         foreach ([$this->puraNavaja, $this->fadeLab] as $barbershopId) {
             $this->scopeQueriesTo($barbershopId);
 
-            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'opening_hours', 'waitlist_entries'] as $table) {
+            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'opening_hours', 'waitlist_entries', 'waitlist_offers'] as $table) {
                 $fingerprint["{$barbershopId} {$table}"] = md5((string) json_encode(DB::table($table)->orderBy('id')->get()));
             }
         }

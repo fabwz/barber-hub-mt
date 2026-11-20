@@ -43,6 +43,9 @@ final class TenantResources
         'POST api/v1/barberias/{barberia}/filas',
         'GET api/v1/barberias/{barberia}/mis-filas',
         'DELETE api/v1/barberias/{barberia}/filas/{fila}',
+        'GET api/v1/barberias/{barberia}/mis-ofertas',
+        'POST api/v1/barberias/{barberia}/ofertas/{oferta}/aceptacion',
+        'POST api/v1/barberias/{barberia}/ofertas/{oferta}/rechazo',
     ];
 
     /**
@@ -266,13 +269,17 @@ final class TenantResources
                 [],
                 ['api/v1/barberias/{barberia}/mis-filas'],
             ),
-            // The offers of the waitlist (#93). They have no route of their own: the customer answers them in #94, so for now the isolation
-            // test only proves that the database hides the offers of the other barbershop. The path is where the answer will be.
+            // The offers of the waitlist (#93, #94). Like the rows, every route of them is a customer operation (RF-32): the owner of the isolation
+            // test is refused on his own barbershop, so no operation is listed and the routes count as the resource's own. The isolation test proves
+            // that the database hides the offers of the other barbershop; the permission matrix proves that the offer of another customer or
+            // barbershop answers 404, and WaitlistOffersTenancyTest the rest.
             new TenantResource(
                 'waitlist_offers',
                 fn (string $barbershopId): string => self::createWaitlistOffer($barbershopId),
                 'api/v1/barberias/{barberia}/ofertas',
                 [],
+                [],
+                ['api/v1/barberias/{barberia}/mis-ofertas'],
             ),
             // The technical record (#51, SE-04). It has no route: nothing reads it, so the isolation test only proves that the database
             // hides the entries of the other barbershop. The path is where a read would be, and no route answers there.

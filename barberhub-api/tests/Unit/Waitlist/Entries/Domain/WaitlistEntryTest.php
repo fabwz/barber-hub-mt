@@ -11,6 +11,7 @@ use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Waitlist\Entries\Domain\Entities\WaitlistEntry;
 use Src\Waitlist\Entries\Domain\Exceptions\DesiredDateInPastException;
 use Src\Waitlist\Entries\Domain\Exceptions\EntryNotLeavableException;
+use Src\Waitlist\Entries\Domain\Exceptions\EntryNotOfferedException;
 use Src\Waitlist\Entries\Domain\Exceptions\EntryNotWaitingException;
 use Src\Waitlist\Entries\Domain\ValueObjects\CollaboratorId;
 use Src\Waitlist\Entries\Domain\ValueObjects\CustomerMembershipId;
@@ -192,6 +193,45 @@ final class WaitlistEntryTest extends TestCase
                 $this->fail("{$value} was accepted");
             } catch (InvalidValueException) {
                 $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    /** An offered row whose offer ended with a reservation is fulfilled and leaves the line (RF-32). */
+    public function test_an_offered_row_is_fulfilled_when_its_offer_ends_with_a_reservation(): void
+    {
+        $entry = self::stored(WaitlistStatus::Offered);
+
+        $entry->fulfill(self::at('2030-03-01 08:10:00'));
+
+        $this->assertSame(WaitlistStatus::Fulfilled, $entry->status);
+        $this->assertEquals(self::at('2030-03-01 08:10:00'), $entry->updatedAt);
+        $this->assertFalse($entry->isActive());
+    }
+
+    /** Fulfilling twice changes nothing, so a retry of the confirmation is harmless (RF-32). */
+    public function test_fulfilling_twice_changes_nothing(): void
+    {
+        $entry = self::stored(WaitlistStatus::Offered);
+        $entry->fulfill(self::at('2030-03-01 08:10:00'));
+
+        $entry->fulfill(self::at('2030-03-01 08:11:00'));
+
+        $this->assertSame(WaitlistStatus::Fulfilled, $entry->status);
+        $this->assertEquals(self::at('2030-03-01 08:10:00'), $entry->updatedAt);
+    }
+
+    /** A row that waits, or that the customer left while it was offered, has no offer to fulfil. */
+    public function test_a_row_that_is_not_offered_cannot_be_fulfilled(): void
+    {
+        foreach ([WaitlistStatus::Waiting, WaitlistStatus::Left] as $status) {
+            $entry = self::stored($status);
+
+            try {
+                $entry->fulfill(self::at('2030-03-01 08:10:00'));
+                $this->fail("A {$status->value} row was fulfilled.");
+            } catch (EntryNotOfferedException) {
+                $this->assertSame($status, $entry->status);
             }
         }
     }
