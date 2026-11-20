@@ -266,6 +266,14 @@ final class TenantResources
                 [],
                 ['api/v1/barberias/{barberia}/mis-filas'],
             ),
+            // The offers of the waitlist (#93). They have no route of their own: the customer answers them in #94, so for now the isolation
+            // test only proves that the database hides the offers of the other barbershop. The path is where the answer will be.
+            new TenantResource(
+                'waitlist_offers',
+                fn (string $barbershopId): string => self::createWaitlistOffer($barbershopId),
+                'api/v1/barberias/{barberia}/ofertas',
+                [],
+            ),
             // The technical record (#51, SE-04). It has no route: nothing reads it, so the isolation test only proves that the database
             // hides the entries of the other barbershop. The path is where a read would be, and no route answers there.
             new TenantResource(
@@ -383,6 +391,21 @@ final class TenantResources
         ]);
 
         return $entryId;
+    }
+
+    /** Insert a pending offer of its own row of the line, for its own collaborator. */
+    private static function createWaitlistOffer(string $barbershopId): string
+    {
+        $entryId = self::createWaitlistEntry($barbershopId);
+        $collaboratorId = self::createCollaborator($barbershopId);
+        $offerId = (string) Str::uuid7();
+        DB::table('waitlist_offers')->insert([
+            'id' => $offerId, 'barbershop_id' => $barbershopId, 'waitlist_entry_id' => $entryId, 'collaborator_id' => $collaboratorId,
+            'starts_at' => '2030-03-05 13:00:00-06', 'ends_at' => '2030-03-05 14:05:00-06', 'expires_at' => '2030-03-05 11:15:00-06',
+            'status' => 'pending', 'created_at' => '2030-03-05 11:00:00-06',
+        ]);
+
+        return $offerId;
     }
 
     /**
