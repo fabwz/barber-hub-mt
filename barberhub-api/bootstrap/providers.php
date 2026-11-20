@@ -18,6 +18,7 @@ use Src\Shared\Infrastructure\SharedServiceProvider;
 use Src\Vouchers\PurchasedVouchers\Infrastructure\PurchasedVouchersServiceProvider;
 use Src\Vouchers\VoucherDefinitions\Infrastructure\VoucherDefinitionsServiceProvider;
 use Src\Waitlist\Entries\Infrastructure\WaitlistServiceProvider;
+use Src\Waitlist\Offers\Infrastructure\WaitlistOffersServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -36,4 +37,5 @@ return [
     VoucherDefinitionsServiceProvider::class,
     PurchasedVouchersServiceProvider::class,
     WaitlistServiceProvider::class,
+    WaitlistOffersServiceProvider::class,
 ];
