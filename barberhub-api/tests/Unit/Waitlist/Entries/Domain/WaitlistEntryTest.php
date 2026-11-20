@@ -11,6 +11,7 @@ use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Waitlist\Entries\Domain\Entities\WaitlistEntry;
 use Src\Waitlist\Entries\Domain\Exceptions\DesiredDateInPastException;
 use Src\Waitlist\Entries\Domain\Exceptions\EntryNotLeavableException;
+use Src\Waitlist\Entries\Domain\Exceptions\EntryNotWaitingException;
 use Src\Waitlist\Entries\Domain\ValueObjects\CollaboratorId;
 use Src\Waitlist\Entries\Domain\ValueObjects\CustomerMembershipId;
 use Src\Waitlist\Entries\Domain\ValueObjects\DesiredDate;
@@ -85,6 +86,64 @@ final class WaitlistEntryTest extends TestCase
         $this->expectException(EntryNotLeavableException::class);
 
         $entry->leave(self::at('2030-03-03 09:00:00'));
+    }
+
+    /** An offer moves a waiting row to offered without touching the place it has in the line (RF-31, LE-02). */
+    public function test_an_offer_moves_a_waiting_row_and_keeps_its_place(): void
+    {
+        $entry = self::stored(WaitlistStatus::Waiting);
+        $joined = $entry->joinedAt;
+        $offered = self::at('2030-03-05 11:00:00');
+
+        $entry->offer($offered);
+
+        $this->assertSame(WaitlistStatus::Offered, $entry->status);
+        $this->assertTrue($entry->isActive());
+        $this->assertSame($joined, $entry->joinedAt);
+        $this->assertSame($offered, $entry->updatedAt);
+    }
+
+    /** Only a row that waits can be offered a space: not one that already has an offer, left, or ended with a reservation. */
+    public function test_only_a_waiting_row_can_be_offered(): void
+    {
+        foreach ([WaitlistStatus::Offered, WaitlistStatus::Left, WaitlistStatus::Fulfilled] as $status) {
+            $entry = self::stored($status);
+
+            try {
+                $entry->offer(self::at('2030-03-05 11:00:00'));
+                $this->fail("A row that was {$status->value} received an offer.");
+            } catch (EntryNotWaitingException) {
+                $this->assertSame($status, $entry->status);
+            }
+        }
+    }
+
+    /** When the offer ends with no reservation the row goes back to waiting with the place it had (LE-05). */
+    public function test_an_offered_row_goes_back_to_the_line_with_its_place(): void
+    {
+        $entry = self::stored(WaitlistStatus::Offered);
+        $joined = $entry->joinedAt;
+        $back = self::at('2030-03-05 11:15:00');
+
+        $entry->returnToLine($back);
+
+        $this->assertSame(WaitlistStatus::Waiting, $entry->status);
+        $this->assertSame($joined, $entry->joinedAt);
+        $this->assertSame($back, $entry->updatedAt);
+    }
+
+    /** Going back changes nothing for a row that is not offered: one that left meanwhile does not come back, and a repeat is harmless. */
+    public function test_going_back_changes_nothing_unless_the_row_is_offered(): void
+    {
+        foreach ([WaitlistStatus::Waiting, WaitlistStatus::Left, WaitlistStatus::Fulfilled] as $status) {
+            $entry = self::stored($status);
+            $before = $entry->updatedAt;
+
+            $entry->returnToLine(self::at('2030-03-05 11:15:00'));
+
+            $this->assertSame($status, $entry->status);
+            $this->assertSame($before, $entry->updatedAt);
+        }
     }
 
     /** Only waiting and offered rows are active, so only they count against the limit of 3 (LE-01). */

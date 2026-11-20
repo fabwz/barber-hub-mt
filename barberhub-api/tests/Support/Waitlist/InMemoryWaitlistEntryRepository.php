@@ -11,6 +11,7 @@ use Src\Waitlist\Entries\Domain\ValueObjects\CustomerMembershipId;
 use Src\Waitlist\Entries\Domain\ValueObjects\DesiredDate;
 use Src\Waitlist\Entries\Domain\ValueObjects\ServiceId;
 use Src\Waitlist\Entries\Domain\ValueObjects\WaitlistEntryId;
+use Src\Waitlist\Entries\Domain\ValueObjects\WaitlistStatus;
 
 /** The rows of the waitlist of the test, in memory, with the same questions the real repository answers. */
 final class InMemoryWaitlistEntryRepository implements WaitlistEntryRepository
@@ -66,6 +67,30 @@ final class InMemoryWaitlistEntryRepository implements WaitlistEntryRepository
         $entry = $this->entries[$id->value] ?? null;
 
         return $entry !== null && $entry->customerMembershipId->value === $customer->value ? $entry : null;
+    }
+
+    /** The row of the barbershop, whoever owns it. */
+    public function findForUpdate(WaitlistEntryId $id): ?WaitlistEntry
+    {
+        return $this->entries[$id->value] ?? null;
+    }
+
+    /**
+     * The waiting rows of the day that ask for the collaborator or for any, in the order they joined, the identifier breaking a tie.
+     *
+     * @return list<WaitlistEntry>
+     */
+    public function waitingFor(DesiredDate $date, CollaboratorId $collaborator): array
+    {
+        $waiting = array_values(array_filter(
+            $this->entries,
+            fn (WaitlistEntry $entry): bool => $entry->status === WaitlistStatus::Waiting
+                && $entry->desiredDate->value === $date->value
+                && ($entry->collaboratorId === null || $entry->collaboratorId->value === $collaborator->value),
+        ));
+        usort($waiting, fn (WaitlistEntry $a, WaitlistEntry $b): int => [$a->joinedAt, $a->id->value] <=> [$b->joinedAt, $b->id->value]);
+
+        return $waiting;
     }
 
     /**

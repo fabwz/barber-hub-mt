@@ -6,6 +6,7 @@ namespace Src\Waitlist\Entries\Domain\Entities;
 
 use DateTimeImmutable;
 use Src\Waitlist\Entries\Domain\Exceptions\EntryNotLeavableException;
+use Src\Waitlist\Entries\Domain\Exceptions\EntryNotWaitingException;
 use Src\Waitlist\Entries\Domain\ValueObjects\CollaboratorId;
 use Src\Waitlist\Entries\Domain\ValueObjects\CustomerMembershipId;
 use Src\Waitlist\Entries\Domain\ValueObjects\DesiredDate;
@@ -78,6 +79,37 @@ final class WaitlistEntry
         }
 
         $this->status = WaitlistStatus::Left;
+        $this->updatedAt = $at;
+    }
+
+    /**
+     * The line offers the row a space (RF-31): it goes from waiting to offered and keeps its place, because the instant it joined is not
+     * touched. Only a row that waits can receive an offer.
+     *
+     * @throws EntryNotWaitingException
+     */
+    public function offer(DateTimeImmutable $at): void
+    {
+        if ($this->status !== WaitlistStatus::Waiting) {
+            throw EntryNotWaitingException::create();
+        }
+
+        $this->status = WaitlistStatus::Offered;
+        $this->updatedAt = $at;
+    }
+
+    /**
+     * The offer ended without a reservation, because its 15 minutes passed or the customer turned it down (LE-05): the row goes back to
+     * waiting with the place it had, so it can receive another space later. A row in any other state stays as it is, so one that left
+     * while it had the offer does not come back, and repeating it changes nothing.
+     */
+    public function returnToLine(DateTimeImmutable $at): void
+    {
+        if ($this->status !== WaitlistStatus::Offered) {
+            return;
+        }
+
+        $this->status = WaitlistStatus::Waiting;
         $this->updatedAt = $at;
     }
 
