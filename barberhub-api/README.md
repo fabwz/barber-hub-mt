@@ -78,7 +78,7 @@ Se definen en `.env`, copia de `.env.example`. El `.env` no se versiona y nunca 
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_SSLMODE` | Conexión a PostgreSQL (base `barberhub`). |
 | `DB_USERNAME`, `DB_PASSWORD` | Rol de la aplicación (`barberhub_app`). |
 | `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol dueño (`barberhub_owner`), usado por `--database=pgsql_admin`. |
-| `QUEUE_CONNECTION` | Controlador de la cola. Es `sync` de forma temporal (RD-11 está pendiente). |
+| `QUEUE_CONNECTION` | Controlador de la cola. Es `database` de forma provisional (RD-11 y PD-03 están pendientes): vence las reservas temporales, ofrece los espacios liberados y vence las ofertas de la lista de espera. Hay que levantar un worker con `php artisan queue:work`; sin él nada de eso ocurre en desarrollo. Las pruebas usan `sync`. |
 | `PAYMENTS_DEFAULT_GATEWAY` | Pasarela por defecto: `onvo` o `paypal`. |
 | `ONVO_SECRET_KEY`, `ONVO_BASE_URL`, `ONVO_RETURN_URL`, `ONVO_SINPE_DESTINATION`, `ONVO_WEBHOOK_SECRET` | ONVO Pay. Solo se acepta una llave de pruebas (`onvo_test_secret_key_…`). |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_BASE_URL`, `PAYPAL_RETURN_URL`, `PAYPAL_CANCEL_URL`, `PAYPAL_CRC_PER_USD`, `PAYPAL_WEBHOOK_ID` | PayPal, solo *sandbox*. |
