@@ -32,6 +32,8 @@ final class AccessMatrix
 
     public const string RESERVATION_DETAIL = 'reservation-detail';
 
+    public const string CUSTOMER_OWN_LOST = 'customer-own-lost';
+
     public const string FIRST_USE = 'first-use';
 
     public const string FIRST_USE_LIST = 'first-use-list';
@@ -50,6 +52,8 @@ final class AccessMatrix
         self::STAFF_AGENDA => [401, 403, 403, self::OK, self::OK, self::OK, 404, 404],
         self::CUSTOMER_OWN => [401, self::OK, 404, 403, 403, 403, 404, 404],
         self::OWNER_OR_CUSTOMER_OWN => [401, self::OK, 404, 403, 403, self::OK, 404, 404],
+        // The offer of the scenario is past its 15 minutes, so its owner reaches it and the business rule answers 409 `oferta-vencida`: the success is proved by the tests of the offers.
+        self::CUSTOMER_OWN_LOST => [401, 409, 404, 403, 403, 403, 404, 404],
         self::RESERVATION_DETAIL => [401, self::OK, 404, 404, self::OK, self::OK, 404, 404],
         self::FIRST_USE => [401, self::OK, self::OK, 403, 403, 403, self::OK, self::OK],
         self::FIRST_USE_LIST => [401, self::OK, self::OK, 403, 403, 403, self::EMPTY, self::EMPTY],
@@ -106,6 +110,9 @@ final class AccessMatrix
             // The waitlist (RF-30, RD-18, UP-09, CL-04).
             "POST {$base}/filas" => RouteRule::firstUse(self::FIRST_USE, 'Anotarse crea el rol de cliente en la misma transacción (RF-30, UP-09); dueño y colaborador reciben 403.'),
             "GET {$base}/mis-filas" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (RF-30, CL-04): sin rol, lista vacía.'),
+            "GET {$base}/mis-ofertas" => RouteRule::firstUse(self::FIRST_USE_LIST, 'Lectura de lo propio (RF-32, CL-04): sin rol, lista vacía.'),
+            "POST {$base}/ofertas/{oferta}/aceptacion" => RouteRule::firstUse(self::CUSTOMER_OWN_LOST, 'Solo el cliente acepta su propia oferta (RF-32); la de otra persona, la inexistente y quien no tiene rol responden 404 (CL-04); dueño y colaborador reciben 403. La oferta del escenario está vencida: 409 `oferta-vencida`.'),
+            "POST {$base}/ofertas/{oferta}/rechazo" => RouteRule::firstUse(self::CUSTOMER_OWN_LOST, 'Solo el cliente rechaza su propia oferta (RF-32); la de otra persona, la inexistente y quien no tiene rol responden 404 (CL-04); dueño y colaborador reciben 403. La oferta del escenario está vencida: 409 `oferta-vencida`.'),
             "DELETE {$base}/filas/{fila}" => RouteRule::firstUse(self::CUSTOMER_OWN, 'Solo el cliente sale de su propia fila; la de otra persona, la inexistente y quien no tiene rol responden 404 (CL-04); dueño y colaborador reciben 403.'),
 
             // Reservations.
