@@ -52,6 +52,10 @@ return [
         'title' => 'Oferta vencida',
         'detail' => 'La oferta caducó antes de recibir su respuesta.',
     ],
+    'contrasena-temporal' => [
+        'title' => 'Contraseña temporal',
+        'detail' => 'Debe cambiar su contraseña temporal antes de usar el resto de la aplicación.',
+    ],
     'bono-con-ventas' => [
         'title' => 'Bono con ventas',
         'detail' => 'El bono ya tiene ventas: solo se pueden cambiar su nombre y su precio, o retirarlo de la venta.',

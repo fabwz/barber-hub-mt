@@ -96,6 +96,7 @@ final class AccessMatrix
             // A session and nothing more: the data are the person's own.
             'POST api/v1/barberias' => RouteRule::authenticated('Registrar una barbería: quien la registra queda como su dueño (UP-03).'),
             'GET api/v1/mis-barberias' => RouteRule::authenticated('Barberías de la persona con su rol: nunca otras (UP-08, RF-43).'),
+            'PUT api/v1/cuenta/contrasena' => RouteRule::authenticated('Cambia la contraseña de la propia cuenta (RF-40); es de las pocas rutas que una contraseña temporal permite (UP-04).'),
             'DELETE api/v1/tokens' => RouteRule::authenticated('Cierra todas las sesiones de la persona.'),
             'DELETE api/v1/tokens/actual' => RouteRule::authenticated('Cierra la sesión actual de la persona.'),
 

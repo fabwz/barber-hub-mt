@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Src\Identity\Users\Infrastructure\Http\Controllers\AccountController;
+use Src\Identity\Users\Infrastructure\Http\Controllers\PasswordController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\TokenController;
 
 Route::post('cuentas', [AccountController::class, 'store'])->name('identity.users.store');
+
+Route::put('cuenta/contrasena', [PasswordController::class, 'update'])
+    ->middleware('auth:sanctum')
+    ->name('identity.password.update');
 
 Route::prefix('tokens')
     ->name('identity.tokens.')

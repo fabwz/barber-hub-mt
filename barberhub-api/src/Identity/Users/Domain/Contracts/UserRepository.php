@@ -21,6 +21,9 @@ interface UserRepository
      */
     public function save(User $user): void;
 
+    /** Find the account with the given identifier. */
+    public function findById(UserId $id): ?User;
+
     /** Find the account registered with an email address. */
     public function findByEmail(Email $email): ?User;
 

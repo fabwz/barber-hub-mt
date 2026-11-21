@@ -1304,6 +1304,37 @@
                 "security": []
             }
         },
+        "/cuenta/contrasena": {
+            "put": {
+                "operationId": "identity.password.update",
+                "description": "Cambia la contrase\u00f1a de la persona autenticada indicando la actual (RF-40). La nueva debe tener al menos 8 caracteres, con may\u00fascula, min\u00fascula, n\u00famero y signo especial. Cierra las dem\u00e1s sesiones de la persona y conserva la del token con el que se hace la petici\u00f3n. Responde 422 `datos-invalidos` si la actual no es correcta (`errores.contrasena_actual`) o si la nueva incumple la pol\u00edtica (`errores.contrasena_nueva` lista todos los requisitos que faltan). Una cuenta con contrase\u00f1a temporal (UP-04) solo puede usar esta ruta y las de cierre de sesi\u00f3n: el resto responde 403 `contrasena-temporal` hasta que la cambia.",
+                "summary": "Cambiar la contrase\u00f1a",
+                "tags": [
+                    "Cuentas"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CambioDeContrasena"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/administracion/negocio": {
             "get": {
                 "operationId": "catalog.barbershops.details.show",
@@ -4329,6 +4360,22 @@
                     "servicios"
                 ],
                 "title": "CambiarServiciosDeColaborador"
+            },
+            "CambioDeContrasena": {
+                "type": "object",
+                "properties": {
+                    "contrasena_actual": {
+                        "type": "string"
+                    },
+                    "contrasena_nueva": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "contrasena_actual",
+                    "contrasena_nueva"
+                ],
+                "title": "CambioDeContrasena"
             },
             "Cierre": {
                 "type": "object",

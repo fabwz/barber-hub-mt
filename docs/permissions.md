@@ -57,6 +57,7 @@ Los datos son de la propia persona.
 | --- | --- |
 | `POST api/v1/barberias` | Registrar una barbería: quien la registra queda como su dueño (UP-03). |
 | `GET api/v1/mis-barberias` | Barberías de la persona con su rol: nunca otras (UP-08, RF-43). |
+| `PUT api/v1/cuenta/contrasena` | Cambia la contraseña de la propia cuenta (RF-40); es de las pocas rutas que una contraseña temporal permite (UP-04). |
 | `DELETE api/v1/tokens` | Cierra todas las sesiones de la persona. |
 | `DELETE api/v1/tokens/actual` | Cierra la sesión actual de la persona. |
 

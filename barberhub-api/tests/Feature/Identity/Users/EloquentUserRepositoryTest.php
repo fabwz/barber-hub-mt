@@ -102,6 +102,27 @@ final class EloquentUserRepositoryTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'kevin@barberhub.test', 'must_change_password' => true]);
     }
 
+    /** An account is found by its identifier, and an unknown identifier finds nothing. */
+    public function test_account_is_found_by_identifier(): void
+    {
+        $ana = $this->account('ana@barberhub.test');
+        $this->repository->save($ana);
+
+        $this->assertEquals($ana, $this->repository->findById($ana->id));
+        $this->assertNull($this->repository->findById($this->repository->nextId()));
+    }
+
+    /** Saving the changed password stores the new hash and clears the flag of the temporary one. */
+    public function test_changed_password_is_stored_and_the_flag_cleared(): void
+    {
+        $staff = User::createStaff($this->repository->nextId(), new UserName('Kevin Solano'), new Email('kevin@barberhub.test'), 'old-hash');
+        $this->repository->save($staff);
+
+        $this->repository->save($staff->changePassword('new-hash'));
+
+        $this->assertDatabaseHas('users', ['email' => 'kevin@barberhub.test', 'password' => 'new-hash', 'must_change_password' => false]);
+    }
+
     /** Finding many accounts returns the known ones and skips the rest. */
     public function test_many_accounts_are_found_by_identifier(): void
     {

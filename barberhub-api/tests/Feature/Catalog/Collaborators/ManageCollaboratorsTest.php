@@ -457,6 +457,8 @@ final class ManageCollaboratorsTest extends TestCase
         Sanctum::actingAs($this->owner, []);
         $kevinId = $this->createCollaboratorThroughTheApi();
         $kevin = UserModel::query()->where('email', 'kevin@barberhub.test')->sole();
+        // This scenario is about the membership: Kevin already changed his temporary password (UP-04, RF-40).
+        $kevin->update(['must_change_password' => false]);
 
         $this->patchJson($this->url($this->puraNavaja, $kevinId), ['activo' => false])->assertOk()->assertJsonPath('data.activo', false);
 

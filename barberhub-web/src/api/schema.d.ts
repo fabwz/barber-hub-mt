@@ -309,6 +309,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cuenta/contrasena": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cambiar la contraseña
+         * @description Cambia la contraseña de la persona autenticada indicando la actual (RF-40). La nueva debe tener al menos 8 caracteres, con mayúscula, minúscula, número y signo especial. Cierra las demás sesiones de la persona y conserva la del token con el que se hace la petición. Responde 422 `datos-invalidos` si la actual no es correcta (`errores.contrasena_actual`) o si la nueva incumple la política (`errores.contrasena_nueva` lista todos los requisitos que faltan). Una cuenta con contraseña temporal (UP-04) solo puede usar esta ruta y las de cierre de sesión: el resto responde 403 `contrasena-temporal` hasta que la cambia.
+         */
+        put: operations["identity.password.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/administracion/negocio": {
         parameters: {
             query?: never;
@@ -1264,6 +1284,11 @@ export interface components {
         CambiarServiciosDeColaborador: {
             /** @description Identificadores de los servicios de la barbería que ofrece; una lista vacía le quita todos. */
             servicios: string[];
+        };
+        /** CambioDeContrasena */
+        CambioDeContrasena: {
+            contrasena_actual: string;
+            contrasena_nueva: string;
         };
         /** Cierre */
         Cierre: {
@@ -2570,6 +2595,30 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "identity.password.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CambioDeContrasena"];
+            };
+        };
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
             422: components["responses"]["InvalidData"];
         };
     };

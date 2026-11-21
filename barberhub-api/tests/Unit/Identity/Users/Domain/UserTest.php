@@ -49,6 +49,22 @@ final class UserTest extends TestCase
         $this->assertNull($user->termsAcceptedAt);
     }
 
+    /** Changing the password swaps the hash, ends the temporary state and keeps everything else (UP-04, RF-40). */
+    public function test_changing_the_password_replaces_the_hash_and_clears_the_temporary_flag(): void
+    {
+        $staff = User::createStaff(new UserId(self::USER_ID), new UserName('Kevin Solano'), new Email('kevin@barberhub.test'), 'old-hash');
+
+        $changed = $staff->changePassword('new-hash');
+
+        $this->assertSame('new-hash', $changed->passwordHash);
+        $this->assertFalse($changed->mustChangePassword);
+        $this->assertTrue($changed->id->equals($staff->id));
+        $this->assertSame($staff->email, $changed->email);
+        $this->assertTrue($changed->active);
+        $this->assertSame('old-hash', $staff->passwordHash);
+        $this->assertTrue($staff->mustChangePassword);
+    }
+
     /** A customer registration does not ask for a password change. */
     public function test_customer_account_does_not_have_to_change_its_password(): void
     {
