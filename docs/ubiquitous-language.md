@@ -241,6 +241,7 @@ Un **tipo de error estable** es un tipo fijo de error RFC 9457 que el cliente we
 | `credenciales-invalidas` | Correo o contraseña incorrectos |
 | `no-autenticado` | Falta un token válido |
 | `prohibido` | La persona autenticada no tiene permiso suficiente |
+| `contrasena-temporal` | La cuenta debe cambiar su contraseña temporal antes de usar el resto de la API (UP-04, RF-40) |
 | `metodo-no-permitido` | La ruta no acepta el método HTTP usado |
 | `conflicto` | Una regla del dominio sin tipo propio impide la operación, por ejemplo reservar con un bono que no cubre el servicio (BO-06) |
 | `espacio-no-disponible` | El espacio ya no está libre (RE-02), con hasta 3 alternativas |
