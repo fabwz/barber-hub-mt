@@ -286,7 +286,7 @@ final class CreateReservationTest extends TestCase
     {
         $this->actAs($this->ana);
 
-        $this->postJson($this->reservationsUrl($this->puraNavaja), ['servicio' => 'x', 'inicio' => '5 de marzo'])
+        $this->postJson($this->reservationsUrl($this->puraNavaja), ['servicio' => 'x', 'barbero' => 'y', 'inicio' => '5 de marzo'])
             ->assertUnprocessable()
             ->assertJsonPath('type', 'http://localhost/problemas/datos-invalidos')
             ->assertJsonStructure(['errores' => ['servicio', 'barbero', 'inicio']]);

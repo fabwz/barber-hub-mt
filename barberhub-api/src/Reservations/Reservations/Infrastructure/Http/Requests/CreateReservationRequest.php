@@ -26,8 +26,8 @@ final class CreateReservationRequest extends FormRequest
         return [
             /** Identificador del servicio activo de la barbería. */
             'servicio' => ['required', 'uuid'],
-            /** Identificador del barbero, el de un espacio de la consulta de disponibilidad. */
-            'barbero' => ['required', 'uuid'],
+            /** Identificador del barbero, el de un espacio de la consulta de disponibilidad. Si se omite o va nulo es «cualquiera disponible»: el sistema asigna al barbero libre con menos reservas ese día y, si empatan, al de mayor antigüedad de alta (DI-04). */
+            'barbero' => ['nullable', 'uuid'],
             /** Inicio del espacio, fecha y hora ISO 8601 con desfase, por ejemplo `2030-03-05T10:00:00-06:00`. */
             'inicio' => ['required', 'date_format:'.self::START_FORMAT],
             /** Verdadero para pagar con una sesión de un bono de la persona en esta barbería, sin depósito (RF-28). El servidor elige el bono: entre los vigentes que cubren el servicio, el que vence antes. Por omisión es falso. */
@@ -51,7 +51,7 @@ final class CreateReservationRequest extends FormRequest
         return new CreateReservationCommand(
             (string) $this->user()?->getAuthIdentifier(),
             $this->string('servicio')->toString(),
-            $this->string('barbero')->toString(),
+            $this->filled('barbero') ? $this->string('barbero')->toString() : null,
             new DateTimeImmutable($this->string('inicio')->toString())->setTimezone(new DateTimeZone((string) config('app.timezone'))),
             $this->boolean('con_bono'),
         );

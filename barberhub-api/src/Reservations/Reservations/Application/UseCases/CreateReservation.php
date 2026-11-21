@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Application\UseCases;
 
 use DateTimeImmutable;
+use Src\Reservations\Reservations\Application\Contracts\AnyAvailableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\BookableServices;
 use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
@@ -34,13 +35,14 @@ use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CreateReservation
 {
-    /** Receive the reservation repository, the ports to the neighbouring modules, the expiry of overdue reservations, the transaction port, the vouchers port, the port that schedules the expiry of a temporary reservation, the events of the domain and the barbershop of the operation. */
+    /** Receive the reservation repository, the ports to the neighbouring modules (the free spaces and the assignment of "any available" among them), the expiry of overdue reservations, the transaction port, the vouchers port, the port that schedules the expiry of a temporary reservation, the events of the domain and the barbershop of the operation. */
     public function __construct(
         private ReservationRepository $reservations,
         private BookableServices $services,
         private CancellationDeadlines $deadlines,
         private CollaboratorLock $collaborators,
         private FreeSlots $slots,
+        private AnyAvailableCollaborators $anyAvailable,
         private CustomerMemberships $customers,
         private PaymentRequirement $payment,
         private ExpireOverdueReservations $expireOverdue,
@@ -87,17 +89,11 @@ final readonly class CreateReservation
 
         try {
             return $this->transaction->run(function () use ($command, $service, $author, $now): Reservation {
-                $this->collaborators->lock($command->collaboratorId);
-                $this->expireOverdue->execute($command->collaboratorId, $now);
-
-                if (! $this->slots->isFree($command->serviceId, $command->collaboratorId, $command->startsAt, $now)) {
-                    throw SlotUnavailableException::create();
-                }
-
+                $collaboratorId = $this->claimCollaborator($command, $now);
                 $customer = new CustomerMembershipId($this->customers->ensure($command->userId));
                 $reservation = Reservation::create(
                     $command->reservationId === null ? $this->reservations->nextId() : new ReservationId($command->reservationId),
-                    new CollaboratorId($command->collaboratorId),
+                    new CollaboratorId($collaboratorId),
                     new ServiceId($command->serviceId),
                     $customer,
                     $command->startsAt,
@@ -147,8 +143,46 @@ final readonly class CreateReservation
             });
         } catch (SlotUnavailableException $exception) {
             throw $exception->withAlternatives(
-                $this->slots->alternatives($command->serviceId, $command->collaboratorId, $command->startsAt, $now),
+                $command->collaboratorId === null
+                    ? $this->anyAvailable->alternatives($command->serviceId, $command->startsAt, $now)
+                    : $this->slots->alternatives($command->serviceId, $command->collaboratorId, $command->startsAt, $now),
             );
         }
+    }
+
+    /**
+     * Decide who attends and leave them locked, inside the transaction. With a collaborator named, it locks them, expires their overdue
+     * temporary reservations and checks the space is still free. With "any available" it locks every candidate in the order of their
+     * identifiers, so two requests never wait for each other's locks in opposite order, expires their overdue reservations, and only then
+     * asks for the assignment of DI-04, which reads and counts again with nobody able to take a space meanwhile. If nobody is free the
+     * space is taken, as for a named collaborator.
+     *
+     * @throws SlotUnavailableException
+     */
+    private function claimCollaborator(CreateReservationCommand $command, DateTimeImmutable $now): string
+    {
+        if ($command->collaboratorId !== null) {
+            $this->lockAndExpire($command->collaboratorId, $now);
+
+            return $this->slots->isFree($command->serviceId, $command->collaboratorId, $command->startsAt, $now)
+                ? $command->collaboratorId
+                : throw SlotUnavailableException::create();
+        }
+
+        $candidates = $this->anyAvailable->candidates($command->serviceId, $command->startsAt);
+        sort($candidates);
+
+        foreach ($candidates as $candidate) {
+            $this->lockAndExpire($candidate, $now);
+        }
+
+        return $this->anyAvailable->assign($command->serviceId, $command->startsAt, $now) ?? throw SlotUnavailableException::create();
+    }
+
+    /** Lock a collaborator and expire the temporary reservations of theirs whose payment window closed (RE-01, RE-05). */
+    private function lockAndExpire(string $collaboratorId, DateTimeImmutable $now): void
+    {
+        $this->collaborators->lock($collaboratorId);
+        $this->expireOverdue->execute($collaboratorId, $now);
     }
 }
