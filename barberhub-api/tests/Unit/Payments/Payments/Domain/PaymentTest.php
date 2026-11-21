@@ -190,6 +190,19 @@ final class PaymentTest extends TestCase
         $pending->markRefundPending($this->at());
     }
 
+    /** Marking again changes nothing, not even the date of the last change (CA-06). */
+    public function test_marking_again_keeps_the_first_mark(): void
+    {
+        $approved = $this->inStatus(PaymentStatus::Approved);
+        $first = $this->at();
+        $approved->markRefundPending($first);
+
+        $approved->markRefundPending($first->modify('+1 hour'));
+
+        $this->assertTrue($approved->refundPending);
+        $this->assertEquals($first, $approved->updatedAt);
+    }
+
     /** A payment that was never charged cannot be approved. */
     public function test_a_payment_without_a_charge_cannot_be_approved(): void
     {
