@@ -255,11 +255,21 @@ final class Reservation
     {
         return match ($this->status) {
             ReservationStatus::CancelledByBarbershop => CancellationClass::ByBarbershop,
-            ReservationStatus::CancelledByCustomer => $cancelledAt <= $this->interval->start->modify("-{$this->cancellationDeadlineHours} hours")
-                ? CancellationClass::OnTime
-                : CancellationClass::Late,
+            ReservationStatus::CancelledByCustomer => $this->classifyCustomerCancellationAt($cancelledAt),
             default => throw new LogicException('Only a cancelled reservation has a cancellation class.'),
         };
+    }
+
+    /** Classify a cancellation the customer would make at the instant: on time up to the free-cancellation limit, late after it (CA-01). It changes nothing. */
+    public function classifyCustomerCancellationAt(DateTimeImmutable $at): CancellationClass
+    {
+        return $at <= $this->freeCancellationLimit() ? CancellationClass::OnTime : CancellationClass::Late;
+    }
+
+    /** The last instant the customer cancels without penalty: the start minus the deadline copied into the reservation (CA-01). */
+    public function freeCancellationLimit(): DateTimeImmutable
+    {
+        return $this->interval->start->modify("-{$this->cancellationDeadlineHours} hours");
     }
 
     /** Tell whether the reservation is temporary and its payment window closed at the instant, whether or not it was marked expired (DI-05). */
