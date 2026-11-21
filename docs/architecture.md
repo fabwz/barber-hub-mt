@@ -315,7 +315,7 @@ Dos lecturas paginadas de `Reservations`, ambas `GET`, ordenadas por inicio (y p
 
 | Rol | Caso de uso | Recurso (esquema) | Qué ve |
 | --- | --- | --- | --- |
-| Cliente | `GetCustomerReservation` | `CustomerReservationDetailResource` (`ReservaDetalleDeCliente`) | Su reserva con los campos del listado y `plazo_cancelacion_horas`. Sin saldo (PA-10), sin historial, sin nombre de cliente |
+| Cliente | `GetCustomerReservation` | `CustomerReservationDetailResource` (`ReservaDetalleDeCliente`) | Su reserva con los campos del listado, `plazo_cancelacion_horas` y, si está confirmada, `cancelacion_ahora` (#67). Sin saldo (PA-10), sin historial, sin nombre de cliente |
 | Colaborador | `GetStaffReservation` | `StaffReservationDetailResource` (`ReservaDetalleDeAgenda`) | Las de su propia agenda, con `cliente_nombre` y `saldo_pendiente` (CO-04). Sin `historial` |
 | Dueño | `GetStaffReservation` | el mismo | Cualquiera de su barbería, además con `historial`: `de`, `a`, `autor` y `fecha` |
 
@@ -335,7 +335,22 @@ Dos lecturas paginadas de `Reservations`, ambas `GET`, ordenadas por inicio (y p
 - **Espacio libre (CA-07).** Las exclusiones solo cubren los estados temporal y confirmada, así que el cambio de estado libera el espacio en la misma transacción. Una prueba vuelve a reservar el mismo espacio después de cancelar.
 - **Registro técnico (SE-04, #51).** La cancelación por la barbería deja su entrada en `audit_log`; la del cliente no. Ver «El registro técnico».
 - **Espacio liberado.** Cuando la reserva se cancela de verdad (no en una repetición) publica `SpaceReleased` con el colaborador y todo el tiempo que ocupaba, la limpieza incluida (ver «Ofrecer el espacio liberado (#93)»).
-- **Todavía no.** La consecuencia económica (#67) y el aviso por correo (#96).
+- **Consecuencia económica (#67, RF-17).** Se decide en un servicio de dominio puro, `CancellationConsequence` (`Reservations/Domain/Services`), sin reloj ni Laravel: recibe la clasificación (la calcula `Reservation` con la hora que le pasan), si hay un depósito pagado en línea y si la reserva se pagó con un bono, y devuelve un `EconomicConsequence` (`DepositOutcome` y `SessionOutcome`). La tabla:
+
+  | Caso | Depósito pagado en línea | Sesión del bono |
+  |---|---|---|
+  | Cancelada a tiempo (CA-02) | `a_devolver` | se reintegra (BO-05) |
+  | Cancelada por la barbería (CA-04) | `a_devolver` | se reintegra |
+  | Cancelada tarde (CA-03) | `retenido` | se consume |
+  | Ausencia (CA-03) | `retenido` | se consume |
+  | Atendida | sin cambio (queda aplicado al precio) | se consume |
+
+  Sin depósito pagado, `deposito` es `ninguno`; sin bono, `sesion_bono` es `ninguna`. Un pago `pending`, `rejected` o `failed` no es dinero: no hay nada que devolver (una reserva temporal cancelada no tiene depósito; si el pago se aprueba después, PA-07 lo marca).
+- **Cómo se representa (sin migración).** «A devolver» es un pago `approved` con `refund_pending` (la misma marca de PA-07, que el reembolso real #103 consumirá). «Retenido» es un pago `approved` sin marca de una reserva ausente o cancelada tarde: se deriva, no se guarda. El puerto `ReservationDeposits` (`isPaid`, `markToRefund`) lo implementa `PaymentsReservationDeposits`, que invoca los casos de uso `HasPaidDeposit` y `MarkDepositToRefund` de `Payments`; `Reservations` no importa su dominio (RD-05).
+- **Una sola vez (CA-06).** `CancelReservation` vuelve antes si la reserva ya está cancelada (solo informa la consecuencia, no marca). Además `PaymentRepository::markRefundPendingOfReservation` es un único `UPDATE` condicional (`status = 'approved' AND NOT refund_pending`, con la barbería en el filtro) sobre una subconsulta `FOR UPDATE SKIP LOCKED`: marcar dos veces no cambia nada, ni siquiera `updated_at`, y no espera un pago que otra transacción está liquidando. Eso evita el interbloqueo con `SettlePayment` (que bloquea primero el pago y luego pide la reserva, mientras la cancelación ya tiene la reserva): si la liquidación aprueba después de que la reserva se canceló, `confirm` falla y PA-07 deja la marca. Cualquiera sea el orden, el pago queda aprobado y marcado una vez; lo prueba `CancelRacesTest` con conexiones paralelas.
+- **Qué informa la API.** La respuesta de cancelar suma `deposito` (`a_devolver`, `retenido`, `ninguno`) y `sesion_bono` (`se_reintegra`, `se_consume`, `ninguna`) a la `clasificacion`. El detalle de la reserva del cliente suma `cancelacion_ahora` (solo con la reserva `confirmada`, nulo si no): lo que pasaría si cancelara en este momento, con `clasificacion`, `limite` (último instante sin penalización), `deposito` y `sesion_bono`; lo calcula el servidor con el reloj. Las vistas del colaborador y del dueño no lo llevan.
+- **Registro técnico (SE-04).** Marcar «a devolver» no es un reembolso ni un ajuste de saldo, así que no agrega acción: la cancelación por la barbería ya deja la suya.
+- **Todavía no.** El reembolso real (#103, RF-24), el aviso por correo (#96) y que el dueño al reprogramar permita cancelar sin penalización (CA-08).
 - **Aislamiento.** `reservations` suma la operación `CANCEL` en `TenantResources`; la auditoría la prueba con `POST .../cancelacion`.
 
 ### El cierre de una reserva (#61)
@@ -346,7 +361,7 @@ Dos lecturas paginadas de `Reservations`, ambas `GET`, ordenadas por inicio (y p
 - **Reglas de tiempo en el agregado.** `Reservation::complete()` exige el instante de la operación (`Clock`, entra como parámetro) igual o posterior al inicio del servicio; `markNoShow()` exige que pasen `NO_SHOW_TOLERANCE_MINUTES` (10, CO-05) desde ese inicio. Cuentan desde `interval->start`, no desde `blockedUntil`. La tolerancia es una constante de la regla, no un ajuste de la barbería. Antes responde `ReservationNotYetDueException`, una `DomainException` sin tipo propio: 409 `conflicto` (la lista de RNF-17 es cerrada) con un detalle que dice desde qué hora se puede marcar (`reservations.close_too_early` y `reservations.no_show_too_early`, con el parámetro `:when`).
 - **Estados (RE-04).** Solo una reserva `confirmada` se cierra; una temporal, cancelada o expirada, o una ya cerrada con el otro resultado, lanza `TransitionNotAllowedException` (409 `conflicto`). El estado se revisa antes que la hora, así que un estado final nunca responde por tiempo. Cada cierre deja su entrada en el historial con autor y fecha (RE-09).
 - **Idempotencia (CA-06).** La reserva se lee con `findForUpdate()`. Repetir con el mismo resultado responde 200 sin historial nuevo ni consumir otra vez la sesión.
-- **Consecuencia económica.** Con bono, el cierre deja la sesión usada (`consume`). El depósito no se toca: el pago queda `approved` sin `refund_pending`, que equivale a retenido. Cómo se modela «retenido» y «a devolver» (CA-02, CA-03, RF-17) queda para #67. No hay evento de dominio nuevo: los ingresos ya leen las reservas completadas por consulta.
+- **Consecuencia económica.** `CloseReservation` pide la consecuencia a `CancellationConsequence` (ver «La cancelación de una reserva (#60)»): con bono, el cierre deja la sesión usada (`consume`), atendida o ausente. El depósito de una ausencia queda retenido y eso no necesita escritura: el pago queda `approved` sin `refund_pending`. La atendida lo aplica al precio. No hay evento de dominio nuevo: los ingresos ya leen las reservas completadas por consulta.
 - **Registro técnico.** No deja entrada en `audit_log`: SE-04 no incluye este cambio y la sesión ya se apartó al confirmar.
 - **Aislamiento.** `reservations` suma la operación `CLOSE` en `TenantResources` (solo contra la otra barbería, porque las filas de la auditoría están en el futuro); el perfil `owner-or-assigned-collaborator` de `AccessMatrix` cubre los ocho actores.
 

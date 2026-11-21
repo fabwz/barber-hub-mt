@@ -325,7 +325,7 @@ El cobro de una reserva (RF-20). La tabla existe desde el issue #129 con las col
 | `provider_capture_id` | `varchar(100)` | Migración del #64. Identificador de la captura que liquidó el cobro (PayPal); nulo para los demás. Es lo que necesitaría un reembolso |
 | `provider_payment_id` | `varchar(100)` | Identificador del cobro en el proveedor. Nulo hasta crearlo; `CHECK` `payments_provider_payment_id_check`: un pago aprobado o reembolsado lo tiene |
 | `failure_reason` | `varchar(255)` | Motivo de un rechazo o un fallo; `CHECK` `payments_failure_reason_check`: solo con `rejected` o `failed` |
-| `refund_pending` | `boolean` | Por defecto `false` (migración del #63). Marca el pago aprobado cuando la reserva ya no se pudo confirmar y hay que devolverlo (PA-07); `CHECK` `payments_refund_pending_check`: solo con `approved`. El reembolso la limpia |
+| `refund_pending` | `boolean` | Por defecto `false` (migración del #63). Marca el pago aprobado que hay que devolver: cuando la reserva ya no se pudo confirmar (PA-07) y cuando la reserva se cancela a tiempo o por la barbería (CA-02, CA-04, #67), una sola vez; «retenido» (cancelación tardía o ausencia, CA-03) es un pago aprobado sin la marca y no se guarda; `CHECK` `payments_refund_pending_check`: solo con `approved`. El reembolso la limpia |
 | `created_at`, `updated_at` | `timestamptz` | Por defecto `now()`; el repositorio escribe los instantes que decide el agregado |
 
 Restricciones:
