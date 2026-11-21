@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Domain\Contracts;
 
+use DateTimeImmutable;
 use Src\Payments\Payments\Domain\Entities\Payment;
 use Src\Payments\Payments\Domain\Exceptions\ActivePaymentExistsException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
@@ -41,4 +42,13 @@ interface PaymentRepository
      * @return array<string, Payment> By reservation id; a reservation without an active payment is missing.
      */
     public function findActiveOfReservations(array $reservationIds): array;
+
+    /**
+     * Mark as one to give back the approved payment of a reservation of the current barbershop, in one conditional write that
+     * matches only an approved payment that is not marked yet, so marking twice changes nothing (CA-06). It never waits on a payment
+     * whose row another transaction holds: that transaction is settling it and decides the mark itself (PA-07).
+     *
+     * @return bool Whether this call marked a payment.
+     */
+    public function markRefundPendingOfReservation(ReservationId $reservationId, DateTimeImmutable $at): bool;
 }
