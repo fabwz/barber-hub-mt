@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Src\Identity\Users\Infrastructure\Http\Middleware\RequireChangedPassword;
 use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 use Src\Shared\Infrastructure\Http\Middleware\EncodeJsonAsUnicode;
 use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
@@ -23,7 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
         $middleware->append(EncodeJsonAsUnicode::class);
-        $middleware->trimStrings(except: ['contrasena']);
+        $middleware->trimStrings(except: ['contrasena', 'contrasena_actual', 'contrasena_nueva']);
+        $middleware->appendToGroup('api', RequireChangedPassword::class);
         $middleware->redirectGuestsTo(null);
         $middleware->alias([
             'barbershop' => ScopeRequestToBarbershop::class,

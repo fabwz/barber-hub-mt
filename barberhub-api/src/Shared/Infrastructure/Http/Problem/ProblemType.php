@@ -19,6 +19,7 @@ enum ProblemType: string
     case DeadlineExpired = 'plazo-vencido';
     case VoucherExpired = 'bono-vencido';
     case OfferExpired = 'oferta-vencida';
+    case TemporaryPassword = 'contrasena-temporal';
     case VoucherWithSales = 'bono-con-ventas';
     case InvalidData = 'datos-invalidos';
     case TooManyRequests = 'demasiadas-solicitudes';
@@ -31,7 +32,7 @@ enum ProblemType: string
         return match ($this) {
             self::BadRequest => 400,
             self::Unauthenticated, self::InvalidCredentials => 401,
-            self::Forbidden => 403,
+            self::Forbidden, self::TemporaryPassword => 403,
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
             self::Conflict, self::SlotUnavailable, self::InsufficientBalance, self::DeadlineExpired, self::VoucherExpired, self::OfferExpired, self::VoucherWithSales => 409,
