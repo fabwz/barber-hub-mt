@@ -12,6 +12,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Src\Reservations\Reservations\Application\QuotePayment;
 use Src\Reservations\Reservations\Application\UseCases\CancelReservation;
+use Src\Reservations\Reservations\Application\UseCases\CloseReservation;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetCustomerReservation;
 use Src\Reservations\Reservations\Application\UseCases\GetStaffReservation;
@@ -19,6 +20,7 @@ use Src\Reservations\Reservations\Application\UseCases\ListCustomerReservations;
 use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
 use Src\Reservations\Reservations\Application\UseCases\ProposeReservation;
 use Src\Reservations\Reservations\Application\UseCases\RescheduleReservation;
+use Src\Reservations\Reservations\Infrastructure\Http\Requests\CloseReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CreateReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
@@ -140,6 +142,24 @@ final readonly class ReservationController
             $reserva,
             $request->startsAt(),
             $request->collaboratorId(),
+            $this->clock->now(),
+        ));
+    }
+
+    /** Close a confirmed reservation as attended or as an absence. */
+    #[Endpoint(
+        title: 'Marcar una reserva como atendida o ausente',
+        description: 'Cierra una reserva `confirmada` como `atendida` o `ausente` (cuerpo `{"estado": "atendida"}` o `{"estado": "ausente"}`) y deja el cambio en el historial con su autor y fecha. El colaborador cierra solo las de su propia agenda y el dueño cualquiera de su barbería. `atendida` solo se acepta desde la hora de `inicio`; `ausente`, 10 minutos después de ese inicio (tolerancia). Antes responde 409 `conflicto` con un detalle que dice desde qué hora se puede marcar. Una reserva que no está confirmada (temporal, cancelada o expirada) o que ya terminó con el otro estado responde 409 `conflicto`: un estado final no cambia. Repetir con el mismo estado responde 200 sin agregar nada al historial ni consumir otra vez la sesión. Si la reserva se pagó con una sesión de un bono, al cerrarla la sesión queda consumida, una sola vez. El depósito pagado no se toca: la consecuencia económica sobre el depósito (retenido en la ausencia, a devolver en la cancelación a tiempo) la modela #67. Un cliente recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro colaborador, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`; un `estado` distinto de los dos, 422 `datos-invalidos`.',
+    )]
+    public function close(CloseReservationRequest $request, string $barberia, string $reserva, CloseReservation $closeReservation): ReservationResource
+    {
+        $isOwner = $request->attributes->get(RequestBarbershopContext::ROLE_ATTRIBUTE) === 'owner';
+
+        return new ReservationResource($closeReservation->execute(
+            (string) $request->user()?->getAuthIdentifier(),
+            $isOwner,
+            $reserva,
+            $request->outcome(),
             $this->clock->now(),
         ));
     }

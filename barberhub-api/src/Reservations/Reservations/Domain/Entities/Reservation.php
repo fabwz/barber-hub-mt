@@ -9,6 +9,7 @@ use LogicException;
 use Src\Reservations\Reservations\Domain\Exceptions\PaymentWindowExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
+use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotYetDueException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
@@ -31,6 +32,9 @@ final class Reservation
 
     /** Minutes a temporary reservation waits for its payment before it expires and releases its space (RE-05, DI-05). */
     public const int PAYMENT_WINDOW_MINUTES = 10;
+
+    /** Minutes after the start a customer is given before the reservation can be marked as an absence (CO-05). */
+    public const int NO_SHOW_TOLERANCE_MINUTES = 10;
 
     /** Times a reservation can be moved (CA-05). */
     public const int MAX_RESCHEDULES = 2;
@@ -161,15 +165,39 @@ final class Reservation
         $this->changeTo(ReservationStatus::Expired, $at, $author);
     }
 
-    /** Mark a confirmed reservation as attended. */
+    /**
+     * Mark a confirmed reservation as attended, once its start has passed (RF-18, CO-05).
+     *
+     * @throws TransitionNotAllowedException when the reservation is not confirmed
+     * @throws ReservationNotYetDueException when the start has not come yet
+     */
     public function complete(DateTimeImmutable $at, Author $author): void
     {
+        $this->assertCanChangeTo(ReservationStatus::Completed);
+
+        if ($at < $this->interval->start) {
+            throw ReservationNotYetDueException::beforeStart($this->interval->start);
+        }
+
         $this->changeTo(ReservationStatus::Completed, $at, $author);
     }
 
-    /** Mark a confirmed reservation as one the customer did not show up for. */
+    /**
+     * Mark a confirmed reservation as one the customer did not show up for, once the tolerance after its start has passed (RF-18, CO-05).
+     *
+     * @throws TransitionNotAllowedException when the reservation is not confirmed
+     * @throws ReservationNotYetDueException when the tolerance has not passed yet
+     */
     public function markNoShow(DateTimeImmutable $at, Author $author): void
     {
+        $this->assertCanChangeTo(ReservationStatus::NoShow);
+
+        $from = $this->interval->start->modify('+'.self::NO_SHOW_TOLERANCE_MINUTES.' minutes');
+
+        if ($at < $from) {
+            throw ReservationNotYetDueException::beforeTolerance($from);
+        }
+
         $this->changeTo(ReservationStatus::NoShow, $at, $author);
     }
 
@@ -261,12 +289,18 @@ final class Reservation
     /** Apply a change the status diagram allows and record it in the history (RE-04, RE-09). */
     private function changeTo(ReservationStatus $target, DateTimeImmutable $at, Author $author): void
     {
-        if (! $this->status->canChangeTo($target)) {
-            throw TransitionNotAllowedException::create();
-        }
+        $this->assertCanChangeTo($target);
 
         $this->pendingChanges[] = new ReservationStatusChange($this->status, $target, $author, $at);
         $this->status = $target;
         $this->expiresAt = null;
+    }
+
+    /** Refuse a change the status diagram does not allow, and any change after a final status (RE-04). */
+    private function assertCanChangeTo(ReservationStatus $target): void
+    {
+        if (! $this->status->canChangeTo($target)) {
+            throw TransitionNotAllowedException::create();
+        }
     }
 }

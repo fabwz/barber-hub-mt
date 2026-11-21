@@ -3201,6 +3201,75 @@
                 }
             }
         },
+        "/barberias/{barberia}/reservas/{reserva}/cierre": {
+            "post": {
+                "operationId": "reservations.reservations.close",
+                "description": "Cierra una reserva `confirmada` como `atendida` o `ausente` (cuerpo `{\"estado\": \"atendida\"}` o `{\"estado\": \"ausente\"}`) y deja el cambio en el historial con su autor y fecha. El colaborador cierra solo las de su propia agenda y el due\u00f1o cualquiera de su barber\u00eda. `atendida` solo se acepta desde la hora de `inicio`; `ausente`, 10 minutos despu\u00e9s de ese inicio (tolerancia). Antes responde 409 `conflicto` con un detalle que dice desde qu\u00e9 hora se puede marcar. Una reserva que no est\u00e1 confirmada (temporal, cancelada o expirada) o que ya termin\u00f3 con el otro estado responde 409 `conflicto`: un estado final no cambia. Repetir con el mismo estado responde 200 sin agregar nada al historial ni consumir otra vez la sesi\u00f3n. Si la reserva se pag\u00f3 con una sesi\u00f3n de un bono, al cerrarla la sesi\u00f3n queda consumida, una sola vez. El dep\u00f3sito pagado no se toca: la consecuencia econ\u00f3mica sobre el dep\u00f3sito (retenido en la ausencia, a devolver en la cancelaci\u00f3n a tiempo) la modela #67. Un cliente recibe 403 `prohibido`. Una reserva que no existe, de otra barber\u00eda o de otro colaborador, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`; un `estado` distinto de los dos, 422 `datos-invalidos`.",
+                "summary": "Marcar una reserva como atendida o ausente",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "reserva",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CerrarReserva"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Reserva`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Reserva"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/mis-bonos": {
             "get": {
                 "operationId": "vouchers.purchased.mine",
@@ -4376,6 +4445,23 @@
                     "contrasena_nueva"
                 ],
                 "title": "CambioDeContrasena"
+            },
+            "CerrarReserva": {
+                "type": "object",
+                "properties": {
+                    "estado": {
+                        "type": "string",
+                        "description": "C\u00f3mo termina la reserva: `atendida` o `ausente`.",
+                        "enum": [
+                            "atendida",
+                            "ausente"
+                        ]
+                    }
+                },
+                "required": [
+                    "estado"
+                ],
+                "title": "CerrarReserva"
             },
             "Cierre": {
                 "type": "object",

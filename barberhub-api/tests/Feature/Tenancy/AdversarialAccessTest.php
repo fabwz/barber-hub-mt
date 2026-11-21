@@ -239,12 +239,13 @@ final class AdversarialAccessTest extends TestCase
             ->assertJsonMissingPath('data.historial');
     }
 
-    /** The owner of one barbershop cannot cancel, reschedule, pay or refund what belongs to the other, in either URL (MT-02, UP-06). */
+    /** The owner of one barbershop cannot close, cancel, reschedule, pay or refund what belongs to the other, in either URL (MT-02, UP-06). */
     public function test_the_owner_of_one_barbershop_cannot_act_on_the_reservations_of_another(): void
     {
         $before = $this->fingerprint();
         $operations = [
             ['POST', 'api/v1/barberias/{barberia}/reservas/{reserva}/cancelacion', []],
+            ['POST', 'api/v1/barberias/{barberia}/reservas/{reserva}/cierre', ['estado' => 'atendida']],
             ['PATCH', 'api/v1/barberias/{barberia}/reservas/{reserva}', ['inicio' => '2030-03-05T14:00:00-06:00']],
             ['POST', 'api/v1/barberias/{barberia}/pagos/{pago}/reembolsos', []],
         ];

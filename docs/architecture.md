@@ -338,6 +338,18 @@ Dos lecturas paginadas de `Reservations`, ambas `GET`, ordenadas por inicio (y p
 - **Todavía no.** La consecuencia económica (#67) y el aviso por correo (#96).
 - **Aislamiento.** `reservations` suma la operación `CANCEL` en `TenantResources`; la auditoría la prueba con `POST .../cancelacion`.
 
+### El cierre de una reserva (#61)
+
+`POST /barberias/{barberia}/reservas/{reserva}/cierre` con `{"estado": "atendida"|"ausente"}` (`auth:sanctum`, `barbershop`, `role:owner,collaborator`). En la referencia el equivalente es `AdvanceOrder`; aquí la ruta cuelga de la reserva y una sola ruta cubre los dos resultados. El middleware da el 404 a quien no tiene rol y `role:` rechaza con 403 al cliente; `ReservationController::close` solo pasa el rol y `CloseReservation` decide el resto.
+
+- **Quién cierra qué (CO-05, UP-06).** El colaborador cierra solo las de su agenda (`CollaboratorDirectory::idOfUser`); la de otro colaborador es el mismo 404 de una reserva inexistente. El dueño, cualquiera de su barbería. Otra barbería: 404.
+- **Reglas de tiempo en el agregado.** `Reservation::complete()` exige el instante de la operación (`Clock`, entra como parámetro) igual o posterior al inicio del servicio; `markNoShow()` exige que pasen `NO_SHOW_TOLERANCE_MINUTES` (10, CO-05) desde ese inicio. Cuentan desde `interval->start`, no desde `blockedUntil`. La tolerancia es una constante de la regla, no un ajuste de la barbería. Antes responde `ReservationNotYetDueException`, una `DomainException` sin tipo propio: 409 `conflicto` (la lista de RNF-17 es cerrada) con un detalle que dice desde qué hora se puede marcar (`reservations.close_too_early` y `reservations.no_show_too_early`, con el parámetro `:when`).
+- **Estados (RE-04).** Solo una reserva `confirmada` se cierra; una temporal, cancelada o expirada, o una ya cerrada con el otro resultado, lanza `TransitionNotAllowedException` (409 `conflicto`). El estado se revisa antes que la hora, así que un estado final nunca responde por tiempo. Cada cierre deja su entrada en el historial con autor y fecha (RE-09).
+- **Idempotencia (CA-06).** La reserva se lee con `findForUpdate()`. Repetir con el mismo resultado responde 200 sin historial nuevo ni consumir otra vez la sesión.
+- **Consecuencia económica.** Con bono, el cierre deja la sesión usada (`consume`). El depósito no se toca: el pago queda `approved` sin `refund_pending`, que equivale a retenido. Cómo se modela «retenido» y «a devolver» (CA-02, CA-03, RF-17) queda para #67. No hay evento de dominio nuevo: los ingresos ya leen las reservas completadas por consulta.
+- **Registro técnico.** No deja entrada en `audit_log`: SE-04 no incluye este cambio y la sesión ya se apartó al confirmar.
+- **Aislamiento.** `reservations` suma la operación `CLOSE` en `TenantResources` (solo contra la otra barbería, porque las filas de la auditoría están en el futuro); el perfil `owner-or-assigned-collaborator` de `AccessMatrix` cubre los ocho actores.
+
 ### La reprogramación de una reserva (#59)
 
 `PATCH /barberias/{barberia}/reservas/{reserva}` con `inicio` y `barbero` opcional (`auth:sanctum`, `barbershop`, `role:owner,customer`, como la cancelación). En la referencia no existe: es una divergencia de la API, no de la arquitectura. `ReservationController::reschedule` solo pasa el rol; `RescheduleReservation` decide.
@@ -449,7 +461,7 @@ La petición de crear la reserva (`POST /barberias/{barberia}/reservas`) acepta 
 - **La vigencia se mide en la cita (BO-06, BO-07).** `holdSession()` recibe la fecha de la cita para la vigencia y el instante de la reserva para el registro: un bono vigente hoy no sirve para una cita posterior a su vencimiento. El decremento sigue siendo el `UPDATE` atómico y condicional del #132, así que dos reservas por la última sesión dejan una confirmada y otra con `saldo-insuficiente` y el saldo en 0.
 - **Sin cobro no hay bono.** Si la barbería no cobra (`sin_pago`) no hay depósito que reemplazar: `con_bono` responde 422 `datos-invalidos` en ese campo (`VoucherNotRequiredException`) antes de escribir nada y no se aparta ninguna sesión.
 - **Cancelar (RF-17, BO-05).** `reservations.purchased_voucher_id` dice qué bono pagó la reserva. Con ella, `CancelReservation` reintegra la sesión (`release`) si la cancelación es a tiempo o de la barbería y la deja usada (`consume`, sin cambio de saldo) si es tardía, en la misma transacción. Repetir la cancelación vuelve antes de llegar ahí (CA-06) y los dos casos de uso de bonos además miran el registro: una reserva ya liquidada no se liquida de nuevo; el índice único `voucher_movements_one_settlement_idx` es la segunda barrera.
-- **Ausencia.** El caso de uso de marcar atendida o ausente (RF-18) todavía no existe; cuando llegue llamará a `ReservationVouchers::consume`. La sesión ya está descontada desde que se confirmó la reserva (BO-04), así que hasta entonces una ausencia no reintegra nada.
+- **Ausencia y atención (RF-18, #61).** `CloseReservation` llama a `ReservationVouchers::consume` al cerrar una reserva pagada con bono, como ausente o como atendida: la sesión ya estaba descontada desde que se confirmó (BO-04), así que `consume` solo deja en el registro cómo terminó, sin cambiar el saldo, y nunca se reintegra. Repetir el cierre vuelve antes de llegar ahí. Ver «El cierre de una reserva (#61)».
 - **Registro técnico (#51).** No hay acción nueva en `audit_log`: el movimiento de saldo ya queda en `voucher_movements`, que solo crece y nombra la reserva, y la cancelación de la barbería deja su entrada de siempre. SE-04 pide registrar el ajuste de saldos, que no existe en el código.
 
 ### Definir y retirar bonos (#87)
@@ -488,7 +500,7 @@ La petición de crear la reserva (`POST /barberias/{barberia}/reservas`) acepta 
 - **Las sumas son SQL.** Cada lector agrupa por día (`to_char(columna AT TIME ZONE 'America/Costa_Rica', 'YYYY-MM-DD')`) y suma en la base; no se carga ninguna fila. Todos filtran por la barbería de la ruta (`BarbershopContext`) y la seguridad a nivel de fila es la segunda barrera (MT-02).
 - **El rango.** `ReportPeriod` (`Src\Shared\Domain`) convierte los dos días en `[desde 00:00, hasta + 1 día 00:00)` de `America/Costa_Rica` y lo comparten los tres contextos. Valida que sean días reales, que `desde` no pase de `hasta` y que el rango no pase de 366 días (decisión del issue); la petición lo responde con 422 `datos-invalidos`.
 - **Qué fecha ubica cada cifra.** Cobro: `payments.created_at` (estados `approved` y `refunded`, solo pagos de reserva). Reembolso: `payments.updated_at` de los `refunded`, por su monto completo; un pago con `refund_pending` sigue aprobado y no resta. Bono vendido: `purchased_vouchers.activated_at`, con su precio. Servicio atendido: `reservations.starts_at` de las `completed`, por su precio completo aunque se pagara con una sesión de bono. Ver [data-model.md](data-model.md), sección `refunds`.
-- **Pendiente de #61.** Todavía no hay forma de marcar una reserva como atendida, así que `servicios_atendidos` solo tiene datos cuando hay reservas `completed`; la consulta ya está lista.
+- **Atendidas (#61).** `servicios_atendidos` cuenta las reservas `completed`, que ya se pueden producir con `POST .../reservas/{reserva}/cierre`.
 
 ### Anotarse y salir de la lista de espera (#92)
 

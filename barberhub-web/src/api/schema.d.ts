@@ -886,6 +886,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/reservas/{reserva}/cierre": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marcar una reserva como atendida o ausente
+         * @description Cierra una reserva `confirmada` como `atendida` o `ausente` (cuerpo `{"estado": "atendida"}` o `{"estado": "ausente"}`) y deja el cambio en el historial con su autor y fecha. El colaborador cierra solo las de su propia agenda y el dueño cualquiera de su barbería. `atendida` solo se acepta desde la hora de `inicio`; `ausente`, 10 minutos después de ese inicio (tolerancia). Antes responde 409 `conflicto` con un detalle que dice desde qué hora se puede marcar. Una reserva que no está confirmada (temporal, cancelada o expirada) o que ya terminó con el otro estado responde 409 `conflicto`: un estado final no cambia. Repetir con el mismo estado responde 200 sin agregar nada al historial ni consumir otra vez la sesión. Si la reserva se pagó con una sesión de un bono, al cerrarla la sesión queda consumida, una sola vez. El depósito pagado no se toca: la consecuencia económica sobre el depósito (retenido en la ausencia, a devolver en la cancelación a tiempo) la modela #67. Un cliente recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro colaborador, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`; un `estado` distinto de los dos, 422 `datos-invalidos`.
+         */
+        post: operations["reservations.reservations.close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/mis-bonos": {
         parameters: {
             query?: never;
@@ -1289,6 +1309,14 @@ export interface components {
         CambioDeContrasena: {
             contrasena_actual: string;
             contrasena_nueva: string;
+        };
+        /** CerrarReserva */
+        CerrarReserva: {
+            /**
+             * @description Cómo termina la reserva: `atendida` o `ausente`.
+             * @enum {string}
+             */
+            estado: "atendida" | "ausente";
         };
         /** Cierre */
         Cierre: {
@@ -3535,6 +3563,38 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    "reservations.reservations.close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                reserva: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CerrarReserva"];
+            };
+        };
+        responses: {
+            /** @description `Reserva` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Reserva"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
         };
     };
     "vouchers.purchased.mine": {

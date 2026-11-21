@@ -13,6 +13,7 @@ use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\PaymentWindowExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
+use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotYetDueException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
@@ -166,7 +167,7 @@ final class ReservationTest extends TestCase
     {
         $reservation = $this->reservationIn($from);
         $author = Author::person(new UserId(self::USER_ID));
-        $at = self::at('2030-03-01 08:05');
+        $at = in_array($action, ['complete', 'markNoShow'], true) ? self::at('2030-03-04 11:00') : self::at('2030-03-01 08:05');
 
         $reservation->{$action}($at, $author);
 
@@ -193,6 +194,60 @@ final class ReservationTest extends TestCase
 
         $this->assertSame($from, $reservation->status);
         $this->assertSame([], $reservation->pendingChanges);
+    }
+
+    /** Attended is accepted from the very start of the service and not a second before (RF-18, CO-05). */
+    public function test_a_reservation_is_completed_only_from_its_start(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Confirmed);
+
+        try {
+            $reservation->complete(self::at('2030-03-04 09:59:59'), Author::system());
+            $this->fail('A reservation was completed before its start.');
+        } catch (ReservationNotYetDueException $exception) {
+            $this->assertSame('reservations.close_too_early', $exception->translationKey());
+            $this->assertSame(['when' => '04/03/2030 a las 10:00'], $exception->parameters());
+        }
+
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->status);
+        $this->assertSame([], $reservation->pendingChanges);
+
+        $reservation->complete(self::at('2030-03-04 10:00'), Author::system());
+
+        $this->assertSame(ReservationStatus::Completed, $reservation->status);
+    }
+
+    /** An absence waits for the tolerance of 10 minutes after the start: refused before, accepted at the tenth minute (CO-05). */
+    public function test_an_absence_is_marked_only_after_the_tolerance(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Confirmed);
+
+        foreach (['2030-03-04 09:00', '2030-03-04 10:00', '2030-03-04 10:09:59'] as $moment) {
+            try {
+                $reservation->markNoShow(self::at($moment), Author::system());
+                $this->fail("An absence was marked at {$moment}.");
+            } catch (ReservationNotYetDueException $exception) {
+                $this->assertSame('reservations.no_show_too_early', $exception->translationKey());
+                $this->assertSame(['when' => '04/03/2030 a las 10:10'], $exception->parameters());
+            }
+        }
+
+        $this->assertSame([], $reservation->pendingChanges);
+
+        $reservation->markNoShow(self::at('2030-03-04 10:10'), Author::person(new UserId(self::USER_ID)));
+
+        $this->assertSame(ReservationStatus::NoShow, $reservation->status);
+        $this->assertSame(self::USER_ID, $reservation->pendingChanges[0]->author->user?->value);
+    }
+
+    /** A reservation already in a final status answers with the transition error, even before the time rule (RE-04). */
+    public function test_a_final_status_is_refused_before_the_time_is_checked(): void
+    {
+        $reservation = $this->reservationIn(ReservationStatus::Completed);
+
+        $this->expectException(TransitionNotAllowedException::class);
+
+        $reservation->markNoShow(self::at('2030-03-01 09:00'), Author::system());
     }
 
     /** A final status never changes, whatever is asked (RE-04). */
@@ -490,7 +545,7 @@ final class ReservationTest extends TestCase
         };
 
         foreach ($steps as $step) {
-            $reservation->{$step}($at, $system);
+            $reservation->{$step}(in_array($step, ['complete', 'markNoShow'], true) ? self::at('2030-03-04 11:00') : $at, $system);
         }
 
         $reservation->markSaved();
