@@ -132,6 +132,7 @@ final class TenancyAudit
                 $suffix = match ($operation) {
                     TenantResource::CANCEL => TenantResource::CANCEL_SUFFIX,
                     TenantResource::REFUND => TenantResource::REFUND_SUFFIX,
+                    TenantResource::CLOSE => TenantResource::CLOSE_SUFFIX,
                     default => '',
                 };
                 // The URL of the other barbershop answers like a barbershop that does not exist.
@@ -181,6 +182,7 @@ final class TenancyAudit
             [TenantResource::DELETE, 'DELETE', [], true],
             [TenantResource::CANCEL, 'POST', [], true],
             [TenantResource::REFUND, 'POST', [], true],
+            [TenantResource::CLOSE, 'POST', TenantResource::CLOSE_PAYLOAD, true],
         ] as $request) {
             if ($resource->supports($request[0])) {
                 $requests[] = $request;

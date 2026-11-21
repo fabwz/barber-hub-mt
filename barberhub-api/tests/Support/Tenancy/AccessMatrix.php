@@ -32,6 +32,8 @@ final class AccessMatrix
 
     public const string RESERVATION_DETAIL = 'reservation-detail';
 
+    public const string OWNER_OR_ASSIGNED_COLLABORATOR = 'owner-or-assigned-collaborator';
+
     public const string CUSTOMER_OWN_LOST = 'customer-own-lost';
 
     public const string FIRST_USE = 'first-use';
@@ -55,6 +57,7 @@ final class AccessMatrix
         // The offer of the scenario is past its 15 minutes, so its owner reaches it and the business rule answers 409 `oferta-vencida`: the success is proved by the tests of the offers.
         self::CUSTOMER_OWN_LOST => [401, 409, 404, 403, 403, 403, 404, 404],
         self::RESERVATION_DETAIL => [401, self::OK, 404, 404, self::OK, self::OK, 404, 404],
+        self::OWNER_OR_ASSIGNED_COLLABORATOR => [401, 403, 403, 404, self::OK, self::OK, 404, 404],
         self::FIRST_USE => [401, self::OK, self::OK, 403, 403, 403, self::OK, self::OK],
         self::FIRST_USE_LIST => [401, self::OK, self::OK, 403, 403, 403, self::EMPTY, self::EMPTY],
     ];
@@ -121,6 +124,7 @@ final class AccessMatrix
             "GET {$base}/reservas/{reserva}" => RouteRule::owned(self::ALL_ROLES, self::RESERVATION_DETAIL, 'Cliente: solo las suyas; colaborador: solo las de su agenda; dueño: cualquiera de su barbería (UP-02, CO-04, CL-04).'),
             "PATCH {$base}/reservas/{reserva}" => RouteRule::owned(['owner', 'customer'], self::OWNER_OR_CUSTOMER_OWN, 'El cliente reprograma la suya; el dueño, cualquiera de su barbería.'),
             "POST {$base}/reservas/{reserva}/cancelacion" => RouteRule::owned(['owner', 'customer'], self::OWNER_OR_CUSTOMER_OWN, 'El cliente cancela la suya; el dueño, cualquiera de su barbería.'),
+            "POST {$base}/reservas/{reserva}/cierre" => RouteRule::owned(['owner', 'collaborator'], self::OWNER_OR_ASSIGNED_COLLABORATOR, 'El colaborador marca atendida o ausente solo las de su agenda; el dueño, cualquiera de su barbería (RF-18, CO-05). El cliente recibe 403.'),
 
             // Payments.
             "POST {$base}/reservas/{reserva}/pagos" => RouteRule::owned(['customer'], self::CUSTOMER_OWN, 'Solo el cliente paga su propia reserva.'),

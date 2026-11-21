@@ -175,13 +175,13 @@ final class TenantResources
             ),
             // The creation of #56 and "my reservations" of #57 are customer routes (in CUSTOMER_ROUTES); the listing of the staff
             // is the LIST operation, which the owner of Pura Navaja tries against Fade Lab; the detail of #58 is SHOW; the
-            // cancellation of #60 is CANCEL and the reschedule of #59 is UPDATE, which moves the reservation 15 minutes.
+            // cancellation of #60 is CANCEL, the closing of #61 is CLOSE (only against the other barbershop: the rows are in the future) and the reschedule of #59 is UPDATE, which moves the reservation 15 minutes.
             // The history has no route of its own (it comes inside the detail), so the audit only proves what the database hides.
             new TenantResource(
                 'reservations',
                 fn (string $barbershopId): string => self::createReservation($barbershopId),
                 'api/v1/barberias/{barberia}/reservas',
-                [TenantResource::LIST, TenantResource::SHOW, TenantResource::UPDATE, TenantResource::CANCEL],
+                [TenantResource::LIST, TenantResource::SHOW, TenantResource::UPDATE, TenantResource::CANCEL, TenantResource::CLOSE],
                 ['inicio' => self::reservationStart('10:15')->format(DATE_ATOM)],
                 ['api/v1/barberias/{barberia}/mis-reservas'],
             ),
