@@ -48,6 +48,14 @@ final readonly class EloquentUserRepository implements UserRepository
         }
     }
 
+    /** Find the account by its identifier. */
+    public function findById(UserId $id): ?User
+    {
+        $model = UserModel::query()->find($id->value);
+
+        return $model === null ? null : $this->toDomain($model);
+    }
+
     /** Find the account by its normalised email. */
     public function findByEmail(Email $email): ?User
     {

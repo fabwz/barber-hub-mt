@@ -22,6 +22,12 @@ final readonly class SanctumTokenRevoker implements TokenRevoker
         $this->userOf($userId)->tokens()->delete();
     }
 
+    /** Delete every Sanctum token of the user but the one kept. */
+    public function revokeAllExcept(UserId $userId, string $keptTokenId): void
+    {
+        $this->userOf($userId)->tokens()->whereKeyNot($keptTokenId)->delete();
+    }
+
     /** Load the model that owns the tokens. */
     private function userOf(UserId $userId): UserModel
     {
