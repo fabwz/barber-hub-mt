@@ -21,6 +21,7 @@ La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin
 | Agenda del personal | 401 | 403 | 403 | pasa (la suya) | pasa (la suya) | pasa | 404 | 404 |
 | Detalle de una reserva | 401 | pasa | 404 | 404 | pasa | pasa | 404 | 404 |
 | Dueño o cliente dueño | 401 | pasa | 404 | 403 | 403 | pasa | 404 | 404 |
+| Dueño o colaborador asignado | 401 | 403 | 403 | 404 | pasa | pasa | 404 | 404 |
 | Solo el cliente dueño | 401 | pasa | 404 | 403 | 403 | 403 | 404 | 404 |
 | Cliente de primer uso (RD-18, UP-09) | 401 | pasa | pasa | 403 | 403 | 403 | pasa | pasa |
 | Mis reservas y mis bonos | 401 | pasa | pasa | 403 | 403 | 403 | lista vacía | lista vacía |
@@ -88,6 +89,7 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `GET api/v1/barberias/{barberia}/reservas/{reserva}` | Rol y propiedad | dueño, colaborador, cliente | Cliente: solo las suyas; colaborador: solo las de su agenda; dueño: cualquiera de su barbería (UP-02, CO-04, CL-04). |
 | `PATCH api/v1/barberias/{barberia}/reservas/{reserva}` | Rol y propiedad | dueño, cliente | El cliente reprograma la suya; el dueño, cualquiera de su barbería. |
 | `POST api/v1/barberias/{barberia}/reservas/{reserva}/cancelacion` | Rol y propiedad | dueño, cliente | El cliente cancela la suya; el dueño, cualquiera de su barbería. |
+| `POST api/v1/barberias/{barberia}/reservas/{reserva}/cierre` | Rol y propiedad | dueño, colaborador | El colaborador marca atendida o ausente solo las de su agenda (la de otro colaborador, 404); el dueño, cualquiera de su barbería (RF-18, CO-05). El cliente recibe 403. Antes de la hora de inicio, o de 10 minutos después para «ausente», responde 409 `conflicto`. |
 | `POST api/v1/barberias/{barberia}/reservas/{reserva}/pagos` | Rol y propiedad | cliente | Solo el cliente paga su propia reserva. |
 | `GET api/v1/barberias/{barberia}/pagos/{pago}` | Rol y propiedad | dueño, cliente | El cliente lee los pagos de sus reservas y de sus bonos; el dueño, cualquiera de su barbería; el colaborador no (CO-04). |
 | `POST api/v1/barberias/{barberia}/pagos/{pago}/reembolsos` | Rol | dueño | Solo el dueño devuelve dinero (PA-08). El pago de un bono no se reembolsa: responde 409 `conflicto` (BO-07). |
