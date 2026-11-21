@@ -19,7 +19,7 @@ use Tests\TestCase;
  * Requests for the last sessions of a voucher at the same instant (BO-03, RNF-05). Each one is a PHP process with its own
  * connection that runs the atomic operation of the repository, and the rows are committed for real, so the conditional update
  * of the database is what decides: the sessions go to as many requests as there are, the rest are refused with
- * "saldo-insuficiente", and the balance ends at zero, never at -1. The broad test of the use case is #133.
+ * "saldo-insuficiente", and the balance ends at zero, never at -1. The race through the use case of the booking is VoucherBalanceRaceTest (#133).
  */
 final class SimultaneousVoucherHoldsTest extends TestCase
 {
