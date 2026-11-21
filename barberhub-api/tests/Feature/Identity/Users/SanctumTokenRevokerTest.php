@@ -63,6 +63,18 @@ final class SanctumTokenRevokerTest extends TestCase
         $this->assertSame(1, $other->tokens()->count());
     }
 
+    /** Revoking all but one keeps that token and the tokens of other people, and closes the rest of the user. */
+    public function test_revokes_every_token_but_the_kept_one(): void
+    {
+        $other = $this->account('luis@barberhub.test');
+        $other->createToken('Celular');
+
+        $this->revoker->revokeAllExcept(new UserId($this->user->id), (string) $this->tokenOf($this->user, 'Celular')->id);
+
+        $this->assertSame(['Celular'], $this->user->tokens()->pluck('name')->all());
+        $this->assertSame(1, $other->tokens()->count());
+    }
+
     /** Create an account. */
     private function account(string $email): UserModel
     {

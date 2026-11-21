@@ -15,6 +15,15 @@ final class FakeTokenRevoker implements TokenRevoker
     /** @var list<string> */
     public private(set) array $revokedAll = [];
 
+    /** @var list<array{string, string}> */
+    public private(set) array $revokedExcept = [];
+
+    /** Remember the user and the token that stays open while the others are revoked. */
+    public function revokeAllExcept(UserId $userId, string $keptTokenId): void
+    {
+        $this->revokedExcept[] = [$userId->value, $keptTokenId];
+    }
+
     /** Remember the user and the token to revoke. */
     public function revoke(UserId $userId, string $tokenId): void
     {

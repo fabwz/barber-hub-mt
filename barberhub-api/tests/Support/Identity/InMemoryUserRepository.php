@@ -35,6 +35,12 @@ final class InMemoryUserRepository implements UserRepository
         $this->users[$user->id->value] = $user;
     }
 
+    /** Find the account with the given identifier. */
+    public function findById(UserId $id): ?User
+    {
+        return $this->users[$id->value] ?? null;
+    }
+
     /** Find the account registered with an email address. */
     public function findByEmail(Email $email): ?User
     {
