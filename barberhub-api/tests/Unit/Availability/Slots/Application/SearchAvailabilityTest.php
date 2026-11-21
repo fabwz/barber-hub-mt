@@ -10,15 +10,18 @@ use PHPUnit\Framework\TestCase;
 use Src\Availability\Slots\Application\DTOs\Availability;
 use Src\Availability\Slots\Application\DTOs\DayAvailability;
 use Src\Availability\Slots\Application\DTOs\StaffWorkday;
+use Src\Availability\Slots\Application\UseCases\AssignAnyAvailable;
 use Src\Availability\Slots\Application\UseCases\ListAvailableSlots;
 use Src\Availability\Slots\Application\UseCases\SearchAvailability;
 use Src\Availability\Slots\Domain\Exceptions\ServiceNotBookableException;
+use Src\Availability\Slots\Domain\Services\AnyAvailableAssigner;
 use Src\Availability\Slots\Domain\Services\SlotCalculator;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 use Src\Shared\Domain\ValueObjects\TimeOfDay;
 use Src\Shared\Domain\ValueObjects\TimeRange;
 use Tests\Support\Availability\InMemoryBarbershopHours;
 use Tests\Support\Availability\InMemoryBlockedIntervals;
+use Tests\Support\Availability\InMemoryDailyReservationCounts;
 use Tests\Support\Availability\InMemoryServiceCatalog;
 use Tests\Support\Availability\InMemoryStaffRoster;
 
@@ -129,10 +132,13 @@ final class SearchAvailabilityTest extends TestCase
         $this->services = new InMemoryServiceCatalog([self::HAIRCUT => 30]);
         $this->blocked ??= new InMemoryBlockedIntervals;
 
+        $available = new ListAvailableSlots($this->services, new InMemoryBarbershopHours($weekly), $this->roster, $this->blocked, new SlotCalculator);
+
         return new SearchAvailability(
             $this->services,
             $this->roster,
-            new ListAvailableSlots($this->services, new InMemoryBarbershopHours($weekly), $this->roster, $this->blocked, new SlotCalculator),
+            $available,
+            new AssignAnyAvailable($available, $this->roster, new InMemoryDailyReservationCounts, new AnyAvailableAssigner),
         );
     }
 

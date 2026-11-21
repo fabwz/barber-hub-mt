@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * One customer of a race for a space: books it with the real use case, over its own connection, and prints a JSON with
  * the outcome and how many times the exclusion of the database had to refuse the reservation.
- * Arguments: gate, barbershop, user, service, collaborator, start, now, "lock" or "no-lock".
+ * Arguments: gate, barbershop, user, service, collaborator (or "any" for any available, DI-04), start, now, "lock" or "no-lock".
  * With "no-lock" the collaborator lock does nothing, so the test can show that it is what keeps the requests apart.
  */
 
@@ -35,7 +35,7 @@ app()->instance(ReservationRepository::class, $repository);
 
 try {
     app(BarbershopTransaction::class)->run($barbershopId, fn () => app(CreateReservation::class)->execute(
-        new CreateReservationCommand($userId, $serviceId, $collaboratorId, new DateTimeImmutable($startsAt)),
+        new CreateReservationCommand($userId, $serviceId, $collaboratorId === 'any' ? null : $collaboratorId, new DateTimeImmutable($startsAt)),
         new DateTimeImmutable($now),
     ));
     $outcome = 'confirmed';

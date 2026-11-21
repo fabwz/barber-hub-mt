@@ -11,6 +11,7 @@ use Src\Identity\Memberships\Application\UseCases\EnsureCustomerMembership;
 use Src\Identity\Memberships\Domain\Entities\Membership;
 use Src\Identity\Memberships\Domain\Exceptions\StaffCannotBeCustomerException;
 use Src\Identity\Memberships\Domain\ValueObjects\Role;
+use Src\Reservations\Reservations\Application\Contracts\AnyAvailableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\BookableServices;
 use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorLock;
@@ -56,6 +57,11 @@ final class CreateReservationTest extends TestCase
 
     private const string DANIELA_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d55';
 
+    private const string KEVIN_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d66';
+
+    /** The smallest identifier of the three, so the order of the locks differs from the order of the candidates. */
+    private const string LUIS_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d11';
+
     private InMemoryReservationRepository $reservations;
 
     private InMemoryMembershipRepository $memberships;
@@ -76,6 +82,15 @@ final class CreateReservationTest extends TestCase
 
     /** @var list<SlotAlternative> What the availability offers instead. */
     private array $alternatives = [];
+
+    /** @var list<string> The collaborators "any available" may assign, in the order the availability gives them. */
+    private array $candidates = [self::LUIS_ID, self::DANIELA_ID, self::KEVIN_ID];
+
+    /** The collaborator the assignment of DI-04 picks, or none when nobody is free. */
+    private ?string $assigned = self::DANIELA_ID;
+
+    /** @var list<string> The identifiers locked, in order. */
+    private array $locked = [];
 
     private bool $serviceExists = true;
 
@@ -125,6 +140,7 @@ final class CreateReservationTest extends TestCase
             public function lock(string $collaboratorId): void
             {
                 $this->test->log('lock');
+                $this->test->locked($collaboratorId);
                 $this->test->collaboratorExists() || throw CollaboratorNotFoundException::create();
             }
         };
@@ -142,6 +158,31 @@ final class CreateReservationTest extends TestCase
             public function alternatives(string $serviceId, string $collaboratorId, DateTimeImmutable $requested, DateTimeImmutable $now, ?string $ignoringReservationId = null): array
             {
                 $this->test->log('alternatives');
+
+                return $this->test->alternatives();
+            }
+        };
+        $anyAvailable = new class($test) implements AnyAvailableCollaborators
+        {
+            public function __construct(private readonly CreateReservationTest $test) {}
+
+            public function candidates(string $serviceId, DateTimeImmutable $startsAt): array
+            {
+                $this->test->log('candidates');
+
+                return $this->test->candidates();
+            }
+
+            public function assign(string $serviceId, DateTimeImmutable $startsAt, DateTimeImmutable $now): ?string
+            {
+                $this->test->log('assign');
+
+                return $this->test->assigned();
+            }
+
+            public function alternatives(string $serviceId, DateTimeImmutable $requested, DateTimeImmutable $now): array
+            {
+                $this->test->log('any-alternatives');
 
                 return $this->test->alternatives();
             }
@@ -168,7 +209,7 @@ final class CreateReservationTest extends TestCase
             }
         };
 
-        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $customers, $payment, new ExpireOverdueReservations($this->reservations, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID))), $this->transaction, $this->vouchers, $this->expiries, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID)));
+        $this->createReservation = new CreateReservation($this->reservations, $services, $deadlines, $lock, $slots, $anyAvailable, $customers, $payment, new ExpireOverdueReservations($this->reservations, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID))), $this->transaction, $this->vouchers, $this->expiries, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID)));
     }
 
     /** The reservation is confirmed at once with the copies of the service, and its history has creation and confirmation (RE-07, SV-03, RE-09). */
@@ -303,6 +344,74 @@ final class CreateReservationTest extends TestCase
         $this->assertNotNull($membership);
         $this->assertSame(Role::Customer, $membership->role);
         $this->assertSame($membership->id->value, $reservation->customerMembershipId->value);
+    }
+
+    /** Without a collaborator the candidates are locked in the order of their identifiers, then the assignment is asked, and the reservation is the assigned one's (DI-04, RE-01). */
+    public function test_any_available_locks_every_candidate_in_a_fixed_order_and_books_the_assigned_one(): void
+    {
+        $reservation = $this->createReservation->execute($this->anyCommand(), self::at('2030-03-01 08:00'));
+
+        $this->assertSame([self::LUIS_ID, self::DANIELA_ID, self::KEVIN_ID], $this->locked);
+        $this->assertSame(['candidates', 'lock', 'lock', 'lock', 'assign', 'membership'], $this->calls);
+        $this->assertSame(self::DANIELA_ID, $reservation->collaboratorId->value);
+        $this->assertSame(ReservationStatus::Confirmed, $reservation->status);
+    }
+
+    /** The order of the locks does not depend on the order the candidates arrive in. */
+    public function test_any_available_sorts_the_locks_by_identifier(): void
+    {
+        $this->candidates = [self::KEVIN_ID, self::LUIS_ID, self::DANIELA_ID];
+        $this->assigned = self::KEVIN_ID;
+
+        $reservation = $this->createReservation->execute($this->anyCommand(), self::at('2030-03-01 08:00'));
+
+        $this->assertSame([self::LUIS_ID, self::DANIELA_ID, self::KEVIN_ID], $this->locked);
+        $this->assertSame(self::KEVIN_ID, $reservation->collaboratorId->value);
+    }
+
+    /** If nobody is free the space is taken: the alternatives are those of any collaborator and nothing is left behind (RE-02). */
+    public function test_any_available_with_nobody_free_is_refused_with_alternatives_of_any_collaborator(): void
+    {
+        $this->assigned = null;
+        $this->alternatives = [new SlotAlternative(new CollaboratorId(self::KEVIN_ID), TimeInterval::between(self::at('2030-03-05 10:15'), self::at('2030-03-05 11:00')))];
+
+        try {
+            $this->createReservation->execute($this->anyCommand(), self::at('2030-03-01 08:00'));
+            $this->fail('A taken space was booked.');
+        } catch (SlotUnavailableException $exception) {
+            $this->assertSame('espacio-no-disponible', $exception->rule());
+            $this->assertSame(self::KEVIN_ID, $exception->problemMembers()['alternativas'][0]['barbero']);
+        }
+
+        $this->assertSame(['candidates', 'lock', 'lock', 'lock', 'assign', 'any-alternatives'], $this->calls);
+        $this->assertSame(0, $this->memberships->count());
+        $this->assertSame(0, $this->reservations->count());
+        $this->assertSame(1, $this->transaction->rolledBack());
+    }
+
+    /** Nobody who could attend means nobody to lock and no space: the same refusal. */
+    public function test_any_available_without_candidates_is_refused(): void
+    {
+        $this->candidates = [];
+        $this->assigned = null;
+
+        $this->expectException(SlotUnavailableException::class);
+
+        try {
+            $this->createReservation->execute($this->anyCommand(), self::at('2030-03-01 08:00'));
+        } finally {
+            $this->assertSame([], $this->locked);
+        }
+    }
+
+    /** With a collaborator named nothing of the assignment is used. */
+    public function test_a_named_collaborator_never_asks_for_the_assignment(): void
+    {
+        $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+
+        $this->assertNotContains('assign', $this->calls);
+        $this->assertNotContains('candidates', $this->calls);
+        $this->assertSame([self::DANIELA_ID], $this->locked);
     }
 
     /** A space that is not free is refused with up to the alternatives of the availability, before any membership or reservation exists (RE-02). */
@@ -487,6 +596,28 @@ final class CreateReservationTest extends TestCase
         return $this->alternatives;
     }
 
+    /**
+     * @internal Used by the ports of the test.
+     *
+     * @return list<string>
+     */
+    public function candidates(): array
+    {
+        return $this->candidates;
+    }
+
+    /** @internal Used by the ports of the test. */
+    public function assigned(): ?string
+    {
+        return $this->assigned;
+    }
+
+    /** @internal Used by the ports of the test. */
+    public function locked(string $collaboratorId): void
+    {
+        $this->locked[] = $collaboratorId;
+    }
+
     /** @internal Used by the ports of the test. */
     public function serviceExists(): bool
     {
@@ -509,6 +640,12 @@ final class CreateReservationTest extends TestCase
     private function command(?DateTimeImmutable $startsAt = null, bool $withVoucher = false): CreateReservationCommand
     {
         return new CreateReservationCommand(self::ANA_ID, self::SERVICE_ID, self::DANIELA_ID, $startsAt ?? self::at('2030-03-05 10:00'), $withVoucher);
+    }
+
+    /** The request of Ana for the space of 10:00 on Tuesday 5 March 2030 with "any available". */
+    private function anyCommand(): CreateReservationCommand
+    {
+        return new CreateReservationCommand(self::ANA_ID, self::SERVICE_ID, null, self::at('2030-03-05 10:00'));
     }
 
     /** A moment in Costa Rica time. */
