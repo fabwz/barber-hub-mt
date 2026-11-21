@@ -14,6 +14,8 @@ return [
     ],
     'customer_overlap' => 'Ya tiene una reserva confirmada que se solapa con ese horario en esta barbería.',
     'payment_window_expired' => 'El plazo para pagar esta reserva venció y su espacio fue liberado.',
+    'close_too_early' => 'La reserva se puede marcar como atendida a partir del :when, la hora de su inicio.',
+    'no_show_too_early' => 'La reserva se puede marcar como ausente a partir del :when, 10 minutos después de su inicio.',
     'price_invalid' => 'El precio de la reserva debe ser de al menos ₡1.',
     'reschedule_deadline_expired' => 'Ya pasó el plazo para reprogramar esta reserva sin penalización.',
     'reschedule_limit_reached' => 'La reserva ya se reprogramó el máximo de 2 veces.',
