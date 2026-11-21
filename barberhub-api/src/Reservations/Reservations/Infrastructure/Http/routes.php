@@ -54,3 +54,11 @@ Route::patch('barberias/{barberia}/reservas/{reserva}', [ReservationController::
     ->middleware(['auth:sanctum', 'barbershop', 'role:owner,customer'])
     ->name('reservations.reservations.reschedule')
     ->whereUuid(['barberia', 'reserva']);
+
+// The collaborator closes the reservations of their own agenda and the owner any of the barbershop (RF-18, CO-05). The plain mode
+// gives a person without a role the usual 404 (UP-06), the role filter refuses a customer with 403 and the use case gives a
+// collaborator the 404 of a reservation that is not on their agenda.
+Route::post('barberias/{barberia}/reservas/{reserva}/cierre', [ReservationController::class, 'close'])
+    ->middleware(['auth:sanctum', 'barbershop', 'role:owner,collaborator'])
+    ->name('reservations.reservations.close')
+    ->whereUuid(['barberia', 'reserva']);
