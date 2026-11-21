@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Src\Reservations\Reservations\Application\Contracts\ActiveCollaboratorNames;
 use Src\Reservations\Reservations\Application\Contracts\ActiveServiceNames;
+use Src\Reservations\Reservations\Application\Contracts\AnyAvailableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\AttendedServiceTotals;
 use Src\Reservations\Reservations\Application\Contracts\AuthorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\BarbershopPresence;
@@ -30,6 +31,7 @@ use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
 use Src\Reservations\Reservations\Application\Contracts\ProposableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\ProposableServices;
 use Src\Reservations\Reservations\Application\Contracts\ProposalAvailability;
+use Src\Reservations\Reservations\Application\Contracts\ReservationCounter;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExpiries;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExtractor;
 use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
@@ -41,6 +43,7 @@ use Src\Reservations\Reservations\Infrastructure\Ai\AiCircuitStore;
 use Src\Reservations\Reservations\Infrastructure\Ai\CircuitBreakerReservationExtractor;
 use Src\Reservations\Reservations\Infrastructure\Ai\GeminiReservationExtractor;
 use Src\Reservations\Reservations\Infrastructure\Ai\ReservationAssistantStatus;
+use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityAnyAvailableCollaborators;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityFreeSlots;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityProposalAvailability;
 use Src\Reservations\Reservations\Infrastructure\Barbershops\BarbershopsBarbershopPresence;
@@ -57,6 +60,7 @@ use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentAmounts
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentChannels;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentAttendedServiceTotals;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentBlockedIntervalReader;
+use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentReservationCounter;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
 use Src\Reservations\Reservations\Infrastructure\Queue\QueuedReservationExpiries;
 use Src\Reservations\Reservations\Infrastructure\Services\ServicesActiveServiceNames;
@@ -77,6 +81,7 @@ final class ReservationsServiceProvider extends ServiceProvider
     public array $bindings = [
         ReservationRepository::class => EloquentReservationRepository::class,
         BlockedIntervalReader::class => EloquentBlockedIntervalReader::class,
+        ReservationCounter::class => EloquentReservationCounter::class,
         AttendedServiceTotals::class => EloquentAttendedServiceTotals::class,
         BookableServices::class => ServicesBookableServices::class,
         CancellationDeadlines::class => BarbershopsCancellationDeadlines::class,
@@ -86,6 +91,7 @@ final class ReservationsServiceProvider extends ServiceProvider
         CollaboratorLock::class => CollaboratorsCollaboratorLock::class,
         CustomerMemberships::class => MembershipsCustomerMemberships::class,
         FreeSlots::class => AvailabilityFreeSlots::class,
+        AnyAvailableCollaborators::class => AvailabilityAnyAvailableCollaborators::class,
         CollaboratorDirectory::class => CollaboratorsCollaboratorDirectory::class,
         CustomerDirectory::class => MembershipsCustomerDirectory::class,
         ServiceNames::class => ServicesServiceNames::class,

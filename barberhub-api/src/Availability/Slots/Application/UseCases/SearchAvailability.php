@@ -21,11 +21,12 @@ final readonly class SearchAvailability
 {
     public const int NEXT_DAYS = 3;
 
-    /** Receive the ports that give the service and the names of the staff, and the use case that lists the spaces of a day. */
+    /** Receive the ports that give the service and the names of the staff, the use case that lists the spaces of a day and the one that assigns "any available". */
     public function __construct(
         private ServiceCatalog $services,
         private StaffRoster $roster,
         private ListAvailableSlots $available,
+        private AssignAnyAvailable $assignment,
     ) {}
 
     /**
@@ -33,9 +34,11 @@ final readonly class SearchAvailability
      * collaborator, of one or of all who offer the service. If the day has none, it adds the next 3 days that do,
      * looking up to the last day DI-03 allows and stopping when it finds them. A day outside that window has no spaces
      * and no next days. The waiting list option of RF-10 waits for that feature, which is deferred.
-     * Reads: the service and the names once, then the four reads of a day for each day it has to look at, at most 31.
+     * With `$anyAvailable` it shows one space per start, with the collaborator DI-04 assigns, grouped under that collaborator;
+     * without it the answer is the same as always.
+     * Reads: the service and the names once, then the four reads of a day (six with `$anyAvailable`) for each day it has to look at, at most 31.
      */
-    public function execute(string $serviceId, string $date, ?string $collaboratorId, DateTimeImmutable $now): Availability
+    public function execute(string $serviceId, string $date, ?string $collaboratorId, DateTimeImmutable $now, bool $anyAvailable = false): Availability
     {
         $service = $this->services->bookableService($serviceId) ?? throw ServiceNotBookableException::create();
         $day = CalendarDate::of($date);
@@ -47,12 +50,12 @@ final readonly class SearchAvailability
             return new Availability($service, new DayAvailability($day->value, []), []);
         }
 
-        $asked = $this->spacesOf($day, $service->duration, $serviceId, $collaboratorId, $staff, $now);
+        $asked = $this->spacesOf($day, $service->duration, $serviceId, $collaboratorId, $staff, $now, $anyAvailable);
         $next = [];
 
         if ($asked->staff === []) {
             for ($candidate = $day->next(); $candidate->value <= $last->value && count($next) < self::NEXT_DAYS; $candidate = $candidate->next()) {
-                $spaces = $this->spacesOf($candidate, $service->duration, $serviceId, $collaboratorId, $staff, $now);
+                $spaces = $this->spacesOf($candidate, $service->duration, $serviceId, $collaboratorId, $staff, $now, $anyAvailable);
 
                 if ($spaces->staff !== []) {
                     $next[] = $spaces;
@@ -68,9 +71,10 @@ final readonly class SearchAvailability
      *
      * @param  list<StaffMemberName>  $staff
      */
-    private function spacesOf(CalendarDate $day, Duration $duration, string $serviceId, ?string $collaboratorId, array $staff, DateTimeImmutable $now): DayAvailability
+    private function spacesOf(CalendarDate $day, Duration $duration, string $serviceId, ?string $collaboratorId, array $staff, DateTimeImmutable $now, bool $anyAvailable): DayAvailability
     {
         $slots = $this->available->execute($serviceId, $day->value, $collaboratorId, $now, $duration);
+        $slots = $anyAvailable ? $this->assignment->onePerStart($serviceId, $day, $slots, $now) : $slots;
         $groups = [];
 
         foreach ($staff as $member) {

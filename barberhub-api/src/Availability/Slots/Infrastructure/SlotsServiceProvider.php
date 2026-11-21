@@ -7,10 +7,12 @@ namespace Src\Availability\Slots\Infrastructure;
 use Illuminate\Support\ServiceProvider;
 use Src\Availability\Slots\Application\Contracts\BarbershopHours;
 use Src\Availability\Slots\Application\Contracts\BlockedIntervals;
+use Src\Availability\Slots\Application\Contracts\DailyReservationCounts;
 use Src\Availability\Slots\Application\Contracts\ServiceCatalog;
 use Src\Availability\Slots\Application\Contracts\StaffRoster;
 use Src\Availability\Slots\Infrastructure\Collaborators\CollaboratorsStaffRoster;
 use Src\Availability\Slots\Infrastructure\OpeningHours\OpeningHoursBarbershopHours;
+use Src\Availability\Slots\Infrastructure\Reservations\ReservationsDailyReservationCounts;
 use Src\Availability\Slots\Infrastructure\Services\ServicesServiceCatalog;
 
 final class SlotsServiceProvider extends ServiceProvider
@@ -25,5 +27,6 @@ final class SlotsServiceProvider extends ServiceProvider
         BarbershopHours::class => OpeningHoursBarbershopHours::class,
         StaffRoster::class => CollaboratorsStaffRoster::class,
         BlockedIntervals::class => ReservationsAndOffersBlockedIntervals::class,
+        DailyReservationCounts::class => ReservationsDailyReservationCounts::class,
     ];
 }
