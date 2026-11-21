@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
 
+    'current_password_incorrect' => 'La contraseña actual no es correcta.',
     'email_already_registered' => 'Ya existe una cuenta con ese correo.',
     'email_invalid' => 'El correo debe ser una dirección válida de :max caracteres como máximo.',
     'invalid_credentials' => 'El correo o la contraseña no son correctos.',
@@ -15,6 +16,7 @@ return [
     'password_without_uppercase' => 'La contraseña debe incluir al menos una letra mayúscula.',
     'role_already_assigned' => 'La persona ya tiene un rol en esta barbería.',
     'staff_cannot_be_customer' => 'Quien es dueño o colaborador de una barbería no puede reservar en ella como cliente.',
+    'temporary_password_must_change' => 'Debe cambiar su contraseña temporal antes de usar el resto de la aplicación.',
     'too_many_login_attempts' => 'Demasiados intentos de ingreso. Intente de nuevo en :minutes minuto.|Demasiados intentos de ingreso. Intente de nuevo en :minutes minutos.',
 
 ];

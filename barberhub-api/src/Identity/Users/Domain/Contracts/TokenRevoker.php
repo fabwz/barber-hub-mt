@@ -13,4 +13,7 @@ interface TokenRevoker
 
     /** Revoke every access token of the user. */
     public function revokeAll(UserId $userId): void;
+
+    /** Revoke every access token of the user except one, so the device that asks keeps its session. */
+    public function revokeAllExcept(UserId $userId, string $keptTokenId): void;
 }

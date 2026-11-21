@@ -47,6 +47,12 @@ final readonly class User
         return new self($id, $name, $email, null, $passwordHash, true, null, null, true);
     }
 
+    /** Replace the password with a new hash; the password is no longer temporary (UP-04). */
+    public function changePassword(string $passwordHash): self
+    {
+        return new self($this->id, $this->name, $this->email, $this->phone, $passwordHash, $this->active, $this->termsAcceptedAt, $this->privacyAcceptedAt, false);
+    }
+
     /** Rebuild an account from its stored state. */
     public static function reconstitute(
         UserId $id,
