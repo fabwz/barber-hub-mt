@@ -851,7 +851,7 @@ export interface paths {
         };
         /**
          * Mostrar una reserva
-         * @description Muestra una reserva con la proyección de cada rol. El cliente ve la suya (`ReservaDetalleDeCliente`): servicio, barbero, fecha, estado, precio y plazo de cancelación, sin saldo ni historial. El colaborador ve las de su propia agenda (`ReservaDetalleDeAgenda`) con el nombre del cliente y el `saldo_pendiente`, sin historial, pagos ni ingresos. El dueño ve cualquiera de su barbería con lo mismo y el `historial` de cambios de estado con `de`, `a`, `autor` (nombre, o `sistema`) y `fecha`. Sin pagos todavía, el `saldo_pendiente` es el precio completo, que se cobra en el local. Una reserva que no existe, de otra barbería, de otro cliente o de otro colaborador, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`.
+         * @description Muestra una reserva con la proyección de cada rol. El cliente ve la suya (`ReservaDetalleDeCliente`): servicio, barbero, fecha, estado, precio y plazo de cancelación, sin saldo ni historial, y, si la reserva está `confirmada`, `cancelacion_ahora`: lo que pasaría si cancela en este momento (`clasificacion` `a_tiempo` o `tardia`, `limite` hasta cuándo es sin penalización, `deposito` `a_devolver`, `retenido` o `ninguno`, y `sesion_bono`), calculado por el servidor. El colaborador ve las de su propia agenda (`ReservaDetalleDeAgenda`) con el nombre del cliente y el `saldo_pendiente`, sin historial, pagos ni ingresos. El dueño ve cualquiera de su barbería con lo mismo y el `historial` de cambios de estado con `de`, `a`, `autor` (nombre, o `sistema`) y `fecha`. Sin pagos todavía, el `saldo_pendiente` es el precio completo, que se cobra en el local. Una reserva que no existe, de otra barbería, de otro cliente o de otro colaborador, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`.
          */
         get: operations["reservations.reservations.show"];
         put?: never;
@@ -877,7 +877,7 @@ export interface paths {
         put?: never;
         /**
          * Cancelar una reserva
-         * @description Cancela la reserva y libera su espacio en la misma operación. El cliente cancela solo las suyas y la reserva queda `cancelada_por_cliente`; el dueño cancela cualquiera de su barbería y queda `cancelada_por_barberia`. La respuesta trae la `clasificacion` de la cancelación: `a_tiempo` o `tardia` (según el `plazo_cancelacion_horas` que la reserva guardó y la hora de la cancelación) para el cliente, y `por_la_barberia` para el dueño. Repetir la cancelación responde 200 con el mismo estado y la misma clasificación, sin agregar nada al historial. Una reserva completada, ausente o expirada, o una temporal que el dueño intenta cancelar, responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro cliente, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`. Si la reserva se pagó con una sesión de un bono, la cancelación a tiempo o la de la barbería la reintegra y la tardía la deja consumida; repetir la cancelación no la reintegra dos veces. La devolución del depósito, el aviso al cliente y la lista de espera todavía no se aplican.
+         * @description Cancela la reserva y libera su espacio en la misma operación. El cliente cancela solo las suyas y la reserva queda `cancelada_por_cliente`; el dueño cancela cualquiera de su barbería y queda `cancelada_por_barberia`. La respuesta trae la `clasificacion` de la cancelación: `a_tiempo` o `tardia` (según el `plazo_cancelacion_horas` que la reserva guardó y la hora de la cancelación) para el cliente, y `por_la_barberia` para el dueño. Repetir la cancelación responde 200 con el mismo estado y la misma clasificación, sin agregar nada al historial. Una reserva completada, ausente o expirada, o una temporal que el dueño intenta cancelar, responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro cliente, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`. Si la reserva se pagó con una sesión de un bono, la cancelación a tiempo o la de la barbería la reintegra y la tardía la deja consumida; repetir la cancelación no la reintegra dos veces. La respuesta informa también qué pasó con el depósito pagado en línea (`deposito`): `a_devolver` si la cancelación fue a tiempo o de la barbería (el pago queda aprobado y marcado `devolucion_pendiente`, una sola vez, hasta que el reembolso real exista), `retenido` si fue tardía (el pago queda aprobado sin marca) y `ninguno` si no había nada pagado en línea; y qué pasó con la sesión (`sesion_bono`): `se_reintegra`, `se_consume` o `ninguna`. Repetir la cancelación informa lo mismo y no marca otra vez. El reembolso real, el aviso al cliente y la lista de espera todavía no se aplican.
          */
         post: operations["reservations.reservations.cancel"];
         delete?: never;
@@ -897,7 +897,7 @@ export interface paths {
         put?: never;
         /**
          * Marcar una reserva como atendida o ausente
-         * @description Cierra una reserva `confirmada` como `atendida` o `ausente` (cuerpo `{"estado": "atendida"}` o `{"estado": "ausente"}`) y deja el cambio en el historial con su autor y fecha. El colaborador cierra solo las de su propia agenda y el dueño cualquiera de su barbería. `atendida` solo se acepta desde la hora de `inicio`; `ausente`, 10 minutos después de ese inicio (tolerancia). Antes responde 409 `conflicto` con un detalle que dice desde qué hora se puede marcar. Una reserva que no está confirmada (temporal, cancelada o expirada) o que ya terminó con el otro estado responde 409 `conflicto`: un estado final no cambia. Repetir con el mismo estado responde 200 sin agregar nada al historial ni consumir otra vez la sesión. Si la reserva se pagó con una sesión de un bono, al cerrarla la sesión queda consumida, una sola vez. El depósito pagado no se toca: la consecuencia económica sobre el depósito (retenido en la ausencia, a devolver en la cancelación a tiempo) la modela #67. Un cliente recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro colaborador, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`; un `estado` distinto de los dos, 422 `datos-invalidos`.
+         * @description Cierra una reserva `confirmada` como `atendida` o `ausente` (cuerpo `{"estado": "atendida"}` o `{"estado": "ausente"}`) y deja el cambio en el historial con su autor y fecha. El colaborador cierra solo las de su propia agenda y el dueño cualquiera de su barbería. `atendida` solo se acepta desde la hora de `inicio`; `ausente`, 10 minutos después de ese inicio (tolerancia). Antes responde 409 `conflicto` con un detalle que dice desde qué hora se puede marcar. Una reserva que no está confirmada (temporal, cancelada o expirada) o que ya terminó con el otro estado responde 409 `conflicto`: un estado final no cambia. Repetir con el mismo estado responde 200 sin agregar nada al historial ni consumir otra vez la sesión. Si la reserva se pagó con una sesión de un bono, al cerrarla la sesión queda consumida, una sola vez. El depósito pagado no se toca: en la ausencia queda retenido, es decir, el pago sigue aprobado y sin marca de devolución. Un cliente recibe 403 `prohibido`. Una reserva que no existe, de otra barbería o de otro colaborador, y una persona sin rol en la barbería, responden el mismo 404 `no-encontrado`; un `estado` distinto de los dos, 422 `datos-invalidos`.
          */
         post: operations["reservations.reservations.close"];
         delete?: never;
@@ -1767,8 +1767,21 @@ export interface components {
             plazo_cancelacion_horas: number;
             /** @description Hora límite para pagar, mismo formato que `inicio`; nula si la reserva ya está confirmada. */
             expira_en: string | null;
-            /** @description Clasificación de la cancelación: `a_tiempo`, `tardia` o `por_la_barberia` (CA-01, CA-04). Se calcula, no se guarda. */
-            clasificacion: string;
+            /**
+             * @description Clasificación de la cancelación: `a_tiempo`, `tardia` o `por_la_barberia` (CA-01, CA-04). Se calcula, no se guarda.
+             * @enum {string}
+             */
+            clasificacion: "a_tiempo" | "tardia" | "por_la_barberia";
+            /**
+             * @description Qué pasó con el depósito pagado en línea (RF-17): `a_devolver` (cancelación a tiempo o de la barbería; se reembolsa con RF-24), `retenido` (cancelación tardía) o `ninguno` (no había nada pagado en línea). Repetir la cancelación informa lo mismo.
+             * @enum {string}
+             */
+            deposito: "a_devolver" | "retenido" | "ninguno";
+            /**
+             * @description Qué pasó con la sesión del bono que pagaba la reserva (BO-05): `se_reintegra`, `se_consume` o `ninguna` si no se pagó con un bono.
+             * @enum {string}
+             */
+            sesion_bono: "se_reintegra" | "se_consume" | "ninguna";
         };
         /** ReservaCreada */
         ReservaCreada: {
@@ -1913,6 +1926,16 @@ export interface components {
             metodos_de_pago: string[];
             /** @description Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
             plazo_cancelacion_horas: number;
+            /** @description Qué pasaría si la persona cancelara ahora (RF-17), calculado por el servidor con la hora actual; nulo si la reserva no está confirmada. `clasificacion` es `a_tiempo` o `tardia`, `limite` el último instante sin penalización (ISO 8601, -06:00), `deposito` `a_devolver`, `retenido` o `ninguno`, y `sesion_bono` `se_reintegra`, `se_consume` o `ninguna`. */
+            cancelacion_ahora: {
+                /** @enum {string} */
+                clasificacion: "a_tiempo" | "tardia" | "por_la_barberia";
+                limite: string;
+                /** @enum {string} */
+                deposito: "a_devolver" | "retenido" | "ninguno";
+                /** @enum {string} */
+                sesion_bono: "se_reintegra" | "se_consume" | "ninguna";
+            } | null;
         };
         /** Servicio */
         Servicio: {

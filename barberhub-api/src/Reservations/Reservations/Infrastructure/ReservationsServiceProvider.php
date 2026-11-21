@@ -32,6 +32,7 @@ use Src\Reservations\Reservations\Application\Contracts\ProposableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\ProposableServices;
 use Src\Reservations\Reservations\Application\Contracts\ProposalAvailability;
 use Src\Reservations\Reservations\Application\Contracts\ReservationCounter;
+use Src\Reservations\Reservations\Application\Contracts\ReservationDeposits;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExpiries;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExtractor;
 use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
@@ -58,6 +59,7 @@ use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomer
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerMemberships;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentAmounts;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentChannels;
+use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsReservationDeposits;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentAttendedServiceTotals;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentBlockedIntervalReader;
 use Src\Reservations\Reservations\Infrastructure\Persistence\Queries\EloquentReservationCounter;
@@ -103,6 +105,7 @@ final class ReservationsServiceProvider extends ServiceProvider
         ProposableCollaborators::class => CollaboratorsProposableCollaborators::class,
         ProposalAvailability::class => AvailabilityProposalAvailability::class,
         ReservationVouchers::class => VouchersReservationVouchers::class,
+        ReservationDeposits::class => PaymentsReservationDeposits::class,
         ReservationExpiries::class => QueuedReservationExpiries::class,
     ];
 

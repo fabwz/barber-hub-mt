@@ -198,8 +198,8 @@ final class ReserveWithVoucherTest extends TestCase
         $id = $this->book()->assertCreated()->json('data.id');
         $this->assertSame(4, $this->balance($voucher));
 
-        $this->postJson($this->cancelUrl($id))->assertOk()->assertJsonPath('data.clasificacion', 'a_tiempo');
-        $this->postJson($this->cancelUrl($id))->assertOk()->assertJsonPath('data.clasificacion', 'a_tiempo');
+        $this->postJson($this->cancelUrl($id))->assertOk()->assertJsonPath('data.clasificacion', 'a_tiempo')->assertJsonPath('data.deposito', 'ninguno')->assertJsonPath('data.sesion_bono', 'se_reintegra');
+        $this->postJson($this->cancelUrl($id))->assertOk()->assertJsonPath('data.clasificacion', 'a_tiempo')->assertJsonPath('data.deposito', 'ninguno')->assertJsonPath('data.sesion_bono', 'se_reintegra');
 
         $this->assertSame(5, $this->balance($voucher));
         $this->assertSame([['release', 1, $id]], $this->entries($voucher, 'release'));
@@ -213,7 +213,7 @@ final class ReserveWithVoucherTest extends TestCase
         $id = $this->book()->assertCreated()->json('data.id');
         $this->clockAt('2030-03-05 08:00');
 
-        $this->postJson($this->cancelUrl($id))->assertOk()->assertJsonPath('data.clasificacion', 'tardia');
+        $this->postJson($this->cancelUrl($id))->assertOk()->assertJsonPath('data.clasificacion', 'tardia')->assertJsonPath('data.deposito', 'ninguno')->assertJsonPath('data.sesion_bono', 'se_consume');
         $this->postJson($this->cancelUrl($id))->assertOk();
 
         $this->assertSame(4, $this->balance($voucher));

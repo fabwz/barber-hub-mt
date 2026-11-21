@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Support\Payments;
 
+use DateTimeImmutable;
 use Src\Payments\Payments\Domain\Contracts\PaymentRepository;
 use Src\Payments\Payments\Domain\Entities\Payment;
 use Src\Payments\Payments\Domain\Exceptions\ActivePaymentExistsException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
+use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
 use Src\Payments\Payments\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Payments\Payments\Domain\ValueObjects\ReservationId;
 
@@ -80,6 +82,15 @@ final class InMemoryPaymentRepository implements PaymentRepository
         }
 
         return $found;
+    }
+
+    /** Mark the approved payment of the reservation once; nothing is locked in memory. */
+    public function markRefundPendingOfReservation(ReservationId $reservationId, DateTimeImmutable $at): bool
+    {
+        $payment = array_find($this->payments, fn (Payment $payment): bool => $payment->status === PaymentStatus::Approved && ! $payment->refundPending && $payment->reservationId?->equals($reservationId) === true);
+        $payment?->markRefundPending($at);
+
+        return $payment !== null;
     }
 
     /** How many payments are stored. */

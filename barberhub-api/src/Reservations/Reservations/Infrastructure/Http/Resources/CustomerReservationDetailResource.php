@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Src\Reservations\Reservations\Infrastructure\Http\Resources;
 
+use DateTimeZone;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Src\Reservations\Reservations\Application\DTOs\ReservationDetail;
+use Src\Reservations\Reservations\Infrastructure\Http\ConsequenceNames;
 
 /**
  * @property-read ReservationDetail $resource
@@ -25,7 +27,7 @@ final class CustomerReservationDetailResource extends JsonResource
      * Expose the reservation of the listing plus the deadline it kept, and nothing of the balance or the history: the
      * customer does not see the authors (RF-14) and the balance is shown to the staff (PA-10).
      *
-     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null, monto_a_pagar: int, saldo_en_local: int, vence_en: string|null, pasarela: string|null, metodos_de_pago: list<string>, plazo_cancelacion_horas: int}
+     * @return array{id: string, servicio: string, servicio_nombre: string, barbero: string, barbero_nombre: string, estado: string, inicio: string, fin: string, precio: int, duracion_minutos: int, expira_en: string|null, monto_a_pagar: int, saldo_en_local: int, vence_en: string|null, pasarela: string|null, metodos_de_pago: list<string>, plazo_cancelacion_horas: int, cancelacion_ahora: array{clasificacion: string, limite: string, deposito: string, sesion_bono: string}|null}
      */
     public function toArray(Request $request): array
     {
@@ -33,6 +35,13 @@ final class CustomerReservationDetailResource extends JsonResource
             ...new CustomerReservationListItemResource($this->detail->view)->toArray($request),
             /** Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
             'plazo_cancelacion_horas' => $this->detail->view->reservation->cancellationDeadlineHours,
+            /** Qué pasaría si la persona cancelara ahora (RF-17), calculado por el servidor con la hora actual; nulo si la reserva no está confirmada. `clasificacion` es `a_tiempo` o `tardia`, `limite` el último instante sin penalización (ISO 8601, -06:00), `deposito` `a_devolver`, `retenido` o `ninguno`, y `sesion_bono` `se_reintegra`, `se_consume` o `ninguna`. */
+            'cancelacion_ahora' => $this->detail->cancellationNow === null ? null : [
+                'clasificacion' => ConsequenceNames::cancellation($this->detail->cancellationNow->class),
+                'limite' => $this->detail->cancellationNow->limit->setTimezone(new DateTimeZone((string) config('app.timezone')))->format(DATE_ATOM),
+                'deposito' => ConsequenceNames::deposit($this->detail->cancellationNow->consequence->deposit),
+                'sesion_bono' => ConsequenceNames::session($this->detail->cancellationNow->consequence->session),
+            ],
         ];
     }
 }

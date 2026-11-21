@@ -208,6 +208,10 @@ final class Payment
             throw PaymentTransitionNotAllowedException::create();
         }
 
+        if ($this->refundPending) {
+            return;
+        }
+
         $this->refundPending = true;
         $this->updatedAt = $at;
     }

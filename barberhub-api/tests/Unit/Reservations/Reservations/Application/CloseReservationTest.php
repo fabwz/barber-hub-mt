@@ -13,6 +13,7 @@ use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotYetDueException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
+use Src\Reservations\Reservations\Domain\Services\CancellationConsequence;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
@@ -23,6 +24,7 @@ use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Reservations\RecordingReservationDeposits;
 use Tests\Support\Reservations\RecordingReservationVouchers;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
@@ -45,6 +47,8 @@ final class CloseReservationTest extends TestCase
 
     private RecordingReservationVouchers $vouchers;
 
+    private RecordingReservationDeposits $deposits;
+
     private string $reservationId;
 
     /** Daniela has a confirmed reservation on 5 March at 10:00. */
@@ -55,6 +59,7 @@ final class CloseReservationTest extends TestCase
         $this->reservations = new InMemoryReservationRepository;
         $this->transaction = new RecordingTransactionRunner;
         $this->vouchers = new RecordingReservationVouchers;
+        $this->deposits = new RecordingReservationDeposits;
         $reservation = Reservation::create(
             $this->reservations->nextId(),
             new CollaboratorId(self::DANIELA),
@@ -199,6 +204,19 @@ final class CloseReservationTest extends TestCase
         $this->assertSame([['consume', RecordingReservationVouchers::VOUCHER, $this->reservationId]], $this->vouchers->calls);
     }
 
+    /** The deposit of an absence is retained and of an attended reservation applied: neither marks anything to give back (CA-03). */
+    public function test_closing_never_marks_the_deposit_to_give_back(): void
+    {
+        $this->deposits->paid = true;
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, ReservationStatus::NoShow, self::at('2030-03-05 10:10'));
+        $this->assertSame([], $this->deposits->marked);
+
+        $this->setUp();
+        $this->deposits->paid = true;
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, ReservationStatus::Completed, self::at('2030-03-05 10:30'));
+        $this->assertSame([], $this->deposits->marked);
+    }
+
     /** Attach the voucher to the reservation, as the creation does. */
     private function payWithVoucher(): void
     {
@@ -222,7 +240,7 @@ final class CloseReservationTest extends TestCase
             }
         };
 
-        return new CloseReservation($this->reservations, $collaborators, $this->transaction, $this->vouchers);
+        return new CloseReservation($this->reservations, $collaborators, $this->transaction, $this->vouchers, $this->deposits, new CancellationConsequence);
     }
 
     private static function at(string $moment): DateTimeImmutable

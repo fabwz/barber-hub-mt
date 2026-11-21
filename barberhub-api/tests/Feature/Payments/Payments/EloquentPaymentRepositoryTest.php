@@ -115,6 +115,31 @@ final class EloquentPaymentRepositoryTest extends TestCase
         $this->assertFalse($this->repository->find($payment->id)?->refundPending);
     }
 
+    /** The conditional write marks an approved payment once and only in the barbershop of the repository (CA-02, CA-06, MT-03). */
+    public function test_the_conditional_mark_touches_one_approved_payment_once_and_only_in_its_barbershop(): void
+    {
+        $payment = $this->payment();
+        $this->repository->save($payment);
+        $at = new DateTimeImmutable('2030-03-01 09:00:00-06:00');
+
+        $this->assertFalse($this->repository->markRefundPendingOfReservation(new ReservationId($this->reservation), $at), 'A pending payment is not marked.');
+
+        $payment->registerCharge('onvo_3', ProviderAmount::of('USD', 510), new DateTimeImmutable('2030-03-01 08:01:00-06:00'));
+        $payment->approve(new DateTimeImmutable('2030-03-01 08:02:00-06:00'));
+        $this->repository->save($payment);
+
+        $other = new EloquentPaymentRepository(new FixedBarbershopContext(new BarbershopId($this->fadeLab)));
+        $this->assertFalse($other->markRefundPendingOfReservation(new ReservationId($this->reservation), $at), 'Another barbershop does not reach it.');
+        $this->assertFalse($this->repository->find($payment->id)?->refundPending);
+
+        $this->assertTrue($this->repository->markRefundPendingOfReservation(new ReservationId($this->reservation), $at));
+        $this->assertFalse($this->repository->markRefundPendingOfReservation(new ReservationId($this->reservation), $at->modify('+1 hour')), 'The second call marks nothing.');
+
+        $marked = $this->repository->find($payment->id);
+        $this->assertTrue($marked?->refundPending);
+        $this->assertEquals($at, $marked->updatedAt);
+    }
+
     /** A rejection is saved with its reason. */
     public function test_a_rejection_keeps_its_reason(): void
     {

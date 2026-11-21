@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Infrastructure\Persistence\Repositories;
 
+use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -145,6 +146,19 @@ final readonly class EloquentPaymentRepository implements PaymentRepository
         }
 
         return $payments;
+    }
+
+    /** Mark the approved payment of the reservation in one statement; a row locked by another transaction is skipped, never waited on. */
+    public function markRefundPendingOfReservation(ReservationId $reservationId, DateTimeImmutable $at): bool
+    {
+        $marked = DB::update(
+            "UPDATE payments SET refund_pending = true, updated_at = ? WHERE id IN (
+                SELECT id FROM payments WHERE barbershop_id = ? AND reservation_id = ? AND status = 'approved' AND NOT refund_pending FOR UPDATE SKIP LOCKED
+            )",
+            [$at->format('Y-m-d H:i:sP'), $this->context->current()->value, $reservationId->value],
+        );
+
+        return $marked > 0;
     }
 
     /**

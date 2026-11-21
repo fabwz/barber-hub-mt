@@ -13,20 +13,24 @@ use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
+use Src\Reservations\Reservations\Domain\Services\CancellationConsequence;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
+use Src\Reservations\Reservations\Domain\ValueObjects\DepositOutcome;
 use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
+use Src\Reservations\Reservations\Domain\ValueObjects\SessionOutcome;
 use Src\Shared\Domain\ValueObjects\AuditAction;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Reservations\InMemoryReservationRepository;
+use Tests\Support\Reservations\RecordingReservationDeposits;
 use Tests\Support\Reservations\RecordingReservationVouchers;
 use Tests\Support\Shared\FixedBarbershopContext;
 use Tests\Support\Shared\InMemoryAuditLog;
@@ -56,6 +60,8 @@ final class CancelReservationTest extends TestCase
 
     private RecordingReservationVouchers $vouchers;
 
+    private RecordingReservationDeposits $deposits;
+
     private RecordingDomainEvents $events;
 
     private string $reservationId;
@@ -69,6 +75,7 @@ final class CancelReservationTest extends TestCase
         $this->transaction = new RecordingTransactionRunner;
         $this->audit = new InMemoryAuditLog;
         $this->vouchers = new RecordingReservationVouchers;
+        $this->deposits = new RecordingReservationDeposits;
         $this->events = new RecordingDomainEvents;
         $reservation = Reservation::create(
             $this->reservations->nextId(),
@@ -281,6 +288,61 @@ final class CancelReservationTest extends TestCase
         $this->assertSame(['release'], $this->vouchers->operations());
     }
 
+    /** On time with a deposit paid: it is marked to give back once, and a repeat only reports it (CA-02, CA-06). */
+    public function test_an_on_time_cancellation_marks_the_deposit_once(): void
+    {
+        $this->deposits->paid = true;
+
+        $first = $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+        $second = $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:30'));
+
+        $this->assertSame(DepositOutcome::ToRefund, $first->consequence->deposit);
+        $this->assertSame(DepositOutcome::ToRefund, $second->consequence->deposit);
+        $this->assertSame([$this->reservationId], $this->deposits->marked);
+    }
+
+    /** A late cancellation retains the deposit: nothing is marked (CA-03). */
+    public function test_a_late_cancellation_retains_the_deposit(): void
+    {
+        $this->deposits->paid = true;
+
+        $cancelled = $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 10:01'));
+
+        $this->assertSame(DepositOutcome::Retained, $cancelled->consequence->deposit);
+        $this->assertSame([], $this->deposits->marked);
+    }
+
+    /** The barbershop cancelling gives the deposit back whatever the time (CA-04). */
+    public function test_a_cancellation_by_the_barbershop_marks_the_deposit(): void
+    {
+        $this->deposits->paid = true;
+
+        $cancelled = $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, self::at('2030-03-05 09:30'));
+
+        $this->assertSame(DepositOutcome::ToRefund, $cancelled->consequence->deposit);
+        $this->assertSame([$this->reservationId], $this->deposits->marked);
+    }
+
+    /** Without a deposit paid there is nothing to mark, whatever the class. */
+    public function test_without_a_deposit_nothing_is_marked(): void
+    {
+        $cancelled = $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+
+        $this->assertSame(DepositOutcome::None, $cancelled->consequence->deposit);
+        $this->assertSame([], $this->deposits->marked);
+    }
+
+    /** A reservation paid with a voucher has no deposit: only the session is settled (RF-17, BO-05). */
+    public function test_a_reservation_with_a_voucher_settles_the_session_and_no_deposit(): void
+    {
+        $this->payWithVoucher();
+
+        $cancelled = $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-04 09:00'));
+
+        $this->assertSame([DepositOutcome::None, SessionOutcome::Released], [$cancelled->consequence->deposit, $cancelled->consequence->session]);
+        $this->assertSame([], $this->deposits->marked);
+    }
+
     /** Attach the voucher to the reservation of Ana, as the creation does. */
     private function payWithVoucher(): void
     {
@@ -304,7 +366,7 @@ final class CancelReservationTest extends TestCase
             }
         };
 
-        return new CancelReservation($this->reservations, $customers, $this->transaction, $this->audit, $this->vouchers, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP)));
+        return new CancelReservation($this->reservations, $customers, $this->transaction, $this->audit, $this->vouchers, $this->deposits, new CancellationConsequence, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP)));
     }
 
     private static function at(string $moment): DateTimeImmutable

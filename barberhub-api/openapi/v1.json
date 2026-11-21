@@ -3010,7 +3010,7 @@
         "/barberias/{barberia}/reservas/{reserva}": {
             "get": {
                 "operationId": "reservations.reservations.show",
-                "description": "Muestra una reserva con la proyecci\u00f3n de cada rol. El cliente ve la suya (`ReservaDetalleDeCliente`): servicio, barbero, fecha, estado, precio y plazo de cancelaci\u00f3n, sin saldo ni historial. El colaborador ve las de su propia agenda (`ReservaDetalleDeAgenda`) con el nombre del cliente y el `saldo_pendiente`, sin historial, pagos ni ingresos. El due\u00f1o ve cualquiera de su barber\u00eda con lo mismo y el `historial` de cambios de estado con `de`, `a`, `autor` (nombre, o `sistema`) y `fecha`. Sin pagos todav\u00eda, el `saldo_pendiente` es el precio completo, que se cobra en el local. Una reserva que no existe, de otra barber\u00eda, de otro cliente o de otro colaborador, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`.",
+                "description": "Muestra una reserva con la proyecci\u00f3n de cada rol. El cliente ve la suya (`ReservaDetalleDeCliente`): servicio, barbero, fecha, estado, precio y plazo de cancelaci\u00f3n, sin saldo ni historial, y, si la reserva est\u00e1 `confirmada`, `cancelacion_ahora`: lo que pasar\u00eda si cancela en este momento (`clasificacion` `a_tiempo` o `tardia`, `limite` hasta cu\u00e1ndo es sin penalizaci\u00f3n, `deposito` `a_devolver`, `retenido` o `ninguno`, y `sesion_bono`), calculado por el servidor. El colaborador ve las de su propia agenda (`ReservaDetalleDeAgenda`) con el nombre del cliente y el `saldo_pendiente`, sin historial, pagos ni ingresos. El due\u00f1o ve cualquiera de su barber\u00eda con lo mismo y el `historial` de cambios de estado con `de`, `a`, `autor` (nombre, o `sistema`) y `fecha`. Sin pagos todav\u00eda, el `saldo_pendiente` es el precio completo, que se cobra en el local. Una reserva que no existe, de otra barber\u00eda, de otro cliente o de otro colaborador, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`.",
                 "summary": "Mostrar una reserva",
                 "tags": [
                     "Reservas"
@@ -3148,7 +3148,7 @@
         "/barberias/{barberia}/reservas/{reserva}/cancelacion": {
             "post": {
                 "operationId": "reservations.reservations.cancel",
-                "description": "Cancela la reserva y libera su espacio en la misma operaci\u00f3n. El cliente cancela solo las suyas y la reserva queda `cancelada_por_cliente`; el due\u00f1o cancela cualquiera de su barber\u00eda y queda `cancelada_por_barberia`. La respuesta trae la `clasificacion` de la cancelaci\u00f3n: `a_tiempo` o `tardia` (seg\u00fan el `plazo_cancelacion_horas` que la reserva guard\u00f3 y la hora de la cancelaci\u00f3n) para el cliente, y `por_la_barberia` para el due\u00f1o. Repetir la cancelaci\u00f3n responde 200 con el mismo estado y la misma clasificaci\u00f3n, sin agregar nada al historial. Una reserva completada, ausente o expirada, o una temporal que el due\u00f1o intenta cancelar, responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barber\u00eda o de otro cliente, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`. Si la reserva se pag\u00f3 con una sesi\u00f3n de un bono, la cancelaci\u00f3n a tiempo o la de la barber\u00eda la reintegra y la tard\u00eda la deja consumida; repetir la cancelaci\u00f3n no la reintegra dos veces. La devoluci\u00f3n del dep\u00f3sito, el aviso al cliente y la lista de espera todav\u00eda no se aplican.",
+                "description": "Cancela la reserva y libera su espacio en la misma operaci\u00f3n. El cliente cancela solo las suyas y la reserva queda `cancelada_por_cliente`; el due\u00f1o cancela cualquiera de su barber\u00eda y queda `cancelada_por_barberia`. La respuesta trae la `clasificacion` de la cancelaci\u00f3n: `a_tiempo` o `tardia` (seg\u00fan el `plazo_cancelacion_horas` que la reserva guard\u00f3 y la hora de la cancelaci\u00f3n) para el cliente, y `por_la_barberia` para el due\u00f1o. Repetir la cancelaci\u00f3n responde 200 con el mismo estado y la misma clasificaci\u00f3n, sin agregar nada al historial. Una reserva completada, ausente o expirada, o una temporal que el due\u00f1o intenta cancelar, responde 409 `conflicto`. Un colaborador recibe 403 `prohibido`. Una reserva que no existe, de otra barber\u00eda o de otro cliente, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`. Si la reserva se pag\u00f3 con una sesi\u00f3n de un bono, la cancelaci\u00f3n a tiempo o la de la barber\u00eda la reintegra y la tard\u00eda la deja consumida; repetir la cancelaci\u00f3n no la reintegra dos veces. La respuesta informa tambi\u00e9n qu\u00e9 pas\u00f3 con el dep\u00f3sito pagado en l\u00ednea (`deposito`): `a_devolver` si la cancelaci\u00f3n fue a tiempo o de la barber\u00eda (el pago queda aprobado y marcado `devolucion_pendiente`, una sola vez, hasta que el reembolso real exista), `retenido` si fue tard\u00eda (el pago queda aprobado sin marca) y `ninguno` si no hab\u00eda nada pagado en l\u00ednea; y qu\u00e9 pas\u00f3 con la sesi\u00f3n (`sesion_bono`): `se_reintegra`, `se_consume` o `ninguna`. Repetir la cancelaci\u00f3n informa lo mismo y no marca otra vez. El reembolso real, el aviso al cliente y la lista de espera todav\u00eda no se aplican.",
                 "summary": "Cancelar una reserva",
                 "tags": [
                     "Reservas"
@@ -3204,7 +3204,7 @@
         "/barberias/{barberia}/reservas/{reserva}/cierre": {
             "post": {
                 "operationId": "reservations.reservations.close",
-                "description": "Cierra una reserva `confirmada` como `atendida` o `ausente` (cuerpo `{\"estado\": \"atendida\"}` o `{\"estado\": \"ausente\"}`) y deja el cambio en el historial con su autor y fecha. El colaborador cierra solo las de su propia agenda y el due\u00f1o cualquiera de su barber\u00eda. `atendida` solo se acepta desde la hora de `inicio`; `ausente`, 10 minutos despu\u00e9s de ese inicio (tolerancia). Antes responde 409 `conflicto` con un detalle que dice desde qu\u00e9 hora se puede marcar. Una reserva que no est\u00e1 confirmada (temporal, cancelada o expirada) o que ya termin\u00f3 con el otro estado responde 409 `conflicto`: un estado final no cambia. Repetir con el mismo estado responde 200 sin agregar nada al historial ni consumir otra vez la sesi\u00f3n. Si la reserva se pag\u00f3 con una sesi\u00f3n de un bono, al cerrarla la sesi\u00f3n queda consumida, una sola vez. El dep\u00f3sito pagado no se toca: la consecuencia econ\u00f3mica sobre el dep\u00f3sito (retenido en la ausencia, a devolver en la cancelaci\u00f3n a tiempo) la modela #67. Un cliente recibe 403 `prohibido`. Una reserva que no existe, de otra barber\u00eda o de otro colaborador, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`; un `estado` distinto de los dos, 422 `datos-invalidos`.",
+                "description": "Cierra una reserva `confirmada` como `atendida` o `ausente` (cuerpo `{\"estado\": \"atendida\"}` o `{\"estado\": \"ausente\"}`) y deja el cambio en el historial con su autor y fecha. El colaborador cierra solo las de su propia agenda y el due\u00f1o cualquiera de su barber\u00eda. `atendida` solo se acepta desde la hora de `inicio`; `ausente`, 10 minutos despu\u00e9s de ese inicio (tolerancia). Antes responde 409 `conflicto` con un detalle que dice desde qu\u00e9 hora se puede marcar. Una reserva que no est\u00e1 confirmada (temporal, cancelada o expirada) o que ya termin\u00f3 con el otro estado responde 409 `conflicto`: un estado final no cambia. Repetir con el mismo estado responde 200 sin agregar nada al historial ni consumir otra vez la sesi\u00f3n. Si la reserva se pag\u00f3 con una sesi\u00f3n de un bono, al cerrarla la sesi\u00f3n queda consumida, una sola vez. El dep\u00f3sito pagado no se toca: en la ausencia queda retenido, es decir, el pago sigue aprobado y sin marca de devoluci\u00f3n. Un cliente recibe 403 `prohibido`. Una reserva que no existe, de otra barber\u00eda o de otro colaborador, y una persona sin rol en la barber\u00eda, responden el mismo 404 `no-encontrado`; un `estado` distinto de los dos, 422 `datos-invalidos`.",
                 "summary": "Marcar una reserva como atendida o ausente",
                 "tags": [
                     "Reservas"
@@ -5857,7 +5857,30 @@
                     },
                     "clasificacion": {
                         "type": "string",
-                        "description": "Clasificaci\u00f3n de la cancelaci\u00f3n: `a_tiempo`, `tardia` o `por_la_barberia` (CA-01, CA-04). Se calcula, no se guarda."
+                        "description": "Clasificaci\u00f3n de la cancelaci\u00f3n: `a_tiempo`, `tardia` o `por_la_barberia` (CA-01, CA-04). Se calcula, no se guarda.",
+                        "enum": [
+                            "a_tiempo",
+                            "tardia",
+                            "por_la_barberia"
+                        ]
+                    },
+                    "deposito": {
+                        "type": "string",
+                        "description": "Qu\u00e9 pas\u00f3 con el dep\u00f3sito pagado en l\u00ednea (RF-17): `a_devolver` (cancelaci\u00f3n a tiempo o de la barber\u00eda; se reembolsa con RF-24), `retenido` (cancelaci\u00f3n tard\u00eda) o `ninguno` (no hab\u00eda nada pagado en l\u00ednea). Repetir la cancelaci\u00f3n informa lo mismo.",
+                        "enum": [
+                            "a_devolver",
+                            "retenido",
+                            "ninguno"
+                        ]
+                    },
+                    "sesion_bono": {
+                        "type": "string",
+                        "description": "Qu\u00e9 pas\u00f3 con la sesi\u00f3n del bono que pagaba la reserva (BO-05): `se_reintegra`, `se_consume` o `ninguna` si no se pag\u00f3 con un bono.",
+                        "enum": [
+                            "se_reintegra",
+                            "se_consume",
+                            "ninguna"
+                        ]
                     }
                 },
                 "required": [
@@ -5871,7 +5894,9 @@
                     "duracion_minutos",
                     "plazo_cancelacion_horas",
                     "expira_en",
-                    "clasificacion"
+                    "clasificacion",
+                    "deposito",
+                    "sesion_bono"
                 ],
                 "title": "ReservaCancelada"
             },
@@ -6292,6 +6317,48 @@
                     "plazo_cancelacion_horas": {
                         "type": "integer",
                         "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    },
+                    "cancelacion_ahora": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "Qu\u00e9 pasar\u00eda si la persona cancelara ahora (RF-17), calculado por el servidor con la hora actual; nulo si la reserva no est\u00e1 confirmada. `clasificacion` es `a_tiempo` o `tardia`, `limite` el \u00faltimo instante sin penalizaci\u00f3n (ISO 8601, -06:00), `deposito` `a_devolver`, `retenido` o `ninguno`, y `sesion_bono` `se_reintegra`, `se_consume` o `ninguna`.",
+                        "properties": {
+                            "clasificacion": {
+                                "type": "string",
+                                "enum": [
+                                    "a_tiempo",
+                                    "tardia",
+                                    "por_la_barberia"
+                                ]
+                            },
+                            "limite": {
+                                "type": "string"
+                            },
+                            "deposito": {
+                                "type": "string",
+                                "enum": [
+                                    "a_devolver",
+                                    "retenido",
+                                    "ninguno"
+                                ]
+                            },
+                            "sesion_bono": {
+                                "type": "string",
+                                "enum": [
+                                    "se_reintegra",
+                                    "se_consume",
+                                    "ninguna"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "clasificacion",
+                            "limite",
+                            "deposito",
+                            "sesion_bono"
+                        ]
                     }
                 },
                 "required": [
@@ -6311,7 +6378,8 @@
                     "vence_en",
                     "pasarela",
                     "metodos_de_pago",
-                    "plazo_cancelacion_horas"
+                    "plazo_cancelacion_horas",
+                    "cancelacion_ahora"
                 ],
                 "title": "ReservaDetalleDeCliente"
             },
