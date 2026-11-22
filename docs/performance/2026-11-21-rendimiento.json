@@ -1,0 +1,103 @@
+{
+    "environment": {
+        "date": "2026-11-21 19:16:53-06:00",
+        "commit": "6d51277 (with uncommitted changes)",
+        "os": "Windows NT 10.0 AMD64",
+        "cpu": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",
+        "logical_cpus": "8",
+        "memory": "15.8 GB",
+        "php": "8.4.23 (opcache off for the CLI)",
+        "laravel": "13.37.0",
+        "postgresql": "18.4",
+        "database": "barberhub_testing",
+        "database_host": "local"
+    },
+    "command": "php performance/measure.php run --iterations=200 --bookings=100 --warmup=20",
+    "bookings": 100,
+    "iterations": 200,
+    "warmup": 20,
+    "data": {
+        "barbershop": "Pura Navaja (datos ficticios)",
+        "barbers": 4,
+        "services": 7,
+        "days": 30,
+        "reservations_seeded": 471
+    },
+    "scenarios": [
+        {
+            "scenario": "GET /disponibilidad de un día, todos los barberos del servicio",
+            "threshold_ms": 1000,
+            "warmup": 20,
+            "samples": 200,
+            "failures": [],
+            "min_ms": 7.77,
+            "mean_ms": 16.84,
+            "p50_ms": 15.14,
+            "p95_ms": 31.76,
+            "p99_ms": 34.31,
+            "max_ms": 35.33,
+            "queries_per_request": 17,
+            "meets_threshold": true
+        },
+        {
+            "scenario": "GET /disponibilidad de un día, un barbero",
+            "threshold_ms": 1000,
+            "warmup": 20,
+            "samples": 200,
+            "failures": [],
+            "min_ms": 8.13,
+            "mean_ms": 18.08,
+            "p50_ms": 14.2,
+            "p95_ms": 35.68,
+            "p99_ms": 41.52,
+            "max_ms": 52.62,
+            "queries_per_request": 19.8,
+            "meets_threshold": true
+        },
+        {
+            "scenario": "GET /disponibilidad de un día, «cualquiera» (extra, #54)",
+            "threshold_ms": 1000,
+            "warmup": 20,
+            "samples": 200,
+            "failures": [],
+            "min_ms": 8.91,
+            "mean_ms": 23.49,
+            "p50_ms": 20.64,
+            "p95_ms": 46.25,
+            "p99_ms": 51.23,
+            "max_ms": 54.93,
+            "queries_per_request": 23,
+            "meets_threshold": true
+        },
+        {
+            "scenario": "POST /reservas con un barbero, sin cobro (sin pasarela)",
+            "threshold_ms": 2000,
+            "warmup": 20,
+            "samples": 100,
+            "failures": [],
+            "min_ms": 29.02,
+            "mean_ms": 31.45,
+            "p50_ms": 31.15,
+            "p95_ms": 33.66,
+            "p99_ms": 35.98,
+            "max_ms": 39.83,
+            "queries_per_request": 29,
+            "meets_threshold": true
+        },
+        {
+            "scenario": "POST /reservas con «cualquiera», sin cobro (extra)",
+            "threshold_ms": 2000,
+            "warmup": 20,
+            "samples": 100,
+            "failures": [],
+            "min_ms": 39.29,
+            "mean_ms": 43.71,
+            "p50_ms": 43.3,
+            "p95_ms": 48.78,
+            "p99_ms": 49.99,
+            "max_ms": 53.16,
+            "queries_per_request": 42,
+            "meets_threshold": true
+        }
+    ]
+}
