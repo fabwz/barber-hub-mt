@@ -39,6 +39,8 @@ Se define en `.env` (copia de `.env.example`). Nunca se escriben secretos en el 
 | `VITE_ONVO_PUBLISHABLE_KEY` | _(vacía)_                    | Llave pública de pruebas de ONVO Pay (`onvo_test_…`). Con otra llave el cliente no llama a ONVO y muestra un error de configuración. |
 | `VITE_ONVO_API_URL`         | `https://api.onvopay.com/v1` | Dirección base de la API de ONVO, a la que el navegador envía los datos de la tarjeta.                                               |
 
+Ninguna de estas variables es secreta: todo lo que empieza por `VITE_` se incrusta en el código que descarga el navegador, así que nunca se guarda ahí una llave secreta, un token ni una contraseña (SE-02). La llave de ONVO es la pública de pruebas.
+
 ## Tipos de la API
 
 Los tipos de la API no se escriben a mano: se generan con `openapi-typescript` desde el contrato de la API.
