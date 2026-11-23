@@ -265,6 +265,11 @@ Solo el texto, sin punto ni relleno, en 14 px y peso 500 (`fg-muted` en «Expira
 | Activo | Activo | `fg` |
 | Vencido | Vencido | `fg-muted` |
 
+| Estado del servicio | Texto | Texto en |
+|---|---|---|
+| Activo | Activo | `fg` |
+| Inactivo | Inactivo | `fg-muted` |
+
 La interfaz usa estos textos y no «Pagado», que no es un estado del sistema. El diseño de los bonos dibuja un punto (relleno hueso o hueco) junto a «Activo» y «Vencido»: se omite, porque esta etiqueta es una sola y no lleva punto; la palabra ya dice el estado.
 
 **Dónde no se muestra:** en la pantalla de pago no se muestra «Pago aprobado», porque el aviso «Su pago de ₡X fue aprobado.» ya lo dice. Tampoco «Pendiente de pago» en el resumen de una reserva temporal: lo dice la cuenta regresiva. «Pago pendiente», «Pago rechazado» y «Pago fallido» sí se muestran.
@@ -447,6 +452,31 @@ Rutas `/barberias/:barberia/agenda` (el día y los filtros viajan en la direcci�
   - **Cancelar:** confirmación en línea («¿Cancelar la reserva de {cliente}?», «No, mantenerla» principal y «Sí, cancelar reserva» secundario, sin botón rojo). **Reprogramar:** el mismo selector de fecha y hora del cliente, en una columna y sin la línea del plazo (el dueño no tiene plazo).
   - **Progreso y resultado:** «Marcando como atendida…», «Reserva cancelada.», etc., en un aviso informativo con `role="status"`; los botones van con `disabled` mientras tanto. Un error de la API se muestra con su texto en un aviso `role="alert"`.
 - **Pendiente:** el indicador de conexión («En vivo», «Reconectando…») es del #113; los botones «Bloqueos» y «Reserva asistida» no se muestran hasta que existan sus APIs (#101 y #102). **La vista del colaborador usa el diseño de la lámina 27 sin el filtro de colaborador y está pendiente de revisión visual** (la lámina «Mi agenda» aún no se diseña).
+
+## Servicios del dueño (#76, entrega 1)
+
+Rutas `/barberias/:barberia/servicios` (lista), `/servicios/nuevo` y `/servicios/:servicio` (formulario). Solo el dueño: la ruta lleva `requiresOwner` y el guard envía al colaborador a la agenda de esa barbería; la API sigue respondiendo 403. Diseño de origen: lámina 31 de la v7.
+
+- **Lista:** imagen de 56 px (un bloque neutro con ícono si no tiene), nombre en 500, «30 min · ₡7.000 IVA incluido» (precio con cifras tabulares), etiqueta de estado, «Editar» y «Inactivar» o «Activar». Estados: cargando (esqueleto), vacío («Aún no tiene servicios.» con «Crear mi primer servicio») y error con «Reintentar».
+- **Inactivar** pide confirmación («¿Inactivar «Rapado»?», «No, mantenerlo activo» principal y «Sí, inactivar» secundario). **Activar** no la pide. El resultado va en un aviso con `role="status"` y un fallo, en un aviso con «Reintentar» que repite el mismo cambio.
+- **Formulario:** «Nombre del servicio», «Duración (minutos)», «Precio (₡, IVA incluido)» (solo dígitos), «Servicio activo» (solo al editar) e «Imagen del servicio (opcional)». Revisa antes de enviar (duración de 10 a 180 en múltiplos de 5, precio mayor que ₡0) y muestra los errores 422 de la API en su campo. El foco va al primer campo con error.
+- **Imagen en dos pasos:** la API necesita el id del servicio, así que «Guardar servicio» crea el servicio y después sube la imagen. Si la subida falla, el servicio ya existe: se conserva su id, el error sale en el campo de la imagen y un nuevo «Guardar servicio» envía solo la imagen (no repite el alta).
+
+### Diálogo de confirmación (`ConfirmDialog`, nuevo)
+`role="alertdialog"` con `aria-modal`, título y texto enlazados con `aria-labelledby` y `aria-describedby`, sobre un fondo `canvas` al 80 %. Tarjeta de 16 px con borde `line` y superficie `surface`, sin sombra. El foco entra en la respuesta segura (el botón principal), se queda dentro con Tab y Mayús+Tab, Escape cancela y al cerrar vuelve a lo que lo abrió. Con `loading` se retienen los dos botones y Escape. Quien lo usa lo cierra cuando termina la acción.
+
+### Campo de imagen (`ImageField`, nuevo)
+Marco de 80 px con la vista previa (o la imagen actual, o un ícono), nombre del archivo y «WebP · 740 KB» en mono, botón «Elegir imagen» o «Cambiar imagen» y la ayuda debajo. Revisa el tipo (JPG, PNG o WebP) y los 2 MB antes de enviar, con los mensajes del diseño («El archivo pesa 3 MB. Elija una imagen JPG, PNG o WebP de hasta 2 MB.» y «Solo se aceptan imágenes JPG, PNG o WebP.»); un archivo rechazado queda a la vista con su error y no se envía. Es solo una comprobación para ahorrar el viaje: la API lee el tipo del contenido y decide, y su error (`errores.imagen`) se muestra igual. Es un `fieldset` con leyenda.
+
+### Etiqueta de estado del servicio
+`StatusLabel` suma `service_active` («Activo») y `service_inactive` («Inactivo», `fg-muted`), siempre solo texto.
+
+### Divergencias de la lámina 31
+- **Sin «Quitar imagen»** (31h, 31i, 31k): la API solo sube o reemplaza la imagen. Vuelve cuando exista el endpoint.
+- **Interruptor de la lista:** el diseño dibuja un interruptor por fila; se usa un botón «Inactivar» o «Activar» con su nombre accesible, porque inactivar pide confirmación y el botón nombra la acción.
+- **«Servicio activo» no está en «Nuevo servicio»:** la API crea el servicio siempre activo; para dejarlo inactivo se usa la lista.
+- **«Guardado» en el formulario** (31o) se muestra con el aviso de éxito en línea, y «Cancelar» pasa a «Volver a la lista».
+- **Cuadro neutro sin imagen** (31b): un marco con ícono de imagen, del mismo tamaño, en lugar de dejar la fila sin imagen.
 
 ## Bonos (pantallas del cliente)
 
