@@ -37,7 +37,7 @@ final class ServiceSchemaTest extends TestCase
     {
         $columns = Schema::connection('pgsql_admin')->getColumnListing('services');
 
-        $this->assertEqualsCanonicalizing(['id', 'barbershop_id', 'name', 'duration_minutes', 'price', 'is_active', 'created_at', 'updated_at'], $columns);
+        $this->assertEqualsCanonicalizing(['id', 'barbershop_id', 'name', 'duration_minutes', 'price', 'is_active', 'image_path', 'created_at', 'updated_at'], $columns);
     }
 
     /** The application role stores a service with a version 7 identifier, active and with timestamps by default. */

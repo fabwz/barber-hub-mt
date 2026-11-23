@@ -62,7 +62,7 @@ final class PublicLinkMigrationTest extends TestCase
         try {
             $this->assertSame(0, Artisan::call('migrate:rollback', ['--path' => self::MIGRATION, '--database' => 'pgsql_admin']));
 
-            $this->assertSame(['id', 'name', 'city', 'phone', 'created_at', 'updated_at', 'payment_gateway', 'payment_mode', 'deposit_percentage', 'cancellation_deadline_hours', 'address', 'contact_email', 'whatsapp_url', 'instagram_url', 'facebook_url', 'tiktok_url', 'vouchers_enabled', 'waitlist_enabled', 'listed_in_directory'], $schema->getColumnListing('barbershops'));
+            $this->assertSame(['id', 'name', 'city', 'phone', 'created_at', 'updated_at', 'payment_gateway', 'payment_mode', 'deposit_percentage', 'cancellation_deadline_hours', 'address', 'contact_email', 'whatsapp_url', 'instagram_url', 'facebook_url', 'tiktok_url', 'vouchers_enabled', 'waitlist_enabled', 'listed_in_directory', 'logo_path', 'banner_path'], $schema->getColumnListing('barbershops'));
         } finally {
             Artisan::call('migrate', ['--database' => 'pgsql_admin']);
         }

@@ -11,6 +11,7 @@ use Src\Catalog\Barbershops\Domain\Contracts\BarbershopRepository;
 use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
 use Src\Catalog\Barbershops\Domain\Exceptions\PublicLinkTakenException;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopFeatures;
+use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopImages;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PaymentGateway;
@@ -58,6 +59,8 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                     'whatsapp_url' => $barbershop->profile->links[SocialNetwork::Whatsapp->value]->value ?? null,
                     'instagram_url' => $barbershop->profile->links[SocialNetwork::Instagram->value]->value ?? null,
                     'facebook_url' => $barbershop->profile->links[SocialNetwork::Facebook->value]->value ?? null,
+                    'logo_path' => $barbershop->images->logo,
+                    'banner_path' => $barbershop->images->banner,
                     'tiktok_url' => $barbershop->profile->links[SocialNetwork::Tiktok->value]->value ?? null,
                 ];
                 $model = BarbershopModel::query()->find($barbershop->id->value);
@@ -109,6 +112,7 @@ final readonly class EloquentBarbershopRepository implements BarbershopRepositor
                 SocialNetwork::Tiktok->value => $model->tiktok_url,
             ]),
             BarbershopFeatures::of($model->vouchers_enabled, $model->waitlist_enabled, $model->listed_in_directory),
+            BarbershopImages::of($model->logo_path, $model->banner_path),
         );
     }
 }

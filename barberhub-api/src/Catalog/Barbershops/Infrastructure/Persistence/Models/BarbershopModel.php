@@ -28,9 +28,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $vouchers_enabled
  * @property bool $waitlist_enabled
  * @property bool $listed_in_directory
+ * @property string|null $logo_path
+ * @property string|null $banner_path
  */
 #[Table('barbershops')]
-#[Fillable(['id', 'name', 'city', 'phone', 'public_link', 'payment_gateway', 'payment_mode', 'deposit_percentage', 'cancellation_deadline_hours', 'address', 'contact_email', 'whatsapp_url', 'instagram_url', 'facebook_url', 'tiktok_url', 'vouchers_enabled', 'waitlist_enabled', 'listed_in_directory'])]
+#[Fillable(['id', 'name', 'city', 'phone', 'public_link', 'payment_gateway', 'payment_mode', 'deposit_percentage', 'cancellation_deadline_hours', 'address', 'contact_email', 'whatsapp_url', 'instagram_url', 'facebook_url', 'tiktok_url', 'vouchers_enabled', 'waitlist_enabled', 'listed_in_directory', 'logo_path', 'banner_path'])]
 final class BarbershopModel extends Model
 {
     use HasUuids;
