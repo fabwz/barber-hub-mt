@@ -5,9 +5,15 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Src\Identity\Users\Infrastructure\Http\Controllers\AccountController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\PasswordController;
+use Src\Identity\Users\Infrastructure\Http\Controllers\ProfileController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\TokenController;
 
 Route::post('cuentas', [AccountController::class, 'store'])->name('identity.users.store');
+
+Route::middleware('auth:sanctum')->controller(ProfileController::class)->group(function (): void {
+    Route::get('cuenta', 'show')->name('identity.profile.show');
+    Route::put('cuenta', 'update')->name('identity.profile.update');
+});
 
 Route::put('cuenta/contrasena', [PasswordController::class, 'update'])
     ->middleware('auth:sanctum')

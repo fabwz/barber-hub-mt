@@ -53,6 +53,12 @@ final readonly class User
         return new self($this->id, $this->name, $this->email, $this->phone, $passwordHash, $this->active, $this->termsAcceptedAt, $this->privacyAcceptedAt, false);
     }
 
+    /** Correct the name, the phone and the email; the password, the acceptances and the temporary state stay as they are (RF-45). */
+    public function updateProfile(UserName $name, Email $email, Phone $phone): self
+    {
+        return new self($this->id, $name, $email, $phone, $this->passwordHash, $this->active, $this->termsAcceptedAt, $this->privacyAcceptedAt, $this->mustChangePassword);
+    }
+
     /** Rebuild an account from its stored state. */
     public static function reconstitute(
         UserId $id,

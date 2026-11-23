@@ -11,19 +11,21 @@ const router = useRouter()
 const session = useSessionStore()
 
 /**
- * Screens that arrive with other issues (profile and preferences). A link shows only when its route
- * exists, so the bar never points to a screen that is not there.
+ * «Mi perfil» opens the Datos section of «Mi cuenta» (and is the current page in Datos and Seguridad) and
+ * «Preferencias» opens its Apariencia section. A link
+ * shows only when its route exists, so the bar never points to a screen that is not there.
  */
-const FUTURE_LINKS = [
-  { label: 'Mi perfil', name: 'profile' },
-  { label: 'Preferencias', name: 'preferences' },
+const ACCOUNT_LINKS = [
+  { label: 'Mi perfil', name: 'account-data', match: ['account-data', 'account-security'] },
+  { label: 'Preferencias', name: 'account-appearance', match: ['account-appearance'] },
 ]
 
 const links = computed<AccountLink[]>(() => [
   { label: 'Barberías', to: { name: 'directory' } },
-  ...FUTURE_LINKS.filter((link) => router.hasRoute(link.name)).map((link) => ({
+  ...ACCOUNT_LINKS.filter((link) => router.hasRoute(link.name)).map((link) => ({
     label: link.label,
     to: { name: link.name },
+    match: link.match,
   })),
 ])
 
@@ -55,7 +57,7 @@ async function logout(): Promise<void> {
         <BrandLogo :size="45" />
       </RouterLink>
       <nav aria-label="Principal" class="hidden gap-1 md:flex">
-        <NavbarLink v-for="link in links" :key="link.label" :to="link.to">{{
+        <NavbarLink v-for="link in links" :key="link.label" :to="link.to" :match="link.match">{{
           link.label
         }}</NavbarLink>
       </nav>

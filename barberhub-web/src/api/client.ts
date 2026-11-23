@@ -1,5 +1,5 @@
 import createClient, { type Middleware } from 'openapi-fetch'
-import { networkError, readApiError } from './errors'
+import { isTemporaryPasswordError, networkError, readApiError } from './errors'
 import type { paths } from './schema'
 
 /**
@@ -13,6 +13,7 @@ type TokenProvider = () => string | null | undefined
 
 let tokenProvider: TokenProvider = () => null
 let unauthorizedHandler: () => void = () => {}
+let temporaryPasswordHandler: () => void = () => {}
 
 /** La tienda de sesión registra aquí cómo obtener el token vigente. */
 export function setTokenProvider(provider: TokenProvider): void {
@@ -22,6 +23,11 @@ export function setTokenProvider(provider: TokenProvider): void {
 /** La tienda de sesión registra aquí qué hacer ante un 401 (cerrar la sesión local). */
 export function setUnauthorizedHandler(handler: () => void): void {
   unauthorizedHandler = handler
+}
+
+/** La tienda de cuenta registra aquí qué hacer ante un 403 `contrasena-temporal` (ir al cambio obligatorio). */
+export function setTemporaryPasswordHandler(handler: () => void): void {
+  temporaryPasswordHandler = handler
 }
 
 const middleware: Middleware = {
@@ -35,6 +41,7 @@ const middleware: Middleware = {
     if (response.ok) return undefined
     const error = await readApiError(response)
     if (response.status === 401) unauthorizedHandler()
+    if (isTemporaryPasswordError(error)) temporaryPasswordHandler()
     throw error
   },
 

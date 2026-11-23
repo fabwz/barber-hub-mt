@@ -12,8 +12,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 final readonly class RequireChangedPassword
 {
-    /** Routes a person with a temporary password may still use: changing it and closing the session. */
+    /** Routes a person with a temporary password may still use: reading the account, changing the password and closing the session. */
     private const array ALLOWED_ROUTES = [
+        'identity.profile.show',
         'identity.password.update',
         'identity.tokens.destroy-current',
         'identity.tokens.destroy-all',

@@ -65,6 +65,22 @@ final class UserTest extends TestCase
         $this->assertTrue($staff->mustChangePassword);
     }
 
+    /** Correcting the profile swaps name, email and phone and keeps the hash, the acceptances and the temporary state (RF-45). */
+    public function test_updating_the_profile_keeps_the_rest_of_the_account(): void
+    {
+        $staff = User::createStaff(new UserId(self::USER_ID), new UserName('Kevin Solano'), new Email('kevin@barberhub.test'), 'hash');
+
+        $updated = $staff->updateProfile(new UserName('Kevin S.'), new Email('ks@barberhub.test'), new Phone('8888-0000'));
+
+        $this->assertSame('Kevin S.', $updated->name->value);
+        $this->assertSame('ks@barberhub.test', $updated->email->value);
+        $this->assertSame('8888-0000', $updated->phone?->value);
+        $this->assertSame('hash', $updated->passwordHash);
+        $this->assertTrue($updated->mustChangePassword);
+        $this->assertTrue($updated->id->equals($staff->id));
+        $this->assertSame('Kevin Solano', $staff->name->value);
+    }
+
     /** A customer registration does not ask for a password change. */
     public function test_customer_account_does_not_have_to_change_its_password(): void
     {

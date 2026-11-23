@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 
 import ClientNavbar from '@/components/ClientNavbar.vue'
 import { accountInitials, shopInitials } from '@/composables/initials'
@@ -9,7 +8,6 @@ import { mockFetch } from '../helpers/http'
 import { mountView } from '../helpers/mountView'
 
 const EMAIL = 'laura.brenes@correo.cr'
-const placeholder = defineComponent({ render: () => h('p', 'pantalla') })
 
 beforeEach(() => {
   sessionStorage.setItem(
@@ -62,31 +60,8 @@ describe('ClientNavbar — bar', () => {
     expect(desktop.text()).toContain(EMAIL)
   })
 
-  it('shows «Preferencias» (its route exists) but not «Mi perfil» while that screen does not exist', async () => {
-    const { wrapper, desktop, mobile } = await mountNavbar()
-
-    expect(wrapper.text()).not.toContain('Mi perfil')
-    expect(
-      wrapper
-        .get('nav[aria-label="Principal"]')
-        .findAll('a')
-        .map((a) => a.text()),
-    ).toEqual(['Barberías', 'Preferencias'])
-    await desktop.trigger('click')
-    expect(wrapper.text()).not.toContain('Mi perfil')
-    await mobile.trigger('click')
-    await mobile.trigger('click')
-    // Every link in the bar and the panel points to a route that exists.
-    for (const anchor of wrapper.findAll('a')) {
-      expect(['/barberias', '/preferencias']).toContain(anchor.attributes('href'))
-    }
-  })
-
-  it('shows «Mi perfil» and «Preferencias» in the bar and in the mobile panel once the routes exist', async () => {
-    const { wrapper, desktop } = await mountNavbar([
-      { path: '/perfil', name: 'profile', component: placeholder },
-      { path: '/preferencias', name: 'preferences', component: placeholder },
-    ])
+  it('shows «Mi perfil» and «Preferencias» in the bar and in the mobile panel, pointing to «Mi cuenta»', async () => {
+    const { wrapper, desktop } = await mountNavbar()
 
     const bar = wrapper.get('nav[aria-label="Principal"]')
     expect(bar.findAll('a').map((a) => a.text())).toEqual([
@@ -94,7 +69,11 @@ describe('ClientNavbar — bar', () => {
       'Mi perfil',
       'Preferencias',
     ])
-    expect(bar.get('a[href="/perfil"]').attributes('aria-current')).toBeUndefined()
+    expect(bar.findAll('a').map((a) => a.attributes('href'))).toEqual([
+      '/barberias',
+      '/cuenta/datos',
+      '/cuenta/apariencia',
+    ])
 
     await desktop.trigger('click')
     const inPanel = panel(wrapper).querySelectorAll('a')
@@ -103,22 +82,43 @@ describe('ClientNavbar — bar', () => {
       'Mi perfil',
       'Preferencias',
     ])
-    expect([...inPanel].map((a) => a.getAttribute('href'))).toEqual([
-      '/barberias',
-      '/perfil',
-      '/preferencias',
-    ])
+  })
+
+  it('only links to routes that exist', async () => {
+    const { wrapper, router } = await mountNavbar()
+
+    for (const anchor of wrapper.findAll('a')) {
+      expect(router.resolve(anchor.attributes('href')!).matched.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('«Mi perfil» is the current page in Datos and Seguridad, and «Preferencias» in Apariencia', async () => {
+    const { wrapper, router } = await mountNavbar()
+    const bar = () => wrapper.get('nav[aria-label="Principal"]')
+    const current = () =>
+      bar()
+        .findAll('a[aria-current="page"]')
+        .map((a) => a.text())
+
+    for (const [path, expected] of [
+      ['/cuenta/datos', ['Mi perfil']],
+      ['/cuenta/seguridad', ['Mi perfil']],
+      ['/cuenta/apariencia', ['Preferencias']],
+      ['/barberias', ['Barberías']],
+    ] as const) {
+      await router.push(path)
+      await flushPromises()
+      expect(current()).toEqual(expected)
+    }
   })
 
   it('marks another current page when the route changes', async () => {
-    const { wrapper, router } = await mountNavbar([
-      { path: '/perfil', name: 'profile', component: placeholder },
-    ])
-    await router.push('/perfil')
+    const { wrapper, router } = await mountNavbar()
+    await router.push('/cuenta/apariencia')
     await flushPromises()
 
     const bar = wrapper.get('nav[aria-label="Principal"]')
-    expect(bar.get('a[href="/perfil"]').attributes('aria-current')).toBe('page')
+    expect(bar.get('a[href="/cuenta/apariencia"]').attributes('aria-current')).toBe('page')
     expect(bar.get('a[href="/barberias"]').attributes('aria-current')).toBeUndefined()
   })
 })
