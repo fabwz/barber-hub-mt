@@ -9,6 +9,7 @@ use Src\Identity\Memberships\Application\DTOs\CollaboratorMembershipCommand;
 use Src\Identity\Memberships\Application\UseCases\ActivateCollaboratorMembership;
 use Src\Identity\Memberships\Application\UseCases\DeactivateCollaboratorMembership;
 use Src\Identity\Memberships\Application\UseCases\GrantCollaboratorMembership;
+use Src\Identity\Memberships\Application\UseCases\ListBarbershopOwners;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Tests\Support\Identity\InMemoryMembershipRepository;
 
@@ -16,6 +17,17 @@ use Tests\Support\Identity\InMemoryMembershipRepository;
 final readonly class InMemoryStaffMemberships implements StaffMemberships
 {
     public function __construct(private InMemoryMembershipRepository $memberships) {}
+
+    /**
+     * Pick the owners among the accounts: those with an active owner role in the barbershop.
+     *
+     * @param  list<string>  $userIds
+     * @return list<string>
+     */
+    public function ownersAmong(BarbershopId $barbershopId, array $userIds): array
+    {
+        return new ListBarbershopOwners($this->memberships)->execute($userIds, $barbershopId->value);
+    }
 
     /** Grant the collaborator role. */
     public function grantCollaboratorRole(BarbershopId $barbershopId, string $userId): void

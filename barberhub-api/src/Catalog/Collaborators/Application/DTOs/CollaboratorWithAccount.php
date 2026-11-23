@@ -13,5 +13,6 @@ final readonly class CollaboratorWithAccount
         public Collaborator $collaborator,
         public string $name,
         public string $email,
+        public bool $isOwner = false,
     ) {}
 }

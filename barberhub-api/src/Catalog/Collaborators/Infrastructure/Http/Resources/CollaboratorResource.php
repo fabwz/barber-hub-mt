@@ -27,7 +27,7 @@ final class CollaboratorResource extends JsonResource
     /**
      * Expose the collaborator with the vocabulary of the business. The temporary password is never part of it.
      *
-     * @return array{id: string, nombre: string, correo: string, activo: bool, servicios: list<string>, turnos: list<array{dia: int, inicia: string, termina: string}>, pausas: list<array{dia: int, inicia: string, termina: string}>}
+     * @return array{id: string, nombre: string, correo: string, es_dueno: bool, activo: bool, servicios: list<string>, turnos: list<array{dia: int, inicia: string, termina: string}>, pausas: list<array{dia: int, inicia: string, termina: string}>}
      */
     public function toArray(Request $request): array
     {
@@ -37,6 +37,8 @@ final class CollaboratorResource extends JsonResource
             'id' => $collaborator->id->value,
             'nombre' => $this->item->name,
             'correo' => $this->item->email,
+            /** `true` si la cuenta es la del dueño de la barbería, que tiene perfil de colaborador sin dejar de ser dueño (CO-02). */
+            'es_dueno' => $this->item->isOwner,
             'activo' => $collaborator->active,
             'servicios' => array_map(fn (OfferedServiceId $service): string => $service->value, $collaborator->services),
             'turnos' => array_map(fn (Shift $shift): array => [
