@@ -309,6 +309,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cuenta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver mi cuenta
+         * @description Devuelve el nombre, el teléfono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todavía debe cambiar la contraseña temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contraseña temporal permite. Solo muestra la cuenta de la sesión, sea cliente, colaborador o dueño.
+         */
+        get: operations["identity.profile.show"];
+        /**
+         * Corregir mi cuenta
+         * @description Corrige el nombre, el teléfono y el correo de la propia cuenta (RF-45, CL-03); los tres son obligatorios y no se acepta barbería ni rol en el cuerpo. Responde 422 `datos-invalidos` si un dato no es válido o si otra cuenta ya usa el correo (`errores.correo`); enviar el correo propio sin cambio no es un conflicto. No toca la contraseña ni el indicador de contraseña temporal, así que una cuenta con contraseña temporal recibe 403 `contrasena-temporal` hasta que la cambia. El correo nuevo es el que sirve para ingresar: el anterior deja de abrir la cuenta.
+         */
+        put: operations["identity.profile.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cuenta/contrasena": {
         parameters: {
             query?: never;
@@ -1361,6 +1385,13 @@ export interface components {
              */
             tipo_identificacion?: "0" | "1" | "2" | "3" | "4" | "5" | "9" | null;
         };
+        /** CorreccionDeCuenta */
+        CorreccionDeCuenta: {
+            nombre: string;
+            /** Format: email */
+            correo: string;
+            telefono: string;
+        };
         /** CrearBono */
         CrearBono: {
             nombre: string;
@@ -1522,6 +1553,13 @@ export interface components {
              * @enum {string}
              */
             rol: "dueno" | "colaborador" | "cliente";
+        };
+        /** MiCuenta */
+        MiCuenta: {
+            nombre: string;
+            telefono: string | null;
+            correo: string;
+            contrasena_temporal: boolean;
         };
         /** MovimientoDeBono */
         MovimientoDeBono: {
@@ -2646,6 +2684,57 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "identity.profile.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `MiCuenta` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MiCuenta"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+        };
+    };
+    "identity.profile.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorreccionDeCuenta"];
+            };
+        };
+        responses: {
+            /** @description `MiCuenta` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MiCuenta"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
             422: components["responses"]["InvalidData"];
         };
     };
