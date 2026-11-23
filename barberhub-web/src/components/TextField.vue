@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId, useTemplateRef } from 'vue'
+import { computed, useAttrs, useId, useTemplateRef } from 'vue'
 import { CircleAlert } from 'lucide-vue-next'
 
 // Native attributes (type, name, placeholder, disabled, autocomplete…) go to the <input>.
@@ -20,6 +20,13 @@ const generatedId = useId()
 const inputId = computed(() => id ?? generatedId)
 const errorId = computed(() => `${inputId.value}-error`)
 const invalid = computed(() => error !== '')
+
+// The error message is added to whatever the parent already points the field to (a help text, a list).
+const attrs = useAttrs()
+const describedBy = computed(() => {
+  const ids = [attrs['aria-describedby'], invalid.value ? errorId.value : undefined]
+  return ids.filter((entry) => typeof entry === 'string' && entry !== '').join(' ') || undefined
+})
 
 const inputClasses = computed(() => [
   'min-h-12 w-full rounded-field border bg-canvas px-4 text-base font-normal text-fg placeholder:text-fg-subtle',
@@ -45,7 +52,7 @@ defineExpose({ focus })
       v-model="value"
       :class="inputClasses"
       :aria-invalid="invalid ? 'true' : undefined"
-      :aria-describedby="invalid ? errorId : undefined"
+      :aria-describedby="describedBy"
     />
     <p v-if="invalid" :id="errorId" class="flex items-start gap-2 text-sm text-danger">
       <CircleAlert :size="16" :stroke-width="1.5" class="mt-0.5 shrink-0" aria-hidden="true" />
