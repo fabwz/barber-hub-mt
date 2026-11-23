@@ -36,6 +36,7 @@ final readonly class EloquentServiceRepository implements ServiceRepository
                 'duration_minutes' => $service->duration->minutes(),
                 'price' => $service->price->colones(),
                 'is_active' => $service->active,
+                'image_path' => $service->imagePath,
             ],
         );
     }
@@ -77,6 +78,7 @@ final readonly class EloquentServiceRepository implements ServiceRepository
             new ServiceDuration($model->duration_minutes),
             new ServicePrice($model->price),
             $model->is_active,
+            $model->image_path,
         );
     }
 }

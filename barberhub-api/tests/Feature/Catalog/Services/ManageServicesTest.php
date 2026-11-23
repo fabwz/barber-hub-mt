@@ -70,6 +70,7 @@ final class ManageServicesTest extends TestCase
             'base' => 6195,
             'iva' => 805,
             'activo' => true,
+            'imagen' => null,
         ]]);
         $response->assertHeader('Location', url($this->url($this->puraNavaja, $id)));
         $this->assertTrue(Str::isUuid($id, 7));
@@ -179,6 +180,7 @@ final class ManageServicesTest extends TestCase
                 'base' => 6637,
                 'iva' => 863,
                 'activo' => true,
+                'imagen' => null,
             ]]);
 
         $this->scopeQueriesTo($this->puraNavaja);
