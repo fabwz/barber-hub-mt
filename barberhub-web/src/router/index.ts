@@ -124,6 +124,25 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // The services of a shop (#76, RF-03): only the owner. The form has its own address, new and edit.
+    path: '/barberias/:barberia/servicios',
+    name: 'staff-services',
+    component: () => import('@/views/StaffServicesView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
+    path: '/barberias/:barberia/servicios/nuevo',
+    name: 'staff-service-new',
+    component: () => import('@/views/StaffServiceFormView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
+    path: '/barberias/:barberia/servicios/:servicio',
+    name: 'staff-service-edit',
+    component: () => import('@/views/StaffServiceFormView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
     path: '/cambiar-contrasena',
     name: 'password-change',
     component: () => import('@/views/PasswordChangeView.vue'),
