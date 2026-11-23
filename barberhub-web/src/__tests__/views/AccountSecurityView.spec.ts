@@ -242,3 +242,40 @@ describe('«Mi cuenta · Seguridad»: changing it', () => {
     expect((field(wrapper, 'new-password').element as HTMLInputElement).value).toBe(NEW)
   })
 })
+
+describe('«Mi cuenta · Seguridad»: a new password different from the current one', () => {
+  const SAME = 'Elija una contraseña distinta de la actual.'
+
+  it('checks it in the client: the same message on «Contraseña nueva» and no call to the API', async () => {
+    const { wrapper, calls } = await open()
+    await fill(wrapper, CURRENT, CURRENT)
+
+    await submit(wrapper)
+
+    const next = field(wrapper, 'new-password')
+    expect(next.attributes('aria-invalid')).toBe('true')
+    expect(wrapper.get(`#${next.attributes('aria-describedby')!.split(' ').at(-1)}`).text()).toBe(
+      SAME,
+    )
+    expect(document.activeElement).toBe(next.element)
+    expect(calls.some((call) => call.route === 'PUT /api/v1/cuenta/contrasena')).toBe(false)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('shows the error of the API on «Contraseña nueva» (422 in contrasena_nueva)', async () => {
+    const { wrapper } = await open({
+      password: () => problem(422, { errores: { contrasena_nueva: [SAME] } }),
+    })
+    await fill(wrapper, CURRENT, NEW)
+
+    await submit(wrapper)
+
+    const next = field(wrapper, 'new-password')
+    expect(next.attributes('aria-invalid')).toBe('true')
+    expect(wrapper.get(`#${next.attributes('aria-describedby')!.split(' ').at(-1)}`).text()).toBe(
+      SAME,
+    )
+    expect(document.activeElement).toBe(next.element)
+    expect(field(wrapper, 'current-password').attributes('aria-invalid')).toBeUndefined()
+  })
+})

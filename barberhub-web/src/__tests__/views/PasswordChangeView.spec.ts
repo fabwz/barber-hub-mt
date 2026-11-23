@@ -276,3 +276,38 @@ describe('signing in with a temporary password', () => {
     expect(router.currentRoute.value.path).toBe('/negocios')
   })
 })
+
+describe('the mandatory change: a new password different from the temporary one', () => {
+  const SAME = 'Elija una contraseña distinta de la actual.'
+
+  it('checks it in the client: the message on «Contraseña nueva» and no call to the API', async () => {
+    const { wrapper, calls } = await open()
+
+    await change(wrapper, TEMPORARY, TEMPORARY)
+
+    const next = field(wrapper, 'new-password')
+    expect(next.attributes('aria-invalid')).toBe('true')
+    expect(wrapper.get(`#${next.attributes('aria-describedby')!.split(' ').at(-1)}`).text()).toBe(
+      SAME,
+    )
+    expect(document.activeElement).toBe(next.element)
+    expect(calls.some((call) => call.route === 'PUT /api/v1/cuenta/contrasena')).toBe(false)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('shows the error of the API on «Contraseña nueva» and the account stays locked', async () => {
+    const { wrapper } = await open('/negocios', {
+      password: () => problem(422, { errores: { contrasena_nueva: [SAME] } }),
+    })
+
+    await change(wrapper)
+
+    const next = field(wrapper, 'new-password')
+    expect(next.attributes('aria-invalid')).toBe('true')
+    expect(wrapper.get(`#${next.attributes('aria-describedby')!.split(' ').at(-1)}`).text()).toBe(
+      SAME,
+    )
+    expect(wrapper.find('form').exists()).toBe(true)
+    expect(useAccountStore().temporaryPassword).toBe(true)
+  })
+})

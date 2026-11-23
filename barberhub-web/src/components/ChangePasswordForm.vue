@@ -36,6 +36,8 @@ const FIELD_ORDER: readonly Field[] = ['current', 'next', 'confirm']
 
 const WRONG_CURRENT = 'La contraseña actual es incorrecta.'
 const MISMATCH = 'Las contraseñas no coinciden.'
+// The new password must differ from the current one (mandatory when the current one is the temporary one).
+const SAME_AS_CURRENT = 'Elija una contraseña distinta de la actual.'
 
 const account = useAccountStore()
 
@@ -64,6 +66,8 @@ function validateLocally(): void {
         ? 'Escriba la contraseña nueva.'
         : 'La contraseña nueva no cumple los requisitos.',
     )
+  } else if (next.value === current.value) {
+    errors.setField('next', SAME_AS_CURRENT)
   }
   if (confirmation.value !== next.value) errors.setField('confirm', MISMATCH)
 }
