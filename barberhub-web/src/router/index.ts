@@ -143,6 +143,20 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
   },
   {
+    // «Equipo» (#76, RF-04): only the owner. Each section is a child route; `staff-team` is the schedule of the
+    // shop and «Colaboradores» joins as another child (entrega 3), so the navbar link points to the first one.
+    path: '/barberias/:barberia/equipo',
+    component: () => import('@/views/StaffTeamView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+    children: [
+      {
+        path: '',
+        name: 'staff-team',
+        component: () => import('@/views/TeamScheduleView.vue'),
+      },
+    ],
+  },
+  {
     path: '/cambiar-contrasena',
     name: 'password-change',
     component: () => import('@/views/PasswordChangeView.vue'),

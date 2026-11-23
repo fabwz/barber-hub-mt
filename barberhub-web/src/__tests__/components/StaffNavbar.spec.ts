@@ -90,6 +90,24 @@ describe('StaffNavbar', () => {
     ])
   })
 
+  it('shows «Equipo» to the owner only when its route exists, and marks it current inside it', async () => {
+    const without = await mountBar([OWNER_SHOP], SHOP_A)
+    expect(without.wrapper.findAll('nav a').map((link) => link.text())).not.toContain('Equipo')
+    without.wrapper.unmount()
+
+    setActivePinia(createPinia())
+    const { wrapper, router } = await mountBar([OWNER_SHOP], SHOP_A, [
+      { path: '/barberias/:barberia/equipo', name: 'staff-team', component: page },
+    ])
+    const team = wrapper.findAll('nav a').find((link) => link.text() === 'Equipo')!
+    expect(team.attributes('href')).toBe(`/barberias/${SHOP_A}/equipo`)
+    expect(team.attributes('aria-current')).toBeUndefined()
+
+    await router.push(`/barberias/${SHOP_A}/equipo`)
+    await flushPromises()
+    expect(team.attributes('aria-current')).toBe('page')
+  })
+
   it('gives the collaborator only the agenda, even when the other routes exist', async () => {
     const { wrapper } = await mountBar([STAFF_SHOP], SHOP_B, [
       { path: '/barberias/:barberia/servicios', name: 'staff-services', component: page },
