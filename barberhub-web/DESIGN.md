@@ -235,6 +235,8 @@ Aparece bajo el campo de contraseña, dentro de una región `aria-live="polite"`
 
 Los requisitos concretos salen del contrato y de las reglas del negocio (SE-07: 8 caracteres, con mayúscula, minúscula, número y símbolo).
 
+En «Mi cuenta · Seguridad» y en el cambio obligatorio la lista es **una por requisito** (ver «Lista de requisitos con estado», en «Mi cuenta»).
+
 ### Aviso en línea informativo
 Una fila con un ícono de información de 16 px y texto, sin color de estado, dentro de una tarjeta de 16 px con borde de 1 px `line` y relleno `surface`. Se usa para indicar que un contenido es de ejemplo. La primera frase va en peso 500 y la segunda en `fg-muted`.
 
@@ -276,7 +278,7 @@ Barra superior con: Agenda, Reservas, Servicios, Barberos y Pagos. Elemento inac
 ### Navbar del cliente
 Barra de las pantallas de la persona con sesión iniciada (hoy, solo el directorio de `/barberias`). Es la misma barra del negocio: 64 px de alto, línea inferior de 1 px `line`, 20 px de relleno lateral en celular y 32 px en escritorio, y 40 px entre la marca y los enlaces. **No reemplaza la cabecera de cada barbería** y no lleva «Mis reservas»: esa lista es por barbería y vive en su cabecera.
 - **Escritorio:** la marca (`BrandLogo` de 45 px, enlace al directorio), los enlaces en píldora de 44 px y, a la derecha, el menú de cuenta. Enlace en reposo: texto `fg-muted`; hover: relleno `surface`. **Activo:** relleno `elevated`, texto `fg` en peso 500 y `aria-current="page"`.
-- **Enlaces:** «Barberías» y «Preferencias» (ruta `/preferencias`). «Mi perfil» **solo cuando su ruta existe** (`router.hasRoute`); mientras no exista, no hay enlace roto. «Preferencias» es la página activa (`aria-current`, relleno `elevated`) en su pantalla.
+- **Enlaces:** «Barberías», «Mi perfil» (la sección Datos de «Mi cuenta», `/cuenta/datos`) y «Preferencias» (su sección Apariencia, `/cuenta/apariencia`). Un enlace aparece **solo cuando su ruta existe** (`router.hasRoute`), así que la barra nunca apunta a una pantalla que no está. «Mi perfil» y «Preferencias» son la página activa (`aria-current`, relleno `elevated`) en su sección.
 - **Celular:** la marca y un botón de menú de 44 px (`aria-label="Menú"`); el panel ocupa el ancho de la pantalla (12 px de margen) y lleva los enlaces en filas de 48 px, el nombre y «Cerrar sesión».
 - Transiciones de 150 ms `ease-out` solo en hover y en la apertura del menú (con la reducción de movimiento, ninguna).
 
@@ -465,7 +467,7 @@ Ruta `/preferencias`, **pública** (sin sesión, sin API). Diseño de origen: l�
 - **Atributos de `<html>`:** `data-theme="light|dark"` (el tema que se ve), `data-text-size="normal|large|xlarge"` y `data-motion="reduce|full"` (ausente si sigue al dispositivo).
 - **Bloque reutilizable** (`PreferencesPanel`): la nota y los tres grupos, sin título ni página alrededor. La pantalla le pone el título y el navbar (sin «Volver»); en «Mi cuenta» será la pestaña «Apariencia» (#105). Nota: «Elija cómo quiere ver BarberHub: los cambios se aplican de inmediato y se guardan en este navegador.» (una sola frase, con un único punto)
 - **Disposición:** celular, una columna: Tema, Tamaño del texto y Reducir el movimiento. Escritorio (desde 768 px): una tarjeta de 16 px con borde `line` y 32 px de relleno, título y nota arriba con una línea `line` debajo, y dos columnas separadas por una línea de 1 px y 32 px a cada lado: a la izquierda Tema y, debajo, Reducir el movimiento; a la derecha Tamaño del texto. Margen de pantalla de 20 px en celular y 32 px en escritorio; la tarjeta ocupa el ancho (máximo 1280 px).
-- **Sin sesión**, encabezado con el logotipo y «Preferencias» como página activa. **Con sesión**, el navbar del cliente.
+- **Sin sesión**, encabezado con el logotipo y «Preferencias» como página activa. **Con sesión**, `/preferencias` redirige a «Mi cuenta · Apariencia» (ver «Mi cuenta»), que aloja el mismo bloque.
 
 ### Tema
 Control segmentado (abajo) con Claro, Oscuro y Automático; Automático es el valor por defecto, sigue `prefers-color-scheme` y **cambia en vivo** si el dispositivo cambia. Bajo el control, en una región `aria-live="polite"`, la descripción de lo elegido (14 px, `fg-muted`): Claro «Fondo claro y texto oscuro.», Oscuro «Fondo oscuro y texto claro.», Automático «Sigue la preferencia de su dispositivo».
@@ -488,6 +490,42 @@ Un solo componente (`PreferencesLink`), con la apariencia de la navegación con 
 - **Con sesión:** enlace del navbar del cliente (en la barra y en el panel de celular), como «Barberías».
 - **Sin sesión:** en el encabezado de la portada, de Ingresar, de Crear cuenta, de Términos y condiciones y de Política de privacidad. **Celular:** solo un círculo de 44 px con el ícono de controles (Lucide `SlidersHorizontal`, 20 px) y borde `line-strong`; el nombre «Preferencias» sigue disponible para los lectores de pantalla. **Escritorio (768 px):** píldora de 44 px con la palabra. En Ingresar, Crear cuenta y la portada va a la derecha del logotipo; en Términos y Privacidad, «Volver» queda a la izquierda y el enlace va junto al logotipo, a la derecha, sin desacomodar ninguno (el enlace no se encoge).
 - **Página activa:** relleno `elevated` y `aria-current="page"`.
+
+## Mi cuenta (pantalla de la persona con sesión)
+
+Rutas `/cuenta/datos`, `/cuenta/seguridad` y `/cuenta/apariencia` (`/cuenta` lleva a Datos), **comunes a cliente, colaborador y dueño** (RF-45, RF-40, RF-48). Diseño de origen: láminas 20 a 25 de la v7. Un solo `h1` «Mi cuenta» y un `h2` por sección. Usa el navbar del cliente; la barra del personal todavía no está definida, así que **no hay un punto de entrada propio para el dueño ni para el colaborador** (la ruta funciona, sin enlace).
+
+### Navegación de las secciones (`AccountNav`)
+**Enlaces**, no pestañas: cada sección es una ruta, así que no lleva `role="tab"`, `tablist` ni `tabpanel`; la actual lleva `aria-current="page"`.
+- **Celular:** píldoras de 44 px (`rounded-pill`, borde `line`, texto `fg`) que **pasan a otra línea**: ninguna queda oculta. Actual: relleno `elevated`, borde `line-strong` y peso 500. Una línea `line` de 1 px las separa del contenido.
+- **Escritorio (768 px):** lista vertical a la izquierda de 220 px, con la píldora actual rellena y las demás sin borde; una línea vertical de 1 px y 32 px de separación hacia el contenido. Todo dentro de la tarjeta de 16 px con borde `line` y 32 px de relleno, como «Preferencias».
+- **Secciones visibles hoy:** Datos, Seguridad y Apariencia. **Avisos** (solo cliente, #106) e **Idioma** (#108) se suman cuando existan sus pantallas: no hay enlaces rotos.
+
+### Datos
+«Datos personales» y la línea «Su nombre, su teléfono y el correo con el que ingresa a BarberHub.» Tres campos (nombre, teléfono y correo, con las mismas reglas de filtrado que crear cuenta) en una columna de hasta 672 px y «Guardar cambios».
+- **Cargando:** esqueleto de tres filas y `aria-busy`. **Error de carga:** `ErrorState` «No pudimos cargar sus datos» con «Reintentar».
+- **Guardando:** campos y botón bloqueados, «Guardando…» (la palabra con los tres puntos, como en todo botón) y `aria-busy`.
+- **Éxito:** aviso de éxito `role="status"` «Sus datos se guardaron.» bajo el botón; desaparece al volver a escribir.
+- **Error por campo:** un correo ya registrado (422 en `errores.correo`) se muestra en el campo: «Este correo ya está registrado. Use otro correo.», con el foco en él. Otro error de la API es un aviso de error con lo escrito intacto.
+- Con texto «Muy grande» (150 %) los campos se apilan sin desplazamiento horizontal.
+
+### Seguridad
+«Cambiar contraseña» y «Escriba su contraseña actual y elija una nueva.» Campos «Contraseña actual», «Contraseña nueva» (con la lista de requisitos debajo) y «Confirmar contraseña nueva», cada uno con el botón de ojo de `PasswordField`. La confirmación se valida **solo en el cliente** («Las contraseñas no coinciden.»). Una actual incorrecta (422 en `errores.contrasena_actual`) dice «La contraseña actual es incorrecta.» en su campo. Éxito: se vacían los campos y un aviso `role="status"` dice «Su contraseña se actualizó.»; **la sesión sigue abierta** (la API conserva este token y cierra los demás).
+
+### Lista de requisitos con estado (`PasswordChecklist`)
+Bajo «Contraseña nueva»: «La contraseña nueva debe tener» (14 px, peso 500) y una lista de cinco filas de 24 px: «Mínimo 8 caracteres», «Una letra mayúscula», «Una letra minúscula», «Un número» y «Un signo especial» (SE-07). Cada fila lleva un **ícono de 16 px y una palabra oculta para lectores de pantalla**, así que el estado no depende del color:
+- **Pendiente:** círculo vacío, texto `fg-muted` («Pendiente: »).
+- **Cumplido:** check, texto `fg` («Cumplido: »).
+- **Falta** (solo tras un envío fallido): `X` y texto en `danger` («Falta: »).
+El campo de la contraseña nueva apunta a la lista con `aria-describedby`. La frase única de crear cuenta no cambia.
+
+### Apariencia
+`h2` «Apariencia» y el mismo `PreferencesPanel` de «Preferencias» (tema, tamaño del texto y movimiento), con el mismo almacén: no llama a la API y se guarda en el navegador.
+
+### Cambio obligatorio de la contraseña temporal
+Ruta `/cambiar-contrasena`. La cuenta de un colaborador nuevo nace con una contraseña temporal (UP-04): el router la lee con `GET /cuenta` (`contrasena_temporal`) en la primera navegación de la sesión, y también cuando cualquier petición recibe 403 `contrasena-temporal`. **Mientras sea temporal, ninguna otra ruta se abre**. La columna de formulario de las pantallas de acceso (390 / 440 px), sin navbar: el logotipo a la izquierda y, a la derecha, solo «Cerrar sesión» (botón secundario).
+- Título «Cambie su contraseña temporal» y una frase que explica por qué. Campos: «Contraseña temporal», «Contraseña nueva» (con la lista) y «Confirmar contraseña nueva». Misma lista, mismos estados y mismos mensajes que Seguridad; el 422 de la temporal dice «La contraseña actual es incorrecta.».
+- **Éxito:** el formulario se reemplaza por «Su contraseña se actualizó. Ya puede usar BarberHub.» (`role="status"`) y el botón «Continuar», que lleva a donde iría la persona al ingresar: la página que pedía, el selector de barbería si es del personal, o la portada.
 
 ## Voz del texto
 
@@ -684,6 +722,7 @@ Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg
 
 ## Pendiente
 
+- **Mi cuenta:** las secciones «Avisos» (#106) e «Idioma» (#108) se suman cuando existan sus pantallas. La entrada a «Mi cuenta» del dueño y del colaborador queda pendiente hasta definir la barra del personal; hoy solo el navbar del cliente la enlaza.
 - **Por confirmar con ONVO:** los formatos de la identificación del SINPE Móvil de cada tipo (tabla de «Campo de texto»).
 - **Pantalla de pago:** la fila «Sucursal» y el banner y el logo de la cabecera dependen de que la API los entregue; el pago muestra la cabecera con los mismos datos de ejemplo que la portada.
 - **Bonos (láminas 14 a 16):** se omitió lo que la API no entrega. (1) Pagar con PayPal en la compra: el contrato de la compra solo admite tarjeta y SINPE Móvil y el bono no informa la pasarela. (2) El nombre, el saldo y el vencimiento del bono dentro de la opción «Pagar con bono», y «No vale para {fecha}»: la API elige el bono al reservar y el cliente no lo recalcula; si el bono vence antes de la cita, la API responde `bono-vencido`. (3) «Le quedan N» tras reservar con bono: la reserva creada no trae el saldo restante (se ve en «Mis bonos»). (4) La hora exacta límite de cancelación («hasta el jue 5 nov, 06:30»): se muestra el plazo real en horas (`plazo_cancelacion_horas`). (5) «Su espacio se mantiene» en los errores de bono: la API no crea la reserva cuando falla, así que el aviso dice que no se reservó nada. (6) El punto de «Activo» y «Vencido» (ver «Etiqueta de estado»). (7) «Sucursal», como en el resto de pantallas.
