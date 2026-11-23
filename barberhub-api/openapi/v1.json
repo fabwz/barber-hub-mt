@@ -15,6 +15,10 @@
             "name": "General"
         },
         {
+            "name": "Archivos de la barber\u00eda",
+            "description": "Im\u00e1genes que suben las barber\u00edas, servidas por barber\u00eda y sin iniciar sesi\u00f3n."
+        },
+        {
             "name": "Cuentas",
             "description": "Registro de cuentas de personas que usan BarberHub."
         },
@@ -41,6 +45,10 @@
         {
             "name": "Datos de la barber\u00eda",
             "description": "Nombre, ciudad, tel\u00e9fono, direcci\u00f3n, correo de contacto y redes sociales, a cargo del due\u00f1o."
+        },
+        {
+            "name": "Im\u00e1genes de la barber\u00eda",
+            "description": "Subir o reemplazar el logo y el banner de la barber\u00eda, a cargo del due\u00f1o."
         },
         {
             "name": "Enlaces p\u00fablicos",
@@ -117,6 +125,61 @@
         }
     ],
     "paths": {
+        "/archivos/barbershops/{barberia}/{carpeta}/{archivo}": {
+            "get": {
+                "operationId": "shared.files.show",
+                "description": "Devuelve el logo, el banner o la imagen de un servicio que la API entreg\u00f3 en `logo`, `banner` o `imagen`. Es p\u00fablica porque son datos p\u00fablicos de la barber\u00eda (MT-08, SV-07). Solo sirve archivos de la carpeta de la barber\u00eda de la ruta: la ruta de otra barber\u00eda, un archivo inexistente o un nombre que no es el que genera la API responden el mismo 404 `no-encontrado`. El nombre del archivo cambia con cada subida, as\u00ed que la respuesta se puede guardar en cach\u00e9 sin vencimiento.",
+                "summary": "Obtener una imagen de la barber\u00eda",
+                "tags": [
+                    "Archivos de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "carpeta",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "archivo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": []
+            }
+        },
         "/barberias": {
             "post": {
                 "operationId": "catalog.barbershops.store",
@@ -2024,6 +2087,126 @@
                 }
             }
         },
+        "/barberias/{barberia}/administracion/imagenes/logo": {
+            "post": {
+                "operationId": "catalog.barbershops.images.logo",
+                "description": "Recibe `multipart/form-data` con el archivo en `logo`. Acepta JPG, PNG y WebP de hasta 2 MB; el tipo se lee del contenido del archivo, de modo que un PDF o un ejecutable con nombre `.jpg` se rechaza. Un archivo inv\u00e1lido responde 422 `datos-invalidos` y `errores.logo` dice por qu\u00e9. Guarda el archivo en el espacio de la barber\u00eda, borra el logo anterior y responde las direcciones de `logo` y `banner`. Se usa `POST` porque un `PUT` multipart no llega completo al servidor. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Subir o reemplazar el logo",
+                "tags": [
+                    "Im\u00e1genes de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LogoDeLaBarberia"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ImagenesDeLaBarberia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ImagenesDeLaBarberia"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/imagenes/banner": {
+            "post": {
+                "operationId": "catalog.barbershops.images.banner",
+                "description": "Recibe `multipart/form-data` con el archivo en `banner`. Acepta JPG, PNG y WebP de hasta 2 MB que midan al menos 1.200 \u00d7 400 p\u00edxeles; uno menor responde 422 `datos-invalidos` con `errores.banner` que lo explica. El tipo se lee del contenido del archivo, no de su nombre. Guarda el archivo en el espacio de la barber\u00eda, borra el banner anterior y responde las direcciones de `logo` y `banner`. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Subir o reemplazar el banner",
+                "tags": [
+                    "Im\u00e1genes de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BannerDeLaBarberia"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ImagenesDeLaBarberia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ImagenesDeLaBarberia"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/administracion/ingresos": {
             "get": {
                 "operationId": "payments.income.show",
@@ -3709,6 +3892,75 @@
                 }
             }
         },
+        "/barberias/{barberia}/administracion/servicios/{servicio}/imagen": {
+            "post": {
+                "operationId": "catalog.services.image",
+                "description": "Recibe `multipart/form-data` con el archivo en `imagen`. Acepta JPG, PNG y WebP de hasta 2 MB; el tipo se lee del contenido del archivo, no de su nombre, y uno inv\u00e1lido responde 422 `datos-invalidos` con `errores.imagen`. Guarda el archivo en el espacio de la barber\u00eda, borra la imagen anterior y responde el servicio con su `imagen`. El cliente la ve al elegir el servicio, en `GET /barberias/{barberia}/servicios`; un servicio sin imagen se muestra sin ella (SV-07). Responde 404 `no-encontrado` si el servicio no existe en la barber\u00eda, tambi\u00e9n si es de otra. Solo el due\u00f1o.",
+                "summary": "Subir o reemplazar la imagen de un servicio",
+                "tags": [
+                    "Servicios de la barber\u00eda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "servicio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImagenDelServicio"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`Servicio`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Servicio"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/servicios": {
             "get": {
                 "operationId": "catalog.services.public.index",
@@ -4091,6 +4343,21 @@
                 ],
                 "title": "AnotarseEnFila"
             },
+            "BannerDeLaBarberia": {
+                "type": "object",
+                "properties": {
+                    "banner": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Imagen JPG, PNG o WebP de hasta 2 MB y de al menos 1.200 \u00d7 400 p\u00edxeles. El tipo se lee del contenido del archivo, no de su nombre."
+                    }
+                },
+                "required": [
+                    "banner"
+                ],
+                "title": "BannerDeLaBarberia"
+            },
             "Barberia": {
                 "type": "object",
                 "properties": {
@@ -4179,6 +4446,20 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "logo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Direcci\u00f3n del logo, relativa al servidor (`/api/v1/archivos/...`). Falta si la barber\u00eda no tiene logo (el cliente muestra un monograma)."
+                    },
+                    "banner": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Direcci\u00f3n del banner, relativa al servidor. Falta si la barber\u00eda no tiene banner (el cliente muestra una cabecera compacta)."
                     },
                     "redes": {
                         "type": "object",
@@ -5157,6 +5438,54 @@
                     "aparece_en_directorio"
                 ],
                 "title": "Funciones"
+            },
+            "ImagenDelServicio": {
+                "type": "object",
+                "properties": {
+                    "imagen": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Imagen JPG, PNG o WebP de hasta 2 MB. El tipo se lee del contenido del archivo, no de su nombre."
+                    }
+                },
+                "required": [
+                    "imagen"
+                ],
+                "title": "ImagenDelServicio"
+            },
+            "ImagenesDeLaBarberia": {
+                "type": "object",
+                "properties": {
+                    "logo": {
+                        "type": "null",
+                        "description": "Direcci\u00f3n del logo, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene."
+                    },
+                    "banner": {
+                        "type": "null",
+                        "description": "Direcci\u00f3n del banner, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene."
+                    }
+                },
+                "required": [
+                    "logo",
+                    "banner"
+                ],
+                "title": "ImagenesDeLaBarberia"
+            },
+            "LogoDeLaBarberia": {
+                "type": "object",
+                "properties": {
+                    "logo": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Imagen JPG, PNG o WebP de hasta 2 MB. El tipo se lee del contenido del archivo, no de su nombre."
+                    }
+                },
+                "required": [
+                    "logo"
+                ],
+                "title": "LogoDeLaBarberia"
             },
             "MiBarberia": {
                 "type": "object",
@@ -6535,6 +6864,10 @@
                     },
                     "activo": {
                         "type": "boolean"
+                    },
+                    "imagen": {
+                        "type": "null",
+                        "description": "Direcci\u00f3n de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene."
                     }
                 },
                 "required": [
@@ -6544,7 +6877,8 @@
                     "precio",
                     "base",
                     "iva",
-                    "activo"
+                    "activo",
+                    "imagen"
                 ],
                 "title": "Servicio"
             },
@@ -6587,6 +6921,13 @@
                     },
                     "iva": {
                         "type": "integer"
+                    },
+                    "imagen": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Direcci\u00f3n de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`). Falta si el servicio no tiene imagen (SV-07)."
                     }
                 },
                 "required": [
