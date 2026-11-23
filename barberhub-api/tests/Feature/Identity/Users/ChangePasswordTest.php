@@ -85,6 +85,64 @@ final class ChangePasswordTest extends TestCase
         $this->assertSame(0, DB::table('users')->where('password', self::NEW)->count());
     }
 
+    /** A new password equal to the current one is refused on its field and the password does not change. */
+    public function test_a_new_password_equal_to_the_current_one_is_rejected(): void
+    {
+        $this->account('ana@barberhub.test', self::CURRENT);
+        $token = $this->login('ana@barberhub.test', self::CURRENT);
+
+        $this->change($token, self::CURRENT, self::CURRENT)
+            ->assertUnprocessable()
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('type', 'http://localhost/problemas/datos-invalidos')
+            ->assertJsonPath('errores.contrasena_nueva.0', 'Elija una contraseña distinta de la actual.')
+            ->assertJsonMissingPath('errores.contrasena_actual');
+
+        $this->assertPasswordIs('ana@barberhub.test', self::CURRENT);
+        $this->assertSame(['Celular'], $this->tokenNames());
+    }
+
+    /** Repeating the temporary password does not release the lock: the account still answers 403 elsewhere. */
+    public function test_repeating_the_temporary_password_keeps_the_lock(): void
+    {
+        $this->account('kevin@barberhub.test', self::TEMPORARY, temporary: true);
+        $token = $this->login('kevin@barberhub.test', self::TEMPORARY);
+
+        $this->change($token, self::TEMPORARY, self::TEMPORARY)
+            ->assertUnprocessable()
+            ->assertJsonPath('errores.contrasena_nueva.0', 'Elija una contraseña distinta de la actual.');
+
+        $this->assertDatabaseHas('users', ['email' => 'kevin@barberhub.test', 'must_change_password' => true]);
+        $this->assertPasswordIs('kevin@barberhub.test', self::TEMPORARY);
+        $this->mine($token)->assertForbidden()
+            ->assertJsonPath('type', 'http://localhost/problemas/contrasena-temporal');
+    }
+
+    /** A different password changes it and releases the lock. */
+    public function test_a_different_password_releases_the_lock(): void
+    {
+        $this->account('kevin@barberhub.test', self::TEMPORARY, temporary: true);
+        $token = $this->login('kevin@barberhub.test', self::TEMPORARY);
+
+        $this->change($token, self::TEMPORARY, self::NEW)->assertNoContent();
+
+        $this->assertDatabaseHas('users', ['email' => 'kevin@barberhub.test', 'must_change_password' => false]);
+        $this->assertPasswordIs('kevin@barberhub.test', self::NEW);
+        $this->mine($token)->assertOk();
+    }
+
+    /** A wrong current password keeps its own error even if the new one repeats it. */
+    public function test_a_wrong_current_password_keeps_its_error_when_the_new_one_repeats_it(): void
+    {
+        $this->account('ana@barberhub.test', self::CURRENT);
+        $token = $this->login('ana@barberhub.test', self::CURRENT);
+
+        $this->change($token, 'Otra#Clave1', 'Otra#Clave1')
+            ->assertUnprocessable()
+            ->assertJsonPath('errores.contrasena_actual.0', 'La contraseña actual no es correcta.')
+            ->assertJsonMissingPath('errores.contrasena_nueva');
+    }
+
     /** The other sessions close and the one that changed the password stays open. */
     public function test_the_other_sessions_are_closed_and_the_current_one_stays(): void
     {

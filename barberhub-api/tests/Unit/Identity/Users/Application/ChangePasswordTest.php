@@ -9,6 +9,7 @@ use Src\Identity\Users\Application\DTOs\ChangePasswordCommand;
 use Src\Identity\Users\Application\UseCases\ChangePassword;
 use Src\Identity\Users\Domain\Entities\User;
 use Src\Identity\Users\Domain\Exceptions\CurrentPasswordIncorrectException;
+use Src\Identity\Users\Domain\Exceptions\NewPasswordSameAsCurrentException;
 use Src\Identity\Users\Domain\ValueObjects\Email;
 use Src\Identity\Users\Domain\ValueObjects\UserName;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
@@ -76,6 +77,31 @@ final class ChangePasswordTest extends TestCase
 
         $this->assertSame($this->kevin, $this->users->findById($this->kevin->id));
         $this->assertSame([], $this->tokens->revokedExcept);
+    }
+
+    /** A new password equal to the current one (here the temporary one) is refused and the lock stays. */
+    public function test_rejects_a_new_password_equal_to_the_current_one(): void
+    {
+        try {
+            $this->change('Temporal#2026', 'Temporal#2026', '7');
+            $this->fail('The same password was accepted.');
+        } catch (NewPasswordSameAsCurrentException $exception) {
+            $this->assertSame('identity.new_password_same_as_current', $exception->translationKey());
+            $this->assertSame('contrasena_nueva', $exception->field());
+        }
+
+        $stored = $this->users->findById($this->kevin->id);
+        $this->assertSame($this->kevin, $stored);
+        $this->assertTrue($stored->mustChangePassword);
+        $this->assertSame([], $this->tokens->revokedExcept);
+    }
+
+    /** A wrong current password is reported before anything about the new one. */
+    public function test_a_wrong_current_password_wins_over_a_repeated_new_one(): void
+    {
+        $this->expectException(CurrentPasswordIncorrectException::class);
+
+        $this->change('Otra#Clave1', 'Otra#Clave1', '7');
     }
 
     /** Run the use case. */

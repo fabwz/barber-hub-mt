@@ -10,6 +10,7 @@ return [
     'email_invalid' => 'El correo debe ser una dirección válida de :max caracteres como máximo.',
     'invalid_credentials' => 'El correo o la contraseña no son correctos.',
     'name_invalid' => 'El nombre es obligatorio y no puede superar los :max caracteres.',
+    'new_password_same_as_current' => 'Elija una contraseña distinta de la actual.',
     'password_too_short' => 'La contraseña debe tener al menos :min caracteres.',
     'password_without_lowercase' => 'La contraseña debe incluir al menos una letra minúscula.',
     'password_without_number' => 'La contraseña debe incluir al menos un número.',
