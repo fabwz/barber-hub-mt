@@ -43,6 +43,28 @@ final readonly class EloquentMembershipRepository implements MembershipRepositor
     }
 
     /**
+     * Pick the accounts with an active owner role in the barbershop among the given ones, in one query.
+     *
+     * @param  list<UserId>  $userIds
+     * @return list<UserId>
+     */
+    public function ownersAmong(array $userIds, BarbershopId $barbershopId): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $owners = MembershipModel::query()
+            ->where('barbershop_id', $barbershopId->value)
+            ->where('role', Role::Owner->value)
+            ->where('is_active', true)
+            ->whereIn('user_id', array_map(fn (UserId $id): string => $id->value, $userIds))
+            ->pluck('user_id');
+
+        return array_values($owners->map(fn (string $id): UserId => new UserId($id))->all());
+    }
+
+    /**
      * Read the account of each membership of the barbershop in one query.
      *
      * @param  list<MembershipId>  $ids

@@ -26,6 +26,14 @@ interface MembershipRepository
     public function findByUserAndBarbershop(UserId $userId, BarbershopId $barbershopId): ?Membership;
 
     /**
+     * Pick, among some accounts, those with an active owner role in the barbershop, in one read.
+     *
+     * @param  list<UserId>  $userIds
+     * @return list<UserId>
+     */
+    public function ownersAmong(array $userIds, BarbershopId $barbershopId): array;
+
+    /**
      * Find the active memberships of a person in every barbershop where they hold a role (UP-08).
      *
      * @return list<Membership>
