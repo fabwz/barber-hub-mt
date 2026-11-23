@@ -3,6 +3,7 @@ import {
   API_BASE_URL,
   ApiError,
   createApiClient,
+  setTemporaryPasswordHandler,
   setTokenProvider,
   setUnauthorizedHandler,
 } from '@/api'
@@ -209,5 +210,31 @@ describe('cliente HTTP', () => {
     expect(error.status).toBe(0)
     expect(error.type).toBe('red')
     expect(error.cause).toBe(cause)
+  })
+
+  it('avisa del 403 «contrasena-temporal» y lo sigue lanzando como ApiError', async () => {
+    const handler = vi.fn()
+    setTemporaryPasswordHandler(handler)
+    fetchMock.mockResolvedValue(
+      problem(403, { type: 'http://localhost/problemas/contrasena-temporal' }),
+    )
+
+    const error = await failure(() => api.GET('/barberias'))
+
+    expect(error.status).toBe(403)
+    expect(error.type).toBe('http://localhost/problemas/contrasena-temporal')
+    expect(handler).toHaveBeenCalledTimes(1)
+    setTemporaryPasswordHandler(() => {})
+  })
+
+  it('no avisa de otro 403', async () => {
+    const handler = vi.fn()
+    setTemporaryPasswordHandler(handler)
+    fetchMock.mockResolvedValue(problem(403, { type: 'http://localhost/problemas/prohibido' }))
+
+    await failure(() => api.GET('/barberias'))
+
+    expect(handler).not.toHaveBeenCalled()
+    setTemporaryPasswordHandler(() => {})
   })
 })

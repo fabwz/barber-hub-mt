@@ -6,6 +6,7 @@ import { defineComponent, h } from 'vue'
 import { installGuards, safeRedirect } from '@/router/guard'
 import { useActiveShopStore } from '@/stores/activeShop'
 import { useSessionStore } from '@/stores/session'
+import { accountHandler } from '../helpers/account'
 import { mockFetch } from '../helpers/http'
 import { OWNER_SHOP, SHOP_A, STAFF_SHOP, staffHandler } from '../helpers/staff'
 
@@ -30,7 +31,10 @@ function makeRouter() {
 beforeEach(() => {
   sessionStorage.clear()
   setActivePinia(createPinia())
+  // With a session the router reads the account once (temporary password); no test reaches a real API.
+  accountHandler()
 })
+afterEach(() => vi.unstubAllGlobals())
 
 describe('router guard', () => {
   it('sends a protected route without session to /ingresar with the destination', async () => {

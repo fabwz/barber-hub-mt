@@ -5,14 +5,25 @@ import { defineComponent, h, type Component } from 'vue'
 
 import { routes } from '@/router'
 import { installGuards } from '@/router/guard'
-import { connectSession } from '@/stores/session'
+import { useAccountStore } from '@/stores/account'
+import { connectSession, useSessionStore } from '@/stores/session'
 
 const agenda = defineComponent({ render: () => h('p', 'agenda') })
 
 /** Monta una vista con Pinia y un router real (historial en memoria) sobre las rutas de la app. */
-export async function mountView(view: Component, path: string, extraRoutes: RouteRecordRaw[] = []) {
+export async function mountView(
+  view: Component,
+  path: string,
+  extraRoutes: RouteRecordRaw[] = [],
+  { knownAccount = true }: { knownAccount?: boolean } = {},
+) {
   const pinia = createPinia()
   setActivePinia(pinia)
+  // The router reads the account once per session (temporary password). The views under test mock
+  // their own requests, so the account is already known unless a test is about that very read.
+  if (knownAccount && useSessionStore().isAuthenticated) {
+    useAccountStore().$patch({ status: 'ready', temporaryPassword: false })
+  }
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [...routes, { path: '/agenda', name: 'agenda', component: agenda }, ...extraRoutes],

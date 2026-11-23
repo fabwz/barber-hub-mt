@@ -20,6 +20,23 @@ describe('TextField', () => {
     expect(input.classes()).toContain('border-field')
   })
 
+  it('keeps what the parent points the input to (a help text) and adds the error after it', () => {
+    const quiet = mount(TextField, {
+      props: { label: 'Contraseña' },
+      attrs: { 'aria-describedby': 'ayuda' },
+    }).find('input')
+    expect(quiet.attributes('aria-describedby')).toBe('ayuda')
+
+    const wrapper = mount(TextField, {
+      props: { label: 'Contraseña', error: 'Falta algo.' },
+      attrs: { 'aria-describedby': 'ayuda' },
+    })
+    const input = wrapper.find('input')
+    const ids = input.attributes('aria-describedby')!.split(' ')
+    expect(ids[0]).toBe('ayuda')
+    expect(wrapper.find(`#${ids[1]}`).text()).toBe('Falta algo.')
+  })
+
   it('with an error sets aria-invalid and describes the input with the message', () => {
     const wrapper = mount(TextField, {
       props: { label: 'Correo', error: 'El correo no es válido. Revise el formato.' },

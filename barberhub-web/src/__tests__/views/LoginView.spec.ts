@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 
 import LoginView from '@/views/LoginView.vue'
-import { jsonResponse, mockFetch, problem } from '../helpers/http'
+import { jsonResponse, mockFetch, pathOf, problem } from '../helpers/http'
 import { mountView } from '../helpers/mountView'
 import { CLIENT_SHOP, OWNER_SHOP, STAFF_SHOP, staffHandler } from '../helpers/staff'
 
@@ -60,7 +60,9 @@ describe('LoginView', () => {
     expect(router.currentRoute.value.path).toBe('/agenda')
     expect(sessionStorage.getItem('barberhub.session')).toContain('tok-1')
     // A valid redirect is respected as is: the shops are not even asked for.
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const asked = fetchMock.mock.calls.map(([request]) => pathOf(request))
+    expect(asked.slice(0, 2)).toEqual(['POST /api/v1/tokens', 'GET /api/v1/cuenta'])
+    expect(asked).not.toContain('GET /api/v1/mis-barberias')
   })
 
   it('without a redirect, several staff shops go to /negocios', async () => {

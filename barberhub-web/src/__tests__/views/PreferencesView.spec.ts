@@ -39,13 +39,14 @@ describe('route /preferencias', () => {
     expect(router.currentRoute.value.name).toBe('preferences')
   })
 
-  it('opens with a session too, and is not guest-only', async () => {
+  it('with a session the address goes to «Mi cuenta · Apariencia», which hosts the same block', async () => {
     signIn()
     mockFetch(() => new Response(null, { status: 204 }))
 
     const { router } = await mountView(PreferencesView, '/preferencias')
 
-    expect(router.currentRoute.value.name).toBe('preferences')
+    expect(router.currentRoute.value.name).toBe('account-appearance')
+    expect(router.currentRoute.value.path).toBe('/cuenta/apariencia')
   })
 })
 
@@ -66,17 +67,6 @@ describe('PreferencesView', () => {
     expect(wrapper.find('nav[aria-label="Principal"]').exists()).toBe(false)
     expect(wrapper.get('header img').attributes('alt')).toBe('BarberHub')
     expect(wrapper.get('header a[aria-current="page"]').text()).toBe('Preferencias')
-  })
-
-  it('with a session is framed by the client navbar, with «Preferencias» as the current page', async () => {
-    signIn()
-    mockFetch(() => new Response(null, { status: 204 }))
-
-    const { wrapper } = await mountView(PreferencesView, '/preferencias')
-
-    const current = wrapper.get('nav[aria-label="Principal"] a[aria-current="page"]')
-    expect(current.text()).toBe('Preferencias')
-    expect(current.attributes('href')).toBe('/preferencias')
   })
 
   it('never calls the API, with or without a session', async () => {
