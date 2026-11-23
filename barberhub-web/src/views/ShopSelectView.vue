@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import BaseButton from '@/components/BaseButton.vue'
 import BrandLogo from '@/components/BrandLogo.vue'
@@ -25,11 +25,16 @@ const announcement = computed(() =>
   chosenName.value === undefined ? '' : `Seleccionó ${chosenName.value}.`,
 )
 
+/** The agenda of a shop: where staff land once they have chosen one (#78). */
+function agendaOf(shopId: string): RouteLocationRaw {
+  return { name: 'staff-agenda', params: { barberia: shopId } }
+}
+
 /** One shop enters directly, none shows the empty state, several show the list. */
 async function decide(): Promise<void> {
   if (store.status === 'ready' && store.shops.length === 1) {
     store.select(store.shops[0]!.id)
-    await router.replace('/')
+    await router.replace(agendaOf(store.shops[0]!.id))
   }
 }
 
@@ -41,8 +46,7 @@ async function load(): Promise<void> {
 function submit(): void {
   if (selected.value === null) return
   store.select(selected.value)
-  // TEMPORARY: the business panel does not exist yet (#78); until then the destination is «/».
-  void router.push('/')
+  void router.push(agendaOf(selected.value))
 }
 
 onMounted(load)

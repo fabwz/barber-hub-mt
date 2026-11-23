@@ -110,6 +110,20 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // The agenda of a shop (#78): the reservation panel is a child route, so it has its own address.
+    path: '/barberias/:barberia/agenda',
+    name: 'staff-agenda',
+    component: () => import('@/views/StaffAgendaView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true },
+    children: [
+      {
+        path: ':reserva',
+        name: 'staff-reservation',
+        component: () => import('@/components/ReservationPanel.vue'),
+      },
+    ],
+  },
+  {
     path: '/cambiar-contrasena',
     name: 'password-change',
     component: () => import('@/views/PasswordChangeView.vue'),

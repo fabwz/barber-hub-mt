@@ -61,7 +61,7 @@ describe('ShopSelectView', () => {
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
 
-  it('choosing enables Continuar, announces it and enters the shop at «/»', async () => {
+  it('choosing enables Continuar, announces it and enters the agenda of the shop', async () => {
     mockFetch(staffHandler([OWNER_SHOP, STAFF_SHOP]))
     const { wrapper, router } = await mountView(ShopSelectView, '/negocios')
     await flushPromises()
@@ -75,7 +75,10 @@ describe('ShopSelectView', () => {
     await flushPromises()
 
     expect(useActiveShopStore().active?.id).toBe(SHOP_B)
-    expect(router.currentRoute.value.path).toBe('/')
+    // The agenda is a lazy route: the navigation ends when its view has been loaded.
+    await vi.waitFor(() =>
+      expect(router.currentRoute.value.path).toBe(`/barberias/${SHOP_B}/agenda`),
+    )
   })
 
   it('works with the keyboard: arrows move the choice and Enter picks', async () => {
@@ -94,13 +97,15 @@ describe('ShopSelectView', () => {
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('with a single shop selects it and goes to «/» without showing the screen', async () => {
+  it('with a single shop selects it and goes to its agenda without showing the screen', async () => {
     mockFetch(staffHandler([OWNER_SHOP, CLIENT_SHOP]))
     const { wrapper, router } = await mountView(ShopSelectView, '/negocios')
     await flushPromises()
 
     expect(useActiveShopStore().active?.id).toBe(SHOP_A)
-    expect(router.currentRoute.value.path).toBe('/')
+    await vi.waitFor(() =>
+      expect(router.currentRoute.value.path).toBe(`/barberias/${SHOP_A}/agenda`),
+    )
     expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false)
   })
 
