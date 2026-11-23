@@ -343,7 +343,7 @@ export interface paths {
         get?: never;
         /**
          * Cambiar la contraseña
-         * @description Cambia la contraseña de la persona autenticada indicando la actual (RF-40). La nueva debe tener al menos 8 caracteres, con mayúscula, minúscula, número y signo especial. Cierra las demás sesiones de la persona y conserva la del token con el que se hace la petición. Responde 422 `datos-invalidos` si la actual no es correcta (`errores.contrasena_actual`) o si la nueva incumple la política (`errores.contrasena_nueva` lista todos los requisitos que faltan). Una cuenta con contraseña temporal (UP-04) solo puede usar esta ruta y las de cierre de sesión: el resto responde 403 `contrasena-temporal` hasta que la cambia.
+         * @description Cambia la contraseña de la persona autenticada indicando la actual (RF-40). La nueva debe tener al menos 8 caracteres, con mayúscula, minúscula, número y signo especial. Cierra las demás sesiones de la persona y conserva la del token con el que se hace la petición. Responde 422 `datos-invalidos` si la actual no es correcta (`errores.contrasena_actual`) o si la nueva incumple la política (`errores.contrasena_nueva` lista todos los requisitos que faltan) o es igual a la actual (`errores.contrasena_nueva`: «Elija una contraseña distinta de la actual.»; es obligatorio cuando la actual es la temporal). Una cuenta con contraseña temporal (UP-04) solo puede usar esta ruta y las de cierre de sesión: el resto responde 403 `contrasena-temporal` hasta que la cambia.
          */
         put: operations["identity.password.update"];
         post?: never;
