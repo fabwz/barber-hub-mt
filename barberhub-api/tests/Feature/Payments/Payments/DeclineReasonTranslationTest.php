@@ -7,7 +7,6 @@ namespace Tests\Feature\Payments\Payments;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -40,8 +39,6 @@ final class DeclineReasonTranslationTest extends TestCase
 
     private const string RESERVATION = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0f02';
 
-    private const string REQUEST_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0f99';
-
     private const string CANCELED = 'El pago fue cancelado. Intente de nuevo.';
 
     /** @var list<array{string, string, array<string, mixed>}> */
@@ -53,7 +50,6 @@ final class DeclineReasonTranslationTest extends TestCase
 
         Http::preventStrayRequests();
         Cache::flush();
-        Context::add('request_id', self::REQUEST_ID);
         Log::shouldReceive('log')->andReturnUsing(function (string $level, string $message, array $context = []): void {
             $this->entries[] = [$level, $message, $context];
         });
@@ -227,7 +223,6 @@ final class DeclineReasonTranslationTest extends TestCase
         $this->assertSame('onvo', $entry['gateway']);
         $this->assertSame('declined', $entry['provider_code']);
         $this->assertSame(self::PAYMENT, $entry['payment_id']);
-        $this->assertSame(self::REQUEST_ID, $entry['request_id']);
         $this->assertStringContainsString('refused with key', $entry['provider_message']);
         $this->assertStringNotContainsString('4000 0000 0000 0002', $entry['provider_message']);
         $this->assertStringNotContainsString(self::SECRET, json_encode($this->entries, JSON_THROW_ON_ERROR));

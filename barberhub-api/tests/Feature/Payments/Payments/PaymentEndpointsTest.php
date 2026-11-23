@@ -8,19 +8,23 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use RuntimeException;
 use Src\Payments\Payments\Application\Contracts\ReservationConfirmation;
+use Src\Payments\Payments\Application\UseCases\MarkDepositToRefund;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentMethod;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Shared\Domain\Contracts\AuditLog;
 use Src\Shared\Domain\Contracts\Clock;
 use Src\Shared\Domain\ValueObjects\AuditEntry;
+use Src\Shared\Infrastructure\Tenancy\BarbershopProcessScope;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\Payments\SimulatedPaymentGateway;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Reservations\SeedsBookableBarbershops;
 use Tests\Support\Reservations\SeedsReservations;
+use Tests\Support\Shared\CapturesLogRecords;
 use Tests\Support\Shared\MutableClock;
 use Tests\TestCase;
 
@@ -30,6 +34,7 @@ use Tests\TestCase;
  */
 final class PaymentEndpointsTest extends TestCase
 {
+    use CapturesLogRecords;
     use RefreshDatabaseAsOwner;
     use SeedsBookableBarbershops;
     use SeedsReservations;
@@ -341,6 +346,48 @@ final class PaymentEndpointsTest extends TestCase
         foreach (['onvo', 'card', 'token', 'secret', '@', 'Ana', '2460-'] as $forbidden) {
             $this->assertStringNotContainsString($forbidden, $text);
         }
+    }
+
+    /** A payment created, a refund and a mark to give back leave a log entry with the identifier of their request, and the refund entry of the technical record carries it too (RNF-25). */
+    public function test_payments_refunds_and_marks_are_logged_with_the_request_identifier(): void
+    {
+        $this->captureLogRecords();
+        $reservation = $this->bookAs($this->ana);
+        $paymentRequest = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0a01';
+        $refundRequest = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0a02';
+
+        $id = $this->withHeader('X-Request-Id', $paymentRequest)->pay($reservation)->assertCreated()->json('data.id');
+        $created = $this->recordsOf('payment.created');
+        $this->assertCount(1, $created);
+        $this->assertSame($paymentRequest, $created[0]->extra['correlation_id']);
+        $this->assertSame(['payment_id' => $id, 'gateway' => 'onvo', 'method' => 'card', 'amount' => 2100], $created[0]->context);
+
+        $this->actAs($this->owner);
+        $this->withHeader('X-Request-Id', $refundRequest)->postJson($this->paymentUrl($id).'/reembolsos')->assertOk();
+        $refunded = $this->recordsOf('payment.refunded');
+        $this->assertCount(1, $refunded);
+        $this->assertSame($refundRequest, $refunded[0]->extra['correlation_id']);
+        $this->assertSame($refundRequest, $this->recordEntries($this->puraNavaja)[0]['correlation_id']);
+
+        $this->assertStringNotContainsString('@', $this->allLoggedText());
+        $this->assertStringNotContainsString('pm_test_1', $this->allLoggedText());
+    }
+
+    /** Marking an approved deposit to give back is logged once with the identifier of the execution; marking again changes nothing and logs nothing. */
+    public function test_marking_a_deposit_to_give_back_is_logged(): void
+    {
+        $this->captureLogRecords();
+        $reservation = $this->bookAs($this->ana);
+        $this->pay($reservation)->assertCreated();
+        $mark = fn () => $this->app->make(BarbershopProcessScope::class)->run($this->puraNavaja, fn () => $this->app->make(MarkDepositToRefund::class)->execute($reservation, $this->clock->now()));
+
+        $mark();
+        $mark();
+
+        $marked = $this->recordsOf('payment.marked_to_refund');
+        $this->assertCount(1, $marked);
+        $this->assertSame(['reservation_id' => $reservation], $marked[0]->context);
+        $this->assertTrue(Str::isUuid($marked[0]->extra['correlation_id']));
     }
 
     /** If the entry cannot be written the refund is not kept either: the payment stays approved. */
