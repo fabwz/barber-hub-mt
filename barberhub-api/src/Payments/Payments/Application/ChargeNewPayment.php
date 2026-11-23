@@ -14,6 +14,7 @@ use Src\Payments\Payments\Domain\Contracts\PaymentRepository;
 use Src\Payments\Payments\Domain\Entities\Payment;
 use Src\Payments\Payments\Domain\Exceptions\ActivePaymentExistsException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
+use Src\Shared\Domain\Contracts\OperationLog;
 
 /**
  * Saves a new payment and asks the provider to charge it. It is the one place that does it, for the payment of a reservation
@@ -21,8 +22,8 @@ use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
  */
 final readonly class ChargeNewPayment
 {
-    /** Receive the payment repository and the settlement. */
-    public function __construct(private PaymentRepository $payments, private SettlePayment $settle) {}
+    /** Receive the payment repository, the settlement and the technical log. */
+    public function __construct(private PaymentRepository $payments, private SettlePayment $settle, private OperationLog $log) {}
 
     /**
      * The payment is saved before the provider is asked, so its identifier is in the provider's metadata. A parallel press that
@@ -40,6 +41,13 @@ final readonly class ChargeNewPayment
             // A parallel press won the unique index: its payment is the one.
             return new PaymentOutcome($this->activeOf($payment) ?? throw ActivePaymentExistsException::create());
         }
+
+        $this->log->record('payment.created', [
+            'payment_id' => $payment->id->value,
+            'gateway' => $payment->provider->value,
+            'method' => $payment->method->value,
+            'amount' => $payment->amount->colones,
+        ]);
 
         try {
             $result = $gateway->charge($request);

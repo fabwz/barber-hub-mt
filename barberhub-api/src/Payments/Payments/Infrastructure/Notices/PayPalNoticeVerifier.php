@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Infrastructure\Notices;
 
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Src\Payments\Payments\Application\Contracts\GatewayNoticeVerifier;
 use Src\Payments\Payments\Application\DTOs\GatewayNotice;
@@ -13,7 +12,6 @@ use Src\Payments\Payments\Application\Exceptions\NoticeNotVerifiedException;
 use Src\Payments\Payments\Application\Exceptions\PaymentServiceUnavailableException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Payments\Payments\Infrastructure\Gateways\PayPalGateway;
-use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 
 /**
  * Verifies the notices of PayPal (RF-22, PA-04) with its own service `verify-webhook-signature`, through the adapter that already holds
@@ -50,7 +48,7 @@ final readonly class PayPalNoticeVerifier implements GatewayNoticeVerifier
     /** Ask PayPal to verify the notice, then read the event; a refusal says nothing about the reason to the sender. */
     public function verify(array $headers, string $rawBody): GatewayNotice
     {
-        $context = ['gateway' => 'paypal', 'request_id' => Context::get(AssignRequestId::CONTEXT_KEY)];
+        $context = ['gateway' => 'paypal'];
 
         if ($this->webhookId === '') {
             Log::error('The webhook identifier of PayPal is not configured: every notice is refused.', $context);
