@@ -10,6 +10,8 @@ import type { RouteLocationRaw } from 'vue-router'
 export interface AccountLink {
   label: string
   to: RouteLocationRaw
+  /** Other routes that also mark this link as the current page. */
+  match?: string[]
 }
 
 interface Props {
@@ -110,7 +112,9 @@ const triggerClasses = computed(() => [
       <!-- On desktop the links are in the bar; here they are only for the mobile panel. -->
       <ul class="md:hidden" @click="close">
         <li v-for="link in links" :key="link.label">
-          <NavbarLink :to="link.to" variant="panel">{{ link.label }}</NavbarLink>
+          <NavbarLink :to="link.to" :match="link.match" variant="panel">{{
+            link.label
+          }}</NavbarLink>
         </li>
       </ul>
       <div

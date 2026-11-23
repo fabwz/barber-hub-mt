@@ -92,6 +92,26 @@ describe('ClientNavbar — bar', () => {
     }
   })
 
+  it('«Mi perfil» is the current page in Datos and Seguridad, and «Preferencias» in Apariencia', async () => {
+    const { wrapper, router } = await mountNavbar()
+    const bar = () => wrapper.get('nav[aria-label="Principal"]')
+    const current = () =>
+      bar()
+        .findAll('a[aria-current="page"]')
+        .map((a) => a.text())
+
+    for (const [path, expected] of [
+      ['/cuenta/datos', ['Mi perfil']],
+      ['/cuenta/seguridad', ['Mi perfil']],
+      ['/cuenta/apariencia', ['Preferencias']],
+      ['/barberias', ['Barberías']],
+    ] as const) {
+      await router.push(path)
+      await flushPromises()
+      expect(current()).toEqual(expected)
+    }
+  })
+
   it('marks another current page when the route changes', async () => {
     const { wrapper, router } = await mountNavbar()
     await router.push('/cuenta/apariencia')
