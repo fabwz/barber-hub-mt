@@ -188,6 +188,10 @@ final readonly class EloquentReservationRepository implements ReservationReposit
             $query->where('starts_at', '>=', $window->start)->where('starts_at', '<', $window->end);
         }
 
+        if ($filter->startingFrom !== null) {
+            $query->where('starts_at', '>=', $filter->startingFrom);
+        }
+
         return EloquentPages::of($query->orderBy('starts_at')->orderBy('id'), $page, fn (ReservationModel $model): Reservation => $this->toDomain($model));
     }
 

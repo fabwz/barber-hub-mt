@@ -265,6 +265,11 @@ Solo el texto, sin punto ni relleno, en 14 px y peso 500 (`fg-muted` en «Expira
 | Activo | Activo | `fg` |
 | Vencido | Vencido | `fg-muted` |
 
+| Estado del servicio | Texto | Texto en |
+|---|---|---|
+| Activo | Activo | `fg` |
+| Inactivo | Inactivo | `fg-muted` |
+
 La interfaz usa estos textos y no «Pagado», que no es un estado del sistema. El diseño de los bonos dibuja un punto (relleno hueso o hueco) junto a «Activo» y «Vencido»: se omite, porque esta etiqueta es una sola y no lleva punto; la palabra ya dice el estado.
 
 **Dónde no se muestra:** en la pantalla de pago no se muestra «Pago aprobado», porque el aviso «Su pago de ₡X fue aprobado.» ya lo dice. Tampoco «Pendiente de pago» en el resumen de una reserva temporal: lo dice la cuenta regresiva. «Pago pendiente», «Pago rechazado» y «Pago fallido» sí se muestran.
@@ -447,6 +452,78 @@ Rutas `/barberias/:barberia/agenda` (el día y los filtros viajan en la direcci�
   - **Cancelar:** confirmación en línea («¿Cancelar la reserva de {cliente}?», «No, mantenerla» principal y «Sí, cancelar reserva» secundario, sin botón rojo). **Reprogramar:** el mismo selector de fecha y hora del cliente, en una columna y sin la línea del plazo (el dueño no tiene plazo).
   - **Progreso y resultado:** «Marcando como atendida…», «Reserva cancelada.», etc., en un aviso informativo con `role="status"`; los botones van con `disabled` mientras tanto. Un error de la API se muestra con su texto en un aviso `role="alert"`.
 - **Pendiente:** el indicador de conexión («En vivo», «Reconectando…») es del #113; los botones «Bloqueos» y «Reserva asistida» no se muestran hasta que existan sus APIs (#101 y #102). **La vista del colaborador usa el diseño de la lámina 27 sin el filtro de colaborador y está pendiente de revisión visual** (la lámina «Mi agenda» aún no se diseña).
+
+## Servicios del dueño (#76, entrega 1)
+
+Rutas `/barberias/:barberia/servicios` (lista), `/servicios/nuevo` y `/servicios/:servicio` (formulario). Solo el dueño: la ruta lleva `requiresOwner` y el guard envía al colaborador a la agenda de esa barbería; la API sigue respondiendo 403. Diseño de origen: lámina 31 de la v7.
+
+- **Lista:** imagen de 56 px (un bloque neutro con ícono si no tiene), nombre en 500, «30 min · ₡7.000 IVA incluido» (precio con cifras tabulares), etiqueta de estado, «Editar» y «Inactivar» o «Activar». Estados: cargando (esqueleto), vacío («Aún no tiene servicios.» con «Crear mi primer servicio») y error con «Reintentar».
+- **Inactivar** pide confirmación («¿Inactivar «Rapado»?», «No, mantenerlo activo» principal y «Sí, inactivar» secundario). **Activar** no la pide. El resultado va en un aviso con `role="status"` y un fallo, en un aviso con «Reintentar» que repite el mismo cambio.
+- **Formulario:** «Nombre del servicio», «Duración (minutos)», «Precio (₡, IVA incluido)» (solo dígitos), «Servicio activo» (solo al editar) e «Imagen del servicio (opcional)». Revisa antes de enviar (duración de 10 a 180 en múltiplos de 5, precio mayor que ₡0) y muestra los errores 422 de la API en su campo. El foco va al primer campo con error.
+- **Imagen en dos pasos:** la API necesita el id del servicio, así que «Guardar servicio» crea el servicio y después sube la imagen. Si la subida falla, el servicio ya existe: se conserva su id, el error sale en el campo de la imagen y un nuevo «Guardar servicio» envía solo la imagen (no repite el alta).
+
+### Diálogo de confirmación (`ConfirmDialog`, nuevo)
+`role="alertdialog"` con `aria-modal`, título y texto enlazados con `aria-labelledby` y `aria-describedby`, sobre un fondo `canvas` al 80 %. Tarjeta de 16 px con borde `line` y superficie `surface`, sin sombra. El foco entra en la respuesta segura (el botón principal), se queda dentro con Tab y Mayús+Tab, Escape cancela y al cerrar vuelve a lo que lo abrió. Con `loading` se retienen los dos botones y Escape. Quien lo usa lo cierra cuando termina la acción.
+
+### Campo de imagen (`ImageField`, nuevo)
+Marco de 80 px con la vista previa (o la imagen actual, o un ícono), nombre del archivo y «WebP · 740 KB» en mono, botón «Elegir imagen» o «Cambiar imagen» y la ayuda debajo. Revisa el tipo (JPG, PNG o WebP) y los 2 MB antes de enviar, con los mensajes del diseño («El archivo pesa 3 MB. Elija una imagen JPG, PNG o WebP de hasta 2 MB.» y «Solo se aceptan imágenes JPG, PNG o WebP.»); un archivo rechazado queda a la vista con su error y no se envía. Es solo una comprobación para ahorrar el viaje: la API lee el tipo del contenido y decide, y su error (`errores.imagen`) se muestra igual. Es un `fieldset` con leyenda.
+
+### Etiqueta de estado del servicio
+`StatusLabel` suma `service_active` («Activo») y `service_inactive` («Inactivo», `fg-muted`), siempre solo texto.
+
+### Divergencias de la lámina 31
+- **Sin «Quitar imagen»** (31h, 31i, 31k): la API solo sube o reemplaza la imagen. Vuelve cuando exista el endpoint.
+- **Interruptor de la lista:** el diseño dibuja un interruptor por fila; se usa un botón «Inactivar» o «Activar» con su nombre accesible, porque inactivar pide confirmación y el botón nombra la acción.
+- **«Servicio activo» no está en «Nuevo servicio»:** la API crea el servicio siempre activo; para dejarlo inactivo se usa la lista.
+- **«Guardado» en el formulario** (31o) se muestra con el aviso de éxito en línea, y «Cancelar» pasa a «Volver a la lista».
+- **Cuadro neutro sin imagen** (31b): un marco con ícono de imagen, del mismo tamaño, en lugar de dejar la fila sin imagen.
+
+## Equipo y horario de la barbería (#76, entrega 2)
+
+Ruta `/barberias/:barberia/equipo` (nombre `staff-team`): solo el dueño (`requiresOwner`). Diseño de origen: lámina 32 de la v7. «Equipo» es una sección con sus apartados como rutas hijas; hoy solo existe «Horario de la barbería» (la ruta `staff-team` es el horario) y «Colaboradores» se suma como otra hija en la entrega 3. El enlace «Equipo» de la barra del personal aparece solo para el dueño y solo cuando la ruta existe.
+
+- **Enlaces de sección (`SectionNav`, nuevo):** píldoras de 44 px con borde `line`; la actual lleva `aria-current="page"`, borde `line-strong`, fondo `elevated` y peso 500. Son **enlaces, no pestañas**: sin `role="tab"`, `tablist` ni `tabpanel`. «Colaboradores» solo aparece si `router.hasRoute('staff-team-members')`.
+- **Horario semanal:** los siete días, de lunes a domingo, cada uno con su estado en texto («Abierto» o «Cerrado») y una o más franjas. Un día sin franjas es «Cerrado» («No atiende este día.») con el botón «Abrir este día», que solo agrega una fila vacía: no se inventa ninguna hora y nada se guarda hasta que la franja tiene inicio y fin válidos.
+- **Cada cambio se aplica al instante:** «Guardar franja» (`POST /horario`), «Quitar» (`DELETE /horario/{franja}`) y, al editar las horas de una franja guardada, «Guardar cambio» o «Descartar». Cambiar una franja es quitar la vieja y agregar la nueva, en ese orden; si agregar la nueva falla, la vieja se restaura y el error de la fila lo dice («… Se mantuvo la franja de 09:00 a 19:00.»); si tampoco se puede restaurar, se vuelve a leer el horario y el día muestra el aviso. Cada acción termina en un aviso con `role="status"` («Franja agregada.», «Franja quitada.», «Franja actualizada.») o en un error en la misma fila.
+- **Errores por fila** (`role="alert"`, ícono + texto, ambos campos con `aria-invalid` y `aria-describedby`): horas que no son HH:MM, cierre que no es posterior a la apertura, franja solapada con otra del día (nombra cuál) y los 409 y 422 de la API.
+- **Excepciones por fecha (cierres):** lista desde hoy con la fecha («vie 25 dic 2026») y el motivo; «Quitar» pide confirmación («¿Quitar el cierre del …?», «No, mantener el cierre» principal y «Sí, quitar el cierre» secundario). El formulario «Agregar una fecha cerrada» lleva «Fecha» (`<input type="date">` con el estilo de `TextField` y `min` = hoy, en hora de Costa Rica) y «Motivo (opcional)», hasta 200 caracteres. Errores: fecha vacía o pasada y fecha ya cerrada (409), en el campo de la fecha.
+- **Estados:** cargando (esqueleto, `aria-busy`), error («No pudimos cargar el horario» con «Reintentar»).
+
+### Campo de hora (`TimeField`, nuevo)
+Campo de texto de 96 px, Source Code Pro, centrado, con `HH:MM` de ejemplo, 24 horas. Se teclea sin los dos puntos (`0900` se muestra `09:00`) y solo admite dígitos. No usa el selector nativo del navegador porque sigue el idioma del navegador y puede mostrar 12 horas. Su etiqueta existe siempre (`sr-only`, o visible con `showLabel`). `invalid` y `describedBy` lo enlazan con el mensaje de la fila, que es de quien lo usa. Borde `field` y, con problema, `danger-border`.
+
+### Divergencias de la lámina 32
+- **Sin «Guardar horario»:** la API aplica cada franja por separado (agregar o quitar, sin editar ni guardado en bloque), así que cada acción se aplica al instante y muestra su resultado.
+- **Sin interruptor «Abierto» por día:** un día cerrado se abre con «Abrir este día» y un día abierto se cierra al quitar su última franja. No hay un interruptor que cierre el día entero, porque eso sería quitar todas sus franjas de una vez.
+- **«Invitaciones» no aparece** en Equipo (#100) y el subtítulo de la sección no las nombra.
+- **Motivo del cierre:** el texto «Solo lo ve usted y su equipo» se cambia por «Una nota breve para recordar el motivo. Los clientes no la ven.»: la ruta de los cierres es solo del dueño.
+- **Franja solapada:** el mensaje nombra la franja con la que se cruza («Esta franja se solapa con la de 09:00 a 12:30. Corrija las horas.») en lugar de numerarlas.
+- **Láminas 32h a 32j** (reservas confirmadas que quedan fuera del horario o dentro de un cierre, HO-04): no se muestran. Dependen de una API que no existe y se difieren al #101; en `TeamScheduleView` queda un comentario donde irá el aviso.
+
+## Colaboradores (#76, entrega 3)
+
+Rutas hijas de Equipo: `/barberias/:barberia/equipo/colaboradores` (`staff-team-members`, la lista), `/colaboradores/nuevo`, `/colaboradores/mi-perfil` y `/colaboradores/:colaborador`. Solo el dueño. El apartado «Colaboradores» de los enlaces de sección aparece porque `staff-team-members` existe y queda como actual también dentro de sus rutas hijas (`exact: false`). Diseño de origen: lámina 33 de la v7.
+
+- **Lista:** iniciales en un círculo de 48 px, nombre en 500 (y « · Dueño» cuando la API dice `es_dueno`), correo, «6 de 7 servicios», etiqueta «Activo» o «Inactivo», «Editar» y «Desactivar» o «Activar». No lleva teléfono (la API no lo tiene). Estados: cargando (esqueleto), vacío y error con «Reintentar». Sin perfil del dueño, un aviso en línea («Usted todavía no tiene perfil de colaborador.») con el enlace «Crear mi perfil de colaborador» (CO-02).
+- **Desactivar** pide confirmación con textos que no dependen del género («No, conservar» principal y «Sí, desactivar» secundario); el del perfil del dueño dice que seguirá siendo dueño (UP-05). **Activar** no pide nada. Si la API responde 409 `colaborador-con-reservas` (CO-03) no se cambia nada y se abre un diálogo informativo con la lista de las reservas (fecha, hora, cliente y servicio, con «Abrir» hacia la agenda de ese día) y «y N más.» cuando son más de las que la API lista; un único botón, «Entendido».
+- **Formulario** (nuevo, perfil del dueño y editar, con la misma pantalla): «Datos de la cuenta» (solo en uno nuevo: nombre completo y correo), «Servicios que ofrece» (casillas con duración y precio), y «Horario y pausas» con los siete días. Cada día lleva un interruptor «Trabaja el lunes» (con «Barbería: 09:00–19:00» o «Barbería: Cerrada» debajo), sus turnos y sus pausas. Marcar un día agrega una fila de turno vacía: no se inventa ninguna hora. Se revisa antes de enviar (nombre, correo, al menos un servicio, horas HH:MM y fin posterior al inicio), y los errores 422 van a su lugar: `nombre` y `correo` a su campo, `servicios.N` a la lista de servicios y `turnos.N` y `pausas.N` a la fila que se envió en esa posición.
+- **Tres llamadas, no atómicas:** guardar un colaborador nuevo es crear la cuenta, reemplazar sus servicios y reemplazar su horario. Se conserva el id de lo que ya se creó y un nuevo intento repite solo lo que falta: **nunca crea la cuenta dos veces** (daría 422 por correo repetido) y un paso que ya se envió con los mismos datos no se vuelve a enviar. Si falla un paso después de crear la cuenta, un aviso lo dice y deja a mano la contraseña temporal, porque la API no la devuelve.
+- **Contraseña temporal** (`TemporaryPasswordResult`): la genera el cliente con `crypto.getRandomValues` (12 caracteres, con mayúscula, minúscula, número y signo, sin caracteres que se confundan: I, l, 1, O, 0) y cumple SE-07. Se envía solo al crear la cuenta, nunca se guarda (ni en `localStorage`, ni en `sessionStorage`) ni se registra. Se muestra **una sola vez**, en Source Code Pro, con «Copiar contraseña» (que pasa a «Copiada» con un aviso `role="status"`; si el portapapeles no está disponible pide copiarla a mano), el aviso «Solo la verá ahora» y el resumen de la cuenta. «Listo» y cualquier otra forma de salir (un enlace, atrás) piden confirmación: «¿Ya copió la contraseña?», «Al salir de esta pantalla no se vuelve a mostrar.» («No, volver» y «Sí, salir»).
+- **Editar** cambia solo los servicios y el horario; el nombre y el correo se muestran sin campo porque la API no los cambia.
+
+### Componentes nuevos de la entrega 3
+- `WorkDayEditor`: un día del horario del colaborador, con su interruptor, sus turnos y sus pausas (`TimeField`), y el error de cada fila con `role="alert"` enlazado por `aria-describedby`.
+- `TemporaryPasswordResult`: la pantalla de «Colaborador creado» con la contraseña de una sola vista.
+- `ConfirmDialog` suma un espacio (slot) para mostrar contenido propio y un `confirmLabel` opcional: sin él es un diálogo informativo con un solo botón.
+
+### Divergencias de la lámina 33
+- **Sin teléfono** (33g, 33o): la API no lo guarda.
+- **Sin invitaciones** (33t a 33z, #100): ni la pestaña, ni «Invitar por correo», ni «API pendiente». El error de correo repetido (33l) no manda a «enviar una invitación»: dice solo que el correo ya está registrado.
+- **«Editar»** cambia servicios y horario; no nombre ni correo.
+- **Textos sin género** en el diálogo de desactivar («No, conservar») y en los avisos.
+- **El dueño se identifica con `es_dueno`**, no por el correo de la sesión.
+- **Contraseña visible antes del final** solo si la creación quedó a medias (la cuenta ya existe y un paso posterior falló): se muestra en el aviso para que no se pierda.
+- **Servicios «N de M»:** M es el total de servicios de la barbería, activos e inactivos.
 
 ## Bonos (pantallas del cliente)
 

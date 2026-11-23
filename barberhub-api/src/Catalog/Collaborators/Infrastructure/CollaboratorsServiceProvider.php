@@ -9,11 +9,13 @@ use Src\Catalog\Collaborators\Application\Contracts\BarbershopSchedule;
 use Src\Catalog\Collaborators\Application\Contracts\BarbershopServices;
 use Src\Catalog\Collaborators\Application\Contracts\StaffAccounts;
 use Src\Catalog\Collaborators\Application\Contracts\StaffMemberships;
+use Src\Catalog\Collaborators\Application\Contracts\UpcomingReservations;
 use Src\Catalog\Collaborators\Domain\Contracts\CollaboratorRepository;
 use Src\Catalog\Collaborators\Infrastructure\Identity\IdentityStaffAccounts;
 use Src\Catalog\Collaborators\Infrastructure\Identity\IdentityStaffMemberships;
 use Src\Catalog\Collaborators\Infrastructure\OpeningHours\OpeningHoursBarbershopSchedule;
 use Src\Catalog\Collaborators\Infrastructure\Persistence\Repositories\EloquentCollaboratorRepository;
+use Src\Catalog\Collaborators\Infrastructure\Reservations\ReservationsUpcomingReservations;
 use Src\Catalog\Collaborators\Infrastructure\Services\ServicesBarbershopServices;
 
 final class CollaboratorsServiceProvider extends ServiceProvider
@@ -29,5 +31,6 @@ final class CollaboratorsServiceProvider extends ServiceProvider
         StaffMemberships::class => IdentityStaffMemberships::class,
         BarbershopSchedule::class => OpeningHoursBarbershopSchedule::class,
         BarbershopServices::class => ServicesBarbershopServices::class,
+        UpcomingReservations::class => ReservationsUpcomingReservations::class,
     ];
 }

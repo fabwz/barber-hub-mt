@@ -98,6 +98,7 @@ final class ManageCollaboratorsTest extends TestCase
             'id' => $id,
             'nombre' => 'Kevin Solano',
             'correo' => 'kevin@barberhub.test',
+            'es_dueno' => false,
             'activo' => true,
             'servicios' => [],
             'turnos' => [],

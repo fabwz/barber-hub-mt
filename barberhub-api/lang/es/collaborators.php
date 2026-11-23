@@ -9,6 +9,7 @@ return [
     'collaborator_not_bookable' => 'El colaborador no atiende este servicio o no está disponible para reservas.',
     'collaborator_not_found' => 'Este colaborador no existe',
     'end_not_after_start' => 'La hora de fin debe ser posterior a la de inicio.',
+    'has_upcoming_reservations' => 'El colaborador tiene :total reservas confirmadas por atender. Reprográmelas o cancélelas antes de desactivarlo.',
     'profile_already_exists' => 'La persona ya tiene un perfil de colaborador en esta barbería.',
     'shift_outside_opening_hours' => 'El turno debe caer dentro del horario de la barbería de ese día.',
     'shifts_overlap' => 'El turno se traslapa con otro del mismo día.',

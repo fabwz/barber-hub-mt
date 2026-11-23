@@ -9,16 +9,29 @@ use Src\Identity\Memberships\Application\DTOs\CollaboratorMembershipCommand;
 use Src\Identity\Memberships\Application\UseCases\ActivateCollaboratorMembership;
 use Src\Identity\Memberships\Application\UseCases\DeactivateCollaboratorMembership;
 use Src\Identity\Memberships\Application\UseCases\GrantCollaboratorMembership;
+use Src\Identity\Memberships\Application\UseCases\ListBarbershopOwners;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 
 final readonly class IdentityStaffMemberships implements StaffMemberships
 {
-    /** Receive the Identity use cases that grant and switch the collaborator role. */
+    /** Receive the Identity use cases that grant and switch the collaborator role and that tells the owners. */
     public function __construct(
         private GrantCollaboratorMembership $grant,
         private DeactivateCollaboratorMembership $deactivate,
         private ActivateCollaboratorMembership $activate,
+        private ListBarbershopOwners $listOwners,
     ) {}
+
+    /**
+     * Pick the owners among the accounts through the Identity context: those with an active owner role in the barbershop.
+     *
+     * @param  list<string>  $userIds
+     * @return list<string>
+     */
+    public function ownersAmong(BarbershopId $barbershopId, array $userIds): array
+    {
+        return $this->listOwners->execute($userIds, $barbershopId->value);
+    }
 
     /** Make the person a collaborator through the Identity context. */
     public function grantCollaboratorRole(BarbershopId $barbershopId, string $userId): void

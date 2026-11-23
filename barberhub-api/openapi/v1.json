@@ -1032,7 +1032,7 @@
             },
             "patch": {
                 "operationId": "catalog.collaborators.update",
-                "description": "Un colaborador inactivo no recibe reservas y, si es colaborador com\u00fan, su cuenta deja de entrar a la barber\u00eda; el due\u00f1o con perfil de colaborador conserva siempre su rol. A\u00fan no se comprueban las reservas futuras confirmadas (CO-03), que llegan con las reservas. Solo el due\u00f1o.",
+                "description": "Un colaborador inactivo no recibe reservas y, si es colaborador com\u00fan, su cuenta deja de entrar a la barber\u00eda; el due\u00f1o con perfil de colaborador conserva siempre su rol (UP-05). Un colaborador con reservas confirmadas que empiezan desde ahora no se desactiva hasta que el due\u00f1o las reprograme o las cancele (CO-03): responde 409 `colaborador-con-reservas` y, adem\u00e1s de `type`, `title`, `status` y `detail`, trae `reservas` (hasta 20, las m\u00e1s pr\u00f3ximas primero, cada una con `id`, `inicio` en ISO 8601, `servicio` y `cliente`) y `total_reservas` con cu\u00e1ntas hay en total. Reactivar siempre se permite. Responde 404 `no-encontrado` si el colaborador no existe en la barber\u00eda. Solo el due\u00f1o.",
                 "summary": "Activar o desactivar un colaborador",
                 "tags": [
                     "Colaboradores"
@@ -4887,6 +4887,10 @@
                     "correo": {
                         "type": "string"
                     },
+                    "es_dueno": {
+                        "type": "boolean",
+                        "description": "`true` si la cuenta es la del due\u00f1o de la barber\u00eda, que tiene perfil de colaborador sin dejar de ser due\u00f1o (CO-02)."
+                    },
                     "activo": {
                         "type": "boolean"
                     },
@@ -4907,6 +4911,7 @@
                     "id",
                     "nombre",
                     "correo",
+                    "es_dueno",
                     "activo",
                     "servicios",
                     "turnos",
@@ -6866,7 +6871,10 @@
                         "type": "boolean"
                     },
                     "imagen": {
-                        "type": "null",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Direcci\u00f3n de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene."
                     }
                 },

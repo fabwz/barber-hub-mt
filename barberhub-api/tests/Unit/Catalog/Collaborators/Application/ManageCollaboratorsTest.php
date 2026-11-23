@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Catalog\Collaborators\Application;
 
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Src\Catalog\Collaborators\Application\AttachAccounts;
@@ -23,12 +24,14 @@ use Src\Catalog\Collaborators\Application\UseCases\SetCollaboratorActive;
 use Src\Catalog\Collaborators\Domain\Entities\Collaborator;
 use Src\Catalog\Collaborators\Domain\Exceptions\BreakOutsideShiftException;
 use Src\Catalog\Collaborators\Domain\Exceptions\CollaboratorAlreadyExistsException;
+use Src\Catalog\Collaborators\Domain\Exceptions\CollaboratorHasUpcomingReservationsException;
 use Src\Catalog\Collaborators\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Catalog\Collaborators\Domain\Exceptions\ScheduleEntryException;
 use Src\Catalog\Collaborators\Domain\Exceptions\ShiftOutsideOpeningHoursException;
 use Src\Catalog\Collaborators\Domain\Exceptions\ShiftsOverlapException;
 use Src\Catalog\Collaborators\Domain\Exceptions\UnknownServiceException;
 use Src\Catalog\Collaborators\Domain\ValueObjects\CollaboratorId;
+use Src\Catalog\Collaborators\Domain\ValueObjects\UpcomingReservation;
 use Src\Catalog\OpeningHours\Application\DTOs\AddTimeSlotCommand;
 use Src\Catalog\OpeningHours\Application\UseCases\AddTimeSlot;
 use Src\Identity\Memberships\Application\DTOs\AssignBarbershopOwnerCommand;
@@ -46,6 +49,7 @@ use Tests\Support\Catalog\InMemoryCollaboratorRepository;
 use Tests\Support\Catalog\InMemoryStaffAccounts;
 use Tests\Support\Catalog\InMemoryStaffMemberships;
 use Tests\Support\Catalog\InMemoryTimeSlotRepository;
+use Tests\Support\Catalog\InMemoryUpcomingReservations;
 use Tests\Support\Identity\InMemoryMembershipRepository;
 use Tests\Support\Identity\InMemoryUserRepository;
 use Tests\Support\Shared\FixedBarbershopContext;
@@ -76,6 +80,8 @@ final class ManageCollaboratorsTest extends TestCase
 
     private InMemoryStaffMemberships $staffMemberships;
 
+    private InMemoryUpcomingReservations $upcoming;
+
     private FixedBarbershopContext $context;
 
     private InMemoryBarbershopSchedule $schedule;
@@ -89,8 +95,9 @@ final class ManageCollaboratorsTest extends TestCase
         $this->services = new InMemoryBarbershopServices;
         $this->transaction = new RecordingTransactionRunner;
         $this->context = new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP_ID));
-        $this->attach = new AttachAccounts(new InMemoryStaffAccounts($this->users));
         $this->staffMemberships = new InMemoryStaffMemberships($this->memberships);
+        $this->attach = new AttachAccounts(new InMemoryStaffAccounts($this->users), $this->staffMemberships, $this->context);
+        $this->upcoming = new InMemoryUpcomingReservations;
 
         $slots = new InMemoryTimeSlotRepository;
         $this->schedule = new InMemoryBarbershopSchedule($slots);
@@ -336,6 +343,98 @@ final class ManageCollaboratorsTest extends TestCase
         $this->assertTrue($this->membershipOf($kevin->collaborator->userId->value)?->active);
     }
 
+    /** A collaborator with confirmed reservations ahead is not deactivated; the error lists them, the nearest first (CO-03). */
+    public function test_a_collaborator_with_upcoming_reservations_is_not_deactivated(): void
+    {
+        $kevin = $this->create('Kevin Solano', 'kevin@barberhub.test');
+        $id = $kevin->collaborator->id->value;
+        $later = $this->reserve($id, '2026-11-07T16:00:00-06:00', 'Luis Mora');
+        $sooner = $this->reserve($id, '2026-11-06T09:00:00-06:00');
+
+        try {
+            $this->setActive($id, false);
+            $this->fail('The collaborator was deactivated.');
+        } catch (CollaboratorHasUpcomingReservationsException $exception) {
+            $this->assertSame('colaborador-con-reservas', $exception->rule());
+            $this->assertSame([$sooner, $later], $exception->reservations());
+            $this->assertSame(2, $exception->problemMembers()['total_reservas']);
+            $this->assertSame(
+                ['id' => $sooner->reservationId, 'inicio' => '2026-11-06T09:00:00-06:00', 'servicio' => 'Corte clásico', 'cliente' => 'Ana Quirós'],
+                $exception->problemMembers()['reservas'][0],
+            );
+        }
+
+        // Nothing changed: still active, role still on.
+        $this->assertTrue($this->stored($kevin->collaborator->id)->active);
+        $this->assertTrue($this->membershipOf($kevin->collaborator->userId->value)?->active);
+    }
+
+    /** The error lists at most the nearest 20 and still says how many there are in all. */
+    public function test_the_error_lists_a_limited_number_of_reservations_and_the_total(): void
+    {
+        $kevin = $this->create('Kevin Solano', 'kevin@barberhub.test');
+        $id = $kevin->collaborator->id->value;
+        for ($day = 1; $day <= 25; $day++) {
+            $this->reserve($id, sprintf('2026-12-%02dT09:00:00-06:00', $day));
+        }
+
+        try {
+            $this->setActive($id, false);
+            $this->fail('The collaborator was deactivated.');
+        } catch (CollaboratorHasUpcomingReservationsException $exception) {
+            $this->assertCount(SetCollaboratorActive::LISTED_RESERVATIONS, $exception->reservations());
+            $this->assertSame(25, $exception->problemMembers()['total_reservas']);
+        }
+    }
+
+    /** A reservation that already started or belongs to another collaborator does not block, and activating is always allowed. */
+    public function test_past_reservations_and_those_of_another_collaborator_do_not_block(): void
+    {
+        $kevin = $this->create('Kevin Solano', 'kevin@barberhub.test');
+        $ana = $this->create('Ana Mora', 'ana.mora@barberhub.test');
+        $this->reserve($kevin->collaborator->id->value, '2026-11-05T09:00:00-06:00');
+        $this->reserve($ana->collaborator->id->value, '2026-11-08T09:00:00-06:00');
+
+        $this->assertFalse($this->setActive($kevin->collaborator->id->value, false)->collaborator->active);
+
+        $this->expectException(CollaboratorHasUpcomingReservationsException::class);
+        try {
+            $this->setActive($ana->collaborator->id->value, false);
+        } finally {
+            // Reactivating never asks anything.
+            $this->assertTrue($this->setActive($kevin->collaborator->id->value, true)->collaborator->active);
+        }
+    }
+
+    /** The profile of the owner is checked like any other, and the owner keeps their membership when it is refused (UP-05). */
+    public function test_the_owner_profile_with_reservations_is_refused_and_keeps_the_membership(): void
+    {
+        $profile = $this->createOwnProfile();
+        $this->reserve($profile->collaborator->id->value, '2026-11-06T09:00:00-06:00');
+
+        try {
+            $this->setActive($profile->collaborator->id->value, false);
+            $this->fail('The profile was deactivated.');
+        } catch (CollaboratorHasUpcomingReservationsException) {
+            $membership = $this->membershipOf(self::OWNER_ID);
+            $this->assertSame(Role::Owner, $membership?->role);
+            $this->assertTrue($membership->active);
+            $this->assertTrue($this->stored($profile->collaborator->id)->active);
+        }
+    }
+
+    /** The owner is told apart from the collaborators who only have a collaborator role (CO-02). */
+    public function test_the_collaborator_of_the_owner_is_marked_as_the_owner(): void
+    {
+        $kevin = $this->create('Kevin Solano', 'kevin@barberhub-test.cr');
+        $profile = $this->createOwnProfile();
+
+        $this->assertFalse($kevin->isOwner);
+        $this->assertTrue($profile->isOwner);
+        $listed = new ListCollaborators($this->collaborators, $this->attach)->execute();
+        $this->assertSame([false, true], array_map(fn (CollaboratorWithAccount $item): bool => $item->isOwner, $listed));
+    }
+
     /** The owner with a profile keeps an active owner membership when the profile is deactivated (UP-05). */
     public function test_deactivating_the_owner_profile_keeps_the_owner_membership(): void
     {
@@ -405,8 +504,28 @@ final class ManageCollaboratorsTest extends TestCase
     /** Activate or deactivate a collaborator. */
     private function setActive(string $id, bool $active): CollaboratorWithAccount
     {
-        return new SetCollaboratorActive($this->collaborators, $this->staffMemberships, $this->context, $this->transaction, $this->attach)
-            ->execute($id, $active);
+        return new SetCollaboratorActive($this->collaborators, $this->staffMemberships, $this->context, $this->transaction, $this->attach, $this->upcoming)
+            ->execute($id, $active, self::now());
+    }
+
+    /** The instant the tests take as now. */
+    private static function now(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2026-11-05T10:00:00-06:00');
+    }
+
+    /** Give a collaborator a confirmed reservation that starts at the given instant. */
+    private function reserve(string $collaboratorId, string $startsAt, string $customer = 'Ana Quirós'): UpcomingReservation
+    {
+        $reservation = new UpcomingReservation(
+            sprintf('0192f0c4-7b1e-7c3a-9f1d-%012d', random_int(1, 999_999)),
+            new DateTimeImmutable($startsAt),
+            'Corte clásico',
+            $customer,
+        );
+        $this->upcoming->add($collaboratorId, $reservation);
+
+        return $reservation;
     }
 
     /** Read a stored collaborator. */

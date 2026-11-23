@@ -8,6 +8,7 @@ use Src\Identity\Memberships\Domain\Contracts\MembershipRepository;
 use Src\Identity\Memberships\Domain\Entities\Membership;
 use Src\Identity\Memberships\Domain\Exceptions\RoleAlreadyAssignedException;
 use Src\Identity\Memberships\Domain\ValueObjects\MembershipId;
+use Src\Identity\Memberships\Domain\ValueObjects\Role;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\UserId;
 
@@ -56,6 +57,29 @@ final class InMemoryMembershipRepository implements MembershipRepository
             $this->memberships,
             fn (Membership $membership): bool => $membership->userId->equals($userId) && $membership->active,
         ));
+    }
+
+    /**
+     * Pick the accounts with an active owner role in the barbershop among the given ones.
+     *
+     * @param  list<UserId>  $userIds
+     * @return list<UserId>
+     */
+    public function ownersAmong(array $userIds, BarbershopId $barbershopId): array
+    {
+        $owners = [];
+
+        foreach ($this->memberships as $membership) {
+            if ($membership->active && $membership->role === Role::Owner && $membership->barbershopId->equals($barbershopId)) {
+                foreach ($userIds as $userId) {
+                    if ($membership->userId->equals($userId)) {
+                        $owners[] = $membership->userId;
+                    }
+                }
+            }
+        }
+
+        return $owners;
     }
 
     /**

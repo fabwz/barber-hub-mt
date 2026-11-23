@@ -38,7 +38,11 @@ final class ServiceResource extends JsonResource
             'base' => $this->service->price->base()->colones,
             'iva' => $this->service->price->tax()->colones,
             'activo' => $this->service->active,
-            /** Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
+            /**
+             * Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene.
+             *
+             * @var string|null
+             */
             'imagen' => MediaUrls::of($this->service->imagePath),
         ];
     }

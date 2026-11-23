@@ -26,10 +26,14 @@ use Src\Catalog\Collaborators\Infrastructure\Http\Requests\ReplaceServicesReques
 use Src\Catalog\Collaborators\Infrastructure\Http\Requests\StoreCollaboratorRequest;
 use Src\Catalog\Collaborators\Infrastructure\Http\Requests\UpdateCollaboratorRequest;
 use Src\Catalog\Collaborators\Infrastructure\Http\Resources\CollaboratorResource;
+use Src\Shared\Domain\Contracts\Clock;
 
 #[Group('Colaboradores', 'Personal con agenda propia: sus servicios, su horario semanal y sus pausas. Solo el dueño de la barbería los administra.')]
 final readonly class CollaboratorController
 {
+    /** Receive the port that tells the current instant. */
+    public function __construct(private Clock $clock) {}
+
     /** List the collaborators of the barbershop. */
     #[Endpoint(
         title: 'Listar los colaboradores',
@@ -111,10 +115,10 @@ final readonly class CollaboratorController
     /** Activate or deactivate a collaborator. */
     #[Endpoint(
         title: 'Activar o desactivar un colaborador',
-        description: 'Un colaborador inactivo no recibe reservas y, si es colaborador común, su cuenta deja de entrar a la barbería; el dueño con perfil de colaborador conserva siempre su rol. Aún no se comprueban las reservas futuras confirmadas (CO-03), que llegan con las reservas. Solo el dueño.',
+        description: 'Un colaborador inactivo no recibe reservas y, si es colaborador común, su cuenta deja de entrar a la barbería; el dueño con perfil de colaborador conserva siempre su rol (UP-05). Un colaborador con reservas confirmadas que empiezan desde ahora no se desactiva hasta que el dueño las reprograme o las cancele (CO-03): responde 409 `colaborador-con-reservas` y, además de `type`, `title`, `status` y `detail`, trae `reservas` (hasta 20, las más próximas primero, cada una con `id`, `inicio` en ISO 8601, `servicio` y `cliente`) y `total_reservas` con cuántas hay en total. Reactivar siempre se permite. Responde 404 `no-encontrado` si el colaborador no existe en la barbería. Solo el dueño.',
     )]
     public function update(UpdateCollaboratorRequest $request, SetCollaboratorActive $setActive): CollaboratorResource
     {
-        return new CollaboratorResource($setActive->execute((string) $request->route('colaborador'), $request->boolean('activo')));
+        return new CollaboratorResource($setActive->execute((string) $request->route('colaborador'), $request->boolean('activo'), $this->clock->now()));
     }
 }

@@ -132,6 +132,43 @@ describe('cliente HTTP', () => {
     expect(error.alternatives).toEqual(alternativas)
   })
 
+  it('conserva las reservas y su total del 409 de colaborador con reservas', async () => {
+    const reservas = [
+      {
+        id: 'r-1',
+        inicio: '2030-03-05T10:00:00-06:00',
+        servicio: 'Corte clásico',
+        cliente: 'Ana Quirós',
+      },
+    ]
+    fetchMock.mockResolvedValue(
+      problem(409, {
+        type: 'http://localhost/problemas/colaborador-con-reservas',
+        title: 'Colaborador con reservas',
+        detail: 'El colaborador tiene reservas confirmadas por atender.',
+        reservas,
+        total_reservas: 31,
+      }),
+    )
+
+    const error = await failure(() =>
+      api.PATCH('/barberias/{barberia}/administracion/colaboradores/{colaborador}', {
+        params: {
+          path: {
+            barberia: '0190a000-0000-7000-8000-000000000000',
+            colaborador: '0190a000-0000-7000-8000-000000000001',
+          },
+        },
+        body: { activo: false },
+      }),
+    )
+
+    expect(error.status).toBe(409)
+    expect(error.type).toBe('http://localhost/problemas/colaborador-con-reservas')
+    expect(error.reservations).toEqual(reservas)
+    expect(error.reservationsTotal).toBe(31)
+  })
+
   it('un 401 llama al manejador registrado y lanza el ApiError', async () => {
     const onUnauthorized = vi.fn()
     setUnauthorizedHandler(onUnauthorized)

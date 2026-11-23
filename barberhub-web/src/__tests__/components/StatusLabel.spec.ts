@@ -37,6 +37,16 @@ describe('StatusLabel', () => {
     expect(expired.classes()).toContain('text-fg-muted')
   })
 
+  it('shows the state of a service as text: «Activo» and, muted, «Inactivo»', () => {
+    const active = mount(StatusLabel, { props: { status: 'service_active' } })
+    expect(active.text()).toBe('Activo')
+    expect(active.classes()).not.toContain('text-fg-muted')
+
+    const inactive = mount(StatusLabel, { props: { status: 'service_inactive' } })
+    expect(inactive.text()).toBe('Inactivo')
+    expect(inactive.classes()).toContain('text-fg-muted')
+  })
+
   it.each([
     ['expired', 'Expirada'],
     ['refunded', 'Reembolsado'],

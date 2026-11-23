@@ -16,4 +16,12 @@ interface StaffMemberships
 
     /** Switch the collaborator role of a person back on. */
     public function activateCollaboratorRole(BarbershopId $barbershopId, string $userId): void;
+
+    /**
+     * Pick, among the given accounts, those that are the owner of the barbershop (UP-05, CO-02).
+     *
+     * @param  list<string>  $userIds
+     * @return list<string>
+     */
+    public function ownersAmong(BarbershopId $barbershopId, array $userIds): array;
 }

@@ -124,6 +124,60 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // The services of a shop (#76, RF-03): only the owner. The form has its own address, new and edit.
+    path: '/barberias/:barberia/servicios',
+    name: 'staff-services',
+    component: () => import('@/views/StaffServicesView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
+    path: '/barberias/:barberia/servicios/nuevo',
+    name: 'staff-service-new',
+    component: () => import('@/views/StaffServiceFormView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
+    path: '/barberias/:barberia/servicios/:servicio',
+    name: 'staff-service-edit',
+    component: () => import('@/views/StaffServiceFormView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
+    // «Equipo» (#76, RF-04): only the owner. Each section is a child route; `staff-team` is the schedule of the
+    // shop and «Colaboradores» joins as another child (entrega 3), so the navbar link points to the first one.
+    path: '/barberias/:barberia/equipo',
+    component: () => import('@/views/StaffTeamView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+    children: [
+      {
+        path: '',
+        name: 'staff-team',
+        component: () => import('@/views/TeamScheduleView.vue'),
+      },
+      {
+        path: 'colaboradores',
+        name: 'staff-team-members',
+        component: () => import('@/views/TeamMembersView.vue'),
+      },
+      // Static paths before `:colaborador`, so «nuevo» and «mi-perfil» are never read as an id.
+      {
+        path: 'colaboradores/nuevo',
+        name: 'staff-team-member-new',
+        component: () => import('@/views/TeamMemberFormView.vue'),
+      },
+      {
+        path: 'colaboradores/mi-perfil',
+        name: 'staff-team-own-profile',
+        component: () => import('@/views/TeamMemberFormView.vue'),
+      },
+      {
+        path: 'colaboradores/:colaborador',
+        name: 'staff-team-member-edit',
+        component: () => import('@/views/TeamMemberFormView.vue'),
+      },
+    ],
+  },
+  {
     path: '/cambiar-contrasena',
     name: 'password-change',
     component: () => import('@/views/PasswordChangeView.vue'),

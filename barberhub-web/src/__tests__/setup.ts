@@ -11,6 +11,12 @@ globalThis.Request = class extends NativeRequest {
   }
 } as typeof Request
 
+// jsdom brings its own FormData, which the Request of Node cannot read (the body would travel as
+// «[object FormData]»). In a browser both are the same, so the tests use the FormData of Node.
+const NodeFormData = (await new Response(new URLSearchParams({ a: 'b' })).formData())
+  .constructor as typeof FormData
+globalThis.FormData = NodeFormData
+
 // Newer Node versions ship an experimental global `localStorage` that is undefined unless
 // --localstorage-file is given, and it hides the one from jsdom (the CI runs such a version).
 // The tests always get the same in-memory storage, whatever the Node version.
