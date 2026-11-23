@@ -478,6 +478,28 @@ Marco de 80 px con la vista previa (o la imagen actual, o un ícono), nombre del
 - **«Guardado» en el formulario** (31o) se muestra con el aviso de éxito en línea, y «Cancelar» pasa a «Volver a la lista».
 - **Cuadro neutro sin imagen** (31b): un marco con ícono de imagen, del mismo tamaño, en lugar de dejar la fila sin imagen.
 
+## Equipo y horario de la barbería (#76, entrega 2)
+
+Ruta `/barberias/:barberia/equipo` (nombre `staff-team`): solo el dueño (`requiresOwner`). Diseño de origen: lámina 32 de la v7. «Equipo» es una sección con sus apartados como rutas hijas; hoy solo existe «Horario de la barbería» (la ruta `staff-team` es el horario) y «Colaboradores» se suma como otra hija en la entrega 3. El enlace «Equipo» de la barra del personal aparece solo para el dueño y solo cuando la ruta existe.
+
+- **Enlaces de sección (`SectionNav`, nuevo):** píldoras de 44 px con borde `line`; la actual lleva `aria-current="page"`, borde `line-strong`, fondo `elevated` y peso 500. Son **enlaces, no pestañas**: sin `role="tab"`, `tablist` ni `tabpanel`. «Colaboradores» solo aparece si `router.hasRoute('staff-team-members')`.
+- **Horario semanal:** los siete días, de lunes a domingo, cada uno con su estado en texto («Abierto» o «Cerrado») y una o más franjas. Un día sin franjas es «Cerrado» («No atiende este día.») con el botón «Abrir este día», que solo agrega una fila vacía: no se inventa ninguna hora y nada se guarda hasta que la franja tiene inicio y fin válidos.
+- **Cada cambio se aplica al instante:** «Guardar franja» (`POST /horario`), «Quitar» (`DELETE /horario/{franja}`) y, al editar las horas de una franja guardada, «Guardar cambio» o «Descartar». Cambiar una franja es quitar la vieja y agregar la nueva, en ese orden; si agregar la nueva falla, la vieja se restaura y el error de la fila lo dice («… Se mantuvo la franja de 09:00 a 19:00.»); si tampoco se puede restaurar, se vuelve a leer el horario y el día muestra el aviso. Cada acción termina en un aviso con `role="status"` («Franja agregada.», «Franja quitada.», «Franja actualizada.») o en un error en la misma fila.
+- **Errores por fila** (`role="alert"`, ícono + texto, ambos campos con `aria-invalid` y `aria-describedby`): horas que no son HH:MM, cierre que no es posterior a la apertura, franja solapada con otra del día (nombra cuál) y los 409 y 422 de la API.
+- **Excepciones por fecha (cierres):** lista desde hoy con la fecha («vie 25 dic 2026») y el motivo; «Quitar» pide confirmación («¿Quitar el cierre del …?», «No, mantener el cierre» principal y «Sí, quitar el cierre» secundario). El formulario «Agregar una fecha cerrada» lleva «Fecha» (`<input type="date">` con el estilo de `TextField` y `min` = hoy, en hora de Costa Rica) y «Motivo (opcional)», hasta 200 caracteres. Errores: fecha vacía o pasada y fecha ya cerrada (409), en el campo de la fecha.
+- **Estados:** cargando (esqueleto, `aria-busy`), error («No pudimos cargar el horario» con «Reintentar»).
+
+### Campo de hora (`TimeField`, nuevo)
+Campo de texto de 96 px, Source Code Pro, centrado, con `HH:MM` de ejemplo, 24 horas. Se teclea sin los dos puntos (`0900` se muestra `09:00`) y solo admite dígitos. No usa el selector nativo del navegador porque sigue el idioma del navegador y puede mostrar 12 horas. Su etiqueta existe siempre (`sr-only`, o visible con `showLabel`). `invalid` y `describedBy` lo enlazan con el mensaje de la fila, que es de quien lo usa. Borde `field` y, con problema, `danger-border`.
+
+### Divergencias de la lámina 32
+- **Sin «Guardar horario»:** la API aplica cada franja por separado (agregar o quitar, sin editar ni guardado en bloque), así que cada acción se aplica al instante y muestra su resultado.
+- **Sin interruptor «Abierto» por día:** un día cerrado se abre con «Abrir este día» y un día abierto se cierra al quitar su última franja. No hay un interruptor que cierre el día entero, porque eso sería quitar todas sus franjas de una vez.
+- **«Invitaciones» no aparece** en Equipo (#100) y el subtítulo de la sección no las nombra.
+- **Motivo del cierre:** el texto «Solo lo ve usted y su equipo» se cambia por «Una nota breve para recordar el motivo. Los clientes no la ven.»: la ruta de los cierres es solo del dueño.
+- **Franja solapada:** el mensaje nombra la franja con la que se cruza («Esta franja se solapa con la de 09:00 a 12:30. Corrija las horas.») en lugar de numerarlas.
+- **Láminas 32h a 32j** (reservas confirmadas que quedan fuera del horario o dentro de un cierre, HO-04): no se muestran. Dependen de una API que no existe y se difieren al #101; en `TeamScheduleView` queda un comentario donde irá el aviso.
+
 ## Bonos (pantallas del cliente)
 
 Rutas `/b/:enlace/bonos` (Mis bonos y bonos a la venta) y `/b/:enlace/bonos/:bono/compra` (compra). Diseño de origen: las láminas 14 a 16 de la v7 (Mis bonos, compra de un bono y reservar con bono). Todo sale de la API tal cual: saldo, estado, vencimiento, precio, vigencia y servicios cubiertos nunca se calculan en el cliente.
