@@ -8,14 +8,12 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Src\Payments\Payments\Application\Contracts\PaymentGateway;
 use Src\Payments\Payments\Application\Exceptions\GatewayRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\GatewayUnavailableException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
-use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 
 /**
  * What every adapter that talks to its provider over HTTP shares: the one place that calls, classifies the failures and logs them.
@@ -129,7 +127,6 @@ abstract readonly class HttpPaymentGateway implements PaymentGateway
             'provider_code' => $clean($code),
             'provider_message' => $clean($providerText),
             'payment_id' => $paymentId->value,
-            'request_id' => Context::get(AssignRequestId::CONTEXT_KEY),
         ]);
     }
 
@@ -142,7 +139,6 @@ abstract readonly class HttpPaymentGateway implements PaymentGateway
             'status' => $status,
             'provider_error' => Str::limit(str_replace($this->secrets(), '[redacted]', $errorBody), self::LOGGED_BODY_LIMIT, '...'),
             'payment_id' => $paymentId->value,
-            'request_id' => Context::get(AssignRequestId::CONTEXT_KEY),
         ]);
     }
 }

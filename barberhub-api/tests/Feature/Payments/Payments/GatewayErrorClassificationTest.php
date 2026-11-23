@@ -6,7 +6,6 @@ namespace Tests\Feature\Payments\Payments;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Src\Payments\Payments\Application\DTOs\ChargeRequest;
@@ -35,8 +34,6 @@ final class GatewayErrorClassificationTest extends TestCase
 
     private const string PAYMENT = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0f01';
 
-    private const string REQUEST_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0f99';
-
     /** @var list<array{string, string, array<string, mixed>}> */
     private array $entries = [];
 
@@ -46,7 +43,6 @@ final class GatewayErrorClassificationTest extends TestCase
         parent::setUp();
 
         Http::preventStrayRequests();
-        Context::add('request_id', self::REQUEST_ID);
         Log::shouldReceive('log')->andReturnUsing(function (string $level, string $message, array $context = []): void {
             $this->entries[] = [$level, $message, $context];
         });
@@ -143,7 +139,6 @@ final class GatewayErrorClassificationTest extends TestCase
         $this->assertSame('create_intent', $context['operation']);
         $this->assertSame(401, $context['status']);
         $this->assertSame(self::PAYMENT, $context['payment_id']);
-        $this->assertSame(self::REQUEST_ID, $context['request_id']);
         $this->assertLessThanOrEqual(503, strlen($context['provider_error']));
         $this->assertStringContainsString('[redacted]', $context['provider_error']);
         $this->assertStringNotContainsString(self::SECRET, json_encode($this->entries, JSON_THROW_ON_ERROR));
@@ -171,7 +166,6 @@ final class GatewayErrorClassificationTest extends TestCase
         $context = array_values($matching)[0][2];
         $this->assertSame('onvo', $context['gateway']);
         $this->assertSame(self::PAYMENT, $context['payment_id']);
-        $this->assertSame(self::REQUEST_ID, $context['request_id']);
         if ($text !== null) {
             $this->assertStringContainsString($text, $context['provider_error']);
         }

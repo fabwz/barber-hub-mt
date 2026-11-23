@@ -15,7 +15,6 @@ use Src\Reservations\Reservations\Application\DTOs\ExtractionContext;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractionInvalidException;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorMisconfiguredException;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorUnavailableException;
-use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 
 /**
  * The reservation extractor with Google Gemini (`models/{model}:generateContent`). One call, 10 s in total and 5 s to connect
@@ -192,7 +191,6 @@ final readonly class GeminiReservationExtractor implements ReservationExtractor
             'status' => $status,
             'duration_ms' => (int) ((hrtime(true) - $started) / 1_000_000),
             'phrase_length' => $phraseLength,
-            'request_id' => Context::get(AssignRequestId::CONTEXT_KEY),
         ]);
     }
 }

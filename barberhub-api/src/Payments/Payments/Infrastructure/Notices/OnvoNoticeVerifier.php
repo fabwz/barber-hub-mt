@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Src\Payments\Payments\Infrastructure\Notices;
 
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Src\Payments\Payments\Application\Contracts\GatewayNoticeVerifier;
 use Src\Payments\Payments\Application\DTOs\GatewayNotice;
@@ -12,7 +11,6 @@ use Src\Payments\Payments\Application\Exceptions\NoticeNotVerifiedException;
 use Src\Payments\Payments\Application\Exceptions\PaymentServiceUnavailableException;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Shared\Domain\Contracts\Clock;
-use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 
 /**
  * Verifies the notices of ONVO Pay (RF-22, PA-04). ONVO signs each delivery: the header `X-Onvo-Signature` carries
@@ -45,7 +43,7 @@ final readonly class OnvoNoticeVerifier implements GatewayNoticeVerifier
     public function verify(array $headers, string $rawBody): GatewayNotice
     {
         if ($this->secret === '') {
-            Log::error('The webhook secret of ONVO Pay is not configured: every notice is refused.', ['gateway' => 'onvo', 'request_id' => Context::get(AssignRequestId::CONTEXT_KEY)]);
+            Log::error('The webhook secret of ONVO Pay is not configured: every notice is refused.', ['gateway' => 'onvo']);
 
             throw PaymentServiceUnavailableException::create();
         }
@@ -53,7 +51,7 @@ final readonly class OnvoNoticeVerifier implements GatewayNoticeVerifier
         $reason = $this->refusalOf($headers[self::SIGNATURE_HEADER] ?? '', $rawBody);
 
         if ($reason !== null) {
-            Log::warning('A notice of ONVO Pay was refused.', ['gateway' => 'onvo', 'reason' => $reason, 'request_id' => Context::get(AssignRequestId::CONTEXT_KEY)]);
+            Log::warning('A notice of ONVO Pay was refused.', ['gateway' => 'onvo', 'reason' => $reason]);
 
             throw NoticeNotVerifiedException::create();
         }

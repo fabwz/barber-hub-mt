@@ -59,6 +59,6 @@ final class RequestIdTest extends TestCase
     {
         $requestId = $this->getJson('/api/v1')->headers->get(self::HEADER);
 
-        $this->assertSame($requestId, Context::get('request_id'));
+        $this->assertSame($requestId, Context::get('correlation_id'));
     }
 }

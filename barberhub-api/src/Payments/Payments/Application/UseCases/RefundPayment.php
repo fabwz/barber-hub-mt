@@ -17,6 +17,7 @@ use Src\Payments\Payments\Domain\Exceptions\VoucherPaymentNotRefundableException
 use Src\Payments\Payments\Domain\ValueObjects\PaymentId;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentStatus;
 use Src\Shared\Domain\Contracts\AuditLog;
+use Src\Shared\Domain\Contracts\OperationLog;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Shared\Domain\ValueObjects\AuditAction;
 use Src\Shared\Domain\ValueObjects\AuditEntry;
@@ -24,12 +25,13 @@ use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class RefundPayment
 {
-    /** Receive the payment repository, the gateway resolver, the technical record and the transaction port. */
+    /** Receive the payment repository, the gateway resolver, the technical record, the transaction port and the technical log. */
     public function __construct(
         private PaymentRepository $payments,
         private PaymentGatewayResolver $gateways,
         private AuditLog $audit,
         private TransactionRunner $transaction,
+        private OperationLog $log,
     ) {}
 
     /**
@@ -85,6 +87,8 @@ final readonly class RefundPayment
                 $this->audit->record($entry);
             }
         });
+
+        $this->log->record('payment.refunded', ['payment_id' => $payment->id->value, 'gateway' => $payment->provider->value, 'amount' => $payment->amount->colones]);
 
         return $payment;
     }

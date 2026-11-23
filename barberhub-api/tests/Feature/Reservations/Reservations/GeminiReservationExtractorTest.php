@@ -40,8 +40,6 @@ final class GeminiReservationExtractorTest extends TestCase
 
     private const string PHRASE = 'quiero un corte y barba el sábado en la tarde con Kevin';
 
-    private const string REQUEST_ID = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0f99';
-
     /** @var list<array{string, string, array<string, mixed>}> */
     private array $entries = [];
 
@@ -54,7 +52,6 @@ final class GeminiReservationExtractorTest extends TestCase
         parent::setUp();
 
         Http::preventStrayRequests();
-        Context::add('request_id', self::REQUEST_ID);
         Log::shouldReceive('log')->andReturnUsing(function (string $level, string $message, array $context = []): void {
             $this->entries[] = [$level, $message, $context];
         });
@@ -233,10 +230,9 @@ final class GeminiReservationExtractorTest extends TestCase
         $this->assertCount(2, $this->entries);
 
         foreach ($this->entries as [, , $context]) {
-            $this->assertSame(['provider', 'model', 'result', 'reason', 'status', 'duration_ms', 'phrase_length', 'request_id'], array_keys($context));
+            $this->assertSame(['provider', 'model', 'result', 'reason', 'status', 'duration_ms', 'phrase_length'], array_keys($context));
             $this->assertSame(self::MODEL, $context['model']);
             $this->assertSame(mb_strlen(self::PHRASE), $context['phrase_length']);
-            $this->assertSame(self::REQUEST_ID, $context['request_id']);
             $this->assertIsInt($context['duration_ms']);
         }
 

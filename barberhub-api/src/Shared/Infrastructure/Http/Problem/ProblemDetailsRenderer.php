@@ -6,8 +6,8 @@ namespace Src\Shared\Infrastructure\Http\Problem;
 
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Context;
 use Illuminate\Validation\ValidationException;
+use Src\Shared\Domain\Contracts\CorrelationContext;
 use Src\Shared\Domain\Exceptions\AuthenticationFailedException;
 use Src\Shared\Domain\Exceptions\BusinessRuleException;
 use Src\Shared\Domain\Exceptions\DomainException;
@@ -17,7 +17,6 @@ use Src\Shared\Domain\Exceptions\HasRetryAfter;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\Exceptions\NotFoundException;
 use Src\Shared\Domain\Exceptions\TooManyRequestsException;
-use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
@@ -115,7 +114,7 @@ final readonly class ProblemDetailsRenderer
                 'title' => __("problems.{$type->value}.title"),
                 'status' => $type->status(),
                 'detail' => $detail ?? __("problems.{$type->value}.detail"),
-                'instance' => 'urn:uuid:'.Context::get(AssignRequestId::CONTEXT_KEY),
+                'instance' => 'urn:uuid:'.app(CorrelationContext::class)->current(),
                 ...$extensions,
             ],
             $type->status(),

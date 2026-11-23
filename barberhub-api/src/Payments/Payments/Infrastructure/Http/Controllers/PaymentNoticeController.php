@@ -8,14 +8,12 @@ use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Src\Payments\Payments\Application\Exceptions\PaymentRequestRejectedException;
 use Src\Payments\Payments\Application\Exceptions\PaymentServiceUnavailableException;
 use Src\Payments\Payments\Application\UseCases\ReceiveGatewayNotice;
 use Src\Payments\Payments\Domain\ValueObjects\PaymentProvider;
 use Src\Shared\Domain\Contracts\Clock;
-use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 
 #[Group('Pagos', 'Cobro del depósito o del total de una reserva, consulta del estado del pago y reembolso.')]
 final readonly class PaymentNoticeController
@@ -50,12 +48,12 @@ final readonly class PaymentNoticeController
             $result = $receive->execute($provider, $this->headersOf($request), $request->getContent(), $this->clock->now());
         } catch (PaymentServiceUnavailableException|PaymentRequestRejectedException $exception) {
             // Nothing was recorded: the provider sends the notice again.
-            Log::warning('A payment notice could not be processed now.', ['gateway' => $provider->value, 'result' => 'retry', 'request_id' => Context::get(AssignRequestId::CONTEXT_KEY)]);
+            Log::warning('A payment notice could not be processed now.', ['gateway' => $provider->value, 'result' => 'retry']);
 
             throw $exception;
         }
 
-        Log::info('A payment notice was processed.', ['gateway' => $provider->value, 'event_id' => $result->eventId, 'result' => $result->outcome, 'request_id' => Context::get(AssignRequestId::CONTEXT_KEY)]);
+        Log::info('A payment notice was processed.', ['gateway' => $provider->value, 'event_id' => $result->eventId, 'result' => $result->outcome]);
 
         return response()->json(['recibido' => true]);
     }

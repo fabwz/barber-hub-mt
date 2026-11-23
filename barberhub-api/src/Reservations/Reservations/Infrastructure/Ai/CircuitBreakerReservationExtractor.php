@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Infrastructure\Ai;
 
 use Closure;
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExtractor;
 use Src\Reservations\Reservations\Application\DTOs\ExtractedReservation;
@@ -14,7 +13,6 @@ use Src\Reservations\Reservations\Application\Exceptions\ExtractionInvalidExcept
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorFailure;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorUnavailableException;
 use Src\Shared\Domain\Contracts\Clock;
-use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 use Throwable;
 
 /**
@@ -180,7 +178,6 @@ final readonly class CircuitBreakerReservationExtractor implements ReservationEx
             'to' => $to,
             'reason' => $reason,
             ...$extra,
-            'request_id' => Context::get(AssignRequestId::CONTEXT_KEY),
         ]);
     }
 }
