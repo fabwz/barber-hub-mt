@@ -270,10 +270,14 @@ La interfaz usa estos textos y no «Pagado», que no es un estado del sistema. E
 **Dónde no se muestra:** en la pantalla de pago no se muestra «Pago aprobado», porque el aviso «Su pago de ₡X fue aprobado.» ya lo dice. Tampoco «Pendiente de pago» en el resumen de una reserva temporal: lo dice la cuenta regresiva. «Pago pendiente», «Pago rechazado» y «Pago fallido» sí se muestran.
 
 ### Fila de agenda
-Plana, sin tarjeta. Columnas: rango de hora (tabular), cliente, servicio y etiqueta de estado. Separadas por líneas de 1 px `line`. Seleccionada: relleno `elevated` con radio de 8 px, sin borde, texto en peso 500. En la vista por día, la **hora actual** se marca con un punto de 9 px y una línea de 1 px, ambos en `accent`.
+Plana, sin tarjeta. Columnas: rango de hora (tabular), cliente, servicio (y, para el dueño, el barbero) y etiqueta de estado. Separadas por líneas de 1 px `line`. Seleccionada: relleno `elevated` con radio de 8 px, sin borde, texto en peso 500. En la vista por día, la **hora actual** se marca con un punto de 9 px y una línea de 1 px, ambos en `accent`, entre las reservas que ya empezaron y las que no; solo en la fecha de hoy.
 
-### Navegación del negocio (escritorio)
-Barra superior con: Agenda, Reservas, Servicios, Barberos y Pagos. Elemento inactivo: texto `fg-muted`, peso 400. **Página activa:** relleno `elevated`, texto `fg` en peso 500, ícono en `accent` y `aria-current="page"`.
+### Barra del personal
+Diseño de origen: lámina 26 de la v7. Es la barra del dueño y del colaborador (64 px, línea inferior de 1 px `line`, mismas medidas que el navbar del cliente). A la izquierda, la marca (enlace a la agenda) y los enlaces; a la derecha, la barbería activa y el menú de cuenta.
+- **Enlaces:** «Agenda» (los dos roles) y, solo para el dueño, «Servicios», «Equipo», «Bonos», «Ingresos» y «Configuración». Un enlace aparece **solo cuando su ruta existe** (`router.hasRoute`), como en el navbar del cliente: hoy solo «Agenda». El activo lleva relleno `elevated`, texto `fg` en peso 500 y `aria-current="page"`; la reserva abierta en el panel mantiene «Agenda» como activa.
+- **Barbería activa:** nombre (14 px, peso 500, una línea) y, debajo, el rol (12 px, `fg-muted`). Con más de una barbería, junto al rol va el enlace subrayado «Cambiar de barbería», que lleva al selector (`/negocios`). La lámina 26b dibuja un desplegable; se usa el selector que ya existe.
+- **Menú de cuenta:** el mismo `AccountMenu`, con la fila «Mi cuenta» (a `/cuenta/datos`) antes de «Cerrar sesión». En celular, los enlaces de la barra van primero en el panel.
+- **Qué barra usa «Mi cuenta» (`/cuenta/*`):** la del personal cuando hay una barbería activa (el id guardado confirmado por `GET /mis-barberias`); si no, la del cliente. Un cliente sin barbería guardada no pide la lista.
 
 ### Navbar del cliente
 Barra de las pantallas de la persona con sesión iniciada (hoy, solo el directorio de `/barberias`). Es la misma barra del negocio: 64 px de alto, línea inferior de 1 px `line`, 20 px de relleno lateral en celular y 32 px en escritorio, y 40 px entre la marca y los enlaces. **No reemplaza la cabecera de cada barbería** y no lleva «Mis reservas»: esa lista es por barbería y vive en su cabecera.
@@ -429,6 +433,21 @@ Rutas `/b/:enlace/mis-reservas` y `/b/:enlace/mis-reservas/:reserva`. Diseño de
 - **Acceso desde la barbería:** con sesión iniciada, «Mis reservas» es un botón secundario (borde `line-strong`, ícono de calendario de 16 px) arriba a la derecha de «Reservar cita».
 - **Celular:** una sola columna, igual que antes.
 
+## Agenda del personal y detalle de la reserva
+
+Rutas `/barberias/:barberia/agenda` (el día y los filtros viajan en la dirección: `?dia=`, `?estado=`, `?colaborador=`) y `/barberias/:barberia/agenda/:reserva` (el panel es una ruta hija). Diseño de origen: láminas 26 a 28 de la v7. Una sola pantalla para los dos roles; las diferencias salen de `useAgendaPermissions`.
+
+- **Título:** «Agenda» para el dueño y «Mi agenda» para el colaborador. Debajo, la fecha («jue 5 nov 2026») y el conteo.
+- **Día:** botones «Anterior», «Hoy» (deshabilitado si ya es hoy) y «Siguiente». Se trae el día completo (todas las páginas, siempre con `dia`) y los filtros se aplican en el cliente: «Estado» (Pendiente de pago, Confirmada, Atendida, Ausente, Cancelada, que junta las dos cancelaciones) y, solo para el dueño, «Colaborador» (los que tienen reservas ese día). «Limpiar filtros» aparece con un filtro activo. **«Expirada» no se muestra** en la agenda.
+- **Estados:** cargando (esqueleto, `aria-busy`), vacío («No hay reservas este día.» con «Ir a hoy» en otra fecha; «No hay reservas con esos filtros.» con «Limpiar filtros») y error con «Reintentar».
+- **Panel:** columna de 400 px a la derecha de la agenda en escritorio; en celular ocupa toda la pantalla y la lista se oculta, con «Volver a la agenda» arriba (conserva los filtros). Muestra el servicio (24 px) con la etiqueta de estado debajo, «Reserva» (servicio con su duración, barbero, fecha y hora, cliente) y «Cobro».
+  - **Dueño:** «Total» (IVA incluido), «Saldo pendiente» e «Historial de estados» (el más reciente primero, con fecha y autor; un cambio de estado a sí mismo se lee «Reprogramada»).
+  - **Colaborador:** solo «Saldo pendiente»; sin total, historial ni pagos.
+  - **Acciones:** «Marcar atendida» (principal) y «Marcar ausente» (secundario) para los dos roles; el dueño, además y tras una línea, «Reprogramar» y «Cancelar reserva». «Atendida» se habilita desde la hora de inicio y «ausente» diez minutos después (la constante vive en `reservationClosing.ts`); antes, los botones van deshabilitados y una nota dice desde qué hora. Una reserva que no está confirmada no muestra acciones, solo una nota.
+  - **Cancelar:** confirmación en línea («¿Cancelar la reserva de {cliente}?», «No, mantenerla» principal y «Sí, cancelar reserva» secundario, sin botón rojo). **Reprogramar:** el mismo selector de fecha y hora del cliente, en una columna y sin la línea del plazo (el dueño no tiene plazo).
+  - **Progreso y resultado:** «Marcando como atendida…», «Reserva cancelada.», etc., en un aviso informativo con `role="status"`; los botones van con `disabled` mientras tanto. Un error de la API se muestra con su texto en un aviso `role="alert"`.
+- **Pendiente:** el indicador de conexión («En vivo», «Reconectando…») es del #113; los botones «Bloqueos» y «Reserva asistida» no se muestran hasta que existan sus APIs (#101 y #102). **La vista del colaborador usa el diseño de la lámina 27 sin el filtro de colaborador y está pendiente de revisión visual** (la lámina «Mi agenda» aún no se diseña).
+
 ## Bonos (pantallas del cliente)
 
 Rutas `/b/:enlace/bonos` (Mis bonos y bonos a la venta) y `/b/:enlace/bonos/:bono/compra` (compra). Diseño de origen: las láminas 14 a 16 de la v7 (Mis bonos, compra de un bono y reservar con bono). Todo sale de la API tal cual: saldo, estado, vencimiento, precio, vigencia y servicios cubiertos nunca se calculan en el cliente.
@@ -493,7 +512,7 @@ Un solo componente (`PreferencesLink`), con la apariencia de la navegación con 
 
 ## Mi cuenta (pantalla de la persona con sesión)
 
-Rutas `/cuenta/datos`, `/cuenta/seguridad` y `/cuenta/apariencia` (`/cuenta` lleva a Datos), **comunes a cliente, colaborador y dueño** (RF-45, RF-40, RF-48). Diseño de origen: láminas 20 a 25 de la v7. Un solo `h1` «Mi cuenta» y un `h2` por sección. Usa el navbar del cliente; la barra del personal todavía no está definida, así que **no hay un punto de entrada propio para el dueño ni para el colaborador** (la ruta funciona, sin enlace).
+Rutas `/cuenta/datos`, `/cuenta/seguridad` y `/cuenta/apariencia` (`/cuenta` lleva a Datos), **comunes a cliente, colaborador y dueño** (RF-45, RF-40, RF-48). Diseño de origen: láminas 20 a 25 de la v7. Un solo `h1` «Mi cuenta» y un `h2` por sección. Usa la barra del personal si hay una barbería activa y el navbar del cliente si no (ver «Barra del personal»); el dueño y el colaborador entran por «Mi cuenta» de su menú.
 
 ### Navegación de las secciones (`AccountNav`)
 **Enlaces**, no pestañas: cada sección es una ruta, así que no lleva `role="tab"`, `tablist` ni `tabpanel`; la actual lleva `aria-current="page"`.
@@ -722,7 +741,8 @@ Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg
 
 ## Pendiente
 
-- **Mi cuenta:** las secciones «Avisos» (#106) e «Idioma» (#108) se suman cuando existan sus pantallas. La entrada a «Mi cuenta» del dueño y del colaborador queda pendiente hasta definir la barra del personal; hoy solo el navbar del cliente la enlaza.
+- **Mi cuenta:** las secciones «Avisos» (#106) e «Idioma» (#108) se suman cuando existan sus pantallas. El dueño y el colaborador entran a «Mi cuenta» por el menú de su barra (ver «Barra del personal»).
+- **Agenda del personal (láminas 26 a 28):** se omitió lo que la API aún no entrega. (1) «Pago», «Depósito» y «Estado del depósito» del dueño: la API aún no entrega el pago del detalle (solo `precio` y `saldo_pendiente`); se muestran «Total» y «Saldo pendiente». (2) «(dueño)» junto al autor del historial: la API entrega el nombre o «Sistema», sin rol. (3) «Le avisamos al cliente por correo»: el aviso llega con #96. (4) El desplegable de barbería de la lámina 26b: se usa el selector `/negocios` con el enlace «Cambiar de barbería». (5) Las etiquetas de estado van sin punto, como en el resto de pantallas (ver «Etiqueta de estado»).
 - **Por confirmar con ONVO:** los formatos de la identificación del SINPE Móvil de cada tipo (tabla de «Campo de texto»).
 - **Pantalla de pago:** la fila «Sucursal» y el banner y el logo de la cabecera dependen de que la API los entregue; el pago muestra la cabecera con los mismos datos de ejemplo que la portada.
 - **Bonos (láminas 14 a 16):** se omitió lo que la API no entrega. (1) Pagar con PayPal en la compra: el contrato de la compra solo admite tarjeta y SINPE Móvil y el bono no informa la pasarela. (2) El nombre, el saldo y el vencimiento del bono dentro de la opción «Pagar con bono», y «No vale para {fecha}»: la API elige el bono al reservar y el cliente no lo recalcula; si el bono vence antes de la cita, la API responde `bono-vencido`. (3) «Le quedan N» tras reservar con bono: la reserva creada no trae el saldo restante (se ve en «Mis bonos»). (4) La hora exacta límite de cancelación («hasta el jue 5 nov, 06:30»): se muestra el plazo real en horas (`plazo_cancelacion_horas`). (5) «Su espacio se mantiene» en los errores de bono: la API no crea la reserva cuando falla, así que el aviso dice que no se reservó nada. (6) El punto de «Activo» y «Vencido» (ver «Etiqueta de estado»). (7) «Sucursal», como en el resto de pantallas.

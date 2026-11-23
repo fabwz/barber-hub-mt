@@ -12,7 +12,10 @@ declare module 'vue-router' {
     public?: boolean
     /** Only for people without a session (login, register). */
     guestOnly?: boolean
-    /** Needs an active owner/collaborator shop; without one the router sends the person to /negocios. */
+    /**
+     * Needs an active owner/collaborator shop; without one the router sends the person to /negocios.
+     * With a `:barberia` parameter the shop of the route must be one of theirs, and it becomes the active one.
+     */
     requiresStaffShop?: boolean
   }
 }
@@ -73,6 +76,13 @@ async function check(to: RouteLocationNormalized): Promise<RouteLocationRaw | tr
     const shops = useActiveShopStore()
     // After a reload only the stored id is known: the list confirms it.
     if (shops.status !== 'ready') await shops.loadStaffShops()
+    // A route of one shop (`/barberias/:barberia/...`) opens only for a shop where the person is
+    // owner or collaborator; any other id is the same as having none, and the selector decides.
+    const requested = to.params.barberia
+    if (typeof requested === 'string') {
+      if (!shops.shops.some((shop) => shop.id === requested)) return { path: '/negocios' }
+      shops.select(requested)
+    }
     if (shops.active === null) return { path: '/negocios' }
   }
   return true

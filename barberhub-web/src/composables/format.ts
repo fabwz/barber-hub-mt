@@ -49,6 +49,18 @@ export function todayInCostaRica(now: Date = new Date()): string {
   return `${parts.year}-${parts.month}-${parts.day}`
 }
 
+const clockFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: COSTA_RICA_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/** La hora de pared de Costa Rica («11:20») de un instante, sin importar la zona del navegador. */
+export function timeInCostaRica(now: Date = new Date()): string {
+  return clockFormatter.format(now)
+}
+
 function split(date: string): [number, number, number] {
   const [year = 0, month = 1, day = 1] = date.split('-').map(Number)
   return [year, month, day]

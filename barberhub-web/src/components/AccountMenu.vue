@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useId } from 'vue'
-import { ChevronDown, LogOut, Menu, User, X } from 'lucide-vue-next'
+import { ChevronDown, CircleUser, LogOut, Menu, User, X } from 'lucide-vue-next'
 
 import NavbarLink from '@/components/NavbarLink.vue'
 import { accountInitials } from '@/composables/initials'
@@ -21,9 +21,11 @@ interface Props {
   links?: AccountLink[]
   /** The session is being closed. */
   signingOut?: boolean
+  /** Where «Mi cuenta» leads. Without it the panel has no such row (the customer bar links it in the bar). */
+  accountLink?: RouteLocationRaw
 }
 
-const { name = '', links = [], signingOut = false } = defineProps<Props>()
+const { name = '', links = [], signingOut = false, accountLink } = defineProps<Props>()
 
 const emit = defineEmits<{
   logout: []
@@ -124,6 +126,15 @@ const triggerClasses = computed(() => [
         <p class="text-xs text-fg-muted">Sesión iniciada</p>
         <p v-if="name !== ''" class="mt-0.5 text-sm font-medium break-words">{{ name }}</p>
       </div>
+      <RouterLink
+        v-if="accountLink"
+        :to="accountLink"
+        class="flex min-h-12 w-full items-center gap-3 rounded-field px-3 text-base text-fg no-underline transition-colors duration-150 ease-out hover:bg-elevated md:min-h-11 md:text-sm"
+        @click="close"
+      >
+        <CircleUser :size="18" :stroke-width="1.5" class="text-fg-muted" aria-hidden="true" />
+        Mi cuenta
+      </RouterLink>
       <button
         type="button"
         :disabled="signingOut"

@@ -24,12 +24,16 @@ interface Props {
   start: string
   /** Hours before the start up to which the change is free (CA-01). */
   cancellationHours: number
+  /** One column and an `h2`, for the narrow panel of the agenda (the owner moves it from there). */
+  compact?: boolean
+  /** Replaces the line about the deadline; empty hides it. The owner has no deadline (RF-15). */
+  deadlineNote?: string
 }
 
 /** Days offered by the date picker: the booking window of DI-03. */
 const WINDOW_DAYS = 30
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { compact: false, deadlineNote: undefined })
 
 const emit = defineEmits<{
   /** The reservation was moved; carries the reservation the API answers. */
@@ -91,6 +95,7 @@ const announcement = computed(() => {
 })
 
 const deadline = computed(() => {
+  if (props.deadlineNote !== undefined) return props.deadlineNote
   const hours = props.cancellationHours
   if (hours <= 0) return 'Puede cambiar la hora sin costo hasta el inicio de la cita.'
   return `Puede cambiar la hora sin costo hasta ${hours} ${hours === 1 ? 'hora' : 'horas'} antes de la cita.`
@@ -146,24 +151,34 @@ async function confirm(): Promise<void> {
   <section
     aria-labelledby="reschedule-title"
     :aria-busy="hoursState === 'loading'"
-    class="flex flex-col gap-8 md:grid md:grid-cols-2"
+    class="flex flex-col gap-8"
+    :class="compact ? '' : 'md:grid md:grid-cols-2'"
   >
-    <div class="md:col-span-2 md:border-b md:border-line md:pb-6">
-      <h1 id="reschedule-title" ref="title" tabindex="-1" class="text-2xl outline-offset-4">
+    <div :class="compact ? '' : 'md:col-span-2 md:border-b md:border-line md:pb-6'">
+      <h2
+        v-if="compact"
+        id="reschedule-title"
+        ref="title"
+        tabindex="-1"
+        class="text-2xl outline-offset-4"
+      >
+        Reprogramar reserva
+      </h2>
+      <h1 v-else id="reschedule-title" ref="title" tabindex="-1" class="text-2xl outline-offset-4">
         Reprogramar reserva
       </h1>
       <p class="mt-2 text-fg-muted">
         Elija otro día y otra hora con {{ barberName }}. No se vuelve a cobrar el depósito.
       </p>
-      <p class="mt-1 text-sm text-fg-subtle">{{ deadline }}</p>
+      <p v-if="deadline !== ''" class="mt-1 text-sm text-fg-subtle">{{ deadline }}</p>
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
-    <div class="min-w-0 md:pr-8">
+    <div class="min-w-0" :class="compact ? '' : 'md:pr-8'">
       <DatePicker v-model="date" :days="days" wrap />
     </div>
 
-    <div class="min-w-0 md:border-l md:border-line md:pl-8">
+    <div class="min-w-0" :class="compact ? '' : 'md:border-l md:border-line md:pl-8'">
       <div>
         <h2 class="mb-4 text-lg font-medium">Hora</h2>
 
@@ -201,7 +216,7 @@ async function confirm(): Promise<void> {
     </div>
 
     <!-- The new space was taken, or the change is not allowed: the original reservation stays as it was -->
-    <div v-if="failure" class="flex flex-col gap-4 md:col-span-2">
+    <div v-if="failure" class="flex flex-col gap-4" :class="compact ? '' : 'md:col-span-2'">
       <NoticeBanner variant="error">
         <p class="font-medium">
           {{ spaceGone ? 'Ese espacio ya no está disponible.' : failure.title }}
@@ -227,9 +242,12 @@ async function confirm(): Promise<void> {
     </div>
 
     <div
-      class="flex flex-col gap-3 border-t border-line pt-6 max-md:-mt-2 md:col-span-2 md:flex-row md:items-center md:justify-between md:gap-8"
+      class="flex flex-col gap-3 border-t border-line pt-6 max-md:-mt-2"
+      :class="
+        compact ? '' : 'md:col-span-2 md:flex-row md:items-center md:justify-between md:gap-8'
+      "
     >
-      <div class="flex min-w-0 flex-col gap-1 md:flex-1">
+      <div class="flex min-w-0 flex-col gap-1" :class="compact ? '' : 'md:flex-1'">
         <p class="text-base text-fg-muted md:text-lg">
           <template v-if="slot">
             Nueva cita
@@ -239,25 +257,32 @@ async function confirm(): Promise<void> {
           </template>
           <template v-else>Elija una hora para continuar</template>
         </p>
-        <p class="hidden text-sm text-fg-subtle md:block">
+        <p class="hidden text-sm text-fg-subtle" :class="compact ? '' : 'md:block'">
           Si el espacio se ocupa antes de confirmar, su reserva actual no cambia.
         </p>
       </div>
-      <div class="flex flex-col gap-3 md:flex-none md:flex-row-reverse">
+      <div class="flex flex-col gap-3" :class="compact ? '' : 'md:flex-none md:flex-row-reverse'">
         <BaseButton
           size="large"
-          class="w-full md:w-70"
+          class="w-full"
+          :class="compact ? '' : 'md:w-70'"
           :disabled="slot === null"
           :loading="submitting"
           @click="confirm"
         >
           Confirmar nuevo horario
         </BaseButton>
-        <BaseButton variant="secondary" size="large" class="w-full md:w-50" @click="emit('back')">
+        <BaseButton
+          variant="secondary"
+          size="large"
+          class="w-full"
+          :class="compact ? '' : 'md:w-50'"
+          @click="emit('back')"
+        >
           Volver a la reserva
         </BaseButton>
       </div>
-      <p class="text-sm text-fg-subtle md:hidden">
+      <p class="text-sm text-fg-subtle" :class="compact ? '' : 'md:hidden'">
         Si el espacio se ocupa antes de confirmar, su reserva actual no cambia.
       </p>
     </div>
