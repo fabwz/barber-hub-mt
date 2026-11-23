@@ -11,17 +11,17 @@ const router = useRouter()
 const session = useSessionStore()
 
 /**
- * Screens that arrive with other issues (profile and preferences). A link shows only when its route
- * exists, so the bar never points to a screen that is not there.
+ * «Mi perfil» opens the Datos section of «Mi cuenta» and «Preferencias» its Apariencia section. A link
+ * shows only when its route exists, so the bar never points to a screen that is not there.
  */
-const FUTURE_LINKS = [
-  { label: 'Mi perfil', name: 'profile' },
-  { label: 'Preferencias', name: 'preferences' },
+const ACCOUNT_LINKS = [
+  { label: 'Mi perfil', name: 'account-data' },
+  { label: 'Preferencias', name: 'account-appearance' },
 ]
 
 const links = computed<AccountLink[]>(() => [
   { label: 'Barberías', to: { name: 'directory' } },
-  ...FUTURE_LINKS.filter((link) => router.hasRoute(link.name)).map((link) => ({
+  ...ACCOUNT_LINKS.filter((link) => router.hasRoute(link.name)).map((link) => ({
     label: link.label,
     to: { name: link.name },
   })),

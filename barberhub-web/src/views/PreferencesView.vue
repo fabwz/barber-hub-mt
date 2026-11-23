@@ -1,19 +1,15 @@
 <script setup lang="ts">
 import BrandLogo from '@/components/BrandLogo.vue'
-import ClientNavbar from '@/components/ClientNavbar.vue'
 import PreferencesLink from '@/components/PreferencesLink.vue'
 import PreferencesPanel from '@/components/PreferencesPanel.vue'
-import { useSessionStore } from '@/stores/session'
 
 // RF-48. Public: it needs no account and never calls the API; the choices live in the browser.
-// With a session the client navbar frames it (no «Volver»); without one, the logotype and the link.
-const session = useSessionStore()
+// With a session the router sends the person to «Mi cuenta · Apariencia», which hosts the same block.
 </script>
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <ClientNavbar v-if="session.isAuthenticated" />
-    <header v-else class="flex h-16 flex-none items-center justify-between gap-2 px-5 md:px-8">
+    <header class="flex h-16 flex-none items-center justify-between gap-2 px-5 md:px-8">
       <BrandLogo />
       <PreferencesLink />
     </header>
