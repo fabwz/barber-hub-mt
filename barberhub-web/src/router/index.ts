@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+import { useSessionStore } from '@/stores/session'
 import HomeView from '@/views/HomeView.vue'
 import { installGuards } from './guard'
 
@@ -82,6 +83,37 @@ export const routes: RouteRecordRaw[] = [
     name: 'preferences',
     component: () => import('@/views/PreferencesView.vue'),
     meta: { public: true },
+    // With a session the same block lives in «Mi cuenta · Apariencia»; the old address still works.
+    beforeEnter: () => (useSessionStore().isAuthenticated ? { name: 'account-appearance' } : true),
+  },
+  {
+    path: '/cuenta',
+    component: () => import('@/views/AccountView.vue'),
+    meta: { requiresAuth: true },
+    redirect: { name: 'account-data' },
+    children: [
+      {
+        path: 'datos',
+        name: 'account-data',
+        component: () => import('@/views/account/AccountDataView.vue'),
+      },
+      {
+        path: 'seguridad',
+        name: 'account-security',
+        component: () => import('@/views/account/AccountSecurityView.vue'),
+      },
+      {
+        path: 'apariencia',
+        name: 'account-appearance',
+        component: () => import('@/views/account/AccountAppearanceView.vue'),
+      },
+    ],
+  },
+  {
+    path: '/cambiar-contrasena',
+    name: 'password-change',
+    component: () => import('@/views/PasswordChangeView.vue'),
+    meta: { requiresAuth: true },
   },
   {
     path: '/terminos',

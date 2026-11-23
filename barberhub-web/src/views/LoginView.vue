@@ -11,8 +11,8 @@ import NoticeBanner from '@/components/NoticeBanner.vue'
 import TextField from '@/components/TextField.vue'
 import { useCountdown } from '@/composables/useCountdown'
 import { useFormErrors } from '@/composables/useFormErrors'
-import { safeRedirect } from '@/router/guard'
-import { useActiveShopStore } from '@/stores/activeShop'
+import { useDestinationAfterLogin } from '@/composables/useDestinationAfterLogin'
+import { useAccountStore } from '@/stores/account'
 import { useSessionStore } from '@/stores/session'
 
 type Field = 'email' | 'password'
@@ -23,7 +23,8 @@ const DEFAULT_LOCK_SECONDS = 15 * 60
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
-const activeShop = useActiveShopStore()
+const account = useAccountStore()
+const destinationAfterLogin = useDestinationAfterLogin()
 
 const email = ref('')
 const password = ref('')
@@ -41,17 +42,6 @@ const registerLink = computed(() => ({
   query: route.query.redirect ? { redirect: route.query.redirect } : {},
 }))
 
-/**
- * A valid redirect (checked in #75) is respected as is. Without one, staff go to the shop
- * selector (UP-08) and everyone else to «/». If the shops cannot be loaded, the login still ends at «/».
- */
-async function destinationAfterLogin(): Promise<string> {
-  const redirect = safeRedirect(route.query.redirect)
-  if (redirect !== '/') return redirect
-  await activeShop.loadStaffShops()
-  return activeShop.status === 'ready' && activeShop.shops.length > 0 ? '/negocios' : '/'
-}
-
 async function submit(): Promise<void> {
   if (loading.value || countdown.active.value) return
   errors.clear()
@@ -62,6 +52,16 @@ async function submit(): Promise<void> {
     await session.login(email.value, password.value)
     password.value = ''
     showPassword.value = false
+    // A temporary password (UP-04) only allows the mandatory change: nothing else is read or shown before it.
+    await account.load()
+    if (account.temporaryPassword === true) {
+      const redirect = route.query.redirect
+      await router.replace({
+        name: 'password-change',
+        query: redirect ? { redirect } : {},
+      })
+      return
+    }
     await router.replace(await destinationAfterLogin())
   } catch (error) {
     if (!isApiError(error)) throw error
