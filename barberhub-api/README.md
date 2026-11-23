@@ -67,22 +67,39 @@ La API queda en `http://localhost:8000` (`APP_URL`), bajo `/api/v1`. El cliente 
 
 Se definen en `.env`, copia de `.env.example`. El `.env` no se versiona y nunca se escriben secretos en el repositorio.
 
-| Variable | Para qué sirve |
-| --- | --- |
-| `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL` | Nombre, ambiente, llave (la genera `php artisan key:generate`), depuración y dirección de la aplicación. |
-| `APP_TIMEZONE` | Zona horaria (`America/Costa_Rica`). |
-| `APP_LOCALE`, `APP_FALLBACK_LOCALE`, `APP_FAKER_LOCALE` | Idiomas (`es`, `en`) y datos de Faker. |
-| `APP_MAINTENANCE_DRIVER` | Controlador del modo de mantenimiento. |
-| `BCRYPT_ROUNDS` | Rondas de bcrypt para las contraseñas. |
-| `LOG_CHANNEL`, `LOG_STACK`, `LOG_LEVEL` | Registro de la aplicación. |
-| `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_SSLMODE` | Conexión a PostgreSQL (base `barberhub`). |
-| `DB_USERNAME`, `DB_PASSWORD` | Rol de la aplicación (`barberhub_app`). |
-| `DB_ADMIN_USERNAME`, `DB_ADMIN_PASSWORD` | Rol dueño (`barberhub_owner`), usado por `--database=pgsql_admin`. |
-| `QUEUE_CONNECTION` | Controlador de la cola. Es `database` de forma provisional (RD-11 y PD-03 están pendientes): vence las reservas temporales, ofrece los espacios liberados y vence las ofertas de la lista de espera. Hay que levantar un worker con `php artisan queue:work`; sin él nada de eso ocurre en desarrollo. Las pruebas usan `sync`. |
-| `PAYMENTS_DEFAULT_GATEWAY` | Pasarela por defecto: `onvo` o `paypal`. |
-| `ONVO_SECRET_KEY`, `ONVO_BASE_URL`, `ONVO_RETURN_URL`, `ONVO_SINPE_DESTINATION`, `ONVO_WEBHOOK_SECRET` | ONVO Pay. Solo se acepta una llave de pruebas (`onvo_test_secret_key_…`). |
-| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_BASE_URL`, `PAYPAL_RETURN_URL`, `PAYPAL_CANCEL_URL`, `PAYPAL_CRC_PER_USD`, `PAYPAL_WEBHOOK_ID` | PayPal, solo *sandbox*. |
-| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_BASE_URL` | Proveedor de lenguaje de la reserva por frase (RF-37). Sin la llave, el extractor queda «no disponible» y no llama a Google. `GEMINI_MODEL` es obligatorio y no se escribe en el código. |
-| `AI_CIRCUIT_FAILURES`, `AI_CIRCUIT_WINDOW_SECONDS`, `AI_CIRCUIT_OPEN_SECONDS`, `AI_CIRCUIT_CACHE_STORE` | Circuito de corte del proveedor de IA (IA-05, RNF-11) y la caché que guarda su estado. |
+| Variable | Para qué sirve | Ejemplo | ¿Secreta? |
+| --- | --- | --- | --- |
+| `APP_NAME` | Nombre de la aplicación. | `BarberHub` | No |
+| `APP_ENV` | Ambiente de ejecución. | `local` | No |
+| `APP_KEY` | Llave de cifrado de la aplicación; la genera `php artisan key:generate`. | _(la genera Artisan)_ | **Sí** |
+| `APP_PREVIOUS_KEYS` | Llaves anteriores, para rotar `APP_KEY` sin invalidar lo cifrado (opcional). | _(vacía)_ | **Sí** |
+| `APP_DEBUG` | Depuración; en producción debe ser `false`. | `true` | No |
+| `APP_URL` | Dirección de la aplicación. | `http://localhost:8000` | No |
+| `APP_TIMEZONE` | Zona horaria. | `America/Costa_Rica` | No |
+| `APP_LOCALE`, `APP_FALLBACK_LOCALE`, `APP_FAKER_LOCALE` | Idioma de los mensajes, idioma de respaldo y datos de Faker. | `es`, `en`, `es_ES` | No |
+| `APP_MAINTENANCE_DRIVER`, `APP_MAINTENANCE_STORE` | Controlador y almacén del modo de mantenimiento. | `file` | No |
+| `BCRYPT_ROUNDS` | Rondas de bcrypt para las contraseñas. | `12` | No |
+| `LOG_CHANNEL`, `LOG_STACK`, `LOG_LEVEL` | Canal, pila y nivel del registro. Nunca se registran contraseñas, tokens ni llaves (SE-01, RNF-08). | `stack`, `single`, `debug` | No |
+| `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_SSLMODE`, `DB_URL`, `DB_CHARSET` | Conexión a PostgreSQL (base `barberhub`). `DB_URL` y `DB_CHARSET` son opcionales. | `pgsql`, `127.0.0.1`, `5432`, `barberhub`, `prefer` | No |
+| `DB_USERNAME` | Rol de la aplicación, que atiende las peticiones sin ser dueño ni superusuario. | `barberhub_app` | No |
+| `DB_PASSWORD` | Contraseña del rol de la aplicación. | _(vacía)_ | **Sí** |
+| `DB_ADMIN_USERNAME` | Rol dueño de las tablas, usado por las migraciones (`--database=pgsql_admin`). | `barberhub_owner` | No |
+| `DB_ADMIN_PASSWORD` | Contraseña del rol dueño. | _(vacía)_ | **Sí** |
+| `QUEUE_CONNECTION` | Controlador de la cola. Es `database` de forma provisional (RD-11 y PD-03 están pendientes): vence las reservas temporales, ofrece los espacios liberados y vence las ofertas de la lista de espera. Hay que levantar un worker con `php artisan queue:work`; sin él nada de eso ocurre en desarrollo. Las pruebas usan `sync`. | `database` | No |
+| `CACHE_STORE` | Almacén de caché de la aplicación (opcional, comentada en `.env.example`). | `database` | No |
+| `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` | Correo (opcionales y comentadas en `.env.example`): ninguna función envía correo todavía; con `log` el mensaje se escribe en el registro. | `log`, `127.0.0.1`, `2525` | No |
+| `MAIL_PASSWORD` | Contraseña del servidor de correo, cuando se elija uno. | _(vacía)_ | **Sí** |
+| `PAYMENTS_DEFAULT_GATEWAY` | Pasarela por defecto para barberías que no eligieron una: `onvo` o `paypal` (PA-02). | `onvo` | No |
+| `ONVO_SECRET_KEY` | Llave secreta de pruebas de ONVO Pay (RF-20); una llave `onvo_live_…` se rechaza. | `onvo_test_secret_key_…` | **Sí** |
+| `ONVO_WEBHOOK_SECRET` | Secreto de firma del *webhook* de ONVO. Sin él, los avisos se rechazan con 503. | `whsec_…` | **Sí** |
+| `ONVO_BASE_URL`, `ONVO_RETURN_URL`, `ONVO_SINPE_DESTINATION` | URL base de la API de ONVO (por defecto `https://api.onvopay.com/v1`), dirección de retorno tras 3DS y número SINPE Móvil de destino (por defecto `+506 70196686`). | `https://api.onvopay.com/v1` | No |
+| `PAYPAL_CLIENT_ID` | Identificador de la aplicación *sandbox* de PayPal. | _(vacía)_ | No |
+| `PAYPAL_CLIENT_SECRET` | Secreto de la aplicación *sandbox* de PayPal. | _(vacía)_ | **Sí** |
+| `PAYPAL_WEBHOOK_ID` | Identificador del *webhook* de PayPal. Sin él, los avisos se rechazan con 503. | _(vacía)_ | No |
+| `PAYPAL_BASE_URL`, `PAYPAL_RETURN_URL`, `PAYPAL_CANCEL_URL`, `PAYPAL_CRC_PER_USD` | URL base (por defecto `https://api-m.sandbox.paypal.com`), direcciones de retorno y cancelación, y colones por dólar (por defecto 500). | `https://api-m.sandbox.paypal.com`, `500` | No |
+| `GEMINI_API_KEY` | Llave del proveedor de lenguaje de la reserva por frase (RF-37). Sin ella, el extractor queda «no disponible» y no llama a Google. | _(vacía)_ | **Sí** |
+| `GEMINI_MODEL`, `GEMINI_BASE_URL` | Modelo (obligatorio, no se escribe en el código) y URL base del proveedor. | `https://generativelanguage.googleapis.com/v1beta` | No |
+| `AI_CIRCUIT_FAILURES`, `AI_CIRCUIT_WINDOW_SECONDS`, `AI_CIRCUIT_OPEN_SECONDS` | Circuito de corte del proveedor de IA (IA-05, RNF-11): fallos seguidos, ventana y tiempo abierto, en segundos. | `3`, `60`, `60` | No |
+| `AI_CIRCUIT_CACHE_STORE` | Caché que guarda el estado del circuito; no es la de la base de datos a propósito. | `file` | No |
 
-El detalle de las variables de las pasarelas, con sus valores por defecto y los avisos (*webhooks*), está en la sección «Cobro con dos pasarelas» del [README de la raíz](../README.md#cobro-con-dos-pasarelas). El comentario de cada variable en `.env.example` explica su valor por defecto.
+Las marcadas como secretas solo viven en el `.env` real o en las variables del servidor: la CI escanea el historial con gitleaks y el registro nunca las escribe. El detalle de las variables de las pasarelas, con sus valores por defecto y los avisos (*webhooks*), está en la sección «Cobro con dos pasarelas» del [README de la raíz](../README.md#cobro-con-dos-pasarelas). El comentario de cada variable en `.env.example` explica su valor por defecto.

@@ -144,19 +144,21 @@ El sistema cobra una reserva, por el monto total o como depósito, con **ONVO Pa
 
 Se copia `.env.example` a `.env` y se completan los valores. El `.env` real no se versiona. Una llave `onvo_live_…` o la URL de producción de PayPal se rechazan al construir el adaptador.
 
-| Variable | Para qué sirve |
-| --- | --- |
-| `PAYMENTS_DEFAULT_GATEWAY` | Pasarela por defecto (`onvo` o `paypal`) para barberías que no eligieron una. |
-| `ONVO_SECRET_KEY` | Llave secreta de pruebas de ONVO. |
-| `ONVO_BASE_URL` | URL base de la API. Por defecto `https://api.onvopay.com/v1`. |
-| `ONVO_RETURN_URL` | Dirección de retorno tras una autenticación 3DS. |
-| `ONVO_SINPE_DESTINATION` | Número SINPE Móvil de ONVO al que se transfiere. Por defecto `+506 70196686`. |
-| `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` | Credenciales de la aplicación *sandbox*. |
-| `PAYPAL_BASE_URL` | URL base de la API. Por defecto `https://api-m.sandbox.paypal.com`. |
-| `PAYPAL_RETURN_URL` y `PAYPAL_CANCEL_URL` | Adónde vuelve la persona tras aprobar o cancelar. Con el cliente web apuntan a su ruta `/pago/retorno` (por ejemplo, `http://localhost:5173/pago/retorno` y `http://localhost:5173/pago/retorno?cancelado=1`). Sin cliente, por ejemplo con Postman, sirve `http://127.0.0.1:8000/api/v1/pagos/retorno`, que solo responde un mensaje. |
-| `PAYPAL_CRC_PER_USD` | Tipo de cambio (colones por dólar) con el que PayPal cobra en USD. Por defecto 500. |
-| `ONVO_WEBHOOK_SECRET` | Secreto de firma (`whsec_…`) del *webhook* registrado en ONVO. Sin él, el aviso de ONVO se rechaza con 503. |
-| `PAYPAL_WEBHOOK_ID` | Identificador del *webhook* registrado en PayPal. Sin él, el aviso de PayPal se rechaza con 503. |
+| Variable | Para qué sirve | ¿Secreta? |
+| --- | --- | --- |
+| `PAYMENTS_DEFAULT_GATEWAY` | Pasarela por defecto (`onvo` o `paypal`) para barberías que no eligieron una. | No |
+| `ONVO_SECRET_KEY` | Llave secreta de pruebas de ONVO. | **Sí** |
+| `ONVO_BASE_URL` | URL base de la API. Por defecto `https://api.onvopay.com/v1`. | No |
+| `ONVO_RETURN_URL` | Dirección de retorno tras una autenticación 3DS. | No |
+| `ONVO_SINPE_DESTINATION` | Número SINPE Móvil de ONVO al que se transfiere. Por defecto `+506 70196686`. | No |
+| `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` | Credenciales de la aplicación *sandbox*. | **Sí** |
+| `PAYPAL_BASE_URL` | URL base de la API. Por defecto `https://api-m.sandbox.paypal.com`. | No |
+| `PAYPAL_RETURN_URL` y `PAYPAL_CANCEL_URL` | Adónde vuelve la persona tras aprobar o cancelar. Con el cliente web apuntan a su ruta `/pago/retorno` (por ejemplo, `http://localhost:5173/pago/retorno` y `http://localhost:5173/pago/retorno?cancelado=1`). Sin cliente, por ejemplo con Postman, sirve `http://127.0.0.1:8000/api/v1/pagos/retorno`, que solo responde un mensaje. | No |
+| `PAYPAL_CRC_PER_USD` | Tipo de cambio (colones por dólar) con el que PayPal cobra en USD. Por defecto 500. | No |
+| `ONVO_WEBHOOK_SECRET` | Secreto de firma (`whsec_…`) del *webhook* registrado en ONVO. Sin él, el aviso de ONVO se rechaza con 503. | **Sí** |
+| `PAYPAL_WEBHOOK_ID` | Identificador del *webhook* registrado en PayPal. Sin él, el aviso de PayPal se rechaza con 503. | No |
+
+La tabla completa de variables de la API (con ejemplos) está en el [README de la API](barberhub-api/README.md#variables-de-entorno).
 
 La llave pública de ONVO (`onvo_test_publishable_key_…`) no es una variable de la API: el servidor nunca la lee. La usa quien crea el método de pago de la tarjeta (el navegador, o Postman). En el cliente web se define en `barberhub-web/.env` con `VITE_ONVO_PUBLISHABLE_KEY` (y `VITE_ONVO_API_URL`, por defecto `https://api.onvopay.com/v1`); el cliente solo acepta llaves que empiezan por `onvo_test_` y, con otra, no llama a ONVO y muestra un error de configuración.
 
