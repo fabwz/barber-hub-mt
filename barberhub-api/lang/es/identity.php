@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
 
+    'account_not_found' => 'No se encontró la cuenta.',
     'current_password_incorrect' => 'La contraseña actual no es correcta.',
     'email_already_registered' => 'Ya existe una cuenta con ese correo.',
     'email_invalid' => 'El correo debe ser una dirección válida de :max caracteres como máximo.',
