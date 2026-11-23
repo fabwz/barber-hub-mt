@@ -500,6 +500,31 @@ Campo de texto de 96 px, Source Code Pro, centrado, con `HH:MM` de ejemplo, 24 h
 - **Franja solapada:** el mensaje nombra la franja con la que se cruza («Esta franja se solapa con la de 09:00 a 12:30. Corrija las horas.») en lugar de numerarlas.
 - **Láminas 32h a 32j** (reservas confirmadas que quedan fuera del horario o dentro de un cierre, HO-04): no se muestran. Dependen de una API que no existe y se difieren al #101; en `TeamScheduleView` queda un comentario donde irá el aviso.
 
+## Colaboradores (#76, entrega 3)
+
+Rutas hijas de Equipo: `/barberias/:barberia/equipo/colaboradores` (`staff-team-members`, la lista), `/colaboradores/nuevo`, `/colaboradores/mi-perfil` y `/colaboradores/:colaborador`. Solo el dueño. El apartado «Colaboradores» de los enlaces de sección aparece porque `staff-team-members` existe y queda como actual también dentro de sus rutas hijas (`exact: false`). Diseño de origen: lámina 33 de la v7.
+
+- **Lista:** iniciales en un círculo de 48 px, nombre en 500 (y « · Dueño» cuando la API dice `es_dueno`), correo, «6 de 7 servicios», etiqueta «Activo» o «Inactivo», «Editar» y «Desactivar» o «Activar». No lleva teléfono (la API no lo tiene). Estados: cargando (esqueleto), vacío y error con «Reintentar». Sin perfil del dueño, un aviso en línea («Usted todavía no tiene perfil de colaborador.») con el enlace «Crear mi perfil de colaborador» (CO-02).
+- **Desactivar** pide confirmación con textos que no dependen del género («No, conservar» principal y «Sí, desactivar» secundario); el del perfil del dueño dice que seguirá siendo dueño (UP-05). **Activar** no pide nada. Si la API responde 409 `colaborador-con-reservas` (CO-03) no se cambia nada y se abre un diálogo informativo con la lista de las reservas (fecha, hora, cliente y servicio, con «Abrir» hacia la agenda de ese día) y «y N más.» cuando son más de las que la API lista; un único botón, «Entendido».
+- **Formulario** (nuevo, perfil del dueño y editar, con la misma pantalla): «Datos de la cuenta» (solo en uno nuevo: nombre completo y correo), «Servicios que ofrece» (casillas con duración y precio), y «Horario y pausas» con los siete días. Cada día lleva un interruptor «Trabaja el lunes» (con «Barbería: 09:00–19:00» o «Barbería: Cerrada» debajo), sus turnos y sus pausas. Marcar un día agrega una fila de turno vacía: no se inventa ninguna hora. Se revisa antes de enviar (nombre, correo, al menos un servicio, horas HH:MM y fin posterior al inicio), y los errores 422 van a su lugar: `nombre` y `correo` a su campo, `servicios.N` a la lista de servicios y `turnos.N` y `pausas.N` a la fila que se envió en esa posición.
+- **Tres llamadas, no atómicas:** guardar un colaborador nuevo es crear la cuenta, reemplazar sus servicios y reemplazar su horario. Se conserva el id de lo que ya se creó y un nuevo intento repite solo lo que falta: **nunca crea la cuenta dos veces** (daría 422 por correo repetido) y un paso que ya se envió con los mismos datos no se vuelve a enviar. Si falla un paso después de crear la cuenta, un aviso lo dice y deja a mano la contraseña temporal, porque la API no la devuelve.
+- **Contraseña temporal** (`TemporaryPasswordResult`): la genera el cliente con `crypto.getRandomValues` (12 caracteres, con mayúscula, minúscula, número y signo, sin caracteres que se confundan: I, l, 1, O, 0) y cumple SE-07. Se envía solo al crear la cuenta, nunca se guarda (ni en `localStorage`, ni en `sessionStorage`) ni se registra. Se muestra **una sola vez**, en Source Code Pro, con «Copiar contraseña» (que pasa a «Copiada» con un aviso `role="status"`; si el portapapeles no está disponible pide copiarla a mano), el aviso «Solo la verá ahora» y el resumen de la cuenta. «Listo» y cualquier otra forma de salir (un enlace, atrás) piden confirmación: «¿Ya copió la contraseña?», «Al salir de esta pantalla no se vuelve a mostrar.» («No, volver» y «Sí, salir»).
+- **Editar** cambia solo los servicios y el horario; el nombre y el correo se muestran sin campo porque la API no los cambia.
+
+### Componentes nuevos de la entrega 3
+- `WorkDayEditor`: un día del horario del colaborador, con su interruptor, sus turnos y sus pausas (`TimeField`), y el error de cada fila con `role="alert"` enlazado por `aria-describedby`.
+- `TemporaryPasswordResult`: la pantalla de «Colaborador creado» con la contraseña de una sola vista.
+- `ConfirmDialog` suma un espacio (slot) para mostrar contenido propio y un `confirmLabel` opcional: sin él es un diálogo informativo con un solo botón.
+
+### Divergencias de la lámina 33
+- **Sin teléfono** (33g, 33o): la API no lo guarda.
+- **Sin invitaciones** (33t a 33z, #100): ni la pestaña, ni «Invitar por correo», ni «API pendiente». El error de correo repetido (33l) no manda a «enviar una invitación»: dice solo que el correo ya está registrado.
+- **«Editar»** cambia servicios y horario; no nombre ni correo.
+- **Textos sin género** en el diálogo de desactivar («No, conservar») y en los avisos.
+- **El dueño se identifica con `es_dueno`**, no por el correo de la sesión.
+- **Contraseña visible antes del final** solo si la creación quedó a medias (la cuenta ya existe y un paso posterior falló): se muestra en el aviso para que no se pierda.
+- **Servicios «N de M»:** M es el total de servicios de la barbería, activos e inactivos.
+
 ## Bonos (pantallas del cliente)
 
 Rutas `/b/:enlace/bonos` (Mis bonos y bonos a la venta) y `/b/:enlace/bonos/:bono/compra` (compra). Diseño de origen: las láminas 14 a 16 de la v7 (Mis bonos, compra de un bono y reservar con bono). Todo sale de la API tal cual: saldo, estado, vencimiento, precio, vigencia y servicios cubiertos nunca se calculan en el cliente.
