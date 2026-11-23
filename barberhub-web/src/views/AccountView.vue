@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import ClientNavbar from '@/components/ClientNavbar.vue'
+import { onMounted } from 'vue'
+
 import AccountNav, { type AccountSection } from '@/components/AccountNav.vue'
+import ClientNavbar from '@/components/ClientNavbar.vue'
+import StaffNavbar from '@/components/StaffNavbar.vue'
+import { useActiveShopStore } from '@/stores/activeShop'
+
+// The bar depends on one rule: with an active shop (owner or collaborator, confirmed by
+// `GET /mis-barberias`) «Mi cuenta» wears the staff bar; without one, the customer bar. A reload
+// only knows the stored id, so the list is read only when there is one (a customer asks nothing).
+const shops = useActiveShopStore()
+onMounted(() => {
+  if (shops.status === 'idle' && shops.activeId !== null) void shops.loadStaffShops()
+})
 
 // «Mi cuenta» (RF-45, RF-40): common to customer, collaborator and owner. One route per section.
 // Avisos (#106) and Idioma (#108) join this list when their screens exist: no link to a screen
@@ -14,8 +26,8 @@ const SECTIONS: AccountSection[] = [
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <!-- TEMPORARY: the staff bar is not defined yet, so the owner and the collaborator see this one too. -->
-    <ClientNavbar />
+    <StaffNavbar v-if="shops.active" />
+    <ClientNavbar v-else />
     <main class="px-5 pt-6 pb-12 md:px-8 md:pt-8">
       <div
         class="mx-auto w-full max-w-7xl md:rounded-card md:border md:border-line md:p-8"

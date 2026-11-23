@@ -108,5 +108,5 @@ export const useActiveShopStore = defineStore('activeShop', () => {
     writeStoredId(null)
   }
 
-  return { shops, status, active, loadStaffShops, select, clear }
+  return { shops, status, active, activeId, loadStaffShops, select, clear }
 })

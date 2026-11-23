@@ -6,6 +6,8 @@ import { usePreferencesStore } from '@/stores/preferences'
 import { accountHandler, signIn } from '../helpers/account'
 import { fakeDevice } from '../helpers/device'
 import { mountView } from '../helpers/mountView'
+import { ACTIVE_SHOP_STORAGE_KEY } from '@/stores/activeShop'
+import { OWNER_SHOP, SHOP_A, STAFF_SHOP, staffHandler } from '../helpers/staff'
 
 beforeEach(() => {
   sessionStorage.clear()
@@ -126,5 +128,38 @@ describe('«Mi cuenta · Apariencia»', () => {
     expect(router.currentRoute.value.name).toBe('preferences')
     expect(wrapper.get('h1').text()).toBe('Preferencias')
     expect(wrapper.find('[role="radiogroup"][aria-label="Tema"]').exists()).toBe(true)
+  })
+})
+
+describe('«Mi cuenta»: which bar frames it', () => {
+  it('with an active shop (confirmed by the list) it wears the staff bar, with «Mi cuenta» in its menu', async () => {
+    sessionStorage.setItem(ACTIVE_SHOP_STORAGE_KEY, JSON.stringify({ id: SHOP_A }))
+    const { calls } = accountHandler({ other: staffHandler([OWNER_SHOP, STAFF_SHOP]) })
+    const { wrapper } = await mountView(App, '/cuenta/datos')
+    await flushPromises()
+
+    expect(calls.some((call) => call.route === 'GET /api/v1/mis-barberias')).toBe(true)
+    expect(wrapper.get('[data-testid="active-shop"]').text()).toBe('Pura Navaja')
+    expect(wrapper.text()).not.toContain('Barberías')
+  })
+
+  it('without a stored shop it keeps the customer bar and asks no shops', async () => {
+    const { calls } = accountHandler({ other: staffHandler([OWNER_SHOP]) })
+    const { wrapper } = await mountView(App, '/cuenta/datos')
+    await flushPromises()
+
+    expect(calls.some((call) => call.route === 'GET /api/v1/mis-barberias')).toBe(false)
+    expect(wrapper.find('[data-testid="active-shop"]').exists()).toBe(false)
+    expect(wrapper.get('nav[aria-label="Principal"]').text()).toContain('Barberías')
+  })
+
+  it('a stored shop that is no longer in the list falls back to the customer bar', async () => {
+    sessionStorage.setItem(ACTIVE_SHOP_STORAGE_KEY, JSON.stringify({ id: SHOP_A }))
+    accountHandler({ other: staffHandler([STAFF_SHOP]) })
+    const { wrapper } = await mountView(App, '/cuenta/datos')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="active-shop"]').exists()).toBe(false)
+    expect(wrapper.get('nav[aria-label="Principal"]').text()).toContain('Barberías')
   })
 })
