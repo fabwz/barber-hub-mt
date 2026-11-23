@@ -3,14 +3,7 @@ import { ref } from 'vue'
 
 import { api, type components } from '@/api'
 
-/**
- * The contract types `Servicio.imagen` as `null` and leaves it out of the answers of creating and editing, but the
- * API sends `string | null` everywhere (its description says so). This is the shape it really has; when the
- * contract is corrected, `components['schemas']['Servicio']` replaces it.
- */
-export type AdminService = Omit<components['schemas']['Servicio'], 'imagen'> & {
-  imagen: string | null
-}
+export type Service = components['schemas']['Servicio']
 export type ServiceInput = components['schemas']['CrearServicio']
 export type ServicePatch = components['schemas']['ActualizarServicio']
 
@@ -21,7 +14,7 @@ export type ServicesStatus = 'idle' | 'loading' | 'ready' | 'error'
  * in the route of every call, never in the body (RD-18). Every action throws the ApiError of the client.
  */
 export const useServiceAdminStore = defineStore('serviceAdmin', () => {
-  const items = ref<AdminService[]>([])
+  const items = ref<Service[]>([])
   const status = ref<ServicesStatus>('idle')
   /** The shop `items` belong to, so a list of one shop is never shown for another. */
   const shopId = ref<string | null>(null)
@@ -39,7 +32,7 @@ export const useServiceAdminStore = defineStore('serviceAdmin', () => {
         params: { path: { barberia } },
       })
       if (current !== generation) return
-      items.value = data!.data as AdminService[]
+      items.value = data!.data
       status.value = 'ready'
     } catch {
       if (current !== generation) return
@@ -47,43 +40,35 @@ export const useServiceAdminStore = defineStore('serviceAdmin', () => {
     }
   }
 
-  function replace(service: AdminService): void {
+  function replace(service: Service): void {
     const index = items.value.findIndex((item) => item.id === service.id)
     if (index === -1) items.value = [...items.value, service]
     else items.value = items.value.map((item) => (item.id === service.id ? service : item))
     items.value = [...items.value].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
   }
 
-  async function create(barberia: string, input: ServiceInput): Promise<AdminService> {
+  async function create(barberia: string, input: ServiceInput): Promise<Service> {
     const { data } = await api.POST('/barberias/{barberia}/administracion/servicios', {
       params: { path: { barberia } },
       body: input,
     })
-    const service = data!.data as AdminService
+    const service = data!.data
     replace(service)
     return service
   }
 
-  async function update(
-    barberia: string,
-    servicio: string,
-    patch: ServicePatch,
-  ): Promise<AdminService> {
+  async function update(barberia: string, servicio: string, patch: ServicePatch): Promise<Service> {
     const { data } = await api.PATCH('/barberias/{barberia}/administracion/servicios/{servicio}', {
       params: { path: { barberia, servicio } },
       body: patch,
     })
-    const service = data!.data as AdminService
+    const service = data!.data
     replace(service)
     return service
   }
 
   /** Uploads or replaces the image (SV-06, RF-46) as `multipart/form-data`; the API reads the real type. */
-  async function uploadImage(
-    barberia: string,
-    servicio: string,
-    file: File,
-  ): Promise<AdminService> {
+  async function uploadImage(barberia: string, servicio: string, file: File): Promise<Service> {
     const { data } = await api.POST(
       '/barberias/{barberia}/administracion/servicios/{servicio}/imagen',
       {
@@ -97,7 +82,7 @@ export const useServiceAdminStore = defineStore('serviceAdmin', () => {
         },
       },
     )
-    const service = data!.data as AdminService
+    const service = data!.data
     replace(service)
     return service
   }

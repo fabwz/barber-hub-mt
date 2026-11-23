@@ -244,7 +244,7 @@ export interface paths {
         head?: never;
         /**
          * Activar o desactivar un colaborador
-         * @description Un colaborador inactivo no recibe reservas y, si es colaborador común, su cuenta deja de entrar a la barbería; el dueño con perfil de colaborador conserva siempre su rol. Aún no se comprueban las reservas futuras confirmadas (CO-03), que llegan con las reservas. Solo el dueño.
+         * @description Un colaborador inactivo no recibe reservas y, si es colaborador común, su cuenta deja de entrar a la barbería; el dueño con perfil de colaborador conserva siempre su rol (UP-05). Un colaborador con reservas confirmadas que empiezan desde ahora no se desactiva hasta que el dueño las reprograme o las cancele (CO-03): responde 409 `colaborador-con-reservas` y, además de `type`, `title`, `status` y `detail`, trae `reservas` (hasta 20, las más próximas primero, cada una con `id`, `inicio` en ISO 8601, `servicio` y `cliente`) y `total_reservas` con cuántas hay en total. Reactivar siempre se permite. Responde 404 `no-encontrado` si el colaborador no existe en la barbería. Solo el dueño.
          */
         patch: operations["catalog.collaborators.update"];
         trace?: never;
@@ -1453,6 +1453,8 @@ export interface components {
             id: string;
             nombre: string;
             correo: string;
+            /** @description `true` si la cuenta es la del dueño de la barbería, que tiene perfil de colaborador sin dejar de ser dueño (CO-02). */
+            es_dueno: boolean;
             activo: boolean;
             servicios: unknown[];
             turnos: unknown[];
@@ -2101,7 +2103,7 @@ export interface components {
             iva: number;
             activo: boolean;
             /** @description Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
-            imagen: null;
+            imagen: string | null;
         };
         /** ServicioCubierto */
         ServicioCubierto: {

@@ -14,7 +14,7 @@ import SwitchField from '@/components/SwitchField.vue'
 import TextField from '@/components/TextField.vue'
 import { restrict } from '@/composables/fieldInput'
 import { useFormErrors } from '@/composables/useFormErrors'
-import { useServiceAdminStore, type AdminService } from '@/stores/services'
+import { useServiceAdminStore, type Service } from '@/stores/services'
 
 // «Nuevo servicio» and «Editar servicio» (RF-03, RF-46; lámina 31). One form for both. The image is a second
 // call: the API needs the id of the service, so a new one is created first and its image goes right after (#46).
@@ -50,7 +50,7 @@ const image = ref<File | null>(null)
 const currentImage = ref<string | null>(null)
 
 /** What the API holds now, to send only what changed. */
-const saved = ref<AdminService | null>(null)
+const saved = ref<Service | null>(null)
 
 const loading = ref(false)
 const notFound = ref(false)
@@ -71,7 +71,7 @@ const fields = {
   image: useTemplateRef<InstanceType<typeof ImageField>>('imageField'),
 }
 
-function fill(service: AdminService): void {
+function fill(service: Service): void {
   saved.value = service
   name.value = service.nombre
   duration.value = String(service.duracion_minutos)

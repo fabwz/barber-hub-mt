@@ -13,7 +13,7 @@ import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import StaffNavbar from '@/components/StaffNavbar.vue'
 import StatusLabel from '@/components/StatusLabel.vue'
 import { colones, durationLabel } from '@/composables/format'
-import { useServiceAdminStore, type AdminService } from '@/stores/services'
+import { useServiceAdminStore, type Service } from '@/stores/services'
 
 // «Servicios» of the owner (RF-03, lámina 31): the list with image, duration, price with VAT and status, and
 // activate or deactivate (SV-04). Inactivating asks first; activating does not. A service is never deleted.
@@ -25,20 +25,20 @@ const newLink = computed(() => ({ name: 'staff-service-new', params: { barberia:
 
 onMounted(() => store.load(shopId.value))
 
-const confirming = ref<AdminService | null>(null)
+const confirming = ref<Service | null>(null)
 const confirmOpen = ref(false)
 /** The service whose status is changing right now. */
 const changing = ref<string | null>(null)
 const done = ref('')
 /** The change that failed, to try it again as it was. */
-const failed = ref<{ service: AdminService; active: boolean } | null>(null)
+const failed = ref<{ service: Service; active: boolean } | null>(null)
 
-function askToDeactivate(service: AdminService): void {
+function askToDeactivate(service: Service): void {
   confirming.value = service
   confirmOpen.value = true
 }
 
-async function setActive(service: AdminService, active: boolean): Promise<void> {
+async function setActive(service: Service, active: boolean): Promise<void> {
   changing.value = service.id
   done.value = ''
   failed.value = null
