@@ -154,6 +154,27 @@ export const routes: RouteRecordRaw[] = [
         name: 'staff-team',
         component: () => import('@/views/TeamScheduleView.vue'),
       },
+      {
+        path: 'colaboradores',
+        name: 'staff-team-members',
+        component: () => import('@/views/TeamMembersView.vue'),
+      },
+      // Static paths before `:colaborador`, so «nuevo» and «mi-perfil» are never read as an id.
+      {
+        path: 'colaboradores/nuevo',
+        name: 'staff-team-member-new',
+        component: () => import('@/views/TeamMemberFormView.vue'),
+      },
+      {
+        path: 'colaboradores/mi-perfil',
+        name: 'staff-team-own-profile',
+        component: () => import('@/views/TeamMemberFormView.vue'),
+      },
+      {
+        path: 'colaboradores/:colaborador',
+        name: 'staff-team-member-edit',
+        component: () => import('@/views/TeamMemberFormView.vue'),
+      },
     ],
   },
   {

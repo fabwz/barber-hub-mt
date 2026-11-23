@@ -37,6 +37,35 @@ describe('SectionNav', () => {
     expect(wrapper.find('[role="tab"], [role="tablist"], [role="tabpanel"]').exists()).toBe(false)
   })
 
+  it('a section that is not exact is also current inside the routes under it', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        {
+          path: '/a',
+          name: 'a',
+          component: page,
+          children: [{ path: 'detalle', name: 'a-detail', component: page }],
+        },
+      ],
+    })
+    await router.push('/a/detalle')
+    await router.isReady()
+    const wrapper = mount(SectionNav, {
+      props: {
+        label: 'Secciones',
+        sections: [
+          { label: 'Exacta', to: { name: 'a' } },
+          { label: 'Con hijas', to: { name: 'a' }, exact: false },
+        ],
+      },
+      global: { plugins: [router] },
+    })
+    const [exact, loose] = wrapper.findAll('a')
+    expect(exact!.attributes('aria-current')).toBeUndefined()
+    expect(loose!.attributes('aria-current')).toBe('page')
+  })
+
   it('marks only the current section with aria-current', async () => {
     const wrapper = await mountNav('/b')
     const [first, second] = wrapper.findAll('a')
