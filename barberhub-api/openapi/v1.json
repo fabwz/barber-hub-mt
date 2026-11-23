@@ -1304,6 +1304,83 @@
                 "security": []
             }
         },
+        "/cuenta": {
+            "get": {
+                "operationId": "identity.profile.show",
+                "description": "Devuelve el nombre, el tel\u00e9fono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todav\u00eda debe cambiar la contrase\u00f1a temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contrase\u00f1a temporal permite. Solo muestra la cuenta de la sesi\u00f3n, sea cliente, colaborador o due\u00f1o.",
+                "summary": "Ver mi cuenta",
+                "tags": [
+                    "Cuentas"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`MiCuenta`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/MiCuenta"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "identity.profile.update",
+                "description": "Corrige el nombre, el tel\u00e9fono y el correo de la propia cuenta (RF-45, CL-03); los tres son obligatorios y no se acepta barber\u00eda ni rol en el cuerpo. Responde 422 `datos-invalidos` si un dato no es v\u00e1lido o si otra cuenta ya usa el correo (`errores.correo`); enviar el correo propio sin cambio no es un conflicto. No toca la contrase\u00f1a ni el indicador de contrase\u00f1a temporal, as\u00ed que una cuenta con contrase\u00f1a temporal recibe 403 `contrasena-temporal` hasta que la cambia. El correo nuevo es el que sirve para ingresar: el anterior deja de abrir la cuenta.",
+                "summary": "Corregir mi cuenta",
+                "tags": [
+                    "Cuentas"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CorreccionDeCuenta"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`MiCuenta`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/MiCuenta"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
         "/cuenta/contrasena": {
             "put": {
                 "operationId": "identity.password.update",
@@ -4614,6 +4691,30 @@
                 ],
                 "title": "ComprarBono"
             },
+            "CorreccionDeCuenta": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "correo": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    },
+                    "telefono": {
+                        "type": "string",
+                        "maxLength": 30
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "correo",
+                    "telefono"
+                ],
+                "title": "CorreccionDeCuenta"
+            },
             "CrearBono": {
                 "type": "object",
                 "properties": {
@@ -5101,6 +5202,33 @@
                     "rol"
                 ],
                 "title": "MiBarberia"
+            },
+            "MiCuenta": {
+                "type": "object",
+                "properties": {
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "telefono": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "correo": {
+                        "type": "string"
+                    },
+                    "contrasena_temporal": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "nombre",
+                    "telefono",
+                    "correo",
+                    "contrasena_temporal"
+                ],
+                "title": "MiCuenta"
             },
             "MovimientoDeBono": {
                 "type": "object",
