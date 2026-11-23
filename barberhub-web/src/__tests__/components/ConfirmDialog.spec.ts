@@ -131,4 +131,35 @@ describe('ConfirmDialog', () => {
     expect(open.value).toBe(true)
     expect(cancelled.value).toBe(0)
   })
+
+  it('without a confirm label it only informs: one button that closes it', async () => {
+    const open = ref(true)
+    const host = defineComponent({
+      setup: () => () =>
+        h(
+          ConfirmDialog,
+          {
+            modelValue: open.value,
+            'onUpdate:modelValue': (value: boolean) => (open.value = value),
+            title: 'No se puede desactivar a Kevin Araya',
+            description: 'Tiene 2 reservas futuras confirmadas.',
+            cancelLabel: 'Entendido',
+          },
+          {
+            default: () =>
+              h('ul', { 'aria-label': 'Reservas por resolver' }, [h('li', 'vie 6 nov')]),
+          },
+        ),
+    })
+    mount(host, { attachTo: document.body })
+    await nextTick()
+    await nextTick()
+
+    expect(buttons().map((b) => b.textContent?.trim())).toEqual(['Entendido'])
+    // What the caller puts inside is part of the dialog, so the focus stays within it.
+    expect(document.body.querySelector('[role="alertdialog"] ul li')?.textContent).toBe('vie 6 nov')
+    buttons()[0]!.click()
+    await nextTick()
+    expect(open.value).toBe(false)
+  })
 })

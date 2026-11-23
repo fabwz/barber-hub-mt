@@ -10,8 +10,8 @@ interface Props {
   description: string
   /** The safe answer, e.g. «No, mantenerlo activo». It is the main button and takes the focus. */
   cancelLabel: string
-  /** The action, e.g. «Sí, inactivar». */
-  confirmLabel: string
+  /** The action, e.g. «Sí, inactivar». Without it the dialog only informs and has the one button that closes it. */
+  confirmLabel?: string
   /** Holds both buttons and Escape while the action runs. */
   loading?: boolean
 }
@@ -112,10 +112,16 @@ function onKeydown(event: KeyboardEvent): void {
       >
         <h2 :id="titleId" class="text-lg font-medium text-fg">{{ title }}</h2>
         <p :id="descriptionId" class="mt-2 text-sm text-fg-muted">{{ description }}</p>
+        <!-- Whatever the question needs to show, e.g. the list of what blocks the action. -->
+        <slot />
         <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <BaseButton variant="secondary" :loading="loading" @click="emit('confirm')">{{
-            confirmLabel
-          }}</BaseButton>
+          <BaseButton
+            v-if="confirmLabel"
+            variant="secondary"
+            :loading="loading"
+            @click="emit('confirm')"
+            >{{ confirmLabel }}</BaseButton
+          >
           <BaseButton ref="cancelButton" :disabled="loading" @click="cancel">{{
             cancelLabel
           }}</BaseButton>
