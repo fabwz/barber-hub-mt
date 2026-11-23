@@ -37,6 +37,8 @@ final class PublicRoutesTest extends TestCase
             'GET api/v1/enlaces/{enlace}' => ['GET', 'api/v1/enlaces/pura-navaja', [], [200]],
             'GET api/v1/directorio' => ['GET', 'api/v1/directorio', [], [200]],
             'GET api/v1/barberias/{barberia}/servicios' => ['GET', 'api/v1/barberias/{barberia}/servicios', [], [200]],
+            // Nobody uploaded a file, so the folder of the barbershop of the URL has nothing to serve.
+            'GET api/v1/archivos/barbershops/{barberia}/{carpeta}/{archivo}' => ['GET', 'api/v1/archivos/barbershops/{barberia}/logo/ausente.png', [], [404]],
             'GET api/v1/barberias/{barberia}/disponibilidad' => ['GET', 'api/v1/barberias/{barberia}/disponibilidad', [], [200, 422]],
             // Without its signing secret (as in the CI) a notice answers 503 and is never accepted; with it, 401.
             'POST api/v1/pagos/avisos/onvo' => ['POST', 'api/v1/pagos/avisos/onvo', [], [400, 401, 403, 422, 503]],

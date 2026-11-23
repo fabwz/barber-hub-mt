@@ -7,6 +7,7 @@ use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopController
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopDetailsController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopDirectoryController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopFeaturesController;
+use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\BarbershopImageController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\MyBarbershopController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PaymentPolicyController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PublicBarbershopController;
@@ -51,6 +52,17 @@ Route::prefix('barberias/{barberia}/administracion/negocio')
     ->group(function (): void {
         Route::get('/', 'show')->name('show');
         Route::patch('/', 'update')->name('update');
+    });
+
+// The logo and the banner (RF-46): only the owner. A multipart upload goes by POST and replaces the image that was there.
+Route::prefix('barberias/{barberia}/administracion/imagenes')
+    ->middleware(['auth:sanctum', 'barbershop', 'role:owner'])
+    ->name('catalog.barbershops.images.')
+    ->controller(BarbershopImageController::class)
+    ->whereUuid('barberia')
+    ->group(function (): void {
+        Route::post('logo', 'logo')->name('logo');
+        Route::post('banner', 'banner')->name('banner');
     });
 
 // Public: the link is how a customer reaches a barbershop before having any session (RD-18).

@@ -8,6 +8,7 @@ use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Src\Catalog\Services\Domain\Entities\Service;
+use Src\Shared\Infrastructure\Storage\MediaUrls;
 
 /**
  * @property-read Service $resource
@@ -24,7 +25,7 @@ final class ServiceResource extends JsonResource
     /**
      * Expose the service with its price split into base and tax (RL-02).
      *
-     * @return array{id: string, nombre: string, duracion_minutos: int, precio: int, base: int, iva: int, activo: bool}
+     * @return array{id: string, nombre: string, duracion_minutos: int, precio: int, base: int, iva: int, activo: bool, imagen: string|null}
      */
     public function toArray(Request $request): array
     {
@@ -37,6 +38,8 @@ final class ServiceResource extends JsonResource
             'base' => $this->service->price->base()->colones,
             'iva' => $this->service->price->tax()->colones,
             'activo' => $this->service->active,
+            /** Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
+            'imagen' => MediaUrls::of($this->service->imagePath),
         ];
     }
 }

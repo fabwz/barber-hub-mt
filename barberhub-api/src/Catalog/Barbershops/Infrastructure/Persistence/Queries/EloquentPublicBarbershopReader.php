@@ -9,6 +9,7 @@ use Src\Catalog\Barbershops\Application\DTOs\PublicBarbershop;
 use Src\Catalog\Barbershops\Domain\ValueObjects\PublicLink;
 use Src\Catalog\Barbershops\Domain\ValueObjects\SocialNetwork;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Models\BarbershopModel;
+use Src\Shared\Infrastructure\Storage\MediaUrls;
 
 final readonly class EloquentPublicBarbershopReader implements PublicBarbershopReader
 {
@@ -39,6 +40,8 @@ final readonly class EloquentPublicBarbershopReader implements PublicBarbershopR
             $barbershop->contact_email,
             $socialLinks,
             $barbershop->waitlist_enabled,
+            MediaUrls::of($barbershop->logo_path),
+            MediaUrls::of($barbershop->banner_path),
         );
     }
 }

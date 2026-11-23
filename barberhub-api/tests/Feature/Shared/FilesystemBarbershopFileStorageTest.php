@@ -90,6 +90,29 @@ final class FilesystemBarbershopFileStorageTest extends TestCase
         $this->assertSame('/storage/'.$path, $this->storage(self::BARBERSHOP_ID)->url($path));
     }
 
+    /** A barbershop opens its own file, and a missing file of its folder gives nothing instead of failing. */
+    public function test_opens_its_own_file_and_gives_nothing_for_a_missing_one(): void
+    {
+        $storage = $this->storage(self::BARBERSHOP_ID);
+        $path = $storage->store('logo', $this->source, 'png');
+
+        $stream = $storage->open($path);
+        $this->assertIsResource($stream);
+        $this->assertSame('contenido', stream_get_contents($stream));
+        fclose($stream);
+
+        $this->assertNull($storage->open('barbershops/'.self::BARBERSHOP_ID.'/logo/no-existe.png'));
+    }
+
+    /** A barbershop cannot open the file of another, nor one that leaves its folder. */
+    public function test_cannot_open_the_file_of_another_barbershop(): void
+    {
+        $path = $this->storage(self::OTHER_ID)->store('logo', $this->source, 'png');
+
+        $this->assertRejected(fn () => $this->storage(self::BARBERSHOP_ID)->open($path));
+        $this->assertRejected(fn () => $this->storage(self::BARBERSHOP_ID)->open('barbershops/'.self::BARBERSHOP_ID.'/../'.self::OTHER_ID.'/logo/a.png'));
+    }
+
     /** A barbershop cannot delete the file of another: it fails as a missing file and the file stays. */
     public function test_cannot_delete_the_file_of_another_barbershop(): void
     {

@@ -22,4 +22,6 @@ Route::prefix('barberias/{barberia}/administracion/servicios')
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
         Route::patch('{servicio}', 'update')->name('update');
+        // A multipart upload goes by POST and replaces the image that was there (RF-46).
+        Route::post('{servicio}/imagen', 'image')->name('image');
     });

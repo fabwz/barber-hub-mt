@@ -16,9 +16,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $duration_minutes
  * @property int $price
  * @property bool $is_active
+ * @property string|null $image_path
  */
 #[Table('services')]
-#[Fillable(['id', 'barbershop_id', 'name', 'duration_minutes', 'price', 'is_active'])]
+#[Fillable(['id', 'barbershop_id', 'name', 'duration_minutes', 'price', 'is_active', 'image_path'])]
 final class ServiceModel extends Model
 {
     use HasUuids;

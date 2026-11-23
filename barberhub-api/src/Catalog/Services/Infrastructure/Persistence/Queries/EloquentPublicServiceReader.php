@@ -9,6 +9,7 @@ use Src\Catalog\Services\Application\DTOs\PublicService;
 use Src\Catalog\Services\Domain\ValueObjects\ServicePrice;
 use Src\Catalog\Services\Infrastructure\Persistence\Models\ServiceModel;
 use Src\Shared\Domain\Contracts\BarbershopContext;
+use Src\Shared\Infrastructure\Storage\MediaUrls;
 
 final readonly class EloquentPublicServiceReader implements PublicServiceReader
 {
@@ -56,6 +57,7 @@ final readonly class EloquentPublicServiceReader implements PublicServiceReader
             $price->colones(),
             $price->base()->colones,
             $price->tax()->colones,
+            MediaUrls::of($service->image_path),
         );
     }
 }

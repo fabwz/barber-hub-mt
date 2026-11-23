@@ -5,6 +5,26 @@
  */
 
 export interface paths {
+    "/archivos/barbershops/{barberia}/{carpeta}/{archivo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener una imagen de la barbería
+         * @description Devuelve el logo, el banner o la imagen de un servicio que la API entregó en `logo`, `banner` o `imagen`. Es pública porque son datos públicos de la barbería (MT-08, SV-07). Solo sirve archivos de la carpeta de la barbería de la ruta: la ruta de otra barbería, un archivo inexistente o un nombre que no es el que genera la API responden el mismo 404 `no-encontrado`. El nombre del archivo cambia con cada subida, así que la respuesta se puede guardar en caché sin vencimiento.
+         */
+        get: operations["shared.files.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias": {
         parameters: {
             query?: never;
@@ -522,6 +542,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/imagenes/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subir o reemplazar el logo
+         * @description Recibe `multipart/form-data` con el archivo en `logo`. Acepta JPG, PNG y WebP de hasta 2 MB; el tipo se lee del contenido del archivo, de modo que un PDF o un ejecutable con nombre `.jpg` se rechaza. Un archivo inválido responde 422 `datos-invalidos` y `errores.logo` dice por qué. Guarda el archivo en el espacio de la barbería, borra el logo anterior y responde las direcciones de `logo` y `banner`. Se usa `POST` porque un `PUT` multipart no llega completo al servidor. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         */
+        post: operations["catalog.barbershops.images.logo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/barberias/{barberia}/administracion/imagenes/banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subir o reemplazar el banner
+         * @description Recibe `multipart/form-data` con el archivo en `banner`. Acepta JPG, PNG y WebP de hasta 2 MB que midan al menos 1.200 × 400 píxeles; uno menor responde 422 `datos-invalidos` con `errores.banner` que lo explica. El tipo se lee del contenido del archivo, no de su nombre. Guarda el archivo en el espacio de la barbería, borra el banner anterior y responde las direcciones de `logo` y `banner`. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         */
+        post: operations["catalog.barbershops.images.banner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/administracion/ingresos": {
         parameters: {
             query?: never;
@@ -1014,6 +1074,26 @@ export interface paths {
         patch: operations["catalog.services.update"];
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/servicios/{servicio}/imagen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subir o reemplazar la imagen de un servicio
+         * @description Recibe `multipart/form-data` con el archivo en `imagen`. Acepta JPG, PNG y WebP de hasta 2 MB; el tipo se lee del contenido del archivo, no de su nombre, y uno inválido responde 422 `datos-invalidos` con `errores.imagen`. Guarda el archivo en el espacio de la barbería, borra la imagen anterior y responde el servicio con su `imagen`. El cliente la ve al elegir el servicio, en `GET /barberias/{barberia}/servicios`; un servicio sin imagen se muestra sin ella (SV-07). Responde 404 `no-encontrado` si el servicio no existe en la barbería, también si es de otra. Solo el dueño.
+         */
+        post: operations["catalog.services.image"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/servicios": {
         parameters: {
             query?: never;
@@ -1194,6 +1274,14 @@ export interface components {
              */
             barbero?: string | null;
         };
+        /** BannerDeLaBarberia */
+        BannerDeLaBarberia: {
+            /**
+             * Format: binary
+             * @description Imagen JPG, PNG o WebP de hasta 2 MB y de al menos 1.200 × 400 píxeles. El tipo se lee del contenido del archivo, no de su nombre.
+             */
+            banner: string;
+        };
         /** Barberia */
         Barberia: {
             id: string;
@@ -1221,6 +1309,10 @@ export interface components {
             telefono: string;
             direccion?: string | null;
             correo_contacto?: string | null;
+            /** @description Dirección del logo, relativa al servidor (`/api/v1/archivos/...`). Falta si la barbería no tiene logo (el cliente muestra un monograma). */
+            logo?: string | null;
+            /** @description Dirección del banner, relativa al servidor. Falta si la barbería no tiene banner (el cliente muestra una cabecera compacta). */
+            banner?: string | null;
             redes?: {
                 [key: string]: string;
             };
@@ -1529,6 +1621,29 @@ export interface components {
             bonos_activos: boolean;
             lista_espera_activa: boolean;
             aparece_en_directorio: boolean;
+        };
+        /** ImagenDelServicio */
+        ImagenDelServicio: {
+            /**
+             * Format: binary
+             * @description Imagen JPG, PNG o WebP de hasta 2 MB. El tipo se lee del contenido del archivo, no de su nombre.
+             */
+            imagen: string;
+        };
+        /** ImagenesDeLaBarberia */
+        ImagenesDeLaBarberia: {
+            /** @description Dirección del logo, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
+            logo: null;
+            /** @description Dirección del banner, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
+            banner: null;
+        };
+        /** LogoDeLaBarberia */
+        LogoDeLaBarberia: {
+            /**
+             * Format: binary
+             * @description Imagen JPG, PNG o WebP de hasta 2 MB. El tipo se lee del contenido del archivo, no de su nombre.
+             */
+            logo: string;
         };
         /** MiBarberia */
         MiBarberia: {
@@ -1985,6 +2100,8 @@ export interface components {
             base: number;
             iva: number;
             activo: boolean;
+            /** @description Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
+            imagen: null;
         };
         /** ServicioCubierto */
         ServicioCubierto: {
@@ -2002,6 +2119,8 @@ export interface components {
             precio: number;
             base: number;
             iva: number;
+            /** @description Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`). Falta si el servicio no tiene imagen (SV-07). */
+            imagen?: string | null;
         };
         /** TokenDeAcceso */
         TokenDeAcceso: {
@@ -2090,6 +2209,30 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "shared.files.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                carpeta: string;
+                archivo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     "catalog.barbershops.store": {
         parameters: {
             query?: never;
@@ -3073,6 +3216,68 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    "catalog.barbershops.images.logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["LogoDeLaBarberia"];
+            };
+        };
+        responses: {
+            /** @description `ImagenesDeLaBarberia` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ImagenesDeLaBarberia"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.barbershops.images.banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["BannerDeLaBarberia"];
+            };
+        };
+        responses: {
+            /** @description `ImagenesDeLaBarberia` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ImagenesDeLaBarberia"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
     "payments.income.show": {
         parameters: {
             query: {
@@ -3853,6 +4058,38 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["ActualizarServicio"];
+            };
+        };
+        responses: {
+            /** @description `Servicio` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Servicio"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.services.image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                servicio: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ImagenDelServicio"];
             };
         };
         responses: {

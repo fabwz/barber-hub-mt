@@ -40,6 +40,7 @@ La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin
 | `GET api/v1/directorio` | Directorio de las barberías que eligieron aparecer (RF-54, MT-10): solo nombre, ciudad, logo y enlace (MT-09). |
 | `GET api/v1/barberias/{barberia}/servicios` | Servicios activos de una barbería antes de tener sesión (RD-18). |
 | `GET api/v1/barberias/{barberia}/disponibilidad` | Espacios libres antes de tener sesión (RD-18). |
+| `GET api/v1/archivos/barbershops/{barberia}/{carpeta}/{archivo}` | Logo, banner e imágenes de servicios de una barbería (MT-05, MT-08, SV-07): son datos públicos; la carpeta sale de la barbería de la ruta, así que no sirve archivos de otra. |
 | `POST api/v1/pagos/avisos/onvo` | Aviso de ONVO Pay (RF-22): sin sesión; el origen se verifica con la firma del proveedor. |
 | `POST api/v1/pagos/avisos/paypal` | Aviso de PayPal (RF-22): sin sesión; el origen se verifica con la firma del proveedor. |
 | `GET api/v1/pagos/retorno` | Retorno de la pasarela: no pertenece a una barbería y no cambia nada. |
@@ -99,12 +100,15 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `PATCH api/v1/barberias/{barberia}/administracion/cobro` | Rol | dueño | Política de cobro: solo el dueño (UP-03). |
 | `GET api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
 | `PATCH api/v1/barberias/{barberia}/administracion/negocio` | Rol | dueño | Datos del negocio: solo el dueño (MT-09). |
+| `POST api/v1/barberias/{barberia}/administracion/imagenes/logo` | Rol | dueño | Logo de la barbería: solo el dueño lo sube o lo reemplaza (RF-46, MT-09). |
+| `POST api/v1/barberias/{barberia}/administracion/imagenes/banner` | Rol | dueño | Banner de la barbería: solo el dueño lo sube o lo reemplaza (RF-46, MT-09). |
 | `GET api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos, lista de espera y aparición en el directorio: solo el dueño (RF-09, RF-54, UP-03). |
 | `PATCH api/v1/barberias/{barberia}/administracion/funciones` | Rol | dueño | Activación de bonos, lista de espera y aparición en el directorio: solo el dueño (RF-09, RF-54, UP-03). Con los bonos desactivados, comprar o definir un bono nuevo responde 409 `conflicto`. |
 | `GET api/v1/barberias/{barberia}/administracion/ingresos` | Rol | dueño | Reporte de ingresos de un rango de fechas (`desde` y `hasta`, hasta 366 días): solo su dueño (RF-25, PA-11, CO-04, MT-02). Colaborador y cliente reciben 403 `prohibido`; quien no tiene rol en la barbería, 404. Un rango sin datos responde 200 con ceros. |
 | `GET api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PATCH api/v1/barberias/{barberia}/administracion/servicios/{servicio}` | Rol | dueño | Administración de la barbería: solo su dueño. |
+| `POST api/v1/barberias/{barberia}/administracion/servicios/{servicio}/imagen` | Rol | dueño | Imagen de un servicio: solo el dueño la sube o la reemplaza (RF-46, SV-07). |
 | `GET api/v1/barberias/{barberia}/administracion/horario` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/horario` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `DELETE api/v1/barberias/{barberia}/administracion/horario/{franja}` | Rol | dueño | Administración de la barbería: solo su dueño. |

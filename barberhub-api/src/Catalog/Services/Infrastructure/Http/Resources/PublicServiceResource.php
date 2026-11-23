@@ -22,9 +22,9 @@ final class PublicServiceResource extends JsonResource
     }
 
     /**
-     * Expose only what a customer sees: the price with VAT included, split into base and tax (RL-02).
+     * Expose only what a customer sees: the price with VAT included, split into base and tax (RL-02), and the image when the service has one: a service without it is shown without it (SV-07).
      *
-     * @return array{id: string, nombre: string, duracion_minutos: int, precio: int, base: int, iva: int}
+     * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
@@ -36,6 +36,8 @@ final class PublicServiceResource extends JsonResource
             'precio' => $this->service->price,
             'base' => $this->service->base,
             'iva' => $this->service->tax,
+            /** Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`). Falta si el servicio no tiene imagen (SV-07). */
+            'imagen' => $this->when($this->service->image !== null, $this->service->image),
         ];
     }
 }

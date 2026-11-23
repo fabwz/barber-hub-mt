@@ -18,6 +18,7 @@ final class Service
         public private(set) ServiceDuration $duration,
         public private(set) ServicePrice $price,
         public private(set) bool $active,
+        public private(set) ?string $imagePath = null,
     ) {}
 
     /** Register a new service, active from the start (RF-03). */
@@ -27,9 +28,9 @@ final class Service
     }
 
     /** Rebuild a service from its stored state. */
-    public static function reconstitute(ServiceId $id, ServiceName $name, ServiceDuration $duration, ServicePrice $price, bool $active): self
+    public static function reconstitute(ServiceId $id, ServiceName $name, ServiceDuration $duration, ServicePrice $price, bool $active, ?string $imagePath = null): self
     {
-        return new self($id, $name, $duration, $price, $active);
+        return new self($id, $name, $duration, $price, $active, $imagePath);
     }
 
     /** Replace the editable details of the service. */
@@ -38,6 +39,15 @@ final class Service
         $this->name = $name;
         $this->duration = $duration;
         $this->price = $price;
+    }
+
+    /** Keep a new image of the service (RF-46, SV-07) and answer the path of the one it replaces, if there was one. */
+    public function changeImage(string $path): ?string
+    {
+        $previous = $this->imagePath;
+        $this->imagePath = $path;
+
+        return $previous;
     }
 
     /** Offer the service again. */

@@ -8,9 +8,11 @@ use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Src\Catalog\Services\Application\UseCases\ChangeServiceImage;
 use Src\Catalog\Services\Application\UseCases\CreateService;
 use Src\Catalog\Services\Application\UseCases\ListServices;
 use Src\Catalog\Services\Application\UseCases\UpdateService;
+use Src\Catalog\Services\Infrastructure\Http\Requests\StoreServiceImageRequest;
 use Src\Catalog\Services\Infrastructure\Http\Requests\StoreServiceRequest;
 use Src\Catalog\Services\Infrastructure\Http\Requests\UpdateServiceRequest;
 use Src\Catalog\Services\Infrastructure\Http\Resources\ServiceResource;
@@ -52,5 +54,15 @@ final readonly class ServiceController
     public function update(UpdateServiceRequest $request, UpdateService $updateService): ServiceResource
     {
         return new ServiceResource($updateService->execute($request->toCommand()));
+    }
+
+    /** Upload or replace the image of a service of the barbershop. */
+    #[Endpoint(
+        title: 'Subir o reemplazar la imagen de un servicio',
+        description: 'Recibe `multipart/form-data` con el archivo en `imagen`. Acepta JPG, PNG y WebP de hasta 2 MB; el tipo se lee del contenido del archivo, no de su nombre, y uno inválido responde 422 `datos-invalidos` con `errores.imagen`. Guarda el archivo en el espacio de la barbería, borra la imagen anterior y responde el servicio con su `imagen`. El cliente la ve al elegir el servicio, en `GET /barberias/{barberia}/servicios`; un servicio sin imagen se muestra sin ella (SV-07). Responde 404 `no-encontrado` si el servicio no existe en la barbería, también si es de otra. Solo el dueño.',
+    )]
+    public function image(StoreServiceImageRequest $request, ChangeServiceImage $changeServiceImage): ServiceResource
+    {
+        return new ServiceResource($changeServiceImage->execute($request->toCommand()));
     }
 }

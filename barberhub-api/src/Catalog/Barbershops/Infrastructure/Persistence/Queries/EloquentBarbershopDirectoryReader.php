@@ -36,7 +36,7 @@ final readonly class EloquentBarbershopDirectoryReader implements BarbershopDire
             $this->applySearch($query, $search);
         }
 
-        // The logo has no column yet (#46): the directory shows null until the barbershop can have one.
+        // The address of a logo carries the identifier of the barbershop, which the directory never exposes (MT-09): it shows null until that is decided.
         return EloquentPages::of($query, $request, fn (BarbershopModel $barbershop): DirectoryBarbershop => new DirectoryBarbershop(
             $barbershop->name,
             $barbershop->city,

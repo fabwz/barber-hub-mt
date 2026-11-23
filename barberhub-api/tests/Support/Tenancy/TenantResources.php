@@ -25,6 +25,7 @@ final class TenantResources
     public const array PUBLIC_ROUTES = [
         'GET api/v1/barberias/{barberia}/servicios',
         'GET api/v1/barberias/{barberia}/disponibilidad',
+        'GET api/v1/archivos/barbershops/{barberia}/{carpeta}/{archivo}',
     ];
 
     /**
@@ -62,6 +63,8 @@ final class TenantResources
         'PATCH api/v1/barberias/{barberia}/administracion/negocio',
         'GET api/v1/barberias/{barberia}/administracion/funciones',
         'PATCH api/v1/barberias/{barberia}/administracion/funciones',
+        'POST api/v1/barberias/{barberia}/administracion/imagenes/logo',
+        'POST api/v1/barberias/{barberia}/administracion/imagenes/banner',
     ];
 
     /**

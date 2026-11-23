@@ -57,6 +57,12 @@ final readonly class FilesystemBarbershopFileStorage implements BarbershopFileSt
         return Storage::disk($this->diskName())->url($this->own($path));
     }
 
+    /** Read the file from the media disk; a path that stays in the folder but names nothing gives null. */
+    public function open(string $path)
+    {
+        return $this->disk()->readStream($this->own($path));
+    }
+
     /** Folder of the current barbershop, with its trailing slash. */
     private function folder(): string
     {
