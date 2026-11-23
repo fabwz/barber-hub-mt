@@ -8,7 +8,7 @@ import { useActiveShopStore } from '@/stores/activeShop'
 import { useSessionStore } from '@/stores/session'
 import { accountHandler } from '../helpers/account'
 import { mockFetch } from '../helpers/http'
-import { OWNER_SHOP, SHOP_A, STAFF_SHOP, staffHandler } from '../helpers/staff'
+import { CLIENT_SHOP, OWNER_SHOP, SHOP_A, SHOP_B, STAFF_SHOP, staffHandler } from '../helpers/staff'
 
 const page = defineComponent({ render: () => h('p') })
 const guestMeta = { public: true, guestOnly: true }
@@ -79,7 +79,7 @@ describe('router guard', () => {
 describe('router guard: requiresStaffShop', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  // Stand-in for the business panel (#78), which will be the first route to use the meta.
+  // Stand-in for the agenda (#78), the first route to use the meta.
   function makeStaffRouter() {
     const router = createRouter({
       history: createMemoryHistory(),
@@ -92,11 +92,41 @@ describe('router guard: requiresStaffShop', () => {
           component: page,
           meta: { requiresAuth: true, requiresStaffShop: true },
         },
+        {
+          path: '/barberias/:barberia/agenda',
+          component: page,
+          meta: { requiresAuth: true, requiresStaffShop: true },
+        },
       ],
     })
     installGuards(router)
     return router
   }
+
+  it('opens the route of a shop of the person and makes it the active one', async () => {
+    useSessionStore().token = 'tok'
+    mockFetch(staffHandler([OWNER_SHOP, STAFF_SHOP]))
+    const router = makeStaffRouter()
+
+    await router.push(`/barberias/${SHOP_B}/agenda`)
+
+    expect(router.currentRoute.value.path).toBe(`/barberias/${SHOP_B}/agenda`)
+    expect(useActiveShopStore().active?.id).toBe(SHOP_B)
+  })
+
+  it.each([
+    ['a shop of another person', '0190b1f0-0000-7000-8000-0000000000ff'],
+    ['a shop where the person is only a customer', '0190b1f0-0000-7000-8000-0000000000d3'],
+  ])('sends the route of %s to /negocios', async (_name, id) => {
+    useSessionStore().token = 'tok'
+    mockFetch(staffHandler([OWNER_SHOP, CLIENT_SHOP]))
+    const router = makeStaffRouter()
+
+    await router.push(`/barberias/${id}/agenda`)
+
+    expect(router.currentRoute.value.path).toBe('/negocios')
+    expect(useActiveShopStore().active).toBeNull()
+  })
 
   it('without an active shop sends the route to /negocios', async () => {
     useSessionStore().token = 'tok'
