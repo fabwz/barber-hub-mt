@@ -216,7 +216,7 @@ La actualización condicionada y el agregado `PurchasedVoucher::hold()` deciden 
 
 ### Archivos de una barbería
 
-Los archivos subidos (logo, fotos) se guardan separados por barbería (MT-05). El puerto `BarbershopFileStorage` deriva toda ruta del contexto (`barbershops/{barbershop_id}/...`), le pone un nombre generado por el servidor y rechaza con 404 cualquier ruta que salga de la carpeta de la barbería en curso (`..`, otra barbería, rutas absolutas, `\`, bytes nulos). El disco es el de `filesystems.media` (`public` por defecto). Servir el archivo por HTTP es del #46.
+Los archivos subidos (logo, fotos) se guardan separados por barbería (MT-05). El puerto `BarbershopFileStorage` deriva toda ruta del contexto (`barbershops/{barbershop_id}/...`), le pone un nombre generado por el servidor y rechaza con 404 cualquier ruta que salga de la carpeta de la barbería en curso (`..`, otra barbería, rutas absolutas, `\`, bytes nulos). El disco es el de `filesystems.media` (`public` por defecto, en `storage/app/public`; `config/filesystems.php` fija su `url` en `/api/v1/archivos`). Las columnas `barbershops.logo_path`, `barbershops.banner_path` y `services.image_path` guardan la ruta, nunca la dirección: el servidor puede cambiar sin tocar filas. Servir el archivo por HTTP es de `GET /api/v1/archivos/barbershops/{barberia}/{carpeta}/{archivo}` (#46); ver «Imágenes de la barbería» en [architecture.md](architecture.md).
 
 ## Reparto de responsabilidades
 

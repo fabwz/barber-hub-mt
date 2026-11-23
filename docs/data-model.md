@@ -146,7 +146,8 @@ Cada fila es un inquilino. La política de cobro y la pasarela son parámetros d
 | `city` | `varchar(80)` | Obligatoria (RF-01) |
 | `phone` | `varchar(30)` | Obligatorio; es el contacto de la barbería (RF-01) |
 | `public_link` | `varchar(120)` | Obligatoria, creada en el #37. Llave única `barbershops_public_link_unique` en todo el sistema y `CHECK` `barbershops_public_link_format_check` (minúsculas, dígitos y guiones). Se deriva del nombre al registrar la barbería, con un número si ya existe, y no cambia al renombrarla (RF-02, MT-07) |
-| `logo_path` | `varchar(255)` | Prevista, #46. Opcional; guardado y servido por barbería (MT-05) |
+| `logo_path` | `varchar(255)` | Creada en el #46. Opcional; ruta `barbershops/{id}/logo/{uuid}.{ext}` dentro del almacén de la barbería (MT-05). Es una ruta, nunca una dirección completa |
+| `banner_path` | `varchar(255)` | Creada en el #46. Opcional; ruta `barbershops/{id}/banner/{uuid}.{ext}`; el banner mide al menos 1.200 × 400 px (SV-06) |
 | `payment_mode` | `varchar(10)` | Creada en el #49. Obligatoria, por defecto `none`. `CHECK` `barbershops_payment_mode_check` entre `none`, `deposit` y `full` (PA-01) |
 | `deposit_percentage` | `smallint` | Creada en el #49. Nula salvo en depósito. `CHECK` `barbershops_deposit_percentage_check` entre 10 y 100 y `CHECK` `barbershops_deposit_percentage_mode_check`: tiene valor si y solo si `payment_mode` es `deposit` (PA-01) |
 | `cancellation_deadline_hours` | `smallint` | Creada en el #49. Obligatoria, por defecto 24. `CHECK` `barbershops_cancellation_deadline_check` entre 0 y 720 (CA-01). Cambiarla no toca las reservas ya creadas, que guardan su copia |
@@ -159,7 +160,7 @@ Las credenciales de las pasarelas no se guardan aquí: viven en variables de ent
 
 ### services
 
-La tabla existe desde el issue #45 con las columnas marcadas como creadas; `image_path` está prevista y la agrega el #46 con una migración posterior. Tiene la política de fila `services_barbershop_isolation` (ver [database.md](database.md)). Un servicio nunca se borra: se inactiva (SV-04).
+La tabla existe desde el issue #45 con las columnas marcadas como creadas; `image_path` la agregó el #46 con una migración posterior. Tiene la política de fila `services_barbershop_isolation` (ver [database.md](database.md)). Un servicio nunca se borra: se inactiva (SV-04).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
@@ -168,7 +169,7 @@ La tabla existe desde el issue #45 con las columnas marcadas como creadas; `imag
 | `name` | `varchar(120)` | Obligatoria. No es única: los requisitos no lo piden |
 | `duration_minutes` | `smallint` | `CHECK` `services_duration_minutes_check`: entre 10 y 180 y múltiplo de 5 (SV-01) |
 | `price` | `integer` | Colones enteros con IVA incluido, `CHECK` `services_price_check`: mayor que 0 (SV-01, SV-02). La base y el impuesto no se guardan: se calculan (SV-02) |
-| `image_path` | `varchar(255)` | Prevista, #46. Opcional; JPG, PNG o WebP de hasta 2 MB (SV-06) |
+| `image_path` | `varchar(255)` | Creada en el #46. Opcional; ruta `barbershops/{id}/servicios/{uuid}.{ext}`; JPG, PNG o WebP de hasta 2 MB (SV-06). Sin imagen, el servicio se muestra sin ella (SV-07) |
 | `is_active` | `boolean` | Por defecto `true` (SV-04) |
 | `created_at`, `updated_at` | `timestamptz` | Por defecto `now()` |
 
@@ -516,7 +517,7 @@ Propuesta que se confirma cuando cada issue crea su migración. La portada públ
 | --- | --- | --- | --- | --- |
 | `barbershops` | `address` | `varchar(200)` | Sí | Dirección en texto; con ella se arman los enlaces de ubicación |
 | `barbershops` | `whatsapp_url`, `instagram_url`, `facebook_url`, `tiktok_url` | `varchar(300)` | Sí | Una columna por red; `CHECK` de que empiecen con `https://` |
-| `barbershops` | `logo_path` | `varchar(255)` | Sí | Lo llena #46; ruta dentro del almacén de la barbería |
+| `barbershops` | `logo_path` | `varchar(255)` | Sí | Lo llena el #46; ruta dentro del almacén de la barbería |
 | `barbershops` | `banner_path` | `varchar(255)` | Sí | Lo llena #46; el banner mide al menos 1.200 × 400 px |
 
 Cuatro redes fijas no justifican una tabla propia. Si en el futuro hubiera más, se migra a `barbershop_social_links`, única por barbería y red, con su política de fila.
