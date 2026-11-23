@@ -184,6 +184,62 @@ describe('router guard: requiresStaffShop', () => {
   })
 })
 
+describe('router guard: requiresOwner', () => {
+  function makeOwnerRouter() {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: page },
+        { path: '/negocios', component: page, meta: { requiresAuth: true } },
+        { path: '/ingresar', name: 'login', component: page, meta: guestMeta },
+        {
+          path: '/barberias/:barberia/agenda',
+          name: 'staff-agenda',
+          component: page,
+          meta: { requiresAuth: true, requiresStaffShop: true },
+        },
+        {
+          path: '/barberias/:barberia/servicios',
+          component: page,
+          meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+        },
+      ],
+    })
+    installGuards(router)
+    return router
+  }
+
+  it('opens the route for the owner of the shop', async () => {
+    useSessionStore().token = 'tok'
+    mockFetch(staffHandler([OWNER_SHOP, STAFF_SHOP]))
+    const router = makeOwnerRouter()
+
+    await router.push(`/barberias/${SHOP_A}/servicios`)
+
+    expect(router.currentRoute.value.path).toBe(`/barberias/${SHOP_A}/servicios`)
+  })
+
+  it('sends a collaborator of that shop to its agenda, even if they are owner of another shop', async () => {
+    useSessionStore().token = 'tok'
+    mockFetch(staffHandler([OWNER_SHOP, STAFF_SHOP]))
+    const router = makeOwnerRouter()
+
+    await router.push(`/barberias/${SHOP_B}/servicios`)
+
+    expect(router.currentRoute.value.path).toBe(`/barberias/${SHOP_B}/agenda`)
+  })
+
+  it('a shop that is not theirs still goes to /negocios', async () => {
+    useSessionStore().token = 'tok'
+    mockFetch(staffHandler([OWNER_SHOP]))
+    const router = makeOwnerRouter()
+
+    await router.push('/barberias/0190b1f0-0000-7000-8000-0000000000ff/servicios')
+
+    expect(router.currentRoute.value.path).toBe('/negocios')
+  })
+})
+
 describe('safeRedirect', () => {
   it.each(['/agenda', '/privado/7?tab=a', '/'])('accepts the internal path %s', (value) => {
     expect(safeRedirect(value)).toBe(value)

@@ -17,6 +17,11 @@ declare module 'vue-router' {
      * With a `:barberia` parameter the shop of the route must be one of theirs, and it becomes the active one.
      */
     requiresStaffShop?: boolean
+    /**
+     * Only the owner of the shop of the route (it implies `requiresStaffShop`). A collaborator goes to the agenda of
+     * that shop. The API still answers 403 to anything the owner alone may do: this only spares the trip.
+     */
+    requiresOwner?: boolean
   }
 }
 
@@ -72,7 +77,7 @@ async function check(to: RouteLocationNormalized): Promise<RouteLocationRaw | tr
     }
     if (account.temporaryPassword === false && to.name === 'password-change') return { path: '/' }
   }
-  if (to.meta.requiresStaffShop) {
+  if (to.meta.requiresStaffShop || to.meta.requiresOwner) {
     const shops = useActiveShopStore()
     // After a reload only the stored id is known: the list confirms it.
     if (shops.status !== 'ready') await shops.loadStaffShops()
@@ -84,6 +89,9 @@ async function check(to: RouteLocationNormalized): Promise<RouteLocationRaw | tr
       shops.select(requested)
     }
     if (shops.active === null) return { path: '/negocios' }
+    if (to.meta.requiresOwner && shops.active.role !== 'dueno') {
+      return { name: 'staff-agenda', params: { barberia: shops.active.id } }
+    }
   }
   return true
 }
