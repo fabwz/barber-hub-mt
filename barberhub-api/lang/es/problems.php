@@ -60,6 +60,10 @@ return [
         'title' => 'Bono con ventas',
         'detail' => 'El bono ya tiene ventas: solo se pueden cambiar su nombre y su precio, o retirarlo de la venta.',
     ],
+    'colaborador-con-reservas' => [
+        'title' => 'Colaborador con reservas',
+        'detail' => 'El colaborador tiene reservas confirmadas por atender. Reprográmelas o cancélelas antes de desactivarlo.',
+    ],
     'datos-invalidos' => [
         'title' => 'Datos inválidos',
         'detail' => 'Los datos enviados no son válidos.',

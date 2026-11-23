@@ -651,6 +651,7 @@ Toda respuesta de error sigue RFC 9457 (`application/problem+json`). `ProblemDet
 | Bono vencido en la fecha de la cita | `bono-vencido` | 409 |
 | Oferta vencida | `oferta-vencida` | 409 |
 | Cambiar las sesiones, la vigencia o los servicios de un bono que ya se vendió (RF-26) | `bono-con-ventas` | 409 |
+| Desactivar a un colaborador con reservas confirmadas por atender (CO-03), con la lista de las más próximas | `colaborador-con-reservas` | 409 |
 | Cualquier otra | `error-interno`, sin detalles técnicos | 500 |
 
 **Miembros adicionales (extensión de la referencia).** La referencia solo agrega `errores` a la validación. Para un error de dominio con datos propios, como las alternativas de `espacio-no-disponible` (RE-02), la excepción implementa `Src\Shared\Domain\Exceptions\HasProblemMembers` y devuelve en `problemMembers()` los miembros extra con nombre en español y valores simples; `ProblemDetailsRenderer` los agrega al documento sin dejar que reemplacen `type`, `title`, `status`, `detail` ni `instance`. `Shared` no conoce la excepción concreta, y el dominio no conoce HTTP.

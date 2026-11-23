@@ -21,6 +21,7 @@ enum ProblemType: string
     case OfferExpired = 'oferta-vencida';
     case TemporaryPassword = 'contrasena-temporal';
     case VoucherWithSales = 'bono-con-ventas';
+    case CollaboratorWithReservations = 'colaborador-con-reservas';
     case InvalidData = 'datos-invalidos';
     case TooManyRequests = 'demasiadas-solicitudes';
     case InternalError = 'error-interno';
@@ -35,7 +36,7 @@ enum ProblemType: string
             self::Forbidden, self::TemporaryPassword => 403,
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
-            self::Conflict, self::SlotUnavailable, self::InsufficientBalance, self::DeadlineExpired, self::VoucherExpired, self::OfferExpired, self::VoucherWithSales => 409,
+            self::Conflict, self::SlotUnavailable, self::InsufficientBalance, self::DeadlineExpired, self::VoucherExpired, self::OfferExpired, self::VoucherWithSales, self::CollaboratorWithReservations => 409,
             self::InvalidData => 422,
             self::TooManyRequests => 429,
             self::InternalError => 500,

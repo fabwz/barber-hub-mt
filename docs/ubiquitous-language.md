@@ -250,6 +250,7 @@ Un **tipo de error estable** es un tipo fijo de error RFC 9457 que el cliente we
 | `bono-vencido` | El bono no está vigente en la fecha de la cita (BO-06) |
 | `oferta-vencida` | La oferta caducó antes de la respuesta (LE-05) |
 | `bono-con-ventas` | El bono ya se vendió: sus sesiones, su vigencia y sus servicios no se cambian (RF-26) |
+| `colaborador-con-reservas` | El colaborador tiene reservas confirmadas por atender: no se desactiva hasta que el dueño las reprograme o las cancele (CO-03) |
 | `barberia-bloqueada` | La barbería está bloqueada por falta de pago del alquiler (PL-08) |
 | `demasiadas-solicitudes` | Se superó el límite de solicitudes |
 | `error-interno` | Cualquier otro fallo, sin detalles técnicos |
