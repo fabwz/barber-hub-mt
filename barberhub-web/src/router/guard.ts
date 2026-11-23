@@ -1,5 +1,6 @@
-import type { Router } from 'vue-router'
+import type { RouteLocationNormalized, RouteLocationRaw, Router } from 'vue-router'
 
+import { useAccountStore } from '@/stores/account'
 import { useActiveShopStore } from '@/stores/activeShop'
 import { useSessionStore } from '@/stores/session'
 
@@ -27,19 +28,52 @@ export function safeRedirect(value: unknown): string {
   return candidate
 }
 
+/** Where the router is going while a guard is still running; a 401 in that window returns there. */
+let navigatingTo: { fullPath: string; isPublic: boolean } | null = null
+
+export function pendingNavigation(): { fullPath: string; isPublic: boolean } | null {
+  return navigatingTo
+}
+
 export function installGuards(router: Router): void {
   router.beforeEach(async (to) => {
-    const session = useSessionStore()
+    navigatingTo = { fullPath: to.fullPath, isPublic: to.meta.public === true }
+    try {
+      return await check(to)
+    } finally {
+      navigatingTo = null
+    }
+  })
+}
+
+async function check(to: RouteLocationNormalized): Promise<RouteLocationRaw | true> {
+  const session = useSessionStore()
+  if (to.meta.requiresAuth && !session.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.guestOnly && session.isAuthenticated) return { path: '/' }
+  if (session.isAuthenticated) {
+    // A temporary password (UP-04) leaves one screen: the mandatory change. The account is read once
+    // per session, on the first navigation (a public page that finds the session expired just closes it).
+    const account = useAccountStore()
+    await account.ensureLoaded()
+    // The read may have ended in a 401, which closes the session.
     if (to.meta.requiresAuth && !session.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
-    if (to.meta.guestOnly && session.isAuthenticated) return { path: '/' }
-    if (to.meta.requiresStaffShop) {
-      const shops = useActiveShopStore()
-      // After a reload only the stored id is known: the list confirms it.
-      if (shops.status !== 'ready') await shops.loadStaffShops()
-      if (shops.active === null) return { path: '/negocios' }
+    if (account.temporaryPassword === true && to.name !== 'password-change') {
+      return {
+        name: 'password-change',
+        query: to.fullPath === '/' ? {} : { redirect: to.fullPath },
+      }
     }
-    return true
-  })
+    if (account.temporaryPassword === false && to.name === 'password-change') return { path: '/' }
+  }
+  if (to.meta.requiresStaffShop) {
+    const shops = useActiveShopStore()
+    // After a reload only the stored id is known: the list confirms it.
+    if (shops.status !== 'ready') await shops.loadStaffShops()
+    if (shops.active === null) return { path: '/negocios' }
+  }
+  return true
 }

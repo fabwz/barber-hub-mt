@@ -58,6 +58,14 @@ export function isApiError(value: unknown): value is ApiError {
   return value instanceof ApiError
 }
 
+/** Tipo estable del 403 de una cuenta con contraseña temporal (UP-04): solo puede cambiarla. */
+export const TEMPORARY_PASSWORD_TYPE = 'contrasena-temporal'
+
+/** El 403 `contrasena-temporal`: la cuenta debe cambiar su contraseña antes de usar el resto. */
+export function isTemporaryPasswordError(error: ApiError): boolean {
+  return error.status === 403 && error.type.endsWith(TEMPORARY_PASSWORD_TYPE)
+}
+
 /** Fallo de red: la petición no obtuvo respuesta. */
 export function networkError(cause?: unknown): ApiError {
   return new ApiError({

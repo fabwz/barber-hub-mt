@@ -2,7 +2,9 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { Router } from 'vue-router'
 
-import { api, setTokenProvider, setUnauthorizedHandler } from '@/api'
+import { api, setTemporaryPasswordHandler, setTokenProvider, setUnauthorizedHandler } from '@/api'
+import { useAccountStore } from '@/stores/account'
+import { pendingNavigation } from '@/router/guard'
 import { useActiveShopStore } from '@/stores/activeShop'
 
 /** The token lives in sessionStorage (never localStorage) under this key. */
@@ -90,8 +92,16 @@ export const useSessionStore = defineStore('session', () => {
     token.value = null
     person.value = null
     writeStored(null)
-    // The chosen shop belongs to the person who is leaving (also on a 401).
+    // The chosen shop and the account data belong to the person who is leaving (also on a 401).
     useActiveShopStore().clear()
+    useAccountStore().clear()
+  }
+
+  /** The email is the login: after the person corrects it, the menu shows the new one. */
+  function setEmail(email: string): void {
+    if (token.value === null) return
+    person.value = { email }
+    writeStored({ token: token.value, person: person.value })
   }
 
   /** Revokes the token in the API when possible; the local session is cleared whatever happens. */
@@ -105,7 +115,7 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  return { token, person, isAuthenticated, register, login, logout, clear }
+  return { token, person, isAuthenticated, register, login, logout, clear, setEmail }
 })
 
 /** Connects the HTTP client (#74) to the session: bearer token and the 401 handler. */
@@ -114,9 +124,21 @@ export function connectSession(router: Router): void {
   setTokenProvider(() => session.token)
   setUnauthorizedHandler(() => {
     session.clear()
+    // While the router is still deciding (the guard reads the account), the screen it was going to is the one that counts.
+    const target = pendingNavigation()
     const current = router.currentRoute.value
     // Public pages (login, register, legal) need no redirect; this also avoids a loop on login.
-    if (current.meta.public) return
-    void router.replace({ name: 'login', query: { redirect: current.fullPath } })
+    if (target?.isPublic ?? current.meta.public) return
+    void router.replace({
+      name: 'login',
+      query: { redirect: target?.fullPath ?? current.fullPath },
+    })
+  })
+  // A 403 `contrasena-temporal` (UP-04): the only thing left to do is the mandatory change.
+  setTemporaryPasswordHandler(() => {
+    useAccountStore().markTemporary()
+    if (router.currentRoute.value.name !== 'password-change') {
+      void router.replace({ name: 'password-change' })
+    }
   })
 }
