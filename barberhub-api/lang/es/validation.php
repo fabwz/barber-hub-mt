@@ -160,9 +160,26 @@ return [
     'ulid' => 'El campo :attribute debe ser un ULID válido.',
     'uuid' => 'El campo :attribute debe ser un UUID válido.',
 
+    // The three images a barbershop uploads (RF-46, SV-06): the type is read from the content of the file, never from its name.
     'custom' => [
         'attribute-name' => [
             'rule-name' => 'mensaje-personalizado',
+        ],
+        'logo' => [
+            'mimetypes' => 'El logo debe ser una imagen JPG, PNG o WebP.',
+            'max' => 'El logo no debe pesar más de 2 MB.',
+            'uploaded' => 'No se pudo subir el logo: verifique que no pese más de 2 MB.',
+        ],
+        'banner' => [
+            'mimetypes' => 'El banner debe ser una imagen JPG, PNG o WebP.',
+            'max' => 'El banner no debe pesar más de 2 MB.',
+            'dimensions' => 'El banner debe medir al menos 1.200 × 400 píxeles.',
+            'uploaded' => 'No se pudo subir el banner: verifique que no pese más de 2 MB.',
+        ],
+        'imagen' => [
+            'mimetypes' => 'La imagen debe ser JPG, PNG o WebP.',
+            'max' => 'La imagen no debe pesar más de 2 MB.',
+            'uploaded' => 'No se pudo subir la imagen: verifique que no pese más de 2 MB.',
         ],
     ],
 

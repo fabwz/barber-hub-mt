@@ -28,4 +28,13 @@ interface BarbershopFileStorage
      * @throws FileOutsideBarbershopException
      */
     public function url(string $path): string;
+
+    /**
+     * Open a stored file of the current barbershop for reading; null when it does not exist.
+     *
+     * @return resource|null
+     *
+     * @throws FileOutsideBarbershopException
+     */
+    public function open(string $path);
 }
