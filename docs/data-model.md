@@ -95,7 +95,7 @@ Cada fila es una cuenta global: una persona puede tener un rol distinto en cada 
 | `password` | `varchar(255)` | Hash de la contraseña, nunca la contraseña (SE-01) |
 | `phone` | `varchar(30)` | Admite nulos en la base; el registro la exige (RF-38) |
 | `locale` | `varchar(5)` | Prevista, #47. `CHECK` entre `es` y `en`, por defecto `es` (AC-08) |
-| `reminders_enabled` | `boolean` | Prevista, #47. Por defecto `true`; solo tiene efecto para el cliente (NO-10) |
+| `reminders_enabled` | `boolean` | Creada en el #95 (migración `add_reminders_enabled_to_users_table`). `NOT NULL`, por defecto `true`; solo tiene efecto para el cliente (NO-10) y solo gobierna los recordatorios: la confirmación, la oferta y los avisos de la barbería no se pueden desactivar. La API y la pestaña Avisos para cambiarla son del #106 |
 | `must_change_password` | `boolean` | Creada en el #48. Por defecto `false`; `true` en la cuenta que el dueño crea a un colaborador con una contraseña temporal (UP-04, RF-40). Obligar el cambio en el primer ingreso es del #42 |
 | `is_active` | `boolean` | Por defecto `true`; una cuenta inactiva no puede ingresar |
 | `terms_accepted_at`, `privacy_accepted_at` | `timestamptz` | Fecha de cada aceptación, separadas (CL-02). Admiten nulos en la base: la cuenta de un colaborador la crea el dueño sin ellas (#48) y el registro de clientes las exige y las guarda |
@@ -295,16 +295,19 @@ Cada cambio de estado, con fecha y autor (RE-09). Existe desde el issue #126, co
 
 ### reservation_reminders
 
-Evita que un recordatorio se envíe dos veces (NO-03).
+Los recordatorios de una reserva, uno por tipo, y la garantía de que ninguno sale dos veces (NO-03). La tabla existe desde el issue #95 (migración `create_reservation_reminders_table`). Tiene la política de fila `reservation_reminders_barbershop_isolation` (ver [database.md](database.md)).
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id`, `barbershop_id`, `reservation_id` | `uuid` | Llave primaria y llaves foráneas compuestas |
-| `kind` | `varchar(3)` | `CHECK` entre `24h` y `2h` (NO-02) |
-| `scheduled_for` | `timestamptz` | Momento en que debe enviarse |
-| `sent_at` | `timestamptz` | Nula hasta que se envía |
+| `id` | `uuid` | Llave primaria, `DEFAULT uuidv7()` |
+| `barbershop_id` | `uuid` | Llave foránea a `barbershops`, en cascada |
+| `reservation_id` | `uuid` | Llave foránea compuesta `(reservation_id, barbershop_id)` a `reservations`, en cascada: un recordatorio solo apunta a una reserva de su barbería (MT-04) |
+| `kind` | `varchar(3)` | `CHECK` `reservation_reminders_kind_check` entre `24h` y `2h` (NO-02) |
+| `scheduled_for` | `timestamptz` | El instante en que vence. Reprogramar la reserva lo reescribe y deja `sent_at` en nulo; la tarea de la cola que lleva el instante viejo ya no encuentra una fila con él y no envía nada |
+| `sent_at` | `timestamptz` | Nulo hasta que se reclama para enviarlo. Se escribe con un `UPDATE ... WHERE sent_at IS NULL AND scheduled_for = ?`, así que dos tareas simultáneas no pueden ganar las dos |
+| `created_at` | `timestamptz` | Por defecto, la hora de la inserción |
 
-Llave candidata: `(reservation_id, kind)`.
+Llaves: `(id, barbershop_id)` y la candidata `(barbershop_id, reservation_id, kind)`, sobre la que se apoya el `INSERT ... ON CONFLICT`: repetir el aviso de confirmación para la misma hora no cambia la fila (no vuelve a dejar pendiente un recordatorio ya enviado). Una reserva sin recordatorios (cliente sin correo o con ellos desactivados, o con menos de 24 h o 2 h de anticipación) simplemente no tiene fila de ese tipo.
 
 ## Pagos
 
