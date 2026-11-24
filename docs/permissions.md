@@ -64,6 +64,7 @@ Los datos son de la propia persona.
 | `PUT api/v1/cuenta/contrasena` | Cambia la contraseña de la propia cuenta (RF-40); es de las pocas rutas que una contraseña temporal permite (UP-04). |
 | `DELETE api/v1/tokens` | Cierra todas las sesiones de la persona. |
 | `DELETE api/v1/tokens/actual` | Cierra la sesión actual de la persona. |
+| `POST api/v1/tiempo-real/autorizacion` | Autoriza la suscripción a un canal privado de la agenda en vivo (RF-36). La ruta pide solo sesión; el rol sale del nombre del canal y lo decide el caso de uso: `private-barberia.{barberia}.agenda` es del dueño de esa barbería y `private-barberia.{barberia}.colaboradores.{colaborador}`, de ese colaborador. Sin rol, barbería inexistente, identificador inválido o agenda de otro colaborador, 404; cliente, colaborador en el canal de la barbería o dueño en el de un colaborador, 403 (CO-04, UP-06). |
 
 ## Operaciones de cliente que crean la primera membresía
 
