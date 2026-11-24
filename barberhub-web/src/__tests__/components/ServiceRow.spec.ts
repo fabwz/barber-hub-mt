@@ -34,4 +34,30 @@ describe('ServiceRow', () => {
     expect(row(30, 500, 442, 58).text()).toContain('₡500')
     expect(row(30, 1234567, 1, 1).text()).toContain('₡1.234.567')
   })
+
+  it('shows the image of the service when it has one, decorative because the name is next to it', () => {
+    const wrapper = mount(ServiceRow, {
+      props: {
+        name: 'Corte',
+        durationMinutes: 30,
+        price: 7000,
+        base: 6195,
+        vat: 805,
+        image: '/api/v1/archivos/c.webp',
+      },
+    })
+    const image = wrapper.get('img')
+    expect(image.attributes('src')).toBe('/api/v1/archivos/c.webp')
+    expect(image.attributes('alt')).toBe('')
+  })
+
+  it('draws nothing for a service without image: no frame and no placeholder (SV-07)', () => {
+    for (const image of [undefined, null]) {
+      const wrapper = mount(ServiceRow, {
+        props: { name: 'Corte', durationMinutes: 30, price: 7000, base: 6195, vat: 805, image },
+      })
+      expect(wrapper.find('img').exists()).toBe(false)
+      expect(wrapper.find('svg').exists()).toBe(false)
+    }
+  })
 })

@@ -9,7 +9,7 @@ interface Props {
   name: string
   city: string
   phone: string
-  /** Street address; hidden while the API does not deliver it. */
+  /** Street address; hidden when the shop has none. */
   address?: string
   logoUrl?: string
   bannerUrl?: string
@@ -18,8 +18,6 @@ interface Props {
   facebook?: string
   tiktok?: string
   email?: string
-  /** Shows neutral blocks for the banner and the logo while the API brings no images (example only). */
-  preview?: boolean
   /** Wide page (1280 px): the banner is 4:1 on desktop. */
   wide?: boolean
   /** Tag of the shop name. It is the page title (`h1`) unless the page has its own: then `p`, since a screen has one `h1`. */
@@ -38,7 +36,6 @@ const {
   facebook,
   tiktok,
   email,
-  preview = false,
   wide = false,
   nameTag = 'h1',
 } = defineProps<Props>()
@@ -56,7 +53,7 @@ watch(
 )
 
 const showLogo = computed(() => !!logoUrl && !logoFailed.value)
-const showBanner = computed(() => preview || (!!bannerUrl && !bannerFailed.value))
+const showBanner = computed(() => !!bannerUrl && !bannerFailed.value)
 
 /** Initials of the first two words longer than two letters; falls back to the first letter. */
 const initials = computed(() => {
@@ -115,7 +112,7 @@ const logoSize = computed(() => (showBanner.value ? 'size-18 md:size-22' : 'size
             logoSize,
             'border-line-strong',
             showBanner ? '-mt-9 md:-mt-11' : '',
-            showLogo || (preview && !logoUrl) ? 'bg-surface' : 'bg-elevated font-medium',
+            showLogo ? 'bg-surface' : 'bg-elevated font-medium',
             showBanner ? 'text-2xl' : 'text-lg',
           ]"
         >
@@ -128,24 +125,6 @@ const logoSize = computed(() => (showBanner.value ? 'size-18 md:size-22' : 'size
             class="size-full rounded-full object-cover"
             @error="logoFailed = true"
           />
-          <span v-else-if="preview && !logoUrl" role="img" :aria-label="`Logo de ${name}`">
-            <!-- The picture placeholder of the design: a rounded frame with a hill line. -->
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="text-fg-subtle"
-              aria-hidden="true"
-            >
-              <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-              <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
-            </svg>
-          </span>
           <span v-else role="img" :aria-label="`Monograma de ${name}`">{{ initials }}</span>
         </div>
         <div class="flex w-full min-w-0 flex-col md:items-center">

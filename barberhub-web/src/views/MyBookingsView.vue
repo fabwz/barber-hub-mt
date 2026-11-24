@@ -9,7 +9,7 @@ import ShopHeader from '@/components/ShopHeader.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import StatusLabel from '@/components/StatusLabel.vue'
 import { colones, dateOf, formatShortDate, timeOf } from '@/composables/format'
-import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
+import { shopHeaderProps } from '@/composables/shopHeaderProps'
 import { statusKeyOf, useMyBookings, type CustomerBooking } from '@/composables/useMyBookings'
 import { useShopStore } from '@/stores/shop'
 
@@ -104,10 +104,7 @@ onMounted(() => void start())
         class="border-b-0!"
         wide
         name-tag="p"
-        v-bind="HEADER_EXAMPLE"
-        :name="shopStore.shop.profile.nombre"
-        :city="shopStore.shop.profile.ciudad"
-        :phone="shopStore.shop.profile.telefono"
+        v-bind="shopHeaderProps(shopStore.shop.profile)"
       />
     </div>
 

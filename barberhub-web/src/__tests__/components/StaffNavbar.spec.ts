@@ -136,4 +136,81 @@ describe('StaffNavbar', () => {
     const panel = wrapper.get('ul')
     expect(panel.text()).toContain('Agenda')
   })
+
+  it('marks «Equipo» current inside its sections and «Configuración» inside «Cobro y políticas»', async () => {
+    const { wrapper, router } = await mountBar([OWNER_SHOP], SHOP_A, [
+      { path: '/barberias/:barberia/equipo', name: 'staff-team', component: page },
+      {
+        path: '/barberias/:barberia/equipo/colaboradores',
+        name: 'staff-team-members',
+        component: page,
+      },
+      {
+        path: '/barberias/:barberia/equipo/colaboradores/nuevo',
+        name: 'staff-team-member-new',
+        component: page,
+      },
+      {
+        path: '/barberias/:barberia/equipo/colaboradores/mi-perfil',
+        name: 'staff-team-own-profile',
+        component: page,
+      },
+      {
+        path: '/barberias/:barberia/equipo/colaboradores/:colaborador',
+        name: 'staff-team-member-edit',
+        component: page,
+      },
+      { path: '/barberias/:barberia/configuracion', name: 'staff-settings', component: page },
+      {
+        path: '/barberias/:barberia/configuracion/cobro',
+        name: 'staff-settings-billing',
+        component: page,
+      },
+    ])
+    const current = () =>
+      wrapper
+        .findAll('nav a')
+        .filter((link) => link.attributes('aria-current') === 'page')
+        .map((link) => link.text())
+
+    for (const path of [
+      'equipo/colaboradores',
+      'equipo/colaboradores/nuevo',
+      'equipo/colaboradores/mi-perfil',
+      'equipo/colaboradores/c1',
+    ]) {
+      await router.push(`/barberias/${SHOP_A}/${path}`)
+      await flushPromises()
+      expect(current()).toEqual(['Equipo'])
+    }
+
+    await router.push(`/barberias/${SHOP_A}/configuracion`)
+    await flushPromises()
+    expect(current()).toEqual(['Configuración'])
+    await router.push(`/barberias/${SHOP_A}/configuracion/cobro`)
+    await flushPromises()
+    expect(current()).toEqual(['Configuración'])
+  })
+
+  it('shows «Configuración» to the owner only, and only when its route exists', async () => {
+    const without = await mountBar([OWNER_SHOP], SHOP_A)
+    expect(without.wrapper.findAll('nav a').map((link) => link.text())).not.toContain(
+      'Configuración',
+    )
+    without.wrapper.unmount()
+
+    setActivePinia(createPinia())
+    const owner = await mountBar([OWNER_SHOP], SHOP_A, [
+      { path: '/barberias/:barberia/configuracion', name: 'staff-settings', component: page },
+    ])
+    const link = owner.wrapper.findAll('nav a').find((item) => item.text() === 'Configuración')!
+    expect(link.attributes('href')).toBe(`/barberias/${SHOP_A}/configuracion`)
+    owner.wrapper.unmount()
+
+    setActivePinia(createPinia())
+    const staff = await mountBar([STAFF_SHOP], SHOP_B, [
+      { path: '/barberias/:barberia/configuracion', name: 'staff-settings', component: page },
+    ])
+    expect(staff.wrapper.findAll('nav a').map((item) => item.text())).toEqual(['Agenda'])
+  })
 })

@@ -340,6 +340,8 @@ Bloques de `line` con radio de 8 px que imitan la forma del contenido (fila de s
 - **Teléfono:** enlace `tel:`, 14 px, cifras tabulares.
 - **Redes y correo:** como máximo el correo, WhatsApp, Instagram, Facebook y TikTok, **en ese orden**; el correo es un enlace `mailto:` con el correo de contacto del negocio (distinto del correo de la cuenta del dueño). Los íconos son de **18 px**: los de las redes son los glifos oficiales rellenos (ver «Íconos e imágenes») y el del correo es de Lucide. Cada uno conserva un objetivo de 44 px, pero los objetivos se traslapan 8 px para que los íconos queden más juntos. **Solo se muestran los que el dueño configuró** al editar los datos de su negocio; no hay enlaces vacíos.
 - Se prueban cuatro casos: con logo y banner, solo con logo, sin ninguno de los dos, y con un banner oscuro y de baja calidad.
+- **Datos reales (#77):** las siete pantallas del cliente que muestran la cabecera (portada, pago, reserva confirmada, detalle, Mis reservas, compra de un bono y Mis bonos) la arman con la portada pública de la barbería (`shopHeaderProps`): logo, banner, dirección, correo y redes. Lo que la API no trae no se dibuja: sin logo, el monograma; sin banner, la cabecera compacta.
+- **Imagen del servicio (SV-07):** en la fila donde el cliente elige el servicio, la imagen va a la izquierda (56 px, radio de 8 px, borde `line`, decorativa porque el nombre está al lado). Un servicio sin imagen se muestra **sin marco ni cuadro neutro**; el cuadro neutro es solo de la lista del dueño (lámina 31b).
 
 ### Panel de reserva (portada de la barbería)
 Se muestra bajo la cabecera, en la misma pantalla (`/b/:enlace`). En escritorio es un único recuadro de 16 px con borde `line`, 32 px de padding y 32 px de separación respecto de la cabecera; en celular no hay recuadro y todo va en una columna.
@@ -524,6 +526,30 @@ Rutas hijas de Equipo: `/barberias/:barberia/equipo/colaboradores` (`staff-team-
 - **El dueño se identifica con `es_dueno`**, no por el correo de la sesión.
 - **Contraseña visible antes del final** solo si la creación quedó a medias (la cuenta ya existe y un paso posterior falló): se muestra en el aviso para que no se pierda.
 - **Servicios «N de M»:** M es el total de servicios de la barbería, activos e inactivos.
+
+## Configuración del dueño (#77)
+Diseño de origen: láminas 34 y 35 de la v7. Ruta `/barberias/:barberia/configuracion`, solo para el dueño, con dos secciones como rutas hijas y enlaces con `aria-current` (`SectionNav`, como Equipo): «Datos públicos» (la ruta base) y «Cobro y políticas» (`/cobro`). El enlace «Configuración» de la barra del personal queda activo en las dos. Cada sección carga con esqueleto, muestra su error con «Reintentar» y guarda con un solo botón.
+
+### Datos públicos (lámina 34)
+- **Formulario:** «Datos del negocio» (nombre, ciudad, correo de contacto, teléfono y dirección), «Redes sociales» (WhatsApp, Instagram, Facebook y TikTok, opcionales, en ese orden), «Imagen» (logo y banner con `ImageField`), «Así lo ven sus clientes» (el `ShopHeader` real con lo que se escribe y se elige, el enlace público `/b/{enlace}` y una línea que dice si lleva banner y logo) y el interruptor «Aparecer en el directorio».
+- **Redes:** se revisan antes de enviar con la lista de dominios de la API (`https://`, hasta 300 caracteres, sin espacios, usuario ni puerto; `wa.me` o `api.whatsapp.com`, `instagram.com`, `facebook.com` o `fb.com`, `tiktok.com`, con o sin `www.`). El mensaje es el del diseño («Escriba un enlace de Instagram válido, como …»); si la API lo rechaza igual, se muestra su mensaje en el campo.
+- **Banner:** `ImageField` mide el archivo antes de enviarlo (`minSize`) y muestra sus dimensiones («WebP · 880 KB · 1.600 × 533 px»); uno menor de 1.200 × 400 px se rechaza con «El banner mide 900 × 300 px. Debe medir al menos 1.200 × 400 px.». Si el navegador no puede leer la imagen, decide la API.
+- **Guardado en varias llamadas:** los datos, el directorio, el logo y el banner son llamadas distintas de la API. Se ejecutan en ese orden y solo las que cambiaron. Si una falla, las siguientes no se intentan, lo guardado queda guardado y el aviso dice qué se guardó y qué falta («Se guardó los datos del negocio. Falta guardar el banner.»); el formulario sigue editable y un nuevo intento envía solo lo pendiente.
+- **Nombre:** al guardarlo cambia en la barra del personal; el enlace público no cambia (MT-07).
+
+### Cobro y políticas (lámina 35)
+- **Formulario:** aviso «Un cambio aplica a las reservas nuevas.» con «Las que ya están hechas conservan lo que tenían.», «Modalidad» (tres filas `OptionCard`), «Porcentaje del depósito (%)» solo con depósito, «Pasarela de pago» (ONVO Pay o PayPal) solo cuando la modalidad cobra, «Cancelación gratuita» y «Funciones» con los interruptores «Venta de bonos» y «Lista de espera».
+- **Revisión antes de enviar:** porcentaje de 10 a 100, plazo de 0 a 720 horas y una pasarela elegida si se cobra. Las reglas entre campos que la API rechaza sin indicar el campo (solo su texto) se muestran en el aviso general.
+- **Dos llamadas:** la política y las funciones, en ese orden y solo lo que cambió, con el mismo manejo de guardado parcial.
+- **Aviso de la pasarela** («Para vender bonos necesita una pasarela»): se muestra con la venta de bonos activa y la pasarela en `null`. La API no lo exige; es solo una advertencia.
+
+### Divergencias de las láminas 34 y 35
+- **Sin «Quitar» en el logo ni en el banner** (34a–d): la API solo sube o reemplaza la imagen. Vuelve cuando exista el endpoint.
+- **Imagen actual:** `GET …/administracion/negocio` no trae el logo ni el banner. Se leen de la portada pública (`GET /enlaces/{enlace}`) con el enlace que sí trae.
+- **«Sin pago»:** no se envía la pasarela y se oculta el selector, pero la API conserva la que había. Por eso el aviso de bonos mira la pasarela guardada y no la modalidad.
+- **Texto del aviso de bonos:** nombra la modalidad «Sin pago» como en el diseño, aunque también aparece si se cobra y aún no hay pasarela; en ese caso el guardado pide elegirla.
+- **Teléfono:** la API lo exige y no impone formato; el campo es de texto libre de hasta 30 caracteres.
+- **Alta de la barbería:** queda fuera de #77. No hay pantalla ni lámina para ella.
 
 ## Bonos (pantallas del cliente)
 

@@ -32,3 +32,56 @@ export function imageTypeLabel(type: string): string {
   if (type === 'image/webp') return 'WebP'
   return type.split('/')[1]?.toUpperCase() ?? 'Archivo'
 }
+
+export interface ImageSize {
+  width: number
+  height: number
+}
+
+/** 1200 → «1.200», as the design writes the pixels. */
+export function pixels(value: number): string {
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+/** «1.600 × 533 px». */
+export function sizeLabel(size: ImageSize): string {
+  return `${pixels(size.width)} × ${pixels(size.height)} px`
+}
+
+/** The size of a chosen image, or `null` when the browser cannot read it: then the API decides. */
+export async function readImageSize(file: Blob): Promise<ImageSize | null> {
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(file)
+      const size = { width: bitmap.width, height: bitmap.height }
+      bitmap.close()
+      return size
+    }
+    if (typeof Image === 'function' && typeof URL.createObjectURL === 'function') {
+      const url = URL.createObjectURL(file)
+      try {
+        return await new Promise<ImageSize | null>((resolve) => {
+          const image = new Image()
+          image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+          image.onerror = () => resolve(null)
+          image.src = url
+        })
+      } finally {
+        URL.revokeObjectURL(url)
+      }
+    }
+  } catch {
+    // Not an image the browser can decode: the API will say so.
+  }
+  return null
+}
+
+/** The message of an image smaller than the minimum, or an empty text. */
+export function smallImageProblem(
+  size: ImageSize,
+  minimum: ImageSize,
+  subject = 'La imagen',
+): string {
+  if (size.width >= minimum.width && size.height >= minimum.height) return ''
+  return `${subject} mide ${sizeLabel(size)}. Debe medir al menos ${sizeLabel(minimum)}.`
+}

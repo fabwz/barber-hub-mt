@@ -9,7 +9,7 @@ import ShopHeader from '@/components/ShopHeader.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import VoucherCard from '@/components/VoucherCard.vue'
 import VoucherOfferCard from '@/components/VoucherOfferCard.vue'
-import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
+import { shopHeaderProps } from '@/composables/shopHeaderProps'
 import { useVouchers } from '@/composables/useVouchers'
 import { useShopStore } from '@/stores/shop'
 
@@ -59,10 +59,7 @@ onMounted(() => void start())
         class="border-b-0!"
         wide
         name-tag="p"
-        v-bind="HEADER_EXAMPLE"
-        :name="shopStore.shop.profile.nombre"
-        :city="shopStore.shop.profile.ciudad"
-        :phone="shopStore.shop.profile.telefono"
+        v-bind="shopHeaderProps(shopStore.shop.profile)"
       />
     </div>
 

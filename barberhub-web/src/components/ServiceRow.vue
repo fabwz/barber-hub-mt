@@ -9,11 +9,13 @@ interface Props {
   /** Price without VAT. */
   base: number
   vat: number
+  /** Address of the image of the service (SV-07), decorative: the name is next to it. Without it nothing is drawn: no frame, no placeholder. */
+  image?: string | null
   /** Content only, with no `li`, no border and no height: for a selectable row (OptionCard). */
   bare?: boolean
 }
 
-const { durationMinutes, price, base, vat, bare = false } = defineProps<Props>()
+const { durationMinutes, price, base, vat, image = null, bare = false } = defineProps<Props>()
 
 /** ₡10.000: dot as thousands separator. */
 function colones(amount: number): string {
@@ -34,6 +36,13 @@ const duration = computed(() => {
     class="flex items-center gap-4"
     :class="bare ? 'w-full' : 'min-h-16 border-b border-line py-2'"
   >
+    <img
+      v-if="image"
+      :src="image"
+      alt=""
+      loading="lazy"
+      class="size-14 flex-none rounded-field border border-line object-cover"
+    />
     <div class="flex min-w-0 flex-1 flex-col">
       <span class="text-base">{{ name }}</span>
       <span class="text-sm font-normal text-fg-muted tabular-nums">{{ duration }}</span>

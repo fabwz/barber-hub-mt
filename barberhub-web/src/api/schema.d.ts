@@ -1635,9 +1635,9 @@ export interface components {
         /** ImagenesDeLaBarberia */
         ImagenesDeLaBarberia: {
             /** @description Dirección del logo, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
-            logo: null;
+            logo: string | null;
             /** @description Dirección del banner, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
-            banner: null;
+            banner: string | null;
         };
         /** LogoDeLaBarberia */
         LogoDeLaBarberia: {

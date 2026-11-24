@@ -209,4 +209,20 @@ describe('useActiveShopStore', () => {
     expect(store.status).toBe('idle')
     expect(sessionStorage.getItem(ACTIVE_SHOP_STORAGE_KEY)).toBeNull()
   })
+
+  it('shows the new name of a shop after a rename, keeping its link and role', async () => {
+    mockFetch(staffHandler([OWNER_SHOP, STAFF_SHOP]))
+    const store = useActiveShopStore()
+    await store.loadStaffShops()
+
+    store.rename(SHOP_A, 'Navaja Dorada')
+
+    expect(store.shops[0]).toEqual({
+      id: SHOP_A,
+      name: 'Navaja Dorada',
+      link: 'pura-navaja',
+      role: 'dueno',
+    })
+    expect(store.shops[1]!.name).toBe('Fade Lab')
+  })
 })

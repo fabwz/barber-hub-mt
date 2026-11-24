@@ -5463,11 +5463,17 @@
                 "type": "object",
                 "properties": {
                     "logo": {
-                        "type": "null",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Direcci\u00f3n del logo, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene."
                     },
                     "banner": {
-                        "type": "null",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Direcci\u00f3n del banner, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene."
                     }
                 },

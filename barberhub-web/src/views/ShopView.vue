@@ -21,7 +21,7 @@ import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import type { TimeSlot } from '@/components/TimeSlots.vue'
 import { addDays, dateOf, formatShortDate, timeOf, todayInCostaRica } from '@/composables/format'
 import { useAvailability } from '@/composables/useAvailability'
-import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
+import { shopHeaderProps } from '@/composables/shopHeaderProps'
 import { readStoredPayment } from '@/composables/usePayment'
 import { canPayWith, useVouchers } from '@/composables/useVouchers'
 import { useAiBookingStore, type BookingProposal } from '@/stores/aiBooking'
@@ -564,14 +564,7 @@ async function reserve(): Promise<void> {
     <template v-else-if="store.status === 'ready' && store.shop">
       <!-- The line under the header spans the whole 1280 px container, as in the design. -->
       <div class="border-b border-line px-5 md:px-8">
-        <ShopHeader
-          class="border-b-0!"
-          wide
-          v-bind="HEADER_EXAMPLE"
-          :name="store.shop.profile.nombre"
-          :city="store.shop.profile.ciudad"
-          :phone="store.shop.profile.telefono"
-        />
+        <ShopHeader class="border-b-0!" wide v-bind="shopHeaderProps(store.shop.profile)" />
       </div>
       <div class="px-5 pt-6 pb-8 md:px-8 md:pt-8">
         <div v-if="session.isAuthenticated" class="mb-4 flex flex-wrap justify-end gap-2">
@@ -662,6 +655,7 @@ async function reserve(): Promise<void> {
                   :price="item.precio"
                   :base="item.base"
                   :vat="item.iva"
+                  :image="item.imagen"
                 />
               </OptionCard>
             </OptionGroup>

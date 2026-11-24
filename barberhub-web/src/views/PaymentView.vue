@@ -27,7 +27,7 @@ import SinpeForm from '@/components/SinpeForm.vue'
 import SinpeInstructions from '@/components/SinpeInstructions.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import { colones, dateOf, secondsUntil, timeOf } from '@/composables/format'
-import { HEADER_EXAMPLE } from '@/composables/shopHeaderExample'
+import { shopHeaderProps } from '@/composables/shopHeaderProps'
 import { useCountdown } from '@/composables/useCountdown'
 import { usePayment, type PaymentMethod } from '@/composables/usePayment'
 import { usePaymentPolling } from '@/composables/usePaymentPolling'
@@ -421,10 +421,7 @@ onMounted(() => void load())
         class="border-b-0!"
         wide
         name-tag="p"
-        v-bind="HEADER_EXAMPLE"
-        :name="shopStore.shop.profile.nombre"
-        :city="shopStore.shop.profile.ciudad"
-        :phone="shopStore.shop.profile.telefono"
+        v-bind="shopHeaderProps(shopStore.shop.profile)"
       />
     </div>
 
