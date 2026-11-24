@@ -30,9 +30,17 @@ final class BarbershopImagesResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            /** Dirección del logo, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
+            /**
+             * Dirección del logo, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene.
+             *
+             * @var string|null
+             */
             'logo' => MediaUrls::of($this->images->logo),
-            /** Dirección del banner, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
+            /**
+             * Dirección del banner, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene.
+             *
+             * @var string|null
+             */
             'banner' => MediaUrls::of($this->images->banner),
         ];
     }
