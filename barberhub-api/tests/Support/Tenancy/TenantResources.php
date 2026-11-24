@@ -284,6 +284,26 @@ final class TenantResources
                 [],
                 ['api/v1/barberias/{barberia}/mis-ofertas'],
             ),
+            // The reminders of the reservations (#95). They have no route: the queue leaves and sends them and nobody reads them, so the isolation
+            // test only proves that the database hides the rows of the other barbershop. The path is where a read would be, and no route answers there.
+            new TenantResource(
+                'reservation_reminders',
+                function (string $barbershopId): string {
+                    $reservationId = self::createReservation($barbershopId);
+                    $id = (string) Str::uuid7();
+                    DB::table('reservation_reminders')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'reservation_id' => $reservationId,
+                        'kind' => '24h',
+                        'scheduled_for' => '2030-03-04 15:00:00-06',
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/recordatorios',
+                [],
+            ),
             // The technical record (#51, SE-04). It has no route: nothing reads it, so the isolation test only proves that the database
             // hides the entries of the other barbershop. The path is where a read would be, and no route answers there.
             new TenantResource(

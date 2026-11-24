@@ -11,6 +11,7 @@ use Src\Catalog\OpeningHours\Infrastructure\OpeningHoursServiceProvider;
 use Src\Catalog\Services\Infrastructure\ServicesServiceProvider;
 use Src\Identity\Memberships\Infrastructure\MembershipsServiceProvider;
 use Src\Identity\Users\Infrastructure\UsersServiceProvider;
+use Src\Notifications\Notices\Infrastructure\NoticesServiceProvider;
 use Src\Payments\Income\Infrastructure\IncomeServiceProvider;
 use Src\Payments\Payments\Infrastructure\PaymentsServiceProvider;
 use Src\Reservations\Reservations\Infrastructure\ReservationsServiceProvider;
@@ -38,4 +39,5 @@ return [
     PurchasedVouchersServiceProvider::class,
     WaitlistServiceProvider::class,
     WaitlistOffersServiceProvider::class,
+    NoticesServiceProvider::class,
 ];

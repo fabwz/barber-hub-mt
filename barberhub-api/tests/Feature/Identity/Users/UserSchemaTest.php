@@ -23,7 +23,7 @@ final class UserSchemaTest extends TestCase
 
         $this->assertEqualsCanonicalizing([
             'id', 'name', 'email', 'password', 'phone', 'is_active', 'must_change_password',
-            'terms_accepted_at', 'privacy_accepted_at', 'created_at', 'updated_at',
+            'terms_accepted_at', 'privacy_accepted_at', 'created_at', 'updated_at', 'reminders_enabled',
         ], $columns);
     }
 

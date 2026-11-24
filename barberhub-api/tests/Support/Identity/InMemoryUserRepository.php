@@ -17,6 +17,9 @@ final class InMemoryUserRepository implements UserRepository
 
     private int $sequence = 0;
 
+    /** @var list<string> */
+    private array $remindersOff = [];
+
     /** Generate a predictable identity. */
     public function nextId(): UserId
     {
@@ -58,6 +61,18 @@ final class InMemoryUserRepository implements UserRepository
         $wanted = array_map(fn (UserId $id): string => $id->value, $ids);
 
         return array_values(array_filter($this->users, fn (User $user): bool => in_array($user->id->value, $wanted, true)));
+    }
+
+    /** Whether the account wants the reminders; a test turns them off with `turnRemindersOff`. */
+    public function remindersEnabled(UserId $id): bool
+    {
+        return ! in_array($id->value, $this->remindersOff, true);
+    }
+
+    /** Turn the reminders of an account off. */
+    public function turnRemindersOff(UserId $id): void
+    {
+        $this->remindersOff[] = $id->value;
     }
 
     /** Count the stored accounts. */

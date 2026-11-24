@@ -78,6 +78,11 @@ final readonly class EloquentUserRepository implements UserRepository
     }
 
     /** Rebuild the entity from its stored state. */
+    public function remindersEnabled(UserId $id): bool
+    {
+        return UserModel::query()->whereKey($id->value)->value('reminders_enabled') !== false;
+    }
+
     private function toDomain(UserModel $model): User
     {
         return User::reconstitute(

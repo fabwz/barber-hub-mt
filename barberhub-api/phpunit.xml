@@ -40,5 +40,7 @@
         <env name="AI_CIRCUIT_CACHE_STORE" value="array" force="true"/>
         <!-- Only for tests: the real queue driver is still pending (RD-11). -->
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="RESEND_API_KEY" value="" force="true"/>
     </php>
 </phpunit>
