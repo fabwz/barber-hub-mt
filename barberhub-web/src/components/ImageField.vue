@@ -8,6 +8,10 @@ import {
   fileSizeLabel,
   imageProblem,
   imageTypeLabel,
+  readImageSize,
+  sizeLabel,
+  smallImageProblem,
+  type ImageSize,
 } from '@/composables/imageUpload'
 
 interface Props {
@@ -19,12 +23,33 @@ interface Props {
   /** The API's answer for this field (422). It adds to the check the field does itself. */
   error?: string
   disabled?: boolean
+  /** Smallest size in pixels (the banner). The file is measured before it travels. */
+  minSize?: ImageSize
+  /** Who the size message talks about: «El banner mide 900 × 300 px…». */
+  subject?: string
+  /** Shape of the preview: a square (a service), a circle (a logo) or a wide rectangle (a banner). */
+  shape?: 'square' | 'circle' | 'banner'
 }
 
-const { label, hint = '', currentUrl = null, error = '', disabled = false } = defineProps<Props>()
+const {
+  label,
+  hint = '',
+  currentUrl = null,
+  error = '',
+  disabled = false,
+  minSize,
+  subject = 'La imagen',
+  shape = 'square',
+} = defineProps<Props>()
 
 /** The chosen file, only when it passed the quick check. */
 const file = defineModel<File | null>({ default: null })
+
+const FRAME = {
+  square: 'size-20 rounded-field',
+  circle: 'size-20 rounded-full',
+  banner: 'h-20 w-60 max-w-full rounded-card',
+} as const
 
 const input = useTemplateRef<HTMLInputElement>('input')
 const id = useId()
@@ -68,13 +93,22 @@ function pick(): void {
   input.value?.click()
 }
 
-function onChange(event: Event): void {
+/** The size of the file shown or just chosen, when it was measured. */
+const measured = ref<ImageSize | null>(null)
+
+async function onChange(event: Event): Promise<void> {
   const target = event.target as HTMLInputElement
   const chosen = target.files?.[0]
   // The same file chosen twice must fire again, so the input is emptied.
   target.value = ''
   if (chosen === undefined) return
-  const message = imageProblem(chosen)
+  measured.value = null
+  let message = imageProblem(chosen)
+  if (message === '' && minSize !== undefined) {
+    const size = await readImageSize(chosen)
+    measured.value = size
+    if (size !== null) message = smallImageProblem(size, minSize, subject)
+  }
   localError.value = message
   if (message !== '') {
     rejected.value = chosen
@@ -90,10 +124,13 @@ defineExpose({ pick })
 
 <template>
   <fieldset class="flex flex-col gap-2" :disabled="disabled">
-    <legend class="text-sm font-medium text-fg">{{ label }}</legend>
-    <div class="flex items-center gap-4">
+    <legend class="mb-3 text-sm font-medium text-fg">{{ label }}</legend>
+    <div
+      :class="shape === 'banner' ? 'flex flex-col items-start gap-3' : 'flex items-center gap-4'"
+    >
       <div
-        class="grid size-20 flex-none place-items-center overflow-hidden rounded-field border border-line bg-surface text-fg-muted"
+        class="grid flex-none place-items-center overflow-hidden border border-line bg-surface text-fg-muted"
+        :class="FRAME[shape]"
       >
         <img
           v-if="imageSource"
@@ -107,7 +144,8 @@ defineExpose({ pick })
         <p v-if="shown" class="max-w-full text-sm" data-testid="image-name">
           <span class="block truncate font-medium text-fg">{{ shown.name }}</span>
           <span class="font-mono text-fg-muted"
-            >{{ imageTypeLabel(shown.type) }} · {{ fileSizeLabel(shown.size) }}</span
+            >{{ imageTypeLabel(shown.type) }} · {{ fileSizeLabel(shown.size)
+            }}<template v-if="measured"> · {{ sizeLabel(measured) }}</template></span
           >
         </p>
         <p v-else class="text-sm text-fg-muted">
