@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
 use Src\Reservations\Reservations\Application\UseCases\CloseReservation;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\ReservationClosed;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotYetDueException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
@@ -21,11 +22,14 @@ use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\ServiceId;
+use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\Duration;
 use Src\Shared\Domain\ValueObjects\Money;
 use Tests\Support\Reservations\InMemoryReservationRepository;
 use Tests\Support\Reservations\RecordingReservationDeposits;
 use Tests\Support\Reservations\RecordingReservationVouchers;
+use Tests\Support\Shared\FixedBarbershopContext;
+use Tests\Support\Shared\RecordingDomainEvents;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
 /** Who closes which reservation, when, and why repeating it changes nothing (RF-18, CO-05, RE-04, RE-09, CA-03, CA-06, UP-06). The reservation starts on 5 March at 10:00. */
@@ -41,6 +45,8 @@ final class CloseReservationTest extends TestCase
 
     private const string ANA_ROLE = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d71';
 
+    private const string BARBERSHOP = '0192f0c4-7b1e-7c3a-9f1d-2b6a4e8c0d01';
+
     private InMemoryReservationRepository $reservations;
 
     private RecordingTransactionRunner $transaction;
@@ -48,6 +54,8 @@ final class CloseReservationTest extends TestCase
     private RecordingReservationVouchers $vouchers;
 
     private RecordingReservationDeposits $deposits;
+
+    private RecordingDomainEvents $events;
 
     private string $reservationId;
 
@@ -60,6 +68,7 @@ final class CloseReservationTest extends TestCase
         $this->transaction = new RecordingTransactionRunner;
         $this->vouchers = new RecordingReservationVouchers;
         $this->deposits = new RecordingReservationDeposits;
+        $this->events = new RecordingDomainEvents;
         $reservation = Reservation::create(
             $this->reservations->nextId(),
             new CollaboratorId(self::DANIELA),
@@ -168,6 +177,20 @@ final class CloseReservationTest extends TestCase
         $this->useCase()->execute(self::OWNER_USER, true, $temporary->id->value, ReservationStatus::Completed, self::at('2030-03-06 11:00'));
     }
 
+    /** Closing announces the final status once, for the live agenda, and repeating it announces nothing (RF-36, CA-06). */
+    public function test_closing_announces_the_outcome_once(): void
+    {
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, ReservationStatus::NoShow, self::at('2030-03-05 10:10'));
+        $this->useCase()->execute(self::OWNER_USER, true, $this->reservationId, ReservationStatus::NoShow, self::at('2030-03-05 11:00'));
+
+        $closed = $this->events->of(ReservationClosed::class);
+        $this->assertCount(1, $closed);
+        $this->assertSame(self::BARBERSHOP, $closed[0]->barbershopId);
+        $this->assertSame($this->reservationId, $closed[0]->reservationId);
+        $this->assertSame(self::DANIELA, $closed[0]->collaboratorId);
+        $this->assertSame('no_show', $closed[0]->status);
+    }
+
     /** Repeating the same outcome saves nothing, adds no entry and does not use the session again (CA-06). */
     public function test_a_repeat_writes_nothing(): void
     {
@@ -240,7 +263,7 @@ final class CloseReservationTest extends TestCase
             }
         };
 
-        return new CloseReservation($this->reservations, $collaborators, $this->transaction, $this->vouchers, $this->deposits, new CancellationConsequence);
+        return new CloseReservation($this->reservations, $collaborators, $this->transaction, $this->vouchers, $this->deposits, new CancellationConsequence, $this->events, new FixedBarbershopContext(new BarbershopId(self::BARBERSHOP)));
     }
 
     private static function at(string $moment): DateTimeImmutable

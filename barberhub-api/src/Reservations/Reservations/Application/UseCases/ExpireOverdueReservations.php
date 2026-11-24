@@ -6,6 +6,7 @@ namespace Src\Reservations\Reservations\Application\UseCases;
 
 use DateTimeImmutable;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
+use Src\Reservations\Reservations\Domain\Events\ReservationExpired;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
@@ -26,7 +27,7 @@ final readonly class ExpireOverdueReservations
      * history entry authored by the system (RE-09), and release their space for the exclusion of the database. It is lazy:
      * nobody calls it on a schedule; the operations that need the space of the collaborator run it first. The caller
      * holds the lock of the collaborator and the transaction. Running it again finds nothing, so it is idempotent. Each reservation it
-     * expires announces the time it held as released (SpaceReleased), so the waitlist can offer it (RF-31).
+     * expires announces that it expired (ReservationExpired, for the live agenda, RF-36) and the time it held as released (SpaceReleased), so the waitlist can offer it (RF-31).
      *
      * @return int The number of reservations it expired.
      */
@@ -37,6 +38,13 @@ final readonly class ExpireOverdueReservations
         foreach ($overdue as $reservation) {
             $reservation->expire($now, Author::system());
             $this->reservations->save($reservation);
+            $this->events->publish(new ReservationExpired(
+                $this->context->current()->value,
+                $reservation->id->value,
+                $reservation->collaboratorId->value,
+                $reservation->interval->start,
+                $reservation->interval->end,
+            ));
             $this->events->publish(new SpaceReleased(
                 $this->context->current()->value,
                 $reservation->id->value,

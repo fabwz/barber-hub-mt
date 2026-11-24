@@ -11,6 +11,7 @@ use Src\Reservations\Reservations\Application\Contracts\ReservationDeposits;
 use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\ReservationClosed;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotYetDueException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
@@ -19,12 +20,14 @@ use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationStatus;
 use Src\Reservations\Reservations\Domain\ValueObjects\SessionOutcome;
+use Src\Shared\Domain\Contracts\BarbershopContext;
+use Src\Shared\Domain\Contracts\DomainEvents;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Shared\Domain\ValueObjects\UserId;
 
 final readonly class CloseReservation
 {
-    /** Receive the reservation repository, the port that finds the collaborator profile, the transaction port, the vouchers port, the deposits port and the table of consequences. */
+    /** Receive the reservation repository, the port that finds the collaborator profile, the transaction port, the vouchers port, the deposits port, the table of consequences, the events of the domain and the barbershop of the operation. */
     public function __construct(
         private ReservationRepository $reservations,
         private CollaboratorDirectory $collaborators,
@@ -32,6 +35,8 @@ final readonly class CloseReservation
         private ReservationVouchers $vouchers,
         private ReservationDeposits $deposits,
         private CancellationConsequence $consequences,
+        private DomainEvents $events,
+        private BarbershopContext $context,
     ) {}
 
     /**
@@ -73,6 +78,14 @@ final readonly class CloseReservation
             };
 
             $this->reservations->save($reservation);
+            $this->events->publish(new ReservationClosed(
+                $this->context->current()->value,
+                $reservation->id->value,
+                $reservation->collaboratorId->value,
+                $reservation->interval->start,
+                $reservation->interval->end,
+                $outcome->value,
+            ));
 
             $paidWithVoucher = $reservation->purchasedVoucherId !== null;
             $consequence = $outcome === ReservationStatus::NoShow
