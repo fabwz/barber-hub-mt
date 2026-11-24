@@ -66,7 +66,7 @@ final class ExpireTemporaryReservationJobTest extends TestCase
         });
     }
 
-    /** A barbershop that does not charge confirms at once and leaves no task (RE-07). */
+    /** A barbershop that does not charge confirms at once and leaves no task to expire it (RE-07); the notices of the confirmation are another matter (#96). */
     public function test_a_reservation_confirmed_at_once_leaves_no_task(): void
     {
         Queue::fake();
@@ -76,7 +76,7 @@ final class ExpireTemporaryReservationJobTest extends TestCase
 
         $this->postJson($this->reservationsUrl($this->puraNavaja), $this->booking())->assertCreated();
 
-        Queue::assertNothingPushed();
+        Queue::assertNotPushed(ExpireTemporaryReservationJob::class);
     }
 
     /** Once the window closes the task expires the reservation by the system and announces its space, with no booking asking for the collaborator (RE-05, RE-09, RF-31). */
