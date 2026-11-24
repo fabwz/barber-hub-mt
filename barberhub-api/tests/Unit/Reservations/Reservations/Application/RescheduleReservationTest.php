@@ -13,6 +13,7 @@ use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Application\UseCases\ExpireOverdueReservations;
 use Src\Reservations\Reservations\Application\UseCases\RescheduleReservation;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\ReservationRescheduled;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
@@ -119,6 +120,19 @@ final class RescheduleReservationTest extends TestCase
         $this->assertSame(self::DANIELA, $released[0]->collaboratorId, 'It is the space of the collaborator it left, not the one it went to.');
         $this->assertEquals(self::at('2030-03-05 10:00'), $released[0]->startsAt);
         $this->assertEquals(self::at('2030-03-05 10:50'), $released[0]->endsAt);
+    }
+
+    /** The move to another collaborator names the one it left and the start it had, so the agenda that lost it can drop it (RF-36). */
+    public function test_moving_names_the_collaborator_and_the_start_it_left(): void
+    {
+        $this->useCase()->execute(self::ANA_USER, false, $this->reservationId, self::at('2030-03-05 11:00'), self::KEVIN, self::at('2030-03-04 09:00'));
+
+        $moved = $this->events->of(ReservationRescheduled::class);
+        $this->assertCount(1, $moved);
+        $this->assertSame(self::KEVIN, $moved[0]->collaboratorId);
+        $this->assertSame(self::DANIELA, $moved[0]->previousCollaboratorId);
+        $this->assertEquals(self::at('2030-03-05 10:00'), $moved[0]->previousStartsAt);
+        $this->assertEquals(self::at('2030-03-05 11:00'), $moved[0]->startsAt);
     }
 
     /** A move that is refused changes nothing, so it frees nothing and announces nothing. */

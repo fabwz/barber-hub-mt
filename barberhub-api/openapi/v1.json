@@ -4086,6 +4086,52 @@
                     }
                 }
             }
+        },
+        "/tiempo-real/autorizacion": {
+            "post": {
+                "operationId": "live-updates.authorization",
+                "description": "El cliente de WebSockets llama a esta ruta, con el token de la sesi\u00f3n, antes de suscribirse a un canal privado (cuerpo `socket_id` y `channel_name`, con el prefijo `private-`). Los canales son `private-barberia.{barberia}.agenda`, con todos los cambios de la agenda de la barber\u00eda, solo para su due\u00f1o, y `private-barberia.{barberia}.colaboradores.{colaborador}`, con los de la agenda de un colaborador, solo para ese colaborador (CO-04). Responde 200 con la firma de la suscripci\u00f3n. Una persona sin rol en la barber\u00eda, una barber\u00eda que no existe, un identificador que no es v\u00e1lido y la agenda de otro colaborador responden el mismo 404 `no-encontrado`; un cliente, un colaborador en el canal de la barber\u00eda o el due\u00f1o en el de un colaborador, 403 `prohibido`; un nombre de canal que no existe, 403 `prohibido`. La autorizaci\u00f3n se eval\u00faa solo al suscribirse: una conexi\u00f3n abierta sigue recibiendo hasta que se reconecte, y la autorizaci\u00f3n se vuelve a pedir en cada reconexi\u00f3n. Los eventos no llevan datos personales: el cliente pide el detalle a la API.",
+                "summary": "Autorizar la suscripci\u00f3n a un canal de tiempo real",
+                "tags": [
+                    "ChannelAuthorization"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AutorizarCanal"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "auth": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "auth"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -4342,6 +4388,26 @@
                     "fecha"
                 ],
                 "title": "AnotarseEnFila"
+            },
+            "AutorizarCanal": {
+                "type": "object",
+                "properties": {
+                    "socket_id": {
+                        "type": "string",
+                        "description": "Identificador de la conexi\u00f3n que el servidor de tiempo real entrega al navegador.",
+                        "pattern": "^\\d+\\.\\d+$"
+                    },
+                    "channel_name": {
+                        "type": "string",
+                        "description": "Canal privado al que la persona quiere suscribirse, con su prefijo `private-`.",
+                        "maxLength": 200
+                    }
+                },
+                "required": [
+                    "socket_id",
+                    "channel_name"
+                ],
+                "title": "AutorizarCanal"
             },
             "BannerDeLaBarberia": {
                 "type": "object",

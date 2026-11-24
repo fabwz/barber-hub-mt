@@ -23,6 +23,8 @@ use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Application\UseCases\CreateReservation;
 use Src\Reservations\Reservations\Application\UseCases\ExpireOverdueReservations;
 use Src\Reservations\Reservations\Domain\Events\ReservationConfirmed;
+use Src\Reservations\Reservations\Domain\Events\ReservationCreated;
+use Src\Reservations\Reservations\Domain\Events\ReservationExpired;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
@@ -275,7 +277,7 @@ final class CreateReservationTest extends TestCase
         $this->paymentRequired = true;
         $stale = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
         $this->paymentRequired = false;
-        $this->assertSame([], $this->events->all());
+        $this->assertCount(0, $this->events->of(SpaceReleased::class));
 
         $this->createReservation->execute($this->command(), self::at('2030-03-01 08:10'));
         $this->createReservation->execute($this->command(self::at('2030-03-06 10:00')), self::at('2030-03-01 08:11'));
@@ -287,6 +289,32 @@ final class CreateReservationTest extends TestCase
         $this->assertSame(self::DANIELA_ID, $released[0]->collaboratorId);
         $this->assertEquals($stale->interval->start, $released[0]->startsAt);
         $this->assertEquals($stale->blockedUntil, $released[0]->endsAt);
+
+        $expired = $this->events->of(ReservationExpired::class);
+        $this->assertCount(1, $expired);
+        $this->assertSame(self::BARBERSHOP_ID, $expired[0]->barbershopId);
+        $this->assertSame($stale->id->value, $expired[0]->reservationId);
+        $this->assertSame(self::DANIELA_ID, $expired[0]->collaboratorId);
+        $this->assertEquals($stale->interval->end, $expired[0]->endsAt);
+    }
+
+    /** A temporary reservation announces its creation for the live agenda, with its collaborator and interval, and a confirmed one does not (RF-36, RE-05). */
+    public function test_a_temporary_reservation_announces_its_creation(): void
+    {
+        $this->paymentRequired = true;
+        $temporary = $this->createReservation->execute($this->command(), self::at('2030-03-01 08:00'));
+
+        $created = $this->events->of(ReservationCreated::class);
+        $this->assertCount(1, $created);
+        $this->assertSame(self::BARBERSHOP_ID, $created[0]->barbershopId);
+        $this->assertSame($temporary->id->value, $created[0]->reservationId);
+        $this->assertSame(self::DANIELA_ID, $created[0]->collaboratorId);
+        $this->assertEquals($temporary->interval->start, $created[0]->startsAt);
+
+        $this->paymentRequired = false;
+        $this->createReservation->execute($this->command(self::at('2030-03-06 10:00')), self::at('2030-03-01 08:01'));
+
+        $this->assertCount(1, $this->events->of(ReservationCreated::class));
     }
 
     /** A reservation confirmed on the spot announces it, with its customer, service and interval, and a temporary one does not (RE-07, LE-06). */

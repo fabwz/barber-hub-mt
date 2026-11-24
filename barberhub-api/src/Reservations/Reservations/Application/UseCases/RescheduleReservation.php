@@ -102,6 +102,7 @@ final readonly class RescheduleReservation
                     $reservation->customerMembershipId->value,
                     $service,
                     $reservation->collaboratorId->value,
+                    $releasedCollaborator,
                     $releasedFrom,
                     $reservation->interval->start,
                     $reservation->interval->end,

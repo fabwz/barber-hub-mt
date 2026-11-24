@@ -8,7 +8,8 @@ use DateTimeImmutable;
 
 /**
  * A reservation moved to another start, asked by the customer or by the barbershop (`byBarbershop`). `collaboratorId`, `startsAt` and
- * `endsAt` are the new ones; `previousStartsAt` is the start it had. It carries its barbershop because a worker attends it.
+ * `endsAt` are the new ones; `previousCollaboratorId` and `previousStartsAt` are the collaborator and the start it had. It carries its
+ * barbershop because a worker attends it.
  */
 final readonly class ReservationRescheduled
 {
@@ -18,6 +19,7 @@ final readonly class ReservationRescheduled
         public string $customerMembershipId,
         public string $serviceId,
         public string $collaboratorId,
+        public string $previousCollaboratorId,
         public DateTimeImmutable $previousStartsAt,
         public DateTimeImmutable $startsAt,
         public DateTimeImmutable $endsAt,

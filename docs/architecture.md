@@ -42,7 +42,7 @@ Hoy existen cuatro contextos, cada uno con sus módulos y las tres capas (las su
 | Vouchers | `VoucherDefinitions`, `PurchasedVouchers` |
 | Waitlist | `Entries`, `Offers` |
 
-`Payments` existe desde el #62 con el módulo `Payments`, y `Vouchers` desde el #132 (dominio y esquema; las rutas del dueño, #87, y la compra, que expone `Payments`, #88); `Waitlist` existe desde el #92 con el módulo `Entries` (las filas) y suma `Offers` con el #93 (las ofertas); `Notifications` está previsto (RD-05) y se crea en el milestone que lo necesita. `Src\Shared` ya existe, y el `Shared` de `Vouchers` (los números y el nombre que comparten la definición y el bono comprado); los demás `Shared` de contexto (previsto, #22) aún no existen.
+`Payments` existe desde el #62 con el módulo `Payments`, y `Vouchers` desde el #132 (dominio y esquema; las rutas del dueño, #87, y la compra, que expone `Payments`, #88); `Waitlist` existe desde el #92 con el módulo `Entries` (las filas) y suma `Offers` con el #93 (las ofertas); `Notifications` existe con `Notices` (#95) y `LiveUpdates` (#97). `Src\Shared` ya existe, y el `Shared` de `Vouchers` (los números y el nombre que comparten la definición y el bono comprado); los demás `Shared` de contexto (previsto, #22) aún no existen.
 
 Un módulo corresponde a un agregado, no a una tabla.
 
@@ -652,6 +652,30 @@ ReservationRescheduled ┘
 **Qué necesita el despliegue (#117, #136; solo anotado).** Un worker bajo supervisor (`php artisan queue:work`, con reinicio automático; las tareas fijan sus propios intentos), el `.env` con `QUEUE_CONNECTION=database`, `MAIL_MAILER=resend`, `RESEND_API_KEY`, `MAIL_FROM_ADDRESS` (de un dominio verificado en Resend), `MAIL_FROM_NAME` y `APP_URL` con la dirección pública (el logo del correo depende de ella), y, si el plan lo pide, `NOTICES_MAIL_PER_SECOND`. No hace falta planificador: todavía no hay tareas programadas. Para el monitoreo (#118): tamaño de `jobs`, antigüedad de la tarea más vieja, filas de `failed_jobs` por clase de tarea y correos enviados por día frente al tope del plan.
 
 **Pruebas.** `ReminderScheduleTest`, `ScheduleRemindersTest`, `SendReminderTest` y `SendNoticeTest` (Unit, con dobles, sin framework ni base de datos); `NoticesOnReservationsTest` (cada vía de confirmación, cancelación y reprogramación, de la petición HTTP al correo, con `Queue::fake`, `Mail::fake` y el reloj fijo), `EloquentReminderRepositoryTest` (la tabla y su política), `NoticeRetriesTest` (la cola real de la base de datos con un canal que siempre falla: 3 intentos, la reserva intacta, `failed_jobs` y el límite de ritmo), `ResendTransportTest` (la llave de idempotencia, el 429 y la política de reintentos) y `NoticeBrandingTest` (el logo público y el texto). `reservation_reminders` está en `TenantResources`. Ninguna prueba envía un correo ni llama a un proveedor: `MAIL_MAILER=array` en `phpunit.xml` y `Http::preventStrayRequests()`.
+
+### La agenda en vivo (#97)
+
+El módulo `Notifications/LiveUpdates` avisa a los navegadores de cada cambio de una reserva sin que recarguen (RF-36, NO-06). La decisión y sus alternativas están en el [ADR 0012](adr/0012-live-agenda-with-reverb.md).
+
+```
+ReservationCreated ────┐
+ReservationConfirmed ──┤
+ReservationRescheduled ┼─▶ PublishAgendaChanges (síncrono, dentro de la transacción) ─▶ AgendaChanged (ShouldBroadcast + ShouldDispatchAfterCommit)
+ReservationCancelled ──┤                                         │ al confirmar la transacción
+ReservationClosed ─────┤                                         ▼
+ReservationExpired ────┘                      tarea BroadcastEvent en la cola `realtime` ─▶ worker ─▶ Reverb ─▶ navegadores
+
+navegador ─▶ POST /api/v1/tiempo-real/autorizacion ─▶ AuthorizeAgendaChannel / AuthorizeCollaboratorChannel ─▶ firma o 404/403
+```
+
+- **Eventos de dominio.** Además de los que ya existían, `CreateReservation` publica `ReservationCreated` (solo para la reserva temporal; la que nace confirmada publica `ReservationConfirmed`), `CloseReservation` publica `ReservationClosed` (una vez, no al repetir el cierre, CA-06) y `ExpireOverdueReservations` publica `ReservationExpired` junto a `SpaceReleased`. `ReservationRescheduled` suma `previousCollaboratorId`. Todos llevan `barbershopId`.
+- **Canales.** `private-barberia.{barberia}.agenda` (solo su dueño; todos los cambios) y `private-barberia.{barberia}.colaboradores.{colaborador}` (solo ese colaborador; su agenda). `AgendaChange::channels()` los calcula: una reprogramación a otro colaborador también llega al canal del que la perdió. Los identificadores salen del evento de dominio, escrito desde un contexto ya verificado, nunca de lo que envía una persona.
+- **Autorización.** La ruta pide solo sesión (`AccessMatrix`, perfil «solo con sesión»); el rol sale del nombre del canal y lo decide el caso de uso con `BarbershopRoles`. El perfil del colaborador se busca con `FindCollaboratorOfUser` dentro de `BarbershopProcessScope`, y solo después de comprobar que la persona tiene rol en esa barbería, porque `collaborators` tiene seguridad a nivel de fila. Un canal que no es privado no se acepta (422) y uno desconocido responde 403.
+- **Carga.** `{reserva, colaborador, estado, inicio, fin, cambio, colaborador_anterior?, inicio_anterior?, ocurrio_en}`, con los estados de la API y las horas en la zona de la aplicación. Sin nombre, contacto, precio ni pago: el cliente pide el detalle a `GET /barberias/{barberia}/reservas/{reserva}`, donde CO-04 ya se aplica.
+- **Resincronización.** Reverb no repite lo perdido. Al reconectar, el cliente (#113) vuelve a pedir el día con `GET /barberias/{barberia}/reservas?dia=` y descarta los eventos anteriores por `ocurrio_en`. No hace falta un endpoint nuevo.
+- **Límite conocido.** La autorización se evalúa solo al suscribirse; una conexión abierta de una persona desactivada o sin token sigue recibiendo hasta que se reconecte.
+- **Qué necesita el despliegue (#136; solo anotado).** Tres procesos bajo supervisor: `php artisan reverb:start`, `php artisan queue:work --queue=realtime --sleep=1` y `php artisan queue:work --queue=default`; un proxy que termine `wss` hacia el puerto de Reverb (cabeceras `Upgrade` y `Connection`); y en el `.env` `BROADCAST_CONNECTION=reverb`, `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`, `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME`, `REVERB_SERVER_HOST`, `REVERB_SERVER_PORT` y `REVERB_ALLOWED_ORIGINS` con el origen de la web. Para el monitoreo (#118): antigüedad de la tarea más vieja de la cola `realtime`, filas de `failed_jobs` de `BroadcastEvent` y conexiones abiertas de Reverb.
+- **Pruebas.** `AuthorizeAgendaChannelsTest` (Unit, la regla sin framework); `LiveAgendaChannelsTest` (Feature/Tenancy, las ocho personas de la matriz contra los dos canales, los 404 idénticos, el 403, la contraseña temporal, el límite de 60 por minuto; con la conexión `reverb` y claves falsas, que firma sin red); `LiveAgendaEventsTest` (Feature, con `Queue::fake`: canales, carga, una sola emisión por cambio y nada tras un rechazo); y las pruebas de los casos de uso de reservas, que ahora comprueban los eventos nuevos. `phpunit.xml` fija `BROADCAST_CONNECTION=null`.
 
 ### Concurrencia
 

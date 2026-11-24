@@ -18,6 +18,7 @@ use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Events\ReservationConfirmed;
+use Src\Reservations\Reservations\Domain\Events\ReservationCreated;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
@@ -127,6 +128,15 @@ final readonly class CreateReservation
 
                 if ($reservation->expiresAt !== null) {
                     $this->expiries->schedule($reservation->id->value, $reservation->expiresAt);
+                    $this->events->publish(new ReservationCreated(
+                        $this->context->current()->value,
+                        $reservation->id->value,
+                        $reservation->customerMembershipId->value,
+                        $reservation->serviceId->value,
+                        $reservation->collaboratorId->value,
+                        $reservation->interval->start,
+                        $reservation->interval->end,
+                    ));
                 } else {
                     $this->events->publish(new ReservationConfirmed(
                         $this->context->current()->value,
