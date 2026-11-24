@@ -34,4 +34,7 @@ interface UserRepository
      * @return list<User>
      */
     public function findMany(array $ids): array;
+
+    /** Whether the account wants the reminders of its reservations by email; it does until it says otherwise, and an unknown account does too (RF-47, NO-10). */
+    public function remindersEnabled(UserId $id): bool;
 }
