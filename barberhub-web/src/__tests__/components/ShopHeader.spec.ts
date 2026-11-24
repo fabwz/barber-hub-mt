@@ -7,7 +7,7 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-// Test data includes what the API does not deliver yet (address, networks, logo, banner).
+// A shop with everything the public cover can bring: address, networks, logo and banner.
 const FULL = {
   name: 'Pura Navaja',
   city: 'San José',
@@ -167,14 +167,8 @@ describe('ShopHeader', () => {
     expect(wrapper.get('[role="img"]').text()).toBe(expected)
   })
 
-  it('preview: neutral banner and logo blocks with no image, 4:1 on a wide page', () => {
-    const wrapper = make({
-      ...FULL,
-      logoUrl: undefined,
-      bannerUrl: undefined,
-      preview: true,
-      wide: true,
-    } as never)
+  it('wide page: the banner is 4:1, rounded and cut around the logo', () => {
+    const wrapper = make({ ...FULL, wide: true } as never)
 
     const banner = wrapper.get('header > div[aria-hidden="true"]')
     expect(banner.classes()).toContain('md:aspect-4/1')
@@ -183,12 +177,16 @@ describe('ShopHeader', () => {
     // The banner is cut around the logo (the page background shows through), and the logo keeps
     // its thin gray border all around; nothing is painted as a ring.
     expect(banner.classes()).toContain('banner-notch')
-    const logo = wrapper.get('[aria-label="Logo de Pura Navaja"]').element.parentElement!
+    const logo = wrapper.get('img[alt="Logo de Pura Navaja"]').element.parentElement!
     expect(logo.className).toContain('border-line-strong')
     expect(logo.className).not.toMatch(/ring-|border-6|border-canvas/)
-    expect(logo.querySelector('span[aria-hidden]')).toBeNull()
-    expect(banner.find('img').exists()).toBe(false)
+  })
+
+  it('without logo and without banner: the monogram and the compact header, with no image', () => {
+    const wrapper = make({ ...FULL, logoUrl: undefined, bannerUrl: undefined })
+
     expect(wrapper.find('img').exists()).toBe(false)
-    expect(wrapper.get('[aria-label="Logo de Pura Navaja"] svg').exists()).toBe(true)
+    expect(wrapper.find('header > div[aria-hidden="true"]').exists()).toBe(false)
+    expect(wrapper.get('[aria-label="Monograma de Pura Navaja"]').text()).toBe('PN')
   })
 })
