@@ -98,6 +98,11 @@ export const useActiveShopStore = defineStore('activeShop', () => {
     writeStoredId(id)
   }
 
+  /** Shows the new name of a shop after the owner renamed it (the link never changes, MT-07). */
+  function rename(id: string, name: string): void {
+    shops.value = shops.value.map((shop) => (shop.id === id ? { ...shop, name } : shop))
+  }
+
   /** Forgets everything; called when the session closes or the API answers 401. */
   function clear(): void {
     generation += 1
@@ -108,5 +113,5 @@ export const useActiveShopStore = defineStore('activeShop', () => {
     writeStoredId(null)
   }
 
-  return { shops, status, active, activeId, loadStaffShops, select, clear }
+  return { shops, status, active, activeId, loadStaffShops, select, rename, clear }
 })
