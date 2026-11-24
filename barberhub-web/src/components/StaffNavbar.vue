@@ -17,10 +17,24 @@ const OWNER_ONLY = ['Servicios', 'Equipo', 'Bonos', 'Ingresos', 'Configuración'
 const LINKS = [
   { label: 'Agenda', name: 'staff-agenda', match: ['staff-agenda', 'staff-reservation'] },
   { label: 'Servicios', name: 'staff-services', match: ['staff-services'] },
-  { label: 'Equipo', name: 'staff-team', match: ['staff-team'] },
+  {
+    label: 'Equipo',
+    name: 'staff-team',
+    match: [
+      'staff-team',
+      'staff-team-members',
+      'staff-team-member-new',
+      'staff-team-own-profile',
+      'staff-team-member-edit',
+    ],
+  },
   { label: 'Bonos', name: 'staff-vouchers', match: ['staff-vouchers'] },
   { label: 'Ingresos', name: 'staff-income', match: ['staff-income'] },
-  { label: 'Configuración', name: 'staff-settings', match: ['staff-settings'] },
+  {
+    label: 'Configuración',
+    name: 'staff-settings',
+    match: ['staff-settings', 'staff-settings-billing'],
+  },
 ]
 
 const router = useRouter()
