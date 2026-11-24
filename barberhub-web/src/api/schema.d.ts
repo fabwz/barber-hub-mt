@@ -1158,6 +1158,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tiempo-real/autorizacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Autorizar la suscripción a un canal de tiempo real
+         * @description El cliente de WebSockets llama a esta ruta, con el token de la sesión, antes de suscribirse a un canal privado (cuerpo `socket_id` y `channel_name`, con el prefijo `private-`). Los canales son `private-barberia.{barberia}.agenda`, con todos los cambios de la agenda de la barbería, solo para su dueño, y `private-barberia.{barberia}.colaboradores.{colaborador}`, con los de la agenda de un colaborador, solo para ese colaborador (CO-04). Responde 200 con la firma de la suscripción. Una persona sin rol en la barbería, una barbería que no existe, un identificador que no es válido y la agenda de otro colaborador responden el mismo 404 `no-encontrado`; un cliente, un colaborador en el canal de la barbería o el dueño en el de un colaborador, 403 `prohibido`; un nombre de canal que no existe, 403 `prohibido`. La autorización se evalúa solo al suscribirse: una conexión abierta sigue recibiendo hasta que se reconecte, y la autorización se vuelve a pedir en cada reconexión. Los eventos no llevan datos personales: el cliente pide el detalle a la API.
+         */
+        post: operations["live-updates.authorization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1273,6 +1293,13 @@ export interface components {
              * @description Identificador del barbero; nulo u omitido significa «cualquiera».
              */
             barbero?: string | null;
+        };
+        /** AutorizarCanal */
+        AutorizarCanal: {
+            /** @description Identificador de la conexión que el servidor de tiempo real entrega al navegador. */
+            socket_id: string;
+            /** @description Canal privado al que la persona quiere suscribirse, con su prefijo `private-`. */
+            channel_name: string;
         };
         /** BannerDeLaBarberia */
         BannerDeLaBarberia: {
@@ -4199,6 +4226,33 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Unauthenticated"];
+        };
+    };
+    "live-updates.authorization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutorizarCanal"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        auth: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            422: components["responses"]["InvalidData"];
         };
     };
 }
