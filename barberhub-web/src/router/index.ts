@@ -178,6 +178,24 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // «Configuración» (#77, RF-01, RF-08, RF-09): only the owner. Each section is a child route, as in «Equipo».
+    path: '/barberias/:barberia/configuracion',
+    component: () => import('@/views/StaffSettingsView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+    children: [
+      {
+        path: '',
+        name: 'staff-settings',
+        component: () => import('@/views/SettingsPublicView.vue'),
+      },
+      {
+        path: 'cobro',
+        name: 'staff-settings-billing',
+        component: () => import('@/views/SettingsBillingView.vue'),
+      },
+    ],
+  },
+  {
     path: '/cambiar-contrasena',
     name: 'password-change',
     component: () => import('@/views/PasswordChangeView.vue'),
