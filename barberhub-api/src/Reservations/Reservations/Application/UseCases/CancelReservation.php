@@ -11,6 +11,7 @@ use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\DTOs\CancelledReservation;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\ReservationCancelled;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotFoundException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
@@ -94,6 +95,16 @@ final readonly class CancelReservation
                 $reservation->collaboratorId->value,
                 $reservation->interval->start,
                 $reservation->blockedUntil,
+            ));
+            $this->events->publish(new ReservationCancelled(
+                $this->context->current()->value,
+                $reservation->id->value,
+                $reservation->customerMembershipId->value,
+                $reservation->serviceId->value,
+                $reservation->collaboratorId->value,
+                $reservation->interval->start,
+                $reservation->interval->end,
+                $isOwner,
             ));
 
             return new CancelledReservation($reservation, $class, $consequence);

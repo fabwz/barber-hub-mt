@@ -10,6 +10,7 @@ use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
+use Src\Reservations\Reservations\Domain\Events\ReservationRescheduled;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredException;
@@ -95,6 +96,17 @@ final readonly class RescheduleReservation
 
                 $this->reservations->save($reservation);
                 $this->events->publish(new SpaceReleased($this->context->current()->value, $reservation->id->value, $releasedCollaborator, $releasedFrom, $releasedUntil));
+                $this->events->publish(new ReservationRescheduled(
+                    $this->context->current()->value,
+                    $reservation->id->value,
+                    $reservation->customerMembershipId->value,
+                    $service,
+                    $reservation->collaboratorId->value,
+                    $releasedFrom,
+                    $reservation->interval->start,
+                    $reservation->interval->end,
+                    $isOwner,
+                ));
 
                 return $reservation;
             });
