@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { api } from '@/api'
+import { useSessionStore } from '@/stores/session'
 
 export type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -36,6 +37,7 @@ export const useAccountStore = defineStore('account', () => {
         email: account.correo,
       }
       temporaryPassword.value = account.contrasena_temporal
+      useSessionStore().setUserId(typeof account.id === 'string' ? account.id : null)
       status.value = 'ready'
     } catch {
       if (current !== generation) return

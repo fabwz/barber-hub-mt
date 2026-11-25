@@ -38,6 +38,31 @@ describe('account store', () => {
     expect(account.temporaryPassword).toBe(true)
   })
 
+  it('hands the id of the account to the session store, in memory only, and forgets it with the session', async () => {
+    signIn()
+    const id = '0190b1f0-0000-7000-8000-0000000000f1'
+    accountHandler({ account: { ...ACCOUNT, id } as typeof ACCOUNT })
+    const account = useAccountStore()
+    const session = useSessionStore()
+    expect(session.userId).toBeNull()
+
+    await account.load()
+
+    expect(session.userId).toBe(id)
+    expect(sessionStorage.getItem('barberhub.session')).not.toContain(id)
+    session.clear()
+    expect(session.userId).toBeNull()
+  })
+
+  it('an answer without id leaves the id unknown', async () => {
+    accountHandler()
+    const account = useAccountStore()
+
+    await account.load()
+
+    expect(useSessionStore().userId).toBeNull()
+  })
+
   it('a staff account has no phone yet: it is an empty text', async () => {
     accountHandler({ account: { ...ACCOUNT, telefono: null as unknown as string } })
     const account = useAccountStore()
