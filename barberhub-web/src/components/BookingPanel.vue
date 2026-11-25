@@ -10,8 +10,9 @@ import InlineNotice from '@/components/InlineNotice.vue'
 import OptionCard from '@/components/OptionCard.vue'
 import OptionGroup from '@/components/OptionGroup.vue'
 import TimeSlots, { type TimeSlot } from '@/components/TimeSlots.vue'
-import { colones, formatShortDate, secondsUntil } from '@/composables/format'
+import { colones, dateOf, formatShortDate, secondsUntil, timeOf } from '@/composables/format'
 import { useCountdown } from '@/composables/useCountdown'
+import type { JoinState } from '@/composables/useWaitlist'
 
 export interface PanelBarber {
   id: string
@@ -74,6 +75,10 @@ interface Props {
   missing?: PanelMissing[]
   /** The person has a voucher that can pay this service: «Pagar con bono» is offered. */
   voucherOffer?: boolean
+  /** The shop has the waitlist on (RF-09): a day without hours offers «Avisarme si se libera» (RF-30). */
+  waitlist?: boolean
+  /** What happened after asking to join the row. */
+  joinState?: JoinState
 }
 
 const {
@@ -93,6 +98,8 @@ const {
   paymentInProgress = false,
   missing = [],
   voucherOffer = false,
+  waitlist = false,
+  joinState = { kind: 'idle' },
 } = defineProps<Props>()
 
 /** Chosen barber; the empty string is «Sin preferencia». */
@@ -111,6 +118,10 @@ const emit = defineEmits<{
   'pick-alternative': [value: string]
   'view-bookings': []
   'view-vouchers': []
+  'join-waitlist': []
+  'view-waitlist': []
+  /** A space that the API offered instead of a place in the row. */
+  'pick-waitlist-space': [start: string, barberId: string]
 }>()
 
 const title = useTemplateRef<HTMLElement>('title')
@@ -380,6 +391,69 @@ const withVoucher = computed(() => voucherOffer && payWith.value === 'bono')
                   <span>Sin preferencia</span>
                   <ArrowRight :size="16" :stroke-width="1.5" class="flex-none" aria-hidden="true" />
                 </button>
+              </div>
+
+              <!-- Nothing to book that day: wait for a space (RF-30). -->
+              <div v-if="waitlist" class="flex flex-col gap-3 border-t border-line pt-4">
+                <div>
+                  <p class="font-medium">¿Prefiere esperar?</p>
+                  <p class="mt-1 text-sm text-fg-muted">
+                    Lo anotamos en la fila y le avisamos si se libera un espacio. Puede estar en 3
+                    filas a la vez.
+                  </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <BaseButton
+                    variant="secondary"
+                    :loading="joinState.kind === 'joining'"
+                    :disabled="joinState.kind === 'joined'"
+                    @click="emit('join-waitlist')"
+                  >
+                    Avisarme si se libera
+                  </BaseButton>
+                  <button
+                    v-if="joinState.kind === 'joined'"
+                    type="button"
+                    class="inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-sm font-medium text-fg transition-colors duration-150 ease-out hover:bg-surface"
+                    @click="emit('view-waitlist')"
+                  >
+                    <span>Ver mis filas</span>
+                    <ArrowRight
+                      :size="16"
+                      :stroke-width="1.5"
+                      class="flex-none"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
+                <p
+                  role="status"
+                  class="text-sm"
+                  :class="joinState.kind === 'error' ? 'text-danger' : 'text-fg-muted'"
+                >
+                  <template v-if="joinState.kind === 'joined'"
+                    >Listo. Lo anotamos en la fila y le avisaremos si se libera un
+                    espacio.</template
+                  >
+                  <template
+                    v-else-if="joinState.kind === 'blocked' || joinState.kind === 'error'"
+                    >{{ joinState.message }}</template
+                  >
+                  <template v-else-if="joinState.kind === 'spaces'"
+                    >Ya hay horas disponibles para esa combinación. Reserve una en lugar de
+                    esperar.</template
+                  >
+                </p>
+                <div v-if="joinState.kind === 'spaces'" class="flex flex-wrap gap-2">
+                  <BaseButton
+                    v-for="space in joinState.spaces"
+                    :key="`${space.barberId}-${space.start}`"
+                    variant="secondary"
+                    @click="emit('pick-waitlist-space', space.start, space.barberId)"
+                  >
+                    {{ formatShortDate(dateOf(space.start)) }} · {{ timeOf(space.start) }}
+                  </BaseButton>
+                </div>
               </div>
             </div>
 

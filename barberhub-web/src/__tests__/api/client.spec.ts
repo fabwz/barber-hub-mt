@@ -132,6 +132,29 @@ describe('cliente HTTP', () => {
     expect(error.alternatives).toEqual(alternativas)
   })
 
+  it('conserva los espacios del 409 de la lista de espera', async () => {
+    const espacios = [
+      { barbero: 'b-1', inicio: '2030-03-05T10:00:00-06:00', fin: '2030-03-05T10:30:00-06:00' },
+    ]
+    fetchMock.mockResolvedValue(
+      problem(409, {
+        type: 'http://localhost/problemas/conflicto',
+        detail: 'Hay espacios.',
+        espacios,
+      }),
+    )
+
+    const error = await failure(() =>
+      api.POST('/barberias/{barberia}/filas', {
+        params: { path: { barberia: '0190a000-0000-7000-8000-000000000000' } },
+        body: { servicio: 's-1', fecha: '2030-03-05' },
+      }),
+    )
+
+    expect(error.spaces).toEqual(espacios)
+    expect(error.alternatives).toEqual([])
+  })
+
   it('conserva las reservas y su total del 409 de colaborador con reservas', async () => {
     const reservas = [
       {

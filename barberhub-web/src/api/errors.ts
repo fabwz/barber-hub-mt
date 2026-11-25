@@ -21,6 +21,7 @@ export interface ApiErrorInit {
   detail?: string
   errors?: Record<string, string[]>
   alternatives?: unknown[]
+  spaces?: unknown[]
   reservations?: unknown[]
   reservationsTotal?: number
   retryAfter?: number | null
@@ -38,6 +39,8 @@ export class ApiError extends Error {
   readonly errors: Record<string, string[]>
   /** Espacios sugeridos del 409 `espacio-no-disponible`, tal cual los devuelve la API. */
   readonly alternatives: unknown[]
+  /** Espacios libres que el 409 `conflicto` de anotarse en la fila trae (`espacios`), tal cual los devuelve la API. */
+  readonly spaces: unknown[]
   /** Reservas que impiden la operación (409 `colaborador-con-reservas`, `reservas`), tal cual las devuelve la API. */
   readonly reservations: unknown[]
   /** Cuántas reservas hay en total (`total_reservas`); la lista puede ser más corta. */
@@ -56,6 +59,7 @@ export class ApiError extends Error {
     this.detail = detail
     this.errors = init.errors ?? {}
     this.alternatives = init.alternatives ?? []
+    this.spaces = init.spaces ?? []
     this.reservations = init.reservations ?? []
     this.reservationsTotal = init.reservationsTotal ?? 0
     this.retryAfter = init.retryAfter ?? null
@@ -139,6 +143,7 @@ export async function readApiError(response: Response): Promise<ApiError> {
     detail: asNonEmptyString(body.detail),
     errors: readFieldErrors(body.errores),
     alternatives: Array.isArray(body.alternativas) ? body.alternativas : [],
+    spaces: Array.isArray(body.espacios) ? body.espacios : [],
     reservations: Array.isArray(body.reservas) ? body.reservas : [],
     reservationsTotal: typeof body.total_reservas === 'number' ? body.total_reservas : 0,
     retryAfter: readRetryAfter(response.headers.get('Retry-After')),
