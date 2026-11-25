@@ -7,7 +7,15 @@ import { defineComponent, h } from 'vue'
 import { ACTIVE_SHOP_STORAGE_KEY, useActiveShopStore } from '@/stores/activeShop'
 import { connectSession, SESSION_STORAGE_KEY, useSessionStore } from '@/stores/session'
 import { jsonResponse, mockFetch, problem } from '../helpers/http'
-import { CLIENT_SHOP, OWNER_SHOP, SHOP_A, SHOP_B, STAFF_SHOP, staffHandler } from '../helpers/staff'
+import {
+  CLIENT_SHOP,
+  OWNER_SHOP,
+  SHOP_A,
+  SHOP_B,
+  STAFF_SHOP,
+  membership,
+  staffHandler,
+} from '../helpers/staff'
 
 beforeEach(() => {
   sessionStorage.clear()
@@ -28,10 +36,37 @@ describe('useActiveShopStore', () => {
 
     expect(store.status).toBe('ready')
     expect(store.shops).toEqual([
-      { id: SHOP_A, name: 'Pura Navaja', link: 'pura-navaja', role: 'dueno' },
-      { id: SHOP_B, name: 'Fade Lab', link: 'fade-lab', role: 'colaborador' },
+      { id: SHOP_A, name: 'Pura Navaja', link: 'pura-navaja', role: 'dueno', collaborator: null },
+      { id: SHOP_B, name: 'Fade Lab', link: 'fade-lab', role: 'colaborador', collaborator: null },
     ])
     expect(store.active).toBeNull()
+  })
+
+  it('keeps the id of the own collaborator profile of each shop, or null without one', async () => {
+    const profile = '0190b1f0-0000-7000-8000-0000000000c1'
+    mockFetch(
+      staffHandler([
+        membership(SHOP_A, 'Pura Navaja', 'dueno', profile),
+        membership(SHOP_B, 'Fade Lab', 'colaborador', profile),
+        CLIENT_SHOP,
+      ]),
+    )
+    const store = useActiveShopStore()
+
+    await store.loadStaffShops()
+
+    expect(store.shops.map((shop) => shop.collaborator)).toEqual([profile, profile])
+    store.select(SHOP_B)
+    expect(store.active?.collaborator).toBe(profile)
+  })
+
+  it('a collaborator without a profile keeps a null one', async () => {
+    mockFetch(staffHandler([membership(SHOP_B, 'Fade Lab', 'colaborador', null)]))
+    const store = useActiveShopStore()
+
+    await store.loadStaffShops()
+
+    expect(store.shops[0]!.collaborator).toBeNull()
   })
 
   it('a customer has no staff shops and that is not an error', async () => {
@@ -222,6 +257,7 @@ describe('useActiveShopStore', () => {
       name: 'Navaja Dorada',
       link: 'pura-navaja',
       role: 'dueno',
+      collaborator: null,
     })
     expect(store.shops[1]!.name).toBe('Fade Lab')
   })
