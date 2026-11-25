@@ -49,6 +49,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/b/:enlace/lista-de-espera',
+    name: 'waitlist',
+    component: () => import('@/views/WaitlistView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/pago/retorno',
     name: 'payment-return',
     component: () => import('@/views/PaymentReturnView.vue'),

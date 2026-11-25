@@ -16,14 +16,16 @@ type VoucherStatus = 'voucher_active' | 'voucher_expired'
 
 type ServiceStatus = 'service_active' | 'service_inactive'
 
+type WaitlistStatus = 'waitlist_waiting' | 'waitlist_offered'
+
 interface Props {
-  status: ReservationStatus | PaymentStatus | VoucherStatus | ServiceStatus
+  status: ReservationStatus | PaymentStatus | VoucherStatus | ServiceStatus | WaitlistStatus
 }
 
 // Texts from the three status tables in DESIGN.md. Always text only: the word says the state,
 // so it never depends on a color or a dot. «Expirada» and «Reembolsado» are muted.
 const STATUSES: Record<
-  ReservationStatus | PaymentStatus | VoucherStatus | ServiceStatus,
+  ReservationStatus | PaymentStatus | VoucherStatus | ServiceStatus | WaitlistStatus,
   { text: string; muted: boolean }
 > = {
   temporary: { text: 'Pendiente de pago', muted: false },
@@ -42,6 +44,8 @@ const STATUSES: Record<
   voucher_expired: { text: 'Vencido', muted: true },
   service_active: { text: 'Activo', muted: false },
   service_inactive: { text: 'Inactivo', muted: true },
+  waitlist_waiting: { text: 'En espera', muted: false },
+  waitlist_offered: { text: 'Con oferta', muted: false },
 }
 
 const { status } = defineProps<Props>()
