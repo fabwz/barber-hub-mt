@@ -1628,6 +1628,8 @@ export interface components {
             servicio: string;
             /** @description Identificador del barbero que pidió; nulo significa «cualquiera». */
             barbero: string | null;
+            /** @description Nombre del barbero que pidió; nulo si pidió «cualquiera» o si ya no se conoce. */
+            barbero_nombre: string | null;
             /** @description Día que busca, `AAAA-MM-DD`. */
             fecha: string;
             /**
@@ -1734,6 +1736,8 @@ export interface components {
             servicio: string;
             /** @description Identificador del barbero cuyo espacio se ofrece. */
             barbero: string;
+            /** @description Nombre del barbero cuyo espacio se ofrece; nulo si ya no se conoce (por ejemplo, un perfil que se eliminó). */
+            barbero_nombre: string | null;
             /** @description Inicio del espacio ofrecido, ISO 8601 con el desfase de Costa Rica (-06:00). La reserva que nace al aceptar empieza aquí. Ejemplo: 2030-03-05T10:00:00-06:00. */
             inicio: string;
             /** @description Fin del espacio que la oferta aparta, limpieza incluida: puede ser posterior al fin del servicio. Ejemplo: 2030-03-05T10:50:00-06:00. */
