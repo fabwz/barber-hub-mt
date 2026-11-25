@@ -64,8 +64,9 @@ async function logout(): Promise<void> {
   if (signingOut.value) return
   signingOut.value = true
   try {
-    await session.logout()
+    // Leave the staff screen first: with the state already clear its links would have no shop to point to.
     await router.replace('/')
+    await session.logout()
   } finally {
     signingOut.value = false
   }
