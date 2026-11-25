@@ -17,6 +17,8 @@ export interface StaffShop {
   name: string
   link: string
   role: StaffRole
+  /** Id of the person's own collaborator profile in this shop (the live agenda channel), or `null` without one. */
+  collaborator: string | null
 }
 
 export type StaffShopsStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -65,9 +67,13 @@ export const useActiveShopStore = defineStore('activeShop', () => {
     try {
       const { data } = await api.GET('/mis-barberias')
       if (current !== generation) return
-      shops.value = data!.data
-        .filter(isStaff)
-        .map((item) => ({ id: item.id, name: item.nombre, link: item.enlace, role: item.rol }))
+      shops.value = data!.data.filter(isStaff).map((item) => ({
+        id: item.id,
+        name: item.nombre,
+        link: item.enlace,
+        role: item.rol,
+        collaborator: item.colaborador,
+      }))
       // A stored choice that is no longer in the list is discarded.
       if (activeId.value !== null && active.value === null) {
         activeId.value = null

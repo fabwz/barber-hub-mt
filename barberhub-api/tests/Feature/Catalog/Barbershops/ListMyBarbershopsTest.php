@@ -7,6 +7,7 @@ namespace Tests\Feature\Catalog\Barbershops;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
+use Src\Shared\Infrastructure\Tenancy\BarbershopTransaction;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\TestCase;
 
@@ -37,7 +38,7 @@ final class ListMyBarbershopsTest extends TestCase
         $this->getJson(self::ENDPOINT, $this->bearer($this->ana))
             ->assertOk()
             ->assertExactJson(['data' => [
-                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'dueno'],
+                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'dueno', 'colaborador' => null],
             ]]);
     }
 
@@ -50,14 +51,69 @@ final class ListMyBarbershopsTest extends TestCase
         $this->grant($this->ana, $puraNavaja, 'owner');
         $this->grant($this->ana, $fadeLab, 'customer');
         $this->grant($this->ana, $corte, 'collaborator');
+        $profile = $this->createProfile($corte, $this->ana);
 
         $this->getJson(self::ENDPOINT, $this->bearer($this->ana))
             ->assertOk()
             ->assertExactJson(['data' => [
-                ['id' => $corte, 'nombre' => 'Barbería Corte Fino', 'enlace' => 'corte-fino', 'rol' => 'colaborador'],
-                ['id' => $fadeLab, 'nombre' => 'Barbería Fade Lab', 'enlace' => 'fade-lab', 'rol' => 'cliente'],
-                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'dueno'],
+                ['id' => $corte, 'nombre' => 'Barbería Corte Fino', 'enlace' => 'corte-fino', 'rol' => 'colaborador', 'colaborador' => $profile],
+                ['id' => $fadeLab, 'nombre' => 'Barbería Fade Lab', 'enlace' => 'fade-lab', 'rol' => 'cliente', 'colaborador' => null],
+                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'dueno', 'colaborador' => null],
             ]]);
+    }
+
+    /** The owner who also attends (CO-02) receives the id of their profile; the one without a profile receives null. */
+    public function test_an_owner_with_a_profile_receives_it_and_one_without_does_not(): void
+    {
+        $withProfile = $this->createBarbershop('Barbería Pura Navaja', 'pura-navaja');
+        $without = $this->createBarbershop('Barbería Fade Lab', 'fade-lab');
+        $this->grant($this->ana, $withProfile, 'owner');
+        $this->grant($this->ana, $without, 'owner');
+        $profile = $this->createProfile($withProfile, $this->ana);
+
+        $this->getJson(self::ENDPOINT, $this->bearer($this->ana))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $without)
+            ->assertJsonPath('data.0.colaborador', null)
+            ->assertJsonPath('data.1.id', $withProfile)
+            ->assertJsonPath('data.1.colaborador', $profile);
+    }
+
+    /** With a role in two barbershops each one carries its own profile, and the profile of another barbershop or person never leaks. */
+    public function test_each_barbershop_carries_its_own_profile_and_never_another(): void
+    {
+        $puraNavaja = $this->createBarbershop('Barbería Pura Navaja', 'pura-navaja');
+        $fadeLab = $this->createBarbershop('Barbería Fade Lab', 'fade-lab');
+        $luis = $this->createUser('luis@barberhub.test');
+        $this->grant($this->ana, $puraNavaja, 'collaborator');
+        $this->grant($this->ana, $fadeLab, 'collaborator');
+        $this->grant($luis, $puraNavaja, 'collaborator');
+        $this->grant($luis, $fadeLab, 'owner');
+        $anaInPura = $this->createProfile($puraNavaja, $this->ana);
+        $anaInFade = $this->createProfile($fadeLab, $this->ana);
+        $luisInPura = $this->createProfile($puraNavaja, $luis);
+        $luisInFade = $this->createProfile($fadeLab, $luis);
+
+        $response = $this->getJson(self::ENDPOINT, $this->bearer($this->ana))->assertOk();
+
+        $this->assertSame(
+            [$fadeLab => $anaInFade, $puraNavaja => $anaInPura],
+            array_column($response->json('data'), 'colaborador', 'id'),
+        );
+        $this->assertStringNotContainsString($luisInPura, (string) $response->getContent());
+        $this->assertStringNotContainsString($luisInFade, (string) $response->getContent());
+    }
+
+    /** A collaborator without a profile row still lists the barbershop, with null. */
+    public function test_a_collaborator_without_a_profile_receives_null(): void
+    {
+        $puraNavaja = $this->createBarbershop('Barbería Pura Navaja', 'pura-navaja');
+        $this->grant($this->ana, $puraNavaja, 'collaborator');
+
+        $this->getJson(self::ENDPOINT, $this->bearer($this->ana))
+            ->assertOk()
+            ->assertJsonPath('data.0.rol', 'colaborador')
+            ->assertJsonPath('data.0.colaborador', null);
     }
 
     /** A deactivated collaborator, or any inactive membership, does not appear. */
@@ -134,6 +190,16 @@ final class ListMyBarbershopsTest extends TestCase
             'role' => $role,
             'is_active' => $active,
         ]);
+    }
+
+    /** Insert the collaborator profile of a person and return its identifier. */
+    private function createProfile(string $barbershopId, UserModel $user): string
+    {
+        $id = (string) Str::uuid7();
+        // `collaborators` has row-level security: the row is written as the barbershop that owns it.
+        $this->app->make(BarbershopTransaction::class)->run($barbershopId, fn (): bool => DB::table('collaborators')->insert(['id' => $id, 'barbershop_id' => $barbershopId, 'user_id' => $user->id, 'is_active' => true]));
+
+        return $id;
     }
 
     /** @return array<string, string> */

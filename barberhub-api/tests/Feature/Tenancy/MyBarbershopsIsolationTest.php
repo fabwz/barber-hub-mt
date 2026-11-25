@@ -30,7 +30,7 @@ final class MyBarbershopsIsolationTest extends TestCase
         $this->getJson('/api/v1/mis-barberias', $this->bearer($ana))
             ->assertOk()
             ->assertExactJson(['data' => [
-                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'dueno'],
+                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'dueno', 'colaborador' => null],
             ]]);
 
         $this->app['auth']->forgetGuards();
@@ -38,8 +38,8 @@ final class MyBarbershopsIsolationTest extends TestCase
         $this->getJson('/api/v1/mis-barberias', $this->bearer($luis))
             ->assertOk()
             ->assertExactJson(['data' => [
-                ['id' => $fadeLab, 'nombre' => 'Barbería Fade Lab', 'enlace' => 'fade-lab', 'rol' => 'dueno'],
-                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'cliente'],
+                ['id' => $fadeLab, 'nombre' => 'Barbería Fade Lab', 'enlace' => 'fade-lab', 'rol' => 'dueno', 'colaborador' => null],
+                ['id' => $puraNavaja, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'cliente', 'colaborador' => null],
             ]]);
     }
 

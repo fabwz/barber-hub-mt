@@ -4,8 +4,13 @@ export const SHOP_A = '0190b1f0-0000-7000-8000-0000000000d1'
 export const SHOP_B = '0190b1f0-0000-7000-8000-0000000000d2'
 export const SHOP_C = '0190b1f0-0000-7000-8000-0000000000d3'
 
-export function membership(id: string, nombre: string, rol: 'dueno' | 'colaborador' | 'cliente') {
-  return { id, nombre, enlace: nombre.toLowerCase().replace(/\s+/g, '-'), rol }
+export function membership(
+  id: string,
+  nombre: string,
+  rol: 'dueno' | 'colaborador' | 'cliente',
+  colaborador: string | null = null,
+) {
+  return { id, nombre, enlace: nombre.toLowerCase().replace(/\s+/g, '-'), rol, colaborador }
 }
 
 export const OWNER_SHOP = membership(SHOP_A, 'Pura Navaja', 'dueno')

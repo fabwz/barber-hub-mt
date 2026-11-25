@@ -104,13 +104,16 @@ export interface AgendaOptions {
   /** Overrides the answer of a close or a cancel. */
   actionResponse?: () => Response
   detailStatus?: number
+  /** Id of the collaborator profile of the person (`colaborador` of `/mis-barberias`); none by default. */
+  collaborator?: string | null
 }
 
 /** Fake API of the agenda: the shops, the list of the day, the detail and the actions. */
 export function agendaApi(options: AgendaOptions = {}) {
   const { role = 'dueno', items = DAY_ITEMS } = options
   const calls: AgendaCalls = { requests: [], closing: [], cancellations: [] }
-  const shop = role === 'dueno' ? OWNER_SHOP : STAFF_SHOP
+  const shop =
+    role === 'dueno' ? OWNER_SHOP : { ...STAFF_SHOP, colaborador: options.collaborator ?? null }
   const fetchMock = mockFetch(async (request) => {
     const route = pathOf(request)
     const url = new URL(request.url)

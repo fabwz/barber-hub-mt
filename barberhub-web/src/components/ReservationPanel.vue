@@ -77,6 +77,15 @@ async function load(quiet = false): Promise<void> {
 
 watch([shopId, reservationId], () => void load(), { immediate: true })
 
+// The live agenda: when the event is about this reservation, or the connection came back, it is read again.
+watch(
+  () => agenda?.changes.value,
+  (changes) => {
+    if (!changes) return
+    if (changes.ids === 'all' || changes.ids.includes(reservationId.value)) void load(true)
+  },
+)
+
 async function onChanged(): Promise<void> {
   await Promise.all([load(true), agenda?.reload()])
 }
@@ -85,7 +94,7 @@ const notFound = computed(() => failure.value?.status === 404)
 
 const backTo = computed(() => ({
   name: 'staff-agenda',
-  params: { barberia: shopId.value },
+  params: { barberia: String(route.params.barberia ?? '') },
   query: route.query,
 }))
 

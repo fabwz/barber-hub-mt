@@ -7,6 +7,7 @@ import AgendaRow from '@/components/AgendaRow.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ErrorState from '@/components/ErrorState.vue'
+import LiveIndicator from '@/components/LiveIndicator.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import StaffNavbar from '@/components/StaffNavbar.vue'
 import { agendaContextKey } from '@/composables/agendaContext'
@@ -18,6 +19,7 @@ import {
   todayInCostaRica,
 } from '@/composables/format'
 import { useAgendaPermissions } from '@/composables/useAgendaPermissions'
+import { useLiveAgenda } from '@/composables/useLiveAgenda'
 import {
   STATUS_FILTERS,
   currentTimeIndex,
@@ -29,7 +31,7 @@ import { useActiveShopStore } from '@/stores/activeShop'
 
 // Agenda of the day (RF-13) for the owner and the collaborator, with the detail panel as a child route
 // (RF-14). The day and the filters live in the URL, so a link or a reload brings the same view back.
-// The live updates and their indicator arrive with #113.
+// The live updates (RF-36, #113) read the day again when an event touches it; the indicator tells the state of the connection.
 const route = useRoute()
 const router = useRouter()
 const shops = useActiveShopStore()
@@ -106,7 +108,13 @@ function load(quiet = false): Promise<void> {
 
 watch([() => shop.value?.id, day], () => void load(), { immediate: true })
 
-provide(agendaContextKey, { reload: () => load(true) })
+const live = useLiveAgenda({
+  shop: () => shop.value,
+  day: () => day.value,
+  refresh: () => load(true),
+})
+
+provide(agendaContextKey, { reload: () => load(true), changes: live.changes })
 
 /** Moves to another day or filter keeping the URL as the single source; another day closes the panel. */
 function go(changes: Record<string, string | null>, closePanel = false): void {
@@ -145,7 +153,8 @@ function onCollaborator(event: Event): void {
 function rowTo(id: string) {
   return {
     name: 'staff-reservation',
-    params: { barberia: shop.value?.id ?? '', reserva: id },
+    // The shop of the address, which stays while the screen is up even if the store is cleared (401, logout).
+    params: { barberia: String(route.params.barberia ?? ''), reserva: id },
     query: route.query,
   }
 }
@@ -170,22 +179,25 @@ const SELECT_CLASS =
           }}<template v-if="agenda.status.value === 'ready'"> · {{ countLabel }}</template>
         </p>
 
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-          <BaseButton variant="secondary" @click="moveDay(-1)">
-            <template #icon
-              ><ChevronLeft :size="18" :stroke-width="1.5" aria-hidden="true"
-            /></template>
-            Anterior
-          </BaseButton>
-          <BaseButton variant="secondary" :disabled="day === today" @click="goToday"
-            >Hoy</BaseButton
-          >
-          <BaseButton variant="secondary" @click="moveDay(1)">
-            Siguiente
-            <template #icon
-              ><ChevronRight :size="18" :stroke-width="1.5" aria-hidden="true"
-            /></template>
-          </BaseButton>
+        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <LiveIndicator :state="live.state.value" />
+          <div class="flex flex-wrap items-center gap-2">
+            <BaseButton variant="secondary" @click="moveDay(-1)">
+              <template #icon
+                ><ChevronLeft :size="18" :stroke-width="1.5" aria-hidden="true"
+              /></template>
+              Anterior
+            </BaseButton>
+            <BaseButton variant="secondary" :disabled="day === today" @click="goToday"
+              >Hoy</BaseButton
+            >
+            <BaseButton variant="secondary" @click="moveDay(1)">
+              Siguiente
+              <template #icon
+                ><ChevronRight :size="18" :stroke-width="1.5" aria-hidden="true"
+              /></template>
+            </BaseButton>
+          </div>
         </div>
 
         <div class="mt-4 grid gap-4 sm:grid-cols-2 md:max-w-xl">

@@ -2428,7 +2428,7 @@
         "/mis-barberias": {
             "get": {
                 "operationId": "catalog.barbershops.mine",
-                "description": "Devuelve las barber\u00edas donde la persona autenticada tiene una membres\u00eda activa, ordenadas por `nombre`, con su `id` (el que las dem\u00e1s rutas usan en `{barberia}`), el `enlace` p\u00fablico y el `rol` que tiene en cada una: `dueno`, `colaborador` o `cliente`. Una persona puede tener roles distintos en barber\u00edas distintas. Una membres\u00eda inactiva, como la de un colaborador desactivado, no aparece, y solo salen las membres\u00edas de la propia persona. Sin ninguna, `data` es una lista vac\u00eda. No lleva `{barberia}` porque no hay barber\u00eda en curso: el cliente guarda la elegida y la env\u00eda en las dem\u00e1s rutas, donde el servidor verifica la membres\u00eda (404 si no existe). Responde 401 `no-autenticado` sin token.",
+                "description": "Devuelve las barber\u00edas donde la persona autenticada tiene una membres\u00eda activa, ordenadas por `nombre`, con su `id` (el que las dem\u00e1s rutas usan en `{barberia}`), el `enlace` p\u00fablico el `rol` que tiene en cada una (`dueno`, `colaborador` o `cliente`) y su `colaborador`, el identificador de su perfil de colaborador en esa barber\u00eda (el del colaborador y el del due\u00f1o que tambi\u00e9n atiende, CO-02), o `null` si no tiene perfil; solo se devuelve el de la propia persona. Una persona puede tener roles distintos en barber\u00edas distintas. Una membres\u00eda inactiva, como la de un colaborador desactivado, no aparece, y solo salen las membres\u00edas de la propia persona. Sin ninguna, `data` es una lista vac\u00eda. No lleva `{barberia}` porque no hay barber\u00eda en curso: el cliente guarda la elegida y la env\u00eda en las dem\u00e1s rutas, donde el servidor verifica la membres\u00eda (404 si no existe). Responde 401 `no-autenticado` sin token.",
                 "summary": "Listar mis barber\u00edas",
                 "tags": [
                     "Mis barber\u00edas"
@@ -5599,13 +5599,24 @@
                         "examples": [
                             "dueno"
                         ]
+                    },
+                    "colaborador": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Identificador del perfil de colaborador de la persona en esa barber\u00eda, el que lleva el canal `private-barberia.{barberia}.colaboradores.{colaborador}`; nulo si no tiene perfil (un cliente o un due\u00f1o sin perfil).",
+                        "examples": [
+                            "0192f0c4-7a10-7c3e-9d21-5b8e4f6a1c09"
+                        ]
                     }
                 },
                 "required": [
                     "id",
                     "nombre",
                     "enlace",
-                    "rol"
+                    "rol",
+                    "colaborador"
                 ],
                 "title": "MiBarberia"
             },

@@ -19,6 +19,7 @@ use Src\Identity\Users\Domain\ValueObjects\PlainPassword;
 use Src\Identity\Users\Infrastructure\Persistence\Models\UserModel;
 use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
+use Src\Shared\Infrastructure\Tenancy\BarbershopTransaction;
 use Tests\Support\RefreshDatabaseAsOwner;
 use Tests\Support\Shared\FixedBarbershopContext;
 use Tests\Support\Shared\ScopesQueriesToBarbershop;
@@ -143,8 +144,8 @@ final class DemoBarbershopSeederTest extends TestCase
         $this->getJson('/api/v1/mis-barberias', ['Authorization' => 'Bearer '.$sofia->createToken('demo')->plainTextToken])
             ->assertOk()
             ->assertExactJson(['data' => [
-                ['id' => self::PURA_NAVAJA, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'colaborador'],
-                ['id' => '0192f0c4-0000-7000-8000-00000000b002', 'nombre' => 'Fade Lab', 'enlace' => 'fade-lab', 'rol' => 'dueno'],
+                ['id' => self::PURA_NAVAJA, 'nombre' => 'Barbería Pura Navaja', 'enlace' => 'pura-navaja', 'rol' => 'colaborador', 'colaborador' => $this->profileOf($sofia, self::PURA_NAVAJA)],
+                ['id' => '0192f0c4-0000-7000-8000-00000000b002', 'nombre' => 'Fade Lab', 'enlace' => 'fade-lab', 'rol' => 'dueno', 'colaborador' => $this->profileOf($sofia, '0192f0c4-0000-7000-8000-00000000b002')],
             ]]);
     }
 
@@ -431,5 +432,16 @@ final class DemoBarbershopSeederTest extends TestCase
     private function collaboratorId(string $email): string
     {
         return DB::table('collaborators')->join('users', 'users.id', '=', 'collaborators.user_id')->where('users.email', $email)->value('collaborators.id');
+    }
+
+    /** The identifier of the profile of a person in a barbershop, or null; read inside the transaction of that barbershop, because row-level security binds the table. */
+    private function profileOf(UserModel $user, string $barbershopId): ?string
+    {
+        $id = $this->app->make(BarbershopTransaction::class)->run(
+            $barbershopId,
+            fn (): mixed => DB::table('collaborators')->where('user_id', $user->id)->where('barbershop_id', $barbershopId)->value('id'),
+        );
+
+        return $id === null ? null : (string) $id;
     }
 }
