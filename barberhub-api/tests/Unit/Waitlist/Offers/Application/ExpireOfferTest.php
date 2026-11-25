@@ -198,6 +198,7 @@ final class ExpireOfferTest extends TestCase
         $this->assertSame(self::BARBERSHOP, $expired[0]->barbershopId);
         $this->assertSame($first->id->value, $expired[0]->offerId);
         $this->assertSame($ana->id->value, $expired[0]->waitlistEntryId);
+        $this->assertSame(self::ANA, $expired[0]->customerMembershipId);
     }
 
     /** If fewer than 60 minutes remain when the offer runs out, the next person is not offered the space and it is public again (LE-03). */

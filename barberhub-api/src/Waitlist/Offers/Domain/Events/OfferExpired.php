@@ -10,10 +10,11 @@ namespace Src\Waitlist\Offers\Domain\Events;
  */
 final readonly class OfferExpired
 {
-    /** Hold the offer that expired and the row of the line it was made to, from which the person is found. */
+    /** Hold the offer that expired, the row of the line it was made to and the customer role it was offered to, whom the pop-up has to reach. */
     public function __construct(
         public string $barbershopId,
         public string $offerId,
         public string $waitlistEntryId,
+        public string $customerMembershipId,
     ) {}
 }
