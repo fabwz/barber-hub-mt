@@ -671,7 +671,7 @@ export interface paths {
         };
         /**
          * Listar mis barberías
-         * @description Devuelve las barberías donde la persona autenticada tiene una membresía activa, ordenadas por `nombre`, con su `id` (el que las demás rutas usan en `{barberia}`), el `enlace` público y el `rol` que tiene en cada una: `dueno`, `colaborador` o `cliente`. Una persona puede tener roles distintos en barberías distintas. Una membresía inactiva, como la de un colaborador desactivado, no aparece, y solo salen las membresías de la propia persona. Sin ninguna, `data` es una lista vacía. No lleva `{barberia}` porque no hay barbería en curso: el cliente guarda la elegida y la envía en las demás rutas, donde el servidor verifica la membresía (404 si no existe). Responde 401 `no-autenticado` sin token.
+         * @description Devuelve las barberías donde la persona autenticada tiene una membresía activa, ordenadas por `nombre`, con su `id` (el que las demás rutas usan en `{barberia}`), el `enlace` público el `rol` que tiene en cada una (`dueno`, `colaborador` o `cliente`) y su `colaborador`, el identificador de su perfil de colaborador en esa barbería (el del colaborador y el del dueño que también atiende, CO-02), o `null` si no tiene perfil; solo se devuelve el de la propia persona. Una persona puede tener roles distintos en barberías distintas. Una membresía inactiva, como la de un colaborador desactivado, no aparece, y solo salen las membresías de la propia persona. Sin ninguna, `data` es una lista vacía. No lleva `{barberia}` porque no hay barbería en curso: el cliente guarda la elegida y la envía en las demás rutas, donde el servidor verifica la membresía (404 si no existe). Responde 401 `no-autenticado` sin token.
          */
         get: operations["catalog.barbershops.mine"];
         put?: never;
@@ -1697,6 +1697,11 @@ export interface components {
              * @enum {string}
              */
             rol: "dueno" | "colaborador" | "cliente";
+            /**
+             * @description Identificador del perfil de colaborador de la persona en esa barbería, el que lleva el canal `private-barberia.{barberia}.colaboradores.{colaborador}`; nulo si no tiene perfil (un cliente o un dueño sin perfil).
+             * @example 0192f0c4-7a10-7c3e-9d21-5b8e4f6a1c09
+             */
+            colaborador: string | null;
         };
         /** MiCuenta */
         MiCuenta: {
