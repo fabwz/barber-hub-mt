@@ -678,6 +678,25 @@ navegador ─▶ POST /api/v1/tiempo-real/autorizacion ─▶ AuthorizeAgendaCha
 - **Qué necesita el despliegue (#136; solo anotado).** Tres procesos bajo supervisor: `php artisan reverb:start`, `php artisan queue:work --queue=realtime --sleep=1` y `php artisan queue:work --queue=default`; un proxy que termine `wss` hacia el puerto de Reverb (cabeceras `Upgrade` y `Connection`); y en el `.env` `BROADCAST_CONNECTION=reverb`, `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`, `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME`, `REVERB_SERVER_HOST`, `REVERB_SERVER_PORT` y `REVERB_ALLOWED_ORIGINS` con el origen de la web. Para el monitoreo (#118): antigüedad de la tarea más vieja de la cola `realtime`, filas de `failed_jobs` de `BroadcastEvent` y conexiones abiertas de Reverb.
 - **Pruebas.** `AuthorizeAgendaChannelsTest` (Unit, la regla sin framework); `LiveAgendaChannelsTest` (Feature/Tenancy, las ocho personas de la matriz contra los dos canales, los 404 idénticos, el 403, la contraseña temporal, el límite de 60 por minuto; con la conexión `reverb` y claves falsas, que firma sin red); `LiveAgendaEventsTest` (Feature, con `Queue::fake`: canales, carga, una sola emisión por cambio y nada tras un rechazo); y las pruebas de los casos de uso de reservas, que ahora comprueban los eventos nuevos. `phpunit.xml` fija `BROADCAST_CONNECTION=null`.
 
+### El aviso emergente de las ofertas (#98)
+
+El mismo módulo `Notifications/LiveUpdates` y la misma infraestructura de Reverb del #97 llevan al cliente la oferta de la lista de espera mientras usa otra pantalla (RF-35, NO-08). Solo cambia el canal: es de una persona, no de una barbería.
+
+```
+OfferCreated ──────┐
+OfferExpired ──────┼─▶ PublishOfferChanges (síncrono, dentro de la transacción) ─▶ OfferChanged (ShouldBroadcast + ShouldDispatchAfterCommit)
+OfferAnswered ─────┘     └─ MembershipUsers: membresía ─▶ cuenta                     │ al confirmar la transacción
+                                                                                     ▼
+                                         tarea BroadcastEvent en la cola `realtime` ─▶ worker ─▶ Reverb ─▶ navegador de esa persona
+```
+
+- **Canal.** `private-usuario.{usuario}`, con el id de la cuenta. `AuthorizeUserChannel` solo deja entrar a la dueña de la cuenta, con cualquier rol; el canal de otra persona, de una cuenta que no existe y un identificador inválido responden el mismo 404 `no-encontrado`. La regla se registra en `AgendaChannelAuthorizer`, junto a las de la agenda, y la ruta es la misma `POST /api/v1/tiempo-real/autorizacion` (sin sesión 401, contraseña temporal rechazada).
+- **Eventos.** `.oferta.creada` con `{oferta, barberia, vence_en}` y `.oferta.cerrada` con `{oferta, motivo}`, donde `motivo` es `vencida`, `aceptada` o `rechazada`. Van por la cola `realtime`, tras confirmar la transacción. Sin nombre, contacto, servicio ni precio: el cliente pide el detalle a `GET /barberias/{barberia}/mis-ofertas`, donde la oferta se busca entre las propias.
+- **Eventos de dominio.** `OfferCreated` ya existía. `OfferExpired` suma `customerMembershipId` (`ExpireOffer` lo lee de la fila de la lista de espera). Nuevo `OfferAnswered(barbershopId, offerId, customerMembershipId, status)` con `status` `accepted` o `rejected`: lo publica `RejectOffer` y `SettleAnsweredOffer`. Aceptar la oferta no cierra el aviso por sí solo: lo cierra la confirmación de la reserva, por el pago confirmado por la pasarela o de inmediato con bono o sin depósito (PA-06), así que el aviso no desaparece por lo que reporte el navegador.
+- **Destinatario.** El puerto `MembershipUsers` de LiveUpdates (membresía de cliente y barbería a cuenta) tiene su adaptador `IdentityMembershipUsers`, que usa `ListMembershipUsers`. No reutiliza `Recipients` de Notices, que entrega nombre y correo y no el id de la cuenta. Una membresía sin cuenta no tiene a quién avisar.
+- **Con la aplicación cerrada** solo llega el correo (RF-34, ya existente): el evento no se guarda ni se reenvía; al reconectar, el cliente vuelve a pedir sus ofertas. Reverb no repite lo perdido.
+- **Pruebas.** `AuthorizeUserChannelTest` (Unit); `LiveUserChannelTest` (Feature/Tenancy, las ocho personas de la matriz contra su canal y los de las demás, los 404 idénticos, contraseña temporal); `LiveOfferEventsTest` (Feature, con `Queue::fake`: canal correcto y no otro, carga sin datos personales, los tres motivos de cierre, el cierre por el pago confirmado, repeticiones y respuestas rechazadas sin eventos).
+
 ### Concurrencia
 
 | Garantía | Dónde se cumple |

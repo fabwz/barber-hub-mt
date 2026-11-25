@@ -9,6 +9,7 @@ use Src\Shared\Domain\Contracts\BarbershopContext;
 use Src\Shared\Domain\Contracts\DomainEvents;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Waitlist\Offers\Application\Contracts\CollaboratorLock;
+use Src\Waitlist\Offers\Application\Contracts\LineEntries;
 use Src\Waitlist\Offers\Application\Contracts\WaitingLine;
 use Src\Waitlist\Offers\Domain\Contracts\OfferRepository;
 use Src\Waitlist\Offers\Domain\Events\OfferExpired;
@@ -16,10 +17,11 @@ use Src\Waitlist\Offers\Domain\ValueObjects\OfferId;
 
 final readonly class ExpireOffer
 {
-    /** Receive the repository of the offers, the line, the lock of the collaborator, the offering of a freed space, the transaction port, the events of the domain and the barbershop of the operation. */
+    /** Receive the repository of the offers, the line, its rows, the lock of the collaborator, the offering of a freed space, the transaction port, the events of the domain and the barbershop of the operation. */
     public function __construct(
         private OfferRepository $offers,
         private WaitingLine $line,
+        private LineEntries $entries,
         private CollaboratorLock $collaborators,
         private OfferReleasedSpace $offerSpace,
         private TransactionRunner $transaction,
@@ -58,7 +60,12 @@ final readonly class ExpireOffer
             $offer->expire($now);
             $this->offers->save($offer);
             $this->line->returnToLine($offer->entryId->value, $now);
-            $this->events->publish(new OfferExpired($this->context->current()->value, $offer->id->value, $offer->entryId->value));
+            $row = $this->entries->find($offer->entryId->value);
+
+            if ($row !== null) {
+                $this->events->publish(new OfferExpired($this->context->current()->value, $offer->id->value, $offer->entryId->value, $row->customerMembershipId));
+            }
+
             $this->offerSpace->execute($offer->collaboratorId->value, $offer->interval->start, $offer->interval->end, $now);
 
             return true;

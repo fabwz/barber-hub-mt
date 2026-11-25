@@ -105,7 +105,7 @@ final class AccessMatrix
             'PUT api/v1/cuenta/contrasena' => RouteRule::authenticated('Cambia la contraseña de la propia cuenta (RF-40); es de las pocas rutas que una contraseña temporal permite (UP-04).'),
             'DELETE api/v1/tokens' => RouteRule::authenticated('Cierra todas las sesiones de la persona.'),
             'DELETE api/v1/tokens/actual' => RouteRule::authenticated('Cierra la sesión actual de la persona.'),
-            'POST api/v1/tiempo-real/autorizacion' => RouteRule::authenticated('Autoriza la suscripción a un canal privado de la agenda en vivo (RF-36): el rol en la barbería sale del nombre del canal y lo decide el caso de uso (dueño: la agenda de la barbería; colaborador: la suya), con 404 sin rol y 403 con rol insuficiente (CO-04, UP-06).'),
+            'POST api/v1/tiempo-real/autorizacion' => RouteRule::authenticated('Autoriza la suscripción a un canal privado en vivo (RF-36, RF-35): el rol en la barbería sale del nombre del canal y lo decide el caso de uso (dueño: la agenda de la barbería; colaborador: la suya), con 404 sin rol y 403 con rol insuficiente (CO-04, UP-06); el canal de una persona (`usuario.{usuario}`, sus ofertas) es solo de ella, y el de otra, 404.'),
 
             // Customer operations that create the first membership (RD-18, UP-09).
             "POST {$base}/reservas" => RouteRule::firstUse(self::FIRST_USE, 'Reservar crea el rol de cliente; dueño y colaborador reciben 403.'),

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use LogicException;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
+use Src\Waitlist\Entries\Application\UseCases\FindLineEntry;
 use Src\Waitlist\Entries\Application\UseCases\ListWaitingForSpace;
 use Src\Waitlist\Entries\Application\UseCases\LockWaitingEntry;
 use Src\Waitlist\Entries\Application\UseCases\MarkEntryOffered;
@@ -94,7 +95,7 @@ trait BuildsOfferScenario
             $this->events,
             $context,
         );
-        $this->expireOffer = new ExpireOffer($this->offers, $line, $this->ports, $this->offerSpace, $this->transaction, $this->events, $context);
+        $this->expireOffer = new ExpireOffer($this->offers, $line, new OfferLineEntries(new FindLineEntry($this->entries)), $this->ports, $this->offerSpace, $this->transaction, $this->events, $context);
     }
 
     /** The line as the offers see it, over the same in-memory rows. */
