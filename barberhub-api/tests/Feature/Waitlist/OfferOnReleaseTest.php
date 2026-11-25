@@ -121,6 +121,41 @@ final class OfferOnReleaseTest extends TestCase
         $this->assertSame($this->anaEntry, $offers[0]->waitlist_entry_id);
     }
 
+    /** The owner moves a reservation with no deadline (CA-07), and the time it held goes to the first of the line the same way (RF-31). */
+    public function test_a_reschedule_by_the_owner_offers_the_space_it_left(): void
+    {
+        $this->actAs($this->owner);
+
+        $this->patchJson($this->reservationsUrl($this->puraNavaja)."/{$this->bookedReservation}", ['inicio' => '2030-03-05T14:00:00-06:00'])->assertOk();
+
+        $offers = $this->offerRows();
+        $this->assertCount(1, $offers);
+        $this->assertSame($this->anaEntry, $offers[0]->waitlist_entry_id);
+        $this->assertSame($this->daniela, $offers[0]->collaborator_id);
+        $this->assertSame('2030-03-05 10:00:00-06', $offers[0]->starts_at);
+        $this->assertSame('2030-03-05 10:50:00-06', $offers[0]->ends_at);
+        $this->assertSame('pending', $offers[0]->status);
+        $this->assertSame(['offered', 'waiting', 'waiting'], [$this->entryStatus($this->anaEntry), $this->entryStatus($this->luisEntry), $this->entryStatus($this->beaEntry)]);
+    }
+
+    /** Moving to another collaborator at the same time frees the space of the collaborator it left, which is the one offered, not the one it went to (RF-31). */
+    public function test_a_reschedule_to_another_collaborator_offers_the_old_space(): void
+    {
+        $this->actAs($this->booker);
+
+        $this->patchJson($this->reservationsUrl($this->puraNavaja)."/{$this->bookedReservation}", ['inicio' => '2030-03-05T10:00:00-06:00', 'barbero' => $this->kevin])
+            ->assertOk()
+            ->assertJsonPath('data.barbero', $this->kevin);
+
+        $offers = $this->offerRows();
+        $this->assertCount(1, $offers);
+        $this->assertSame($this->anaEntry, $offers[0]->waitlist_entry_id);
+        $this->assertSame($this->daniela, $offers[0]->collaborator_id);
+        $this->assertSame('2030-03-05 10:00:00-06', $offers[0]->starts_at);
+        $this->assertSame('2030-03-05 10:50:00-06', $offers[0]->ends_at);
+        $this->assertSame('pending', $offers[0]->status);
+    }
+
     /** The space freed by a reservation that moves only a quarter of an hour is not whole, so nothing is offered. */
     public function test_a_reschedule_that_overlaps_the_old_space_offers_nothing(): void
     {
