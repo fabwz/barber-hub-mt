@@ -72,15 +72,22 @@ export function setEchoFactory(next: EchoFactory | null): void {
   factory = next ?? defaultFactory
 }
 
+/** The event of the live agenda, the one a channel listens to when it names none. */
+const AGENDA_EVENT = '.reserva.actualizada'
+
 /** One connection to Reverb for one screen: private channels and the state of the link. */
 export interface Realtime {
-  /** Subscribes to a private channel (the name without `private-`). */
+  /**
+   * Subscribes to a private channel (the name without `private-`). `events` are the names to listen
+   * to, with their leading dot; without them it is `.reserva.actualizada`, the live agenda.
+   */
   listen(
     channel: string,
     handlers: {
-      onEvent: (payload: unknown) => void
+      onEvent: (payload: unknown, event: string) => void
       onSubscribed: () => void
       onRejected: (status: number | null) => void
+      events?: readonly string[]
     },
   ): void
   /** Leaves a private channel. */
@@ -104,9 +111,11 @@ export function openRealtime(authHeaders: AuthHeaders): Realtime | null {
   const echo = factory(settings, authHeaders)
   return {
     listen(channel, handlers) {
-      echo
-        .private(channel)
-        .listen('.reserva.actualizada', handlers.onEvent)
+      let subscription = echo.private(channel)
+      for (const event of handlers.events ?? [AGENDA_EVENT]) {
+        subscription = subscription.listen(event, (payload) => handlers.onEvent(payload, event))
+      }
+      subscription
         .subscribed(handlers.onSubscribed)
         .error((error) => handlers.onRejected(rejectionStatus(error)))
     },

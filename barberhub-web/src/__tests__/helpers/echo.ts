@@ -90,8 +90,13 @@ export class FakeEcho implements EchoLike {
 
   /** The server sent `.reserva.actualizada`. */
   emit(payload: unknown): void {
+    this.emitEvent('.reserva.actualizada', payload)
+  }
+
+  /** The server sent an event of any name (with its leading dot), to every channel that listens to it. */
+  emitEvent(event: string, payload: unknown): void {
     for (const channel of this.channels) {
-      channel.events.get('.reserva.actualizada')?.forEach((callback) => callback(payload))
+      channel.events.get(event)?.forEach((callback) => callback(payload))
     }
   }
 
