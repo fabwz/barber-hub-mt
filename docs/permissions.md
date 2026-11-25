@@ -58,7 +58,7 @@ Los datos son de la propia persona.
 | Ruta | Nota |
 | --- | --- |
 | `POST api/v1/barberias` | Registrar una barbería: quien la registra queda como su dueño (UP-03). |
-| `GET api/v1/mis-barberias` | Barberías de la persona con su rol: nunca otras (UP-08, RF-43). |
+| `GET api/v1/mis-barberias` | Barberías de la persona con su rol y, en cada una, el `colaborador` (id de su propio perfil de colaborador, o `null`): nunca otras barberías ni el perfil de otra persona (UP-08, RF-43, CO-04, #113). |
 | `GET api/v1/cuenta` | Datos de la propia cuenta y si la contraseña es temporal (RF-45, UP-04); es de las pocas rutas que una contraseña temporal permite. |
 | `PUT api/v1/cuenta` | Corrige nombre, teléfono y correo de la propia cuenta (RF-45, CL-03): nunca la de otra persona. |
 | `PUT api/v1/cuenta/contrasena` | Cambia la contraseña de la propia cuenta (RF-40); es de las pocas rutas que una contraseña temporal permite (UP-04). |

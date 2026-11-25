@@ -25,7 +25,7 @@ final class MyBarbershopResource extends JsonResource
     /**
      * Expose the barbershop and the role the person holds in it.
      *
-     * @return array{id: string, nombre: string, enlace: string, rol: string}
+     * @return array{id: string, nombre: string, enlace: string, rol: string, colaborador: string|null}
      */
     public function toArray(Request $request): array
     {
@@ -56,6 +56,12 @@ final class MyBarbershopResource extends JsonResource
              * @example dueno
              */
             'rol' => RoleNames::of($this->barbershop->role),
+            /**
+             * Identificador del perfil de colaborador de la persona en esa barbería, el que lleva el canal `private-barberia.{barberia}.colaboradores.{colaborador}`; nulo si no tiene perfil (un cliente o un dueño sin perfil).
+             *
+             * @example 0192f0c4-7a10-7c3e-9d21-5b8e4f6a1c09
+             */
+            'colaborador' => $this->barbershop->collaboratorId,
         ];
     }
 }
