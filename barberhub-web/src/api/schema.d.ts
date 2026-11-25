@@ -338,7 +338,7 @@ export interface paths {
         };
         /**
          * Ver mi cuenta
-         * @description Devuelve el nombre, el teléfono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todavía debe cambiar la contraseña temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contraseña temporal permite. Solo muestra la cuenta de la sesión, sea cliente, colaborador o dueño.
+         * @description Devuelve el `id` de la propia cuenta (el cliente web lo usa para suscribirse a su canal privado `private-usuario.{usuario}`, RF-35), el nombre, el teléfono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todavía debe cambiar la contraseña temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contraseña temporal permite. Solo muestra la cuenta de la sesión, sea cliente, colaborador o dueño.
          */
         get: operations["identity.profile.show"];
         /**
@@ -1705,6 +1705,7 @@ export interface components {
         };
         /** MiCuenta */
         MiCuenta: {
+            id: string;
             nombre: string;
             telefono: string | null;
             correo: string;
