@@ -28,13 +28,14 @@ final class OwnAccountTest extends TestCase
     /** The account answers its own data and that its password is not temporary. */
     public function test_the_person_sees_their_own_account(): void
     {
-        $this->account('Ana Mora', 'ana@barberhub.test', '8888-0000');
+        $ana = $this->account('Ana Mora', 'ana@barberhub.test', '8888-0000');
         $this->account('Luis Vega', 'luis@barberhub.test', '7777-1111');
         $token = $this->login('ana@barberhub.test', self::PASSWORD);
 
         $this->show($token)
             ->assertOk()
             ->assertExactJson(['data' => [
+                'id' => $ana,
                 'nombre' => 'Ana Mora',
                 'telefono' => '8888-0000',
                 'correo' => 'ana@barberhub.test',
@@ -42,15 +43,30 @@ final class OwnAccountTest extends TestCase
             ]]);
     }
 
+    /** The id is the one of the authenticated account, never another person's, and it is not in the login answer (RF-35). */
+    public function test_the_id_is_the_own_one_and_only_here(): void
+    {
+        $this->account('Ana Mora', 'ana@barberhub.test', '8888-0000');
+        $luis = $this->account('Luis Vega', 'luis@barberhub.test', '7777-1111');
+        $token = $this->login('luis@barberhub.test', self::PASSWORD);
+
+        $this->show($token)->assertOk()->assertJsonPath('data.id', $luis);
+
+        $login = $this->postJson('/api/v1/tokens', ['correo' => 'luis@barberhub.test', 'contrasena' => self::PASSWORD, 'dispositivo' => 'Celular'])
+            ->assertCreated();
+        $this->assertArrayNotHasKey('id', $login->json('data'));
+    }
+
     /** The flag tells the web client to go to the mandatory change, and a staff account has no phone yet. */
     public function test_the_temporary_password_flag_is_true_and_readable(): void
     {
-        $this->account('Kevin Solano', 'kevin@barberhub.test', null, temporary: true, password: self::TEMPORARY);
+        $kevin = $this->account('Kevin Solano', 'kevin@barberhub.test', null, temporary: true, password: self::TEMPORARY);
         $token = $this->login('kevin@barberhub.test', self::TEMPORARY);
 
         $this->show($token)
             ->assertOk()
             ->assertExactJson(['data' => [
+                'id' => $kevin,
                 'nombre' => 'Kevin Solano',
                 'telefono' => null,
                 'correo' => 'kevin@barberhub.test',
@@ -61,13 +77,14 @@ final class OwnAccountTest extends TestCase
     /** The three data are corrected and nothing else of the account changes. */
     public function test_the_person_corrects_their_data(): void
     {
-        $this->account('Ana Mora', 'ana@barberhub.test', '8888-0000');
+        $ana = $this->account('Ana Mora', 'ana@barberhub.test', '8888-0000');
         $before = UserModel::query()->sole();
         $token = $this->login('ana@barberhub.test', self::PASSWORD);
 
         $this->update($token, ['nombre' => 'Ana María Mora', 'telefono' => '8999-1234', 'correo' => ' ANA.MORA@barberhub.test '])
             ->assertOk()
             ->assertExactJson(['data' => [
+                'id' => $ana,
                 'nombre' => 'Ana María Mora',
                 'telefono' => '8999-1234',
                 'correo' => 'ana.mora@barberhub.test',
@@ -243,9 +260,9 @@ final class OwnAccountTest extends TestCase
     }
 
     /** Insert an account whose password is the given one. */
-    private function account(string $name, string $email, ?string $phone, bool $temporary = false, string $password = self::PASSWORD): void
+    private function account(string $name, string $email, ?string $phone, bool $temporary = false, string $password = self::PASSWORD): string
     {
-        UserModel::query()->create([
+        $user = UserModel::query()->create([
             'name' => $name,
             'email' => $email,
             'phone' => $phone,
@@ -254,6 +271,8 @@ final class OwnAccountTest extends TestCase
             'terms_accepted_at' => $temporary ? null : now(),
             'privacy_accepted_at' => $temporary ? null : now(),
         ]);
+
+        return (string) $user->id;
     }
 
     /** Log in through the API and return the plain text token. */

@@ -22,13 +22,15 @@ final class ProfileResource extends JsonResource
     }
 
     /**
-     * Expose the personal data and whether the password is still temporary, never the password or its hash.
+     * Expose the id of the own account (the web client subscribes to its private channel with it), the personal
+     * data and whether the password is still temporary, never the password or its hash.
      *
-     * @return array{nombre: string, telefono: string|null, correo: string, contrasena_temporal: bool}
+     * @return array{id: string, nombre: string, telefono: string|null, correo: string, contrasena_temporal: bool}
      */
     public function toArray(Request $request): array
     {
         return [
+            'id' => $this->user->id->value,
             'nombre' => $this->user->name->value,
             'telefono' => $this->user->phone?->value,
             'correo' => $this->user->email->value,
