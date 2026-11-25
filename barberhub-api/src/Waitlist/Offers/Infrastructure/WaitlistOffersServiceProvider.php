@@ -6,9 +6,11 @@ namespace Src\Waitlist\Offers\Infrastructure;
 
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Src\Reservations\Reservations\Domain\Events\ReservationCancelled;
 use Src\Reservations\Reservations\Domain\Events\ReservationConfirmed;
 use Src\Reservations\Reservations\Domain\Events\SpaceReleased;
 use Src\Waitlist\Offers\Application\Contracts\CollaboratorLock;
+use Src\Waitlist\Offers\Application\Contracts\CollaboratorNames;
 use Src\Waitlist\Offers\Application\Contracts\CustomerBookings;
 use Src\Waitlist\Offers\Application\Contracts\CustomerMemberships;
 use Src\Waitlist\Offers\Application\Contracts\LineEntries;
@@ -24,9 +26,11 @@ use Src\Waitlist\Offers\Infrastructure\Availability\AvailabilitySpaceAvailabilit
 use Src\Waitlist\Offers\Infrastructure\Barbershops\BarbershopsWaitlistSwitch;
 use Src\Waitlist\Offers\Infrastructure\Catalog\CatalogServiceMinutes;
 use Src\Waitlist\Offers\Infrastructure\Collaborators\CollaboratorsCollaboratorLock;
+use Src\Waitlist\Offers\Infrastructure\Collaborators\CollaboratorsCollaboratorNames;
 use Src\Waitlist\Offers\Infrastructure\Entries\EntriesLineEntries;
 use Src\Waitlist\Offers\Infrastructure\Entries\EntriesWaitingLine;
 use Src\Waitlist\Offers\Infrastructure\Listeners\OfferSpaceReleased;
+use Src\Waitlist\Offers\Infrastructure\Listeners\ReleaseOfferOnReservationCancelled;
 use Src\Waitlist\Offers\Infrastructure\Listeners\SettleOfferOnReservationConfirmed;
 use Src\Waitlist\Offers\Infrastructure\Memberships\MembershipsCustomerMemberships;
 use Src\Waitlist\Offers\Infrastructure\Persistence\Queries\EloquentOfferedSpaceReader;
@@ -48,6 +52,7 @@ final class WaitlistOffersServiceProvider extends ServiceProvider
         WaitingLine::class => EntriesWaitingLine::class,
         ServiceMinutes::class => CatalogServiceMinutes::class,
         CollaboratorLock::class => CollaboratorsCollaboratorLock::class,
+        CollaboratorNames::class => CollaboratorsCollaboratorNames::class,
         SpaceAvailability::class => AvailabilitySpaceAvailability::class,
         CustomerBookings::class => ReservationsCustomerBookings::class,
         OfferDeadlines::class => QueuedOfferDeadlines::class,
@@ -59,11 +64,13 @@ final class WaitlistOffersServiceProvider extends ServiceProvider
 
     /**
      * Listen to the spaces that reservations free, which the line offers to the first compatible person (RF-31), and to the reservations that
-     * become confirmed, which accept the offer they were for and take the person out of the lines of that service and day (RF-32, LE-06).
+     * become confirmed, which accept the offer they were for and take the person out of the lines of that service and day (RF-32, LE-06), and to the
+     * reservations that are cancelled, which close the offer they were made for as if it had been turned down (LE-05).
      */
     public function boot(): void
     {
         Event::listen(SpaceReleased::class, OfferSpaceReleased::class);
         Event::listen(ReservationConfirmed::class, SettleOfferOnReservationConfirmed::class);
+        Event::listen(ReservationCancelled::class, ReleaseOfferOnReservationCancelled::class);
     }
 }

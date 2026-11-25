@@ -5,17 +5,15 @@ declare(strict_types=1);
 namespace Src\Waitlist\Offers\Application\UseCases;
 
 use DateTimeImmutable;
-use Src\Shared\Domain\Contracts\BarbershopContext;
-use Src\Shared\Domain\Contracts\DomainEvents;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Waitlist\Offers\Application\Contracts\CollaboratorLock;
+use Src\Waitlist\Offers\Application\Contracts\CollaboratorNames;
 use Src\Waitlist\Offers\Application\Contracts\CustomerMemberships;
 use Src\Waitlist\Offers\Application\Contracts\LineEntries;
 use Src\Waitlist\Offers\Application\Contracts\OfferedBookings;
-use Src\Waitlist\Offers\Application\Contracts\WaitingLine;
 use Src\Waitlist\Offers\Application\DTOs\OfferView;
 use Src\Waitlist\Offers\Domain\Contracts\OfferRepository;
-use Src\Waitlist\Offers\Domain\Events\OfferAnswered;
+use Src\Waitlist\Offers\Domain\Entities\Offer;
 use Src\Waitlist\Offers\Domain\Exceptions\OfferAlreadyAnsweredException;
 use Src\Waitlist\Offers\Domain\Exceptions\OfferAwaitingPaymentException;
 use Src\Waitlist\Offers\Domain\Exceptions\OfferExpiredException;
@@ -25,18 +23,17 @@ use Src\Waitlist\Offers\Domain\ValueObjects\OfferStatus;
 
 final readonly class RejectOffer
 {
-    /** Receive the repository of the offers, the ports to the line, the customer roles, the lock of the collaborator and the reservations, the offering of a freed space, the transaction port, the events of the domain and the barbershop of the operation. */
+    /** Receive the repository of the offers, the ports to the line, the customer roles, the lock of the collaborator and the reservations, the closing of a turned down offer, the offering of a freed space and the transaction port. */
     public function __construct(
         private OfferRepository $offers,
         private LineEntries $entries,
-        private WaitingLine $line,
         private CustomerMemberships $customers,
         private CollaboratorLock $collaborators,
+        private CollaboratorNames $names,
         private OfferedBookings $bookings,
+        private TurnOfferDown $turnDown,
         private OfferReleasedSpace $offerSpace,
         private TransactionRunner $transaction,
-        private DomainEvents $events,
-        private BarbershopContext $context,
     ) {}
 
     /**
@@ -70,7 +67,7 @@ final readonly class RejectOffer
             $offer = $this->offers->findForUpdate($id) ?? throw OfferNotFoundException::create();
 
             if ($offer->status === OfferStatus::Rejected) {
-                return new OfferView($offer, $row->serviceId);
+                return $this->view($offer, $row->serviceId);
             }
 
             $offer->assertOpenAt($now);
@@ -79,13 +76,16 @@ final readonly class RejectOffer
                 throw OfferAwaitingPaymentException::create();
             }
 
-            $offer->reject($now);
-            $this->offers->save($offer);
-            $this->line->returnToLine($offer->entryId->value, $now);
-            $this->events->publish(new OfferAnswered($this->context->current()->value, $offer->id->value, $membership, OfferStatus::Rejected->value));
+            $this->turnDown->execute($offer, $membership, $now);
             $this->offerSpace->execute($offer->collaboratorId->value, $offer->interval->start, $offer->interval->end, $now);
 
-            return new OfferView($offer, $row->serviceId);
+            return $this->view($offer, $row->serviceId);
         });
+    }
+
+    /** Carry the offer with the name of its collaborator, read once. */
+    private function view(Offer $offer, string $serviceId): OfferView
+    {
+        return new OfferView($offer, $serviceId, $this->names->names()[$offer->collaboratorId->value] ?? null);
     }
 }

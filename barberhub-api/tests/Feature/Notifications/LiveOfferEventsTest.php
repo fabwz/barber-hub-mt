@@ -135,6 +135,27 @@ final class LiveOfferEventsTest extends TestCase
         $this->assertSame('aceptada', $closed[0]->broadcastWith()['motivo']);
     }
 
+    /**
+     * Cancelling the temporary reservation that was made for the offer closes the pop-up with `rechazada`, as turning it down does (LE-05): once, in the
+     * channel of Ana only, and the next person is offered the space in theirs.
+     */
+    public function test_cancelling_the_reservation_of_the_offer_closes_it_as_rejected(): void
+    {
+        $this->scopeQueriesTo($this->puraNavaja);
+        DB::table('barbershops')->where('id', $this->puraNavaja)->update(['payment_gateway' => 'onvo', 'payment_mode' => 'deposit', 'deposit_percentage' => 30]);
+        $reservation = $this->postJson($this->answerUrl('aceptacion'))->assertOk()->json('data.reserva');
+        $this->assertCount(0, $this->closedEvents());
+
+        $this->postJson($this->cancelUrlOf($reservation))->assertOk();
+        $this->postJson($this->cancelUrlOf($reservation))->assertOk();
+
+        $closed = $this->closedEvents();
+        $this->assertCount(1, $closed);
+        $this->assertSame(["private-usuario.{$this->ana}"], $this->channelsOf($closed[0]));
+        $this->assertSame(['oferta' => $this->offer, 'motivo' => 'rechazada'], $closed[0]->broadcastWith());
+        $this->assertSame([["private-usuario.{$this->ana}"], ["private-usuario.{$this->luis}"]], array_map($this->channelsOf(...), $this->eventsNamed('oferta.creada')));
+    }
+
     /** An offer that runs out its 15 minutes closes with `vencida` for Ana, and the next person gets theirs (LE-04, LE-05). */
     public function test_an_expired_offer_closes_as_expired(): void
     {
