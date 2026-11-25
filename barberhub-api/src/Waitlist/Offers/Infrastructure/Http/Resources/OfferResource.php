@@ -21,7 +21,7 @@ final class OfferResource extends JsonResource
     /**
      * Expose the offer: the space it holds and until when, which is what the customer needs to decide.
      *
-     * @return array{id: string, fila: string, servicio: string, barbero: string, inicio: string, fin: string, vence_en: string, estado: string, reserva: string|null}
+     * @return array{id: string, fila: string, servicio: string, barbero: string, barbero_nombre: string|null, inicio: string, fin: string, vence_en: string, estado: string, reserva: string|null}
      */
     public function toArray(Request $request): array
     {
@@ -35,6 +35,8 @@ final class OfferResource extends JsonResource
             'servicio' => $this->resource->serviceId,
             /** Identificador del barbero cuyo espacio se ofrece. */
             'barbero' => $offer->collaboratorId->value,
+            /** Nombre del barbero cuyo espacio se ofrece; nulo si ya no se conoce (por ejemplo, un perfil que se eliminó). */
+            'barbero_nombre' => $this->resource->collaboratorName,
             /** Inicio del espacio ofrecido, ISO 8601 con el desfase de Costa Rica (-06:00). La reserva que nace al aceptar empieza aquí. Ejemplo: 2030-03-05T10:00:00-06:00. */
             'inicio' => self::instant($offer->interval->start),
             /** Fin del espacio que la oferta aparta, limpieza incluida: puede ser posterior al fin del servicio. Ejemplo: 2030-03-05T10:50:00-06:00. */

@@ -5437,6 +5437,13 @@
                         ],
                         "description": "Identificador del barbero que pidi\u00f3; nulo significa \u00abcualquiera\u00bb."
                     },
+                    "barbero_nombre": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre del barbero que pidi\u00f3; nulo si pidi\u00f3 \u00abcualquiera\u00bb o si ya no se conoce."
+                    },
                     "fecha": {
                         "type": "string",
                         "description": "D\u00eda que busca, `AAAA-MM-DD`."
@@ -5460,6 +5467,7 @@
                     "id",
                     "servicio",
                     "barbero",
+                    "barbero_nombre",
                     "fecha",
                     "estado",
                     "ingreso"
@@ -5706,6 +5714,13 @@
                         "type": "string",
                         "description": "Identificador del barbero cuyo espacio se ofrece."
                     },
+                    "barbero_nombre": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre del barbero cuyo espacio se ofrece; nulo si ya no se conoce (por ejemplo, un perfil que se elimin\u00f3)."
+                    },
                     "inicio": {
                         "type": "string",
                         "description": "Inicio del espacio ofrecido, ISO 8601 con el desfase de Costa Rica (-06:00). La reserva que nace al aceptar empieza aqu\u00ed. Ejemplo: 2030-03-05T10:00:00-06:00."
@@ -5741,6 +5756,7 @@
                     "fila",
                     "servicio",
                     "barbero",
+                    "barbero_nombre",
                     "inicio",
                     "fin",
                     "vence_en",

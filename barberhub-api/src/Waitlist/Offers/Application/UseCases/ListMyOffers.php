@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Src\Waitlist\Offers\Application\UseCases;
 
 use DateTimeImmutable;
+use Src\Waitlist\Offers\Application\Contracts\CollaboratorNames;
 use Src\Waitlist\Offers\Application\Contracts\CustomerMemberships;
 use Src\Waitlist\Offers\Application\Contracts\LineEntries;
 use Src\Waitlist\Offers\Application\DTOs\LineRow;
@@ -15,11 +16,12 @@ use Src\Waitlist\Offers\Domain\ValueObjects\WaitlistEntryId;
 
 final readonly class ListMyOffers
 {
-    /** Receive the repository of the offers and the ports to the customer roles and to the line. */
+    /** Receive the repository of the offers and the ports to the customer roles, to the line and to the names of the collaborators. */
     public function __construct(
         private OfferRepository $offers,
         private LineEntries $line,
         private CustomerMemberships $customers,
+        private CollaboratorNames $collaborators,
     ) {}
 
     /**
@@ -46,9 +48,18 @@ final readonly class ListMyOffers
             }
         }
 
+        $offers = $this->offers->pendingOfEntries(array_map(fn (string $id): WaitlistEntryId => new WaitlistEntryId($id), array_keys($rows)), $now);
+
+        if ($offers === []) {
+            return [];
+        }
+
+        // One read names every offer: the names are not asked offer by offer.
+        $names = $this->collaborators->names();
+
         return array_map(
-            fn (Offer $offer): OfferView => new OfferView($offer, $this->serviceOf($rows, $offer)),
-            $this->offers->pendingOfEntries(array_map(fn (string $id): WaitlistEntryId => new WaitlistEntryId($id), array_keys($rows)), $now),
+            fn (Offer $offer): OfferView => new OfferView($offer, $this->serviceOf($rows, $offer), $names[$offer->collaboratorId->value] ?? null),
+            $offers,
         );
     }
 

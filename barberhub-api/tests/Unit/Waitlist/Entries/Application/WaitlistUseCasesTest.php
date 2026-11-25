@@ -13,6 +13,7 @@ use Src\Waitlist\Entries\Application\DTOs\JoinWaitlistCommand;
 use Src\Waitlist\Entries\Application\UseCases\JoinWaitlist;
 use Src\Waitlist\Entries\Application\UseCases\LeaveWaitlist;
 use Src\Waitlist\Entries\Application\UseCases\ListMyWaitlistEntries;
+use Src\Waitlist\Entries\Application\UseCases\NameEntry;
 use Src\Waitlist\Entries\Domain\Exceptions\CollaboratorNotFoundException;
 use Src\Waitlist\Entries\Domain\Exceptions\DesiredDateInPastException;
 use Src\Waitlist\Entries\Domain\Exceptions\DuplicateEntryException;
@@ -86,7 +87,7 @@ final class WaitlistUseCasesTest extends TestCase
         $this->join->execute($this->command(self::ANA, '2030-03-06'), self::at('2030-03-01 07:00:00'));
         $this->join->execute($this->command(self::ANA, '2030-03-07'), self::at('2030-03-01 08:00:00'));
 
-        $dates = array_map(fn ($entry): string => $entry->desiredDate->value, new ListMyWaitlistEntries($this->entries, $this->memberships)->execute(self::ANA));
+        $dates = array_map(fn ($view): string => $view->entry->desiredDate->value, $this->list()->execute(self::ANA));
 
         $this->assertSame(['2030-03-06', '2030-03-07', '2030-03-08'], $dates);
     }
@@ -221,8 +222,55 @@ final class WaitlistUseCasesTest extends TestCase
     /** A person with no role has an empty list and no role is created by asking (RD-18). */
     public function test_listing_without_a_role_is_empty_and_creates_nothing(): void
     {
-        $this->assertSame([], new ListMyWaitlistEntries($this->entries, $this->memberships)->execute(self::ANA));
+        $this->assertSame([], $this->list()->execute(self::ANA));
         $this->assertSame(0, $this->memberships->created());
+        $this->assertSame(0, $this->ports->namesRead);
+    }
+
+    /** A row for a collaborator carries their name and a row for any carries none; one read names the whole list, never one per row. */
+    public function test_rows_carry_the_name_of_their_collaborator_with_one_read(): void
+    {
+        $this->ports->names = [self::DANIELA => 'Daniela', 'otro' => 'Otro'];
+        $this->join->execute($this->command(self::ANA, '2030-03-06', self::DANIELA), self::at('2030-03-01 07:00:00'));
+        $this->join->execute($this->command(self::ANA, '2030-03-07'), self::at('2030-03-01 08:00:00'));
+        $this->join->execute($this->command(self::ANA, '2030-03-08', self::DANIELA), self::at('2030-03-01 09:00:00'));
+
+        $names = array_map(fn ($view): ?string => $view->collaboratorName, $this->list()->execute(self::ANA));
+
+        $this->assertSame(['Daniela', null, 'Daniela'], $names);
+        $this->assertSame(1, $this->ports->namesRead);
+    }
+
+    /** Rows that ask for any collaborator need no name, so nothing is read; a collaborator that is no longer known has none. */
+    public function test_rows_without_a_collaborator_read_no_names_and_an_unknown_one_has_none(): void
+    {
+        $this->join->execute($this->command(self::ANA, '2030-03-06'), self::at('2030-03-01 07:00:00'));
+
+        $this->assertSame([null], array_map(fn ($view): ?string => $view->collaboratorName, $this->list()->execute(self::ANA)));
+        $this->assertSame(0, $this->ports->namesRead);
+
+        $this->join->execute($this->command(self::ANA, '2030-03-07', self::DANIELA), self::at('2030-03-01 08:00:00'));
+
+        $this->assertSame([null, null], array_map(fn ($view): ?string => $view->collaboratorName, $this->list()->execute(self::ANA)));
+    }
+
+    /** The row just created carries the name of its collaborator too, which is what the answer of joining shows. */
+    public function test_a_new_row_is_named_for_the_answer(): void
+    {
+        $this->ports->names = [self::DANIELA => 'Daniela'];
+        $named = new NameEntry($this->ports);
+
+        $withCollaborator = $named->execute($this->join->execute($this->command(self::ANA, '2030-03-06', self::DANIELA), self::at('2030-03-01 07:00:00')));
+        $withoutCollaborator = $named->execute($this->join->execute($this->command(self::ANA, '2030-03-07'), self::at('2030-03-01 08:00:00')));
+
+        $this->assertSame('Daniela', $withCollaborator->collaboratorName);
+        $this->assertNull($withoutCollaborator->collaboratorName);
+        $this->assertSame(1, $this->ports->namesRead);
+    }
+
+    private function list(): ListMyWaitlistEntries
+    {
+        return new ListMyWaitlistEntries($this->entries, $this->memberships, $this->ports);
     }
 
     private function command(string $user, string $date, ?string $collaborator = null): JoinWaitlistCommand

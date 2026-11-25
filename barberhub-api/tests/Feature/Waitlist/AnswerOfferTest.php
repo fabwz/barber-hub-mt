@@ -59,6 +59,7 @@ final class AnswerOfferTest extends TestCase
             ->assertJsonPath('data.id', $this->offer)
             ->assertJsonPath('data.estado', 'aceptada')
             ->assertJsonPath('data.barbero', $this->daniela)
+            ->assertJsonPath('data.barbero_nombre', 'Daniela')
             ->assertJsonPath('data.inicio', '2030-03-05T10:00:00-06:00');
 
         $reservation = $response->json('data.reserva');
@@ -222,7 +223,7 @@ final class AnswerOfferTest extends TestCase
     /** Turning it down passes the offer to the next person in the same operation, without waiting for the 15 minutes (RF-32, LE-05). */
     public function test_rejecting_offers_the_space_to_the_next_person_at_once(): void
     {
-        $this->reject()->assertOk()->assertJsonPath('data.estado', 'rechazada')->assertJsonPath('data.reserva', null);
+        $this->reject()->assertOk()->assertJsonPath('data.estado', 'rechazada')->assertJsonPath('data.reserva', null)->assertJsonPath('data.barbero_nombre', 'Daniela');
 
         $offers = $this->offerRows();
         $this->assertSame('rejected', $offers[0]->status);
@@ -377,6 +378,7 @@ final class AnswerOfferTest extends TestCase
             'fila' => $this->anaEntry,
             'servicio' => $this->degradado,
             'barbero' => $this->daniela,
+            'barbero_nombre' => 'Daniela',
             'inicio' => '2030-03-05T10:00:00-06:00',
             'fin' => '2030-03-05T10:50:00-06:00',
             'vence_en' => '2030-03-01T08:15:00-06:00',

@@ -14,6 +14,7 @@ use Src\Shared\Domain\Contracts\Clock;
 use Src\Waitlist\Entries\Application\UseCases\JoinWaitlist;
 use Src\Waitlist\Entries\Application\UseCases\LeaveWaitlist;
 use Src\Waitlist\Entries\Application\UseCases\ListMyWaitlistEntries;
+use Src\Waitlist\Entries\Application\UseCases\NameEntry;
 use Src\Waitlist\Entries\Infrastructure\Http\Requests\JoinWaitlistRequest;
 use Src\Waitlist\Entries\Infrastructure\Http\Resources\WaitlistEntryResource;
 
@@ -28,9 +29,9 @@ final readonly class WaitlistEntryController
         title: 'Anotarse en la lista de espera',
         description: 'Anota a la persona de la sesión en la fila de un `servicio` activo en una `fecha` (`AAAA-MM-DD`, hoy o posterior en Costa Rica), con el `barbero` indicado o con cualquiera si se omite o va nulo. La fila nace `esperando` y su `ingreso` (la hora de la petición) la ordena: el primero en entrar es el primero en recibir una oferta. Solo se anota quien no tiene dónde reservar: si hay espacios disponibles para esa combinación, la petición se rechaza con 409 `conflicto` y el miembro `espacios` trae hasta 3, los de inicio más próximo, con `barbero`, `inicio` y `fin` (ISO 8601), para que reserve uno con `POST /reservas`; no se crea ninguna fila. Cada persona tiene como máximo 3 filas activas (`esperando` u `ofrecida`) por barbería: la cuarta responde 409 `conflicto`, también cuando dos anotaciones llegan a la vez (el bloqueo por persona las atiende una tras otra). Repetir la misma combinación de servicio, día y barbero con una fila activa responde 409 `conflicto`. Con la lista de espera desactivada por la barbería (`lista_espera_activa` en `false`) responde 409 `conflicto`. Una persona sin rol en la barbería queda como cliente con su primera fila; si la anotación falla no queda ninguna membresía. El dueño o un colaborador de esa barbería recibe 403 `prohibido`. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`, igual que una barbería inexistente; un dato mal escrito o una fecha pasada, 422 `datos-invalidos` con el campo. La oferta del espacio liberado todavía no se aplica.',
     )]
-    public function store(JoinWaitlistRequest $request, JoinWaitlist $joinWaitlist): JsonResponse
+    public function store(JoinWaitlistRequest $request, JoinWaitlist $joinWaitlist, NameEntry $nameEntry): JsonResponse
     {
-        return new WaitlistEntryResource($joinWaitlist->execute($request->toCommand(), $this->clock->now()))
+        return new WaitlistEntryResource($nameEntry->execute($joinWaitlist->execute($request->toCommand(), $this->clock->now())))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }

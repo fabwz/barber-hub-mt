@@ -53,6 +53,7 @@ final class WaitlistEntriesTest extends TestCase
 
         $response->assertJsonPath('data.servicio', $this->degradado)
             ->assertJsonPath('data.barbero', null)
+            ->assertJsonPath('data.barbero_nombre', null)
             ->assertJsonPath('data.fecha', self::WITHOUT_SPACES)
             ->assertJsonPath('data.estado', 'esperando')
             ->assertJsonPath('data.ingreso', '2030-03-01T08:00:00-06:00');
@@ -67,7 +68,8 @@ final class WaitlistEntriesTest extends TestCase
     {
         $this->join('customer', ['servicio' => $this->degradado, 'fecha' => self::WITHOUT_SPACES, 'barbero' => $this->daniela])
             ->assertCreated()
-            ->assertJsonPath('data.barbero', $this->daniela);
+            ->assertJsonPath('data.barbero', $this->daniela)
+            ->assertJsonPath('data.barbero_nombre', 'Daniela');
 
         $this->assertSame(['customer'], $this->rolesOf($this->ana, $this->puraNavaja));
     }
@@ -240,6 +242,19 @@ final class WaitlistEntriesTest extends TestCase
 
         $this->sendAs('customer', 'GET', "/api/v1/barberias/{$this->puraNavaja}/mis-filas")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $mine);
         $this->sendAs('other_customer', 'GET', "/api/v1/barberias/{$this->puraNavaja}/mis-filas")->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    /** The list names the barber each row asked for, and only that: «cualquiera» has no name, and no other data of the barber leaves (CL-04). */
+    public function test_the_list_names_the_barber_of_each_row(): void
+    {
+        $named = $this->insertWaitlistEntry($this->puraNavaja, $this->anaMembership, $this->degradado, collaboratorId: $this->daniela, date: '2030-03-06');
+        $any = $this->insertWaitlistEntry($this->puraNavaja, $this->anaMembership, $this->degradado, date: '2030-03-07');
+
+        $rows = $this->sendAs('customer', 'GET', "/api/v1/barberias/{$this->puraNavaja}/mis-filas")->assertOk()->json('data');
+
+        $this->assertSame([$named, $any], array_column($rows, 'id'));
+        $this->assertSame(['Daniela', null], array_column($rows, 'barbero_nombre'));
+        $this->assertSame(['id', 'servicio', 'barbero', 'barbero_nombre', 'fecha', 'estado', 'ingreso'], array_keys($rows[0]));
     }
 
     /** A person with no role reads an empty list, and reading creates no role (RD-18); the owner and a collaborator are refused. */

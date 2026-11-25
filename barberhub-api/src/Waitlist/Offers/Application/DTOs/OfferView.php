@@ -8,9 +8,10 @@ use Src\Waitlist\Offers\Domain\Entities\Offer;
 
 final readonly class OfferView
 {
-    /** Carry an offer with the service its row asks for, which the offer itself does not know. */
+    /** Carry an offer with what it does not know itself: the service its row asks for and the name of the collaborator whose space it holds. */
     public function __construct(
         public Offer $offer,
         public string $serviceId,
+        public ?string $collaboratorName,
     ) {}
 }
