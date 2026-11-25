@@ -153,7 +153,7 @@ final class LiveAgendaChannelsTest extends TestCase
     /** A name that is no channel of the agenda is refused and signs nothing; one that is not private is no subscription to authorize. */
     public function test_an_unknown_channel_is_refused(): void
     {
-        foreach (['private-barberia.'.$this->puraNavaja.'.ingresos', 'private-usuario.'.$this->ana, 'private-barberia.'.$this->puraNavaja.'.agenda.extra'] as $channel) {
+        foreach (['private-barberia.'.$this->puraNavaja.'.ingresos', 'private-usuario.'.$this->ana.'.extra', 'private-barberia.'.$this->puraNavaja.'.agenda.extra'] as $channel) {
             $response = $this->authorizeAs('owner', $channel);
 
             $this->assertSame(403, $response->getStatusCode(), $channel);
