@@ -12,4 +12,6 @@ enum NoticeType: string
     case Cancellation = 'cancellation';
     case Reschedule = 'reschedule';
     case Reminder = 'reminder';
+    /** The link to reset the password (RF-41): it protects the account, so the customer cannot turn it off either (NO-10). */
+    case PasswordReset = 'password_reset';
 }

@@ -10,26 +10,32 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Resend;
+use Src\Identity\Users\Domain\Events\PasswordResetRequested;
 use Src\Notifications\Notices\Application\Contracts\BarbershopBranding;
 use Src\Notifications\Notices\Application\Contracts\CatalogNames;
 use Src\Notifications\Notices\Application\Contracts\NoticeChannel;
+use Src\Notifications\Notices\Application\Contracts\PasswordResets;
 use Src\Notifications\Notices\Application\Contracts\Recipients;
 use Src\Notifications\Notices\Application\Contracts\ReminderJobs;
 use Src\Notifications\Notices\Application\Contracts\ReminderPreferences;
 use Src\Notifications\Notices\Application\Contracts\ReservationLookup;
+use Src\Notifications\Notices\Application\Contracts\WebLinks;
 use Src\Notifications\Notices\Domain\Contracts\ReminderRepository;
 use Src\Notifications\Notices\Infrastructure\Catalog\CatalogBarbershopBranding;
 use Src\Notifications\Notices\Infrastructure\Catalog\CatalogNoticeNames;
+use Src\Notifications\Notices\Infrastructure\Identity\IdentityPasswordResets;
 use Src\Notifications\Notices\Infrastructure\Identity\IdentityRecipients;
 use Src\Notifications\Notices\Infrastructure\Identity\IdentityReminderPreferences;
 use Src\Notifications\Notices\Infrastructure\Jobs\SendNoticeJob;
 use Src\Notifications\Notices\Infrastructure\Listeners\DispatchNotices;
+use Src\Notifications\Notices\Infrastructure\Listeners\DispatchPasswordResetNotice;
 use Src\Notifications\Notices\Infrastructure\Listeners\ScheduleRemindersOnReservation;
 use Src\Notifications\Notices\Infrastructure\Mail\IdempotentResendTransport;
 use Src\Notifications\Notices\Infrastructure\Mail\MailNoticeChannel;
 use Src\Notifications\Notices\Infrastructure\Persistence\Repositories\EloquentReminderRepository;
 use Src\Notifications\Notices\Infrastructure\Queue\QueuedReminders;
 use Src\Notifications\Notices\Infrastructure\Reservations\ReservationsReservationLookup;
+use Src\Notifications\Notices\Infrastructure\Web\ConfiguredWebLinks;
 use Src\Reservations\Reservations\Domain\Events\ReservationCancelled;
 use Src\Reservations\Reservations\Domain\Events\ReservationConfirmed;
 use Src\Reservations\Reservations\Domain\Events\ReservationRescheduled;
@@ -48,10 +54,17 @@ final class NoticesServiceProvider extends ServiceProvider
         ReminderJobs::class => QueuedReminders::class,
         ReservationLookup::class => ReservationsReservationLookup::class,
         Recipients::class => IdentityRecipients::class,
+        PasswordResets::class => IdentityPasswordResets::class,
         ReminderPreferences::class => IdentityReminderPreferences::class,
         BarbershopBranding::class => CatalogBarbershopBranding::class,
         CatalogNames::class => CatalogNoticeNames::class,
     ];
+
+    /** The address of the web client, which the links of the emails point to, comes from the configuration where the deployment sets it. */
+    public function register(): void
+    {
+        $this->app->bind(WebLinks::class, fn (): WebLinks => new ConfiguredWebLinks(config()->string('notices.web_url')));
+    }
 
     /**
      * Listen to the events that the customer must hear about (RF-33, RF-34), keep the sending to the rate limit of the provider and
@@ -59,6 +72,7 @@ final class NoticesServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(PasswordResetRequested::class, DispatchPasswordResetNotice::class);
         Event::listen(ReservationConfirmed::class, [DispatchNotices::class, 'onConfirmed']);
         Event::listen(OfferCreated::class, [DispatchNotices::class, 'onOffered']);
         Event::listen(ReservationCancelled::class, [DispatchNotices::class, 'onCancelled']);

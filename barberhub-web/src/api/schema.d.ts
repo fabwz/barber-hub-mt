@@ -373,6 +373,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contrasena/recuperacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solicitar el enlace para restablecer la contraseña
+         * @description Ruta pública (RF-41). Responde siempre 202 sin cuerpo, exista o no una cuenta con ese correo: la respuesta no permite saberlo. Si la cuenta existe y está activa, el enlace sale por correo desde la cola; es válido 60 minutos, se usa una sola vez y reemplaza al anterior (SE-06). Se aceptan como máximo 5 solicitudes por hora por correo y 5 por dirección IP; la sexta responde 429 `demasiadas-solicitudes` con `Retry-After` en segundos.
+         */
+        post: operations["identity.password-recovery.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contrasena/restablecimiento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restablecer la contraseña con el enlace
+         * @description Ruta pública (RF-41). Recibe el `token` del enlace y la `contrasena_nueva`, que debe tener al menos 8 caracteres, con mayúscula, minúscula, número y signo especial (SE-07); `errores.contrasena_nueva` lista todos los requisitos que faltan y el enlace no se gasta. Un enlace desconocido, vencido (a los 60 minutos) o ya usado responde 422 `datos-invalidos` con `errores.token`, sin decir cuál de los tres casos es. Al terminar cierra todas las sesiones y todos los tokens de la cuenta, y la contraseña deja de ser temporal. Responde 204.
+         */
+        post: operations["identity.password-recovery.update"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cuenta/avisos": {
         parameters: {
             query?: never;
@@ -2163,6 +2203,11 @@ export interface components {
                 sesion_bono: "se_reintegra" | "se_consume" | "ninguna";
             } | null;
         };
+        /** RestablecimientoDeContrasena */
+        RestablecimientoDeContrasena: {
+            token: string;
+            contrasena_nueva: string;
+        };
         /** Servicio */
         Servicio: {
             id: string;
@@ -2194,6 +2239,11 @@ export interface components {
             iva: number;
             /** @description Dirección de la imagen del servicio, relativa al servidor (`/api/v1/archivos/...`). Falta si el servicio no tiene imagen (SV-07). */
             imagen?: string | null;
+        };
+        /** SolicitudDeRestablecimiento */
+        SolicitudDeRestablecimiento: {
+            /** Format: email */
+            correo: string;
         };
         /** TokenDeAcceso */
         TokenDeAcceso: {
@@ -2975,6 +3025,51 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Unauthenticated"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "identity.password-recovery.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SolicitudDeRestablecimiento"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "identity.password-recovery.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestablecimientoDeContrasena"];
+            };
+        };
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             422: components["responses"]["InvalidData"];
         };
     };

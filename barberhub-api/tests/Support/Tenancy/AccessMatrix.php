@@ -82,6 +82,8 @@ final class AccessMatrix
             'GET api/v1' => RouteRule::public('Índice de la API: nombre y versión, sin datos de nadie.'),
             'POST api/v1/cuentas' => RouteRule::public('Registro de cliente (RF-01): todavía no hay sesión.'),
             'POST api/v1/tokens' => RouteRule::public('Inicio de sesión: entrega el token; limita los intentos (SE-05).'),
+            'POST api/v1/contrasena/recuperacion' => RouteRule::public('Solicitud del enlace para restablecer la contraseña (RF-41): todavía no hay sesión; responde igual exista o no el correo y limita 5 solicitudes por hora por correo y por dirección (SE-06).'),
+            'POST api/v1/contrasena/restablecimiento' => RouteRule::public('Restablece la contraseña con el enlace del correo (RF-41): todavía no hay sesión; el token es de un solo uso y vence a los 60 minutos (SE-06).'),
             'GET api/v1/enlaces/{enlace}' => RouteRule::public('Portada de la barbería por su enlace público (MT-07, RD-18): datos públicos (MT-09).'),
             'GET api/v1/directorio' => RouteRule::public('Directorio de las barberías que eligieron aparecer (RF-54, MT-10): solo nombre, ciudad, logo y enlace (MT-09).'),
             "GET {$base}/servicios" => RouteRule::public('Servicios activos de una barbería antes de tener sesión (RD-18).', scoped: true),

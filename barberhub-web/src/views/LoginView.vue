@@ -162,10 +162,18 @@ async function submit(): Promise<void> {
               </button>
             </div>
           </div>
+          <p class="mt-2 flex justify-end text-sm">
+            <RouterLink
+              :to="{ name: 'forgot-password' }"
+              class="inline-flex min-h-11 items-center px-3 font-medium text-fg no-underline"
+            >
+              ¿Olvidó su contraseña?
+            </RouterLink>
+          </p>
           <BaseButton
             type="submit"
             size="large"
-            class="mt-8 w-full"
+            class="mt-4 w-full"
             :loading="loading"
             :disabled="countdown.active.value"
           >

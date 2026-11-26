@@ -4,4 +4,8 @@
 {!! $line !!}
 
 @endforeach
+@if ($actionUrl !== null)
+{!! $actionLabel !!}: {!! $actionUrl !!}
+
+@endif
 {!! $footer !!}

@@ -35,6 +35,15 @@ return [
         'after' => 'Hora nueva: :when.',
     ],
 
+    'password_reset' => [
+        'subject' => 'Restablezca su contraseña de BarberHub',
+        'line' => 'Recibimos una solicitud para restablecer la contraseña de su cuenta.',
+        'validity' => 'El enlace es válido por :minutes minutos y solo se puede usar una vez.',
+        'ignore' => 'Si usted no hizo la solicitud, ignore este mensaje: su contraseña no cambia.',
+        'action_label' => 'Crear nueva contraseña',
+        'footer' => 'Este mensaje fue enviado por BarberHub.',
+    ],
+
     'reminder' => [
         '24h' => [
             'subject' => 'Recordatorio: su reserva en :barbershop es mañana',

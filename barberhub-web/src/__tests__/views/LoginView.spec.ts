@@ -34,8 +34,16 @@ describe('LoginView', () => {
     expect(password.attributes('autocomplete')).toBe('current-password')
     expect(wrapper.text()).toContain('Correo electrónico')
     expect(wrapper.text()).toContain('Contraseña')
-    expect(wrapper.text()).not.toMatch(/olvid|recuperar|mostrar/i)
+    expect(wrapper.text()).not.toMatch(/recuperar|mostrar/i)
     expect(wrapper.get('img').attributes('alt')).toBe('BarberHub')
+  })
+
+  it('links to «Olvidé mi contraseña» (RF-41)', async () => {
+    const { wrapper } = await mountView(LoginView, '/ingresar')
+    const link = wrapper.get('a[href="/olvide-mi-contrasena"]')
+
+    expect(link.text()).toBe('¿Olvidó su contraseña?')
+    expect(link.classes()).toContain('min-h-11')
   })
 
   it('shows and hides the password with the eye button', async () => {
