@@ -184,6 +184,37 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // «Bonos» (#111, RF-26, RF-29): only the owner. The list of the shop and the sold ones are child routes, as in
+    // «Equipo»; the form has its own address, new and edit, and «nuevo» goes before `:bono` so it is never read as an id.
+    path: '/barberias/:barberia/bonos',
+    component: () => import('@/views/StaffVouchersView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+    children: [
+      {
+        path: '',
+        name: 'staff-vouchers',
+        component: () => import('@/views/VoucherDefinitionsView.vue'),
+      },
+      {
+        path: 'vendidos',
+        name: 'staff-vouchers-sold',
+        component: () => import('@/views/SoldVouchersView.vue'),
+      },
+    ],
+  },
+  {
+    path: '/barberias/:barberia/bonos/nuevo',
+    name: 'staff-voucher-new',
+    component: () => import('@/views/VoucherDefinitionFormView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
+    path: '/barberias/:barberia/bonos/:bono',
+    name: 'staff-voucher-edit',
+    component: () => import('@/views/VoucherDefinitionFormView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
     // «Configuración» (#77, RF-01, RF-08, RF-09): only the owner. Each section is a child route, as in «Equipo».
     path: '/barberias/:barberia/configuracion',
     component: () => import('@/views/StaffSettingsView.vue'),

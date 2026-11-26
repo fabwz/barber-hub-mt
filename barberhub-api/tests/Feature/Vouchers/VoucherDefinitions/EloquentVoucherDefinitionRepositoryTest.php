@@ -130,6 +130,25 @@ final class EloquentVoucherDefinitionRepositoryTest extends TestCase
         $this->assertFalse($this->definitions->hasPurchases($sold->id));
     }
 
+    /** One query tells which of the given definitions have purchases, and only the ones of the current barbershop count. */
+    public function test_ids_with_purchases_picks_the_sold_ones_of_the_current_barbershop(): void
+    {
+        $sold = $this->definition([$this->degradado]);
+        $unsold = $this->definition([$this->degradado]);
+        $this->definitions->save($sold);
+        $this->definitions->save($unsold);
+        [, $membership] = $this->insertCustomer($this->puraNavaja, 'Ana Rojas');
+        $this->insertPurchasedVoucher($this->puraNavaja, $membership, $sold->id->value, 'pending');
+        $this->insertPurchasedVoucher($this->puraNavaja, $membership, $sold->id->value);
+
+        $this->assertSame([], $this->definitions->idsWithPurchases([]));
+        $this->assertSame([$sold->id->value], $this->definitions->idsWithPurchases([$sold->id, $unsold->id]));
+
+        $this->workAs($this->fadeLab);
+
+        $this->assertSame([], $this->definitions->idsWithPurchases([$sold->id, $unsold->id]));
+    }
+
     /**
      * @param  list<string>  $services
      */

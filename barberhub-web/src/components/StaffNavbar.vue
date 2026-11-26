@@ -28,7 +28,11 @@ const LINKS = [
       'staff-team-member-edit',
     ],
   },
-  { label: 'Bonos', name: 'staff-vouchers', match: ['staff-vouchers'] },
+  {
+    label: 'Bonos',
+    name: 'staff-vouchers',
+    match: ['staff-vouchers', 'staff-vouchers-sold', 'staff-voucher-new', 'staff-voucher-edit'],
+  },
   { label: 'Ingresos', name: 'staff-income', match: ['staff-income'] },
   {
     label: 'Configuración',

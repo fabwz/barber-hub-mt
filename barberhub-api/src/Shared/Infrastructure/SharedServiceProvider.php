@@ -26,6 +26,7 @@ use Src\Shared\Infrastructure\Logging\LaravelCorrelationContext;
 use Src\Shared\Infrastructure\Logging\LaravelOperationLog;
 use Src\Shared\Infrastructure\OpenApi\ProblemResponsesTransformer;
 use Src\Shared\Infrastructure\OpenApi\RelativeServerTransformer;
+use Src\Shared\Infrastructure\OpenApi\UuidListItemsTransformer;
 use Src\Shared\Infrastructure\Persistence\DatabaseAuditLog;
 use Src\Shared\Infrastructure\Persistence\DatabaseTransactionRunner;
 use Src\Shared\Infrastructure\Storage\FilesystemBarbershopFileStorage;
@@ -56,6 +57,7 @@ final class SharedServiceProvider extends ServiceProvider
         Scramble::configure()->withDocumentTransformers([
             ProblemResponsesTransformer::class,
             RelativeServerTransformer::class,
+            UuidListItemsTransformer::class,
         ]);
     }
 }

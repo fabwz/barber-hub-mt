@@ -161,6 +161,29 @@ final readonly class EloquentVoucherDefinitionRepository implements VoucherDefin
     }
 
     /**
+     * Read, in one aggregate query, which of the definitions have a purchased voucher among those of the current barbershop.
+     *
+     * @param  list<VoucherDefinitionId>  $ids
+     * @return list<string>
+     */
+    public function idsWithPurchases(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        /** @var list<string> $found */
+        $found = DB::table('purchased_vouchers')
+            ->where('barbershop_id', $this->context->current()->value)
+            ->whereIn('voucher_definition_id', array_map(static fn (VoucherDefinitionId $id): string => $id->value, $ids))
+            ->distinct()
+            ->pluck('voucher_definition_id')
+            ->all();
+
+        return $found;
+    }
+
+    /**
      * Read the definitions of the current barbershop that cover the service, whether or not they are still on sale.
      *
      * @return list<string>

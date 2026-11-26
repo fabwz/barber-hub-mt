@@ -1355,9 +1355,11 @@ export interface components {
             precio: number;
             vigencia_dias: number;
             /** @description Identificadores de los servicios que cubre. */
-            servicios: unknown[];
+            servicios: string[];
             /** @description `false` si está retirado de la venta. */
             activo: boolean;
+            /** @description `true` si algún cliente ya lo compró: sus `sesiones`, su `vigencia_dias` y sus `servicios` ya no se pueden cambiar (409 `bono-con-ventas`). */
+            tiene_ventas: boolean;
         };
         /** BonoALaVenta */
         BonoALaVenta: {

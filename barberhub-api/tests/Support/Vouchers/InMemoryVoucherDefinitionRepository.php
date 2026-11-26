@@ -98,6 +98,15 @@ final class InMemoryVoucherDefinitionRepository implements VoucherDefinitionRepo
         return isset($this->sold[$id->value]);
     }
 
+    /** The given definitions that the test marked as sold. */
+    public function idsWithPurchases(array $ids): array
+    {
+        return array_values(array_filter(
+            array_map(static fn (VoucherDefinitionId $id): string => $id->value, $ids),
+            fn (string $id): bool => isset($this->sold[$id]),
+        ));
+    }
+
     /** Make a customer have bought the definition. */
     public function markSold(VoucherDefinitionId $id): void
     {

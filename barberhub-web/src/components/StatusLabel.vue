@@ -12,7 +12,7 @@ type ReservationStatus =
 
 type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'failed' | 'refunded'
 
-type VoucherStatus = 'voucher_active' | 'voucher_expired'
+type VoucherStatus = 'voucher_active' | 'voucher_expired' | 'voucher_on_sale' | 'voucher_withdrawn'
 
 type ServiceStatus = 'service_active' | 'service_inactive'
 
@@ -42,6 +42,8 @@ const STATUSES: Record<
   refunded: { text: 'Reembolsado', muted: true },
   voucher_active: { text: 'Activo', muted: false },
   voucher_expired: { text: 'Vencido', muted: true },
+  voucher_on_sale: { text: 'A la venta', muted: false },
+  voucher_withdrawn: { text: 'Retirado', muted: true },
   service_active: { text: 'Activo', muted: false },
   service_inactive: { text: 'Inactivo', muted: true },
   waitlist_waiting: { text: 'En espera', muted: false },
