@@ -95,7 +95,7 @@ Cada fila es una cuenta global: una persona puede tener un rol distinto en cada 
 | `password` | `varchar(255)` | Hash de la contraseña, nunca la contraseña (SE-01) |
 | `phone` | `varchar(30)` | Admite nulos en la base; el registro la exige (RF-38) |
 | `locale` | `varchar(5)` | Prevista, #47. `CHECK` entre `es` y `en`, por defecto `es` (AC-08) |
-| `reminders_enabled` | `boolean` | Creada en el #95 (migración `add_reminders_enabled_to_users_table`). `NOT NULL`, por defecto `true`; solo tiene efecto para el cliente (NO-10) y solo gobierna los recordatorios: la confirmación, la oferta y los avisos de la barbería no se pueden desactivar. La API y la pestaña Avisos para cambiarla son del #106 |
+| `reminders_enabled` | `boolean` | Creada en el #95 (migración `add_reminders_enabled_to_users_table`). `NOT NULL`, por defecto `true`; solo tiene efecto para el cliente (NO-10) y solo gobierna los recordatorios: la confirmación, la oferta y los avisos de la barbería no se pueden desactivar. Se cambia con `PUT /cuenta/avisos` y se lee con `GET /cuenta/avisos` (#106); reactivarla no devuelve los recordatorios a las reservas hechas mientras estaba desactivada |
 | `must_change_password` | `boolean` | Creada en el #48. Por defecto `false`; `true` en la cuenta que el dueño crea a un colaborador con una contraseña temporal (UP-04, RF-40). Obligar el cambio en el primer ingreso es del #42 |
 | `is_active` | `boolean` | Por defecto `true`; una cuenta inactiva no puede ingresar |
 | `terms_accepted_at`, `privacy_accepted_at` | `timestamptz` | Fecha de cada aceptación, separadas (CL-02). Admiten nulos en la base: la cuenta de un colaborador la crea el dueño sin ellas (#48) y el registro de clientes las exige y las guarda |

@@ -87,6 +87,15 @@ final class NoticesOnReservationsTest extends TestCase
         return array_values($this->queue->pushed($class)->all());
     }
 
+    /** Ana turns her reminders on or off through the API, the way her account screen does (RF-47). */
+    private function setReminders(bool $enabled): void
+    {
+        $this->actAs($this->ana);
+        $this->putJson('/api/v1/cuenta/avisos', ['recordatorios_correo' => $enabled])
+            ->assertOk()
+            ->assertExactJson(['data' => ['recordatorios_correo' => $enabled]]);
+    }
+
     /** Run a task the way a worker does, as the barbershop it carries. */
     private function work(SendNoticeJob|SendReminderJob $job): void
     {
@@ -264,7 +273,7 @@ final class NoticesOnReservationsTest extends TestCase
     /** Turning the reminders off leaves none, and the confirmation still goes out because it cannot be turned off (NO-10). */
     public function test_a_customer_without_reminders_still_gets_the_confirmation(): void
     {
-        DB::table('users')->where('id', $this->ana)->update(['reminders_enabled' => false]);
+        $this->setReminders(false);
 
         $this->bookAsAna();
 
@@ -279,12 +288,51 @@ final class NoticesOnReservationsTest extends TestCase
     public function test_turning_the_reminders_off_later_stops_the_ones_already_left(): void
     {
         $this->bookAsAna();
-        DB::table('users')->where('id', $this->ana)->update(['reminders_enabled' => false]);
+        $this->setReminders(false);
         $this->clock->moveTo(self::cr('2030-03-04 10:00'));
 
         $this->work($this->pushed(SendReminderJob::class)[0]);
 
         Mail::assertNothingSent();
+    }
+
+    /** Turning the reminders off does not stop an offer of the waitlist, which cannot be turned off (NO-10, NO-07). */
+    public function test_a_customer_without_reminders_still_gets_the_offer(): void
+    {
+        $this->setReminders(false);
+
+        $this->app->make(DomainEvents::class)->publish(new OfferCreated(
+            $this->puraNavaja,
+            'offer-1',
+            'entry-1',
+            $this->anaRole,
+            $this->degradado,
+            $this->daniela,
+            self::cr('2030-03-05 13:00'),
+            self::cr('2030-03-05 14:05'),
+            self::cr('2030-03-05 11:15'),
+        ));
+
+        $this->assertSame([NoticeType::Offer], $this->noticeTypes());
+        $this->work($this->pushed(SendNoticeJob::class)[0]);
+        Mail::assertSent(NoticeMail::class, 1);
+    }
+
+    /** Turning them on again brings them back for the reservations made from then on, not for the ones made while they were off (RF-47). */
+    public function test_turning_the_reminders_on_again_is_not_retroactive(): void
+    {
+        $this->setReminders(false);
+        $this->bookAsAna();
+        $this->assertSame([], $this->pushed(SendReminderJob::class));
+
+        $this->setReminders(true);
+
+        $this->assertSame([], $this->pushed(SendReminderJob::class));
+        $this->assertSame(0, DB::table('reservation_reminders')->count());
+
+        $this->bookAsAna('2030-03-05T16:00:00-06:00');
+
+        $this->assertCount(2, $this->pushed(SendReminderJob::class));
     }
 
     /** A space offered to a person of the waitlist is told by email with the hour they have to answer (NO-07, LE-04). */
