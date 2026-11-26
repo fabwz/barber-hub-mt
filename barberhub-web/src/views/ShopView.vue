@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CalendarDays, Ticket } from 'lucide-vue-next'
+import { CalendarDays, Hourglass, Ticket } from 'lucide-vue-next'
 
 import AiBookingBlock, { type BlockNotice } from '@/components/AiBookingBlock.vue'
 import BackLink from '@/components/BackLink.vue'
@@ -24,6 +24,7 @@ import { useAvailability } from '@/composables/useAvailability'
 import { shopHeaderProps } from '@/composables/shopHeaderProps'
 import { readStoredPayment } from '@/composables/usePayment'
 import { canPayWith, useVouchers } from '@/composables/useVouchers'
+import { useWaitlistJoin } from '@/composables/useWaitlist'
 import { useAiBookingStore, type BookingProposal } from '@/stores/aiBooking'
 import { useBookingStore } from '@/stores/booking'
 import { useSessionStore } from '@/stores/session'
@@ -39,6 +40,7 @@ const booking = useBookingStore()
 const ai = useAiBookingStore()
 const session = useSessionStore()
 const vouchers = useVouchers()
+const waitlist = useWaitlistJoin()
 
 const link = computed(() => String(route.params.enlace))
 
@@ -86,6 +88,41 @@ watch(
 
 /** Owner and collaborator get 403: they are offered nothing about vouchers. */
 const staff = computed(() => vouchers.result.value === 'forbidden')
+
+/** The waitlist is on in this shop (RF-09) and the person is not part of its team: «Avisarme si se libera» is offered. */
+const waitlistOffer = computed(
+  () => store.shop?.profile.lista_espera_activa === true && !staff.value,
+)
+
+/** Asks to join the row of the service, the day and the barber chosen (RF-30); without a session it goes to log in first. */
+function joinWaitlist(): void {
+  const shop = store.shop
+  if (!shop || !booking.serviceId || !booking.date) return
+  if (!session.isAuthenticated) {
+    void router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+  void waitlist.join({
+    shopId: shop.id,
+    service: booking.serviceId,
+    date: booking.date,
+    barber: booking.barberId,
+  })
+}
+
+/** The API found room for the combination: the space is picked instead of waiting. */
+function pickWaitlistSpace(start: string, barberId: string): void {
+  waitlist.reset()
+  booking.selectDate(dateOf(start))
+  booking.selectSlot({ start, barberId })
+  availability.retry()
+}
+
+// A new service, day or barber is another row: what was said about the last one no longer applies.
+watch(
+  () => [booking.serviceId, booking.date, booking.barberId],
+  () => waitlist.reset(),
+)
 
 /** How the reservation is paid: `bono` with a session of a voucher, `metodo` in the next step. */
 const payWith = ref('metodo')
@@ -577,6 +614,14 @@ async function reserve(): Promise<void> {
           </RouterLink>
           <RouterLink
             v-if="!staff"
+            :to="{ name: 'waitlist', params: { enlace: link } }"
+            class="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:border-line-hover"
+          >
+            <Hourglass :size="16" :stroke-width="1.5" aria-hidden="true" />
+            Lista de espera
+          </RouterLink>
+          <RouterLink
+            v-if="!staff"
             :to="{ name: 'vouchers', params: { enlace: link } }"
             class="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:border-line-hover"
           >
@@ -592,6 +637,8 @@ async function reserve(): Promise<void> {
           v-model:slot="slotModel"
           v-model:pay-with="payWith"
           :voucher-offer="voucherOffer"
+          :waitlist="waitlistOffer"
+          :join-state="waitlist.state.value"
           :has-service="service !== null"
           :barbers="availability.barbers.value"
           :days="days"
@@ -613,6 +660,9 @@ async function reserve(): Promise<void> {
           @pay="goToPayment"
           @view-bookings="router.push({ name: 'my-bookings', params: { enlace: link } })"
           @view-vouchers="router.push({ name: 'vouchers', params: { enlace: link } })"
+          @join-waitlist="joinWaitlist"
+          @view-waitlist="router.push({ name: 'waitlist', params: { enlace: link } })"
+          @pick-waitlist-space="pickWaitlistSpace"
           @pick-alternative="pickAlternative"
         >
           <template #assistant>

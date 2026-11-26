@@ -338,7 +338,7 @@ export interface paths {
         };
         /**
          * Ver mi cuenta
-         * @description Devuelve el nombre, el teléfono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todavía debe cambiar la contraseña temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contraseña temporal permite. Solo muestra la cuenta de la sesión, sea cliente, colaborador o dueño.
+         * @description Devuelve el `id` de la propia cuenta (el cliente web lo usa para suscribirse a su canal privado `private-usuario.{usuario}`, RF-35), el nombre, el teléfono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todavía debe cambiar la contraseña temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contraseña temporal permite. Solo muestra la cuenta de la sesión, sea cliente, colaborador o dueño.
          */
         get: operations["identity.profile.show"];
         /**
@@ -1628,6 +1628,8 @@ export interface components {
             servicio: string;
             /** @description Identificador del barbero que pidió; nulo significa «cualquiera». */
             barbero: string | null;
+            /** @description Nombre del barbero que pidió; nulo si pidió «cualquiera» o si ya no se conoce. */
+            barbero_nombre: string | null;
             /** @description Día que busca, `AAAA-MM-DD`. */
             fecha: string;
             /**
@@ -1705,6 +1707,7 @@ export interface components {
         };
         /** MiCuenta */
         MiCuenta: {
+            id: string;
             nombre: string;
             telefono: string | null;
             correo: string;
@@ -1733,6 +1736,8 @@ export interface components {
             servicio: string;
             /** @description Identificador del barbero cuyo espacio se ofrece. */
             barbero: string;
+            /** @description Nombre del barbero cuyo espacio se ofrece; nulo si ya no se conoce (por ejemplo, un perfil que se eliminó). */
+            barbero_nombre: string | null;
             /** @description Inicio del espacio ofrecido, ISO 8601 con el desfase de Costa Rica (-06:00). La reserva que nace al aceptar empieza aquí. Ejemplo: 2030-03-05T10:00:00-06:00. */
             inicio: string;
             /** @description Fin del espacio que la oferta aparta, limpieza incluida: puede ser posterior al fin del servicio. Ejemplo: 2030-03-05T10:50:00-06:00. */

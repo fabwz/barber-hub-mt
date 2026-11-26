@@ -9,7 +9,11 @@ interface Captured {
   }
 }
 
-const created = vi.hoisted(() => ({ options: [] as Captured[] }))
+const created = vi.hoisted(() => ({
+  options: [] as Captured[],
+  listened: [] as Array<{ channel: string; event: string }>,
+  callbacks: new Map<string, (payload: unknown) => void>(),
+}))
 
 // A stand-in for laravel-echo: it only remembers how it was built.
 vi.mock('laravel-echo', () => ({
@@ -18,8 +22,17 @@ vi.mock('laravel-echo', () => ({
     constructor(options: Captured) {
       created.options.push(options)
     }
-    private() {
-      return { listen() {}, subscribed() {}, error() {} }
+    private(channel: string) {
+      const chain = {
+        listen(event: string, callback: (payload: unknown) => void) {
+          created.listened.push({ channel, event })
+          created.callbacks.set(event, callback)
+          return chain
+        },
+        subscribed: () => chain,
+        error: () => chain,
+      }
+      return chain
     }
     leave() {}
     disconnect() {}
@@ -36,6 +49,8 @@ import {
 afterEach(() => {
   vi.unstubAllEnvs()
   created.options.length = 0
+  created.listened.length = 0
+  created.callbacks.clear()
 })
 
 function stubReverb(over: Record<string, string> = {}): void {
@@ -102,6 +117,43 @@ describe('openRealtime', () => {
     })
     token = 'tok-2'
     expect(options.channelAuthorization.headersProvider().Authorization).toBe('Bearer tok-2')
+  })
+
+  it('listens to the live agenda event when the channel names none', () => {
+    stubReverb()
+
+    openRealtime(() => ({}))!.listen('barberia.b1.agenda', {
+      onEvent: () => {},
+      onSubscribed: () => {},
+      onRejected: () => {},
+    })
+
+    expect(created.listened).toEqual([
+      { channel: 'barberia.b1.agenda', event: '.reserva.actualizada' },
+    ])
+  })
+
+  it('listens to the events a channel names and tells each payload which event it is', () => {
+    stubReverb()
+    const received: Array<[unknown, string]> = []
+
+    openRealtime(() => ({}))!.listen('usuario.u1', {
+      events: ['.oferta.creada', '.oferta.cerrada'],
+      onEvent: (payload, event) => received.push([payload, event]),
+      onSubscribed: () => {},
+      onRejected: () => {},
+    })
+    created.callbacks.get('.oferta.cerrada')!({ oferta: 'o1' })
+    created.callbacks.get('.oferta.creada')!({ oferta: 'o2' })
+
+    expect(created.listened.map((item) => item.event)).toEqual([
+      '.oferta.creada',
+      '.oferta.cerrada',
+    ])
+    expect(received).toEqual([
+      [{ oferta: 'o1' }, '.oferta.cerrada'],
+      [{ oferta: 'o2' }, '.oferta.creada'],
+    ])
   })
 
   it('reads the HTTP status of a refused subscription', () => {

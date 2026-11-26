@@ -59,6 +59,11 @@ export const useSessionStore = defineStore('session', () => {
   const restored = readStored()
   const token = ref<string | null>(restored?.token ?? null)
   const person = ref<SessionPerson | null>(restored?.person ?? null)
+  /**
+   * Id of the account (the one of `GET /cuenta`), the name of the private channel of the offers. It is
+   * never stored: it is read again from the API whenever the session starts or is restored.
+   */
+  const userId = ref<string | null>(null)
 
   const isAuthenticated = computed(() => token.value !== null)
 
@@ -87,10 +92,16 @@ export const useSessionStore = defineStore('session', () => {
     writeStored({ token: token.value, person: person.value })
   }
 
+  /** The account read tells whose session this is. */
+  function setUserId(id: string | null): void {
+    userId.value = id
+  }
+
   /** Clears the local session only. */
   function clear(): void {
     token.value = null
     person.value = null
+    userId.value = null
     writeStored(null)
     // The chosen shop and the account data belong to the person who is leaving (also on a 401).
     useActiveShopStore().clear()
@@ -115,7 +126,18 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  return { token, person, isAuthenticated, register, login, logout, clear, setEmail }
+  return {
+    token,
+    person,
+    userId,
+    isAuthenticated,
+    setUserId,
+    register,
+    login,
+    logout,
+    clear,
+    setEmail,
+  }
 })
 
 /** Connects the HTTP client (#74) to the session: bearer token and the 401 handler. */

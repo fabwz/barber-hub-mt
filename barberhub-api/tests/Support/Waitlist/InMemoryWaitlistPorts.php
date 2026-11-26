@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Tests\Support\Waitlist;
 
 use DateTimeImmutable;
+use Src\Waitlist\Entries\Application\Contracts\CollaboratorNames;
 use Src\Waitlist\Entries\Application\Contracts\OpenSpaces;
 use Src\Waitlist\Entries\Application\Contracts\WaitlistCatalog;
 use Src\Waitlist\Entries\Application\Contracts\WaitlistSettings;
 use Src\Waitlist\Entries\Domain\ValueObjects\OpenSpace;
 
 /** The switch, the catalog and the free spaces of the barbershop of the test, in one double: the waitlist starts on, with no service, no collaborator and no space. */
-final class InMemoryWaitlistPorts implements OpenSpaces, WaitlistCatalog, WaitlistSettings
+final class InMemoryWaitlistPorts implements CollaboratorNames, OpenSpaces, WaitlistCatalog, WaitlistSettings
 {
     public bool $enabled = true;
 
@@ -24,8 +25,18 @@ final class InMemoryWaitlistPorts implements OpenSpaces, WaitlistCatalog, Waitli
     /** @var list<OpenSpace> */
     public array $spaces = [];
 
+    /**
+     * The names of the collaborators, by collaborator.
+     *
+     * @var array<string, string>
+     */
+    public array $names = [];
+
     /** How many times the spaces were asked for. */
     public int $asked = 0;
+
+    /** How many times the names were read: one read names a whole list. */
+    public int $namesRead = 0;
 
     /** Tell whether the waitlist is on. */
     public function isEnabled(): bool
@@ -43,6 +54,18 @@ final class InMemoryWaitlistPorts implements OpenSpaces, WaitlistCatalog, Waitli
     public function hasCollaborator(string $collaboratorId): bool
     {
         return in_array($collaboratorId, $this->collaborators, true);
+    }
+
+    /**
+     * The names the test set up.
+     *
+     * @return array<string, string>
+     */
+    public function names(): array
+    {
+        $this->namesRead++;
+
+        return $this->names;
     }
 
     /**

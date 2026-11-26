@@ -7,11 +7,13 @@ namespace Src\Waitlist\Offers\Application\UseCases;
 use DateTimeImmutable;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Waitlist\Offers\Application\Contracts\CollaboratorLock;
+use Src\Waitlist\Offers\Application\Contracts\CollaboratorNames;
 use Src\Waitlist\Offers\Application\Contracts\CustomerMemberships;
 use Src\Waitlist\Offers\Application\Contracts\LineEntries;
 use Src\Waitlist\Offers\Application\Contracts\OfferedBookings;
 use Src\Waitlist\Offers\Application\DTOs\OfferView;
 use Src\Waitlist\Offers\Domain\Contracts\OfferRepository;
+use Src\Waitlist\Offers\Domain\Entities\Offer;
 use Src\Waitlist\Offers\Domain\Exceptions\OfferAlreadyAnsweredException;
 use Src\Waitlist\Offers\Domain\Exceptions\OfferExpiredException;
 use Src\Waitlist\Offers\Domain\Exceptions\OfferNotAnswerableException;
@@ -28,6 +30,7 @@ final readonly class AcceptOffer
         private LineEntries $line,
         private CustomerMemberships $customers,
         private CollaboratorLock $collaborators,
+        private CollaboratorNames $names,
         private OfferedBookings $bookings,
         private TransactionRunner $transaction,
     ) {}
@@ -71,13 +74,13 @@ final readonly class AcceptOffer
             $offer = $this->offers->findForUpdate($id) ?? throw OfferNotFoundException::create();
 
             if ($offer->status === OfferStatus::Accepted) {
-                return new OfferView($offer, $row->serviceId);
+                return $this->view($offer, $row->serviceId);
             }
 
             $offer->assertOpenAt($now);
 
             if ($offer->reservationId !== null && $this->bookings->isAwaitingPayment($offer->reservationId->value, $now)) {
-                return new OfferView($offer, $row->serviceId);
+                return $this->view($offer, $row->serviceId);
             }
 
             if (! $row->offered) {
@@ -98,7 +101,13 @@ final readonly class AcceptOffer
                 $now,
             );
 
-            return new OfferView($this->offers->find($id) ?? $offer, $row->serviceId);
+            return $this->view($this->offers->find($id) ?? $offer, $row->serviceId);
         });
+    }
+
+    /** Carry the offer with the name of its collaborator, read once. */
+    private function view(Offer $offer, string $serviceId): OfferView
+    {
+        return new OfferView($offer, $serviceId, $this->names->names()[$offer->collaboratorId->value] ?? null);
     }
 }

@@ -1370,7 +1370,7 @@
         "/cuenta": {
             "get": {
                 "operationId": "identity.profile.show",
-                "description": "Devuelve el nombre, el tel\u00e9fono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todav\u00eda debe cambiar la contrase\u00f1a temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contrase\u00f1a temporal permite. Solo muestra la cuenta de la sesi\u00f3n, sea cliente, colaborador o due\u00f1o.",
+                "description": "Devuelve el `id` de la propia cuenta (el cliente web lo usa para suscribirse a su canal privado `private-usuario.{usuario}`, RF-35), el nombre, el tel\u00e9fono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todav\u00eda debe cambiar la contrase\u00f1a temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contrase\u00f1a temporal permite. Solo muestra la cuenta de la sesi\u00f3n, sea cliente, colaborador o due\u00f1o.",
                 "summary": "Ver mi cuenta",
                 "tags": [
                     "Cuentas"
@@ -5437,6 +5437,13 @@
                         ],
                         "description": "Identificador del barbero que pidi\u00f3; nulo significa \u00abcualquiera\u00bb."
                     },
+                    "barbero_nombre": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre del barbero que pidi\u00f3; nulo si pidi\u00f3 \u00abcualquiera\u00bb o si ya no se conoce."
+                    },
                     "fecha": {
                         "type": "string",
                         "description": "D\u00eda que busca, `AAAA-MM-DD`."
@@ -5460,6 +5467,7 @@
                     "id",
                     "servicio",
                     "barbero",
+                    "barbero_nombre",
                     "fecha",
                     "estado",
                     "ingreso"
@@ -5623,6 +5631,9 @@
             "MiCuenta": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string"
+                    },
                     "nombre": {
                         "type": "string"
                     },
@@ -5640,6 +5651,7 @@
                     }
                 },
                 "required": [
+                    "id",
                     "nombre",
                     "telefono",
                     "correo",
@@ -5702,6 +5714,13 @@
                         "type": "string",
                         "description": "Identificador del barbero cuyo espacio se ofrece."
                     },
+                    "barbero_nombre": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre del barbero cuyo espacio se ofrece; nulo si ya no se conoce (por ejemplo, un perfil que se elimin\u00f3)."
+                    },
                     "inicio": {
                         "type": "string",
                         "description": "Inicio del espacio ofrecido, ISO 8601 con el desfase de Costa Rica (-06:00). La reserva que nace al aceptar empieza aqu\u00ed. Ejemplo: 2030-03-05T10:00:00-06:00."
@@ -5737,6 +5756,7 @@
                     "fila",
                     "servicio",
                     "barbero",
+                    "barbero_nombre",
                     "inicio",
                     "fin",
                     "vence_en",

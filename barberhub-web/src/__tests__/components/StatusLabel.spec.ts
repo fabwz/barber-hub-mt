@@ -16,6 +16,8 @@ const CASES: Array<[Props['status'], string]> = [
   ['approved', 'Pago aprobado'],
   ['rejected', 'Pago rechazado'],
   ['failed', 'Pago fallido'],
+  ['waitlist_waiting', 'En espera'],
+  ['waitlist_offered', 'Con oferta'],
 ]
 
 describe('StatusLabel', () => {
