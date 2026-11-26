@@ -44,5 +44,9 @@
         <env name="BROADCAST_CONNECTION" value="null" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="RESEND_API_KEY" value="" force="true"/>
+        <!-- The monitoring (recording and panel) is off in the suite; only the tests of the panel turn it on (ADR 0013). -->
+        <env name="MONITOR_ENABLED" value="false" force="true"/>
+        <env name="MONITOR_USER" value="" force="true"/>
+        <env name="MONITOR_PASSWORD_HASH" value="" force="true"/>
     </php>
 </phpunit>

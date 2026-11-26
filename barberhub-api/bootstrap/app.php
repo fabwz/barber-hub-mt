@@ -11,6 +11,8 @@ use Src\Shared\Infrastructure\Http\Middleware\EncodeJsonAsUnicode;
 use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
 use Src\Shared\Infrastructure\Http\Problem\ProblemDetailsRenderer;
 use Src\Shared\Infrastructure\Tenancy\ScopeRequestToBarbershop;
+use Src\Shared\Monitoring\Infrastructure\Http\Middleware\RecordRequestStats;
+use Src\Shared\Monitoring\Infrastructure\Http\Middleware\RememberRequestException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
         $middleware->append(EncodeJsonAsUnicode::class);
+        $middleware->append(RecordRequestStats::class);
         $middleware->trimStrings(except: ['contrasena', 'contrasena_actual', 'contrasena_nueva']);
         $middleware->appendToGroup('api', RequireChangedPassword::class);
         $middleware->redirectGuestsTo(null);
@@ -33,5 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // First, so it takes note of the class of the exception for the monitoring and passes on (it returns null).
+        $exceptions->render(new RememberRequestException);
         $exceptions->render(new ProblemDetailsRenderer);
     })->create();

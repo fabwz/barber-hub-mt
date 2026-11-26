@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Src\Shared\Application\UseCases;
 
+use Src\Shared\Application\DTOs\HealthReport;
 use Src\Shared\Domain\Contracts\DatabaseHealth;
 use Src\Shared\Domain\Contracts\QueueHealth;
 
@@ -14,9 +15,12 @@ final readonly class CheckHealth
         private QueueHealth $queue,
     ) {}
 
-    /** Tell whether the dependencies of the application work; if it can answer, the application itself is up. */
-    public function execute(): bool
+    /**
+     * Report which dependencies of the application work; if it can answer, the application itself is up. Both are always asked, so the
+     * monitoring panel can say which one failed (RNF-15).
+     */
+    public function execute(): HealthReport
     {
-        return $this->database->isAvailable() && $this->queue->isAvailable();
+        return new HealthReport($this->database->isAvailable(), $this->queue->isAvailable());
     }
 }

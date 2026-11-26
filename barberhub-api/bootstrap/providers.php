@@ -17,6 +17,7 @@ use Src\Payments\Income\Infrastructure\IncomeServiceProvider;
 use Src\Payments\Payments\Infrastructure\PaymentsServiceProvider;
 use Src\Reservations\Reservations\Infrastructure\ReservationsServiceProvider;
 use Src\Shared\Infrastructure\SharedServiceProvider;
+use Src\Shared\Monitoring\Infrastructure\MonitoringServiceProvider;
 use Src\Vouchers\PurchasedVouchers\Infrastructure\PurchasedVouchersServiceProvider;
 use Src\Vouchers\VoucherDefinitions\Infrastructure\VoucherDefinitionsServiceProvider;
 use Src\Waitlist\Entries\Infrastructure\WaitlistServiceProvider;
@@ -25,6 +26,7 @@ use Src\Waitlist\Offers\Infrastructure\WaitlistOffersServiceProvider;
 return [
     AppServiceProvider::class,
     SharedServiceProvider::class,
+    MonitoringServiceProvider::class,
     UsersServiceProvider::class,
     MembershipsServiceProvider::class,
     BarbershopsServiceProvider::class,
