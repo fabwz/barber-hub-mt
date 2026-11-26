@@ -201,6 +201,7 @@ return [
         'duracion_minutos' => 'duración en minutos',
         'pagina' => 'página',
         'por_pagina' => 'elementos por página',
+        'recordatorios_correo' => 'recordatorios por correo',
         'telefono' => 'teléfono',
     ],
 

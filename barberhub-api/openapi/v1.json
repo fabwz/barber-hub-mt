@@ -1475,6 +1475,83 @@
                 }
             }
         },
+        "/cuenta/avisos": {
+            "get": {
+                "operationId": "identity.notice-preferences.show",
+                "description": "Devuelve `recordatorios_correo`: si la persona recibe por correo el recordatorio de 24 h y el de 2 h antes de sus reservas (RF-47). Es `true` hasta que la persona lo desactiva y aplica a todas sus reservas en todas las barber\u00edas. Es de la propia cuenta, sea cliente, colaborador o due\u00f1o, y no lleva barber\u00eda en la ruta. La confirmaci\u00f3n, la oferta de espacio, la cancelaci\u00f3n o reprogramaci\u00f3n de la barber\u00eda, el reembolso y el restablecimiento de contrase\u00f1a no se pueden desactivar (NO-10), por eso no figuran aqu\u00ed. Una cuenta con contrase\u00f1a temporal recibe 403 `contrasena-temporal` hasta que la cambia.",
+                "summary": "Ver mis preferencias de avisos",
+                "tags": [
+                    "Cuentas"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`PreferenciasDeAvisos`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/PreferenciasDeAvisos"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "identity.notice-preferences.update",
+                "description": "Activa o desactiva los recordatorios por correo de la propia cuenta (RF-47, NO-02, NO-10). `recordatorios_correo` es obligatorio y debe ser un booleano (`true` o `false`, no `\"1\"` ni `1`); no se lee nada m\u00e1s del cuerpo. Responde 422 `datos-invalidos` con `errores.recordatorios_correo` si falta o no es booleano. Desactivarlos detiene los recordatorios de las reservas nuevas y de las ya hechas, pero no toca la confirmaci\u00f3n ni la oferta de espacio. Reactivarlos no los devuelve a las reservas hechas mientras estaban desactivados: solo a las que se hagan o reprogramen desde entonces. Una cuenta con contrase\u00f1a temporal recibe 403 `contrasena-temporal` hasta que la cambia.",
+                "summary": "Cambiar mis preferencias de avisos",
+                "tags": [
+                    "Cuentas"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CambioDePreferenciasDeAvisos"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`PreferenciasDeAvisos`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/PreferenciasDeAvisos"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/administracion/negocio": {
             "get": {
                 "operationId": "catalog.barbershops.details.show",
@@ -4878,6 +4955,18 @@
                 ],
                 "title": "CambioDeContrasena"
             },
+            "CambioDePreferenciasDeAvisos": {
+                "type": "object",
+                "properties": {
+                    "recordatorios_correo": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "recordatorios_correo"
+                ],
+                "title": "CambioDePreferenciasDeAvisos"
+            },
             "CerrarReserva": {
                 "type": "object",
                 "properties": {
@@ -5946,6 +6035,18 @@
                     "paypal"
                 ],
                 "title": "PaymentGateway"
+            },
+            "PreferenciasDeAvisos": {
+                "type": "object",
+                "properties": {
+                    "recordatorios_correo": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "recordatorios_correo"
+                ],
+                "title": "PreferenciasDeAvisos"
             },
             "ProponerReserva": {
                 "type": "object",
