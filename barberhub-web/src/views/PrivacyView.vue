@@ -69,7 +69,13 @@ function goBack(): void {
                 >
               </li>
             </ul>
-            <div v-else class="mb-4 overflow-x-auto">
+            <div
+              v-else
+              class="mb-4 overflow-x-auto"
+              role="region"
+              tabindex="0"
+              aria-label="Tabla de datos y responsables"
+            >
               <table class="w-full min-w-[32rem] border-collapse text-left text-sm">
                 <thead>
                   <tr>

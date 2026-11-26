@@ -70,6 +70,15 @@ describe('PrivacyView table', () => {
       true,
     )
   })
+
+  it('the scrollable table can be reached and scrolled with the keyboard (WCAG 2.1.1)', async () => {
+    const { wrapper } = await mountView(PrivacyView, '/privacidad')
+
+    const region = wrapper.get('table').element.parentElement!
+    expect(region.getAttribute('tabindex')).toBe('0')
+    expect(region.getAttribute('role')).toBe('region')
+    expect(region.getAttribute('aria-label')).toBe('Tabla de datos y responsables')
+  })
 })
 
 describe('TermsView links', () => {
