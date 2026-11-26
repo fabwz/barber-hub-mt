@@ -373,6 +373,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cuenta/avisos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver mis preferencias de avisos
+         * @description Devuelve `recordatorios_correo`: si la persona recibe por correo el recordatorio de 24 h y el de 2 h antes de sus reservas (RF-47). Es `true` hasta que la persona lo desactiva y aplica a todas sus reservas en todas las barberías. Es de la propia cuenta, sea cliente, colaborador o dueño, y no lleva barbería en la ruta. La confirmación, la oferta de espacio, la cancelación o reprogramación de la barbería, el reembolso y el restablecimiento de contraseña no se pueden desactivar (NO-10), por eso no figuran aquí. Una cuenta con contraseña temporal recibe 403 `contrasena-temporal` hasta que la cambia.
+         */
+        get: operations["identity.notice-preferences.show"];
+        /**
+         * Cambiar mis preferencias de avisos
+         * @description Activa o desactiva los recordatorios por correo de la propia cuenta (RF-47, NO-02, NO-10). `recordatorios_correo` es obligatorio y debe ser un booleano (`true` o `false`, no `"1"` ni `1`); no se lee nada más del cuerpo. Responde 422 `datos-invalidos` con `errores.recordatorios_correo` si falta o no es booleano. Desactivarlos detiene los recordatorios de las reservas nuevas y de las ya hechas, pero no toca la confirmación ni la oferta de espacio. Reactivarlos no los devuelve a las reservas hechas mientras estaban desactivados: solo a las que se hagan o reprogramen desde entonces. Una cuenta con contraseña temporal recibe 403 `contrasena-temporal` hasta que la cambia.
+         */
+        put: operations["identity.notice-preferences.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/administracion/negocio": {
         parameters: {
             query?: never;
@@ -1455,6 +1479,10 @@ export interface components {
             contrasena_actual: string;
             contrasena_nueva: string;
         };
+        /** CambioDePreferenciasDeAvisos */
+        CambioDePreferenciasDeAvisos: {
+            recordatorios_correo: boolean;
+        };
         /** CerrarReserva */
         CerrarReserva: {
             /**
@@ -1811,6 +1839,10 @@ export interface components {
          * @enum {string}
          */
         PaymentGateway: "onvo" | "paypal";
+        /** PreferenciasDeAvisos */
+        PreferenciasDeAvisos: {
+            recordatorios_correo: boolean;
+        };
         /** ProponerReserva */
         ProponerReserva: {
             /** @description Frase libre del cliente, por ejemplo `quiero un corte mañana a las 3 con Kevin`. Hasta 300 caracteres; no se guarda. */
@@ -2941,6 +2973,57 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "identity.notice-preferences.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `PreferenciasDeAvisos` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PreferenciasDeAvisos"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+        };
+    };
+    "identity.notice-preferences.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CambioDePreferenciasDeAvisos"];
+            };
+        };
+        responses: {
+            /** @description `PreferenciasDeAvisos` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PreferenciasDeAvisos"];
+                    };
+                };
             };
             401: components["responses"]["Unauthenticated"];
             422: components["responses"]["InvalidData"];
