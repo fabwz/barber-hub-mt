@@ -4569,11 +4569,18 @@
                     "servicios": {
                         "type": "array",
                         "description": "Identificadores de los servicios que cubre.",
-                        "items": {}
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
                     },
                     "activo": {
                         "type": "boolean",
                         "description": "`false` si est\u00e1 retirado de la venta."
+                    },
+                    "tiene_ventas": {
+                        "type": "boolean",
+                        "description": "`true` si alg\u00fan cliente ya lo compr\u00f3: sus `sesiones`, su `vigencia_dias` y sus `servicios` ya no se pueden cambiar (409 `bono-con-ventas`)."
                     }
                 },
                 "required": [
@@ -4583,7 +4590,8 @@
                     "precio",
                     "vigencia_dias",
                     "servicios",
-                    "activo"
+                    "activo",
+                    "tiene_ventas"
                 ],
                 "title": "Bono"
             },

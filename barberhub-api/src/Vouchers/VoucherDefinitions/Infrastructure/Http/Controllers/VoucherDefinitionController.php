@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
 use Src\Vouchers\VoucherDefinitions\Application\UseCases\CreateVoucherDefinition;
+use Src\Vouchers\VoucherDefinitions\Application\UseCases\FlagVoucherDefinitionsWithSales;
 use Src\Vouchers\VoucherDefinitions\Application\UseCases\GetVoucherDefinition;
 use Src\Vouchers\VoucherDefinitions\Application\UseCases\ListVoucherDefinitions;
 use Src\Vouchers\VoucherDefinitions\Application\UseCases\UpdateVoucherDefinition;
@@ -27,9 +28,9 @@ final readonly class VoucherDefinitionController
         title: 'Listar los bonos de la barbería',
         description: 'Trae todos los bonos, a la venta o retirados, ordenados por nombre, con sus sesiones, su precio con el IVA de 13 % incluido, su vigencia en días y los servicios que cubren. Solo el dueño: un colaborador o un cliente reciben 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.',
     )]
-    public function index(ListVoucherDefinitions $listVoucherDefinitions): AnonymousResourceCollection
+    public function index(ListVoucherDefinitions $listVoucherDefinitions, FlagVoucherDefinitionsWithSales $flagSales): AnonymousResourceCollection
     {
-        return VoucherDefinitionResource::collection($listVoucherDefinitions->execute());
+        return VoucherDefinitionResource::collection($flagSales->execute($listVoucherDefinitions->execute()));
     }
 
     /** Define a voucher of the barbershop. */
@@ -37,7 +38,7 @@ final readonly class VoucherDefinitionController
         title: 'Crear un bono',
         description: 'Crea un bono a la venta con nombre, sesiones (al menos 1), precio en colones enteros mayores que cero con el IVA incluido, vigencia en días (al menos 1) y los servicios que cubre: al menos uno, sin repetir y todos de esta barbería. Un valor fuera de rango, una lista vacía o repetida, o un servicio que no existe en la barbería responde 422 `datos-invalidos` y `errores` indica el campo (`servicios.N` para el servicio). Solo el dueño.',
     )]
-    public function store(StoreVoucherDefinitionRequest $request, CreateVoucherDefinition $createVoucherDefinition): JsonResponse
+    public function store(StoreVoucherDefinitionRequest $request, CreateVoucherDefinition $createVoucherDefinition, FlagVoucherDefinitionsWithSales $flagSales): JsonResponse
     {
         try {
             $definition = $createVoucherDefinition->execute($request->toCommand());
@@ -45,7 +46,7 @@ final readonly class VoucherDefinitionController
             throw ValidationException::withMessages(['servicios.'.$exception->index() => [__($exception->translationKey())]]);
         }
 
-        return new VoucherDefinitionResource($definition)
+        return new VoucherDefinitionResource($flagSales->execute([$definition])[0])
             ->response()
             ->setStatusCode(Response::HTTP_CREATED)
             ->header('Location', $request->url().'/'.$definition->id->value);
@@ -56,9 +57,9 @@ final readonly class VoucherDefinitionController
         title: 'Ver un bono',
         description: 'Trae el bono con los servicios que cubre, esté a la venta o retirado. Responde 404 `no-encontrado` si no existe en la barbería. Solo el dueño.',
     )]
-    public function show(string $barberia, string $bono, GetVoucherDefinition $getVoucherDefinition): VoucherDefinitionResource
+    public function show(string $barberia, string $bono, GetVoucherDefinition $getVoucherDefinition, FlagVoucherDefinitionsWithSales $flagSales): VoucherDefinitionResource
     {
-        return new VoucherDefinitionResource($getVoucherDefinition->execute($bono));
+        return new VoucherDefinitionResource($flagSales->execute([$getVoucherDefinition->execute($bono)])[0]);
     }
 
     /** Change, withdraw or put back on sale a voucher of the barbershop. */
@@ -66,10 +67,10 @@ final readonly class VoucherDefinitionController
         title: 'Editar, retirar o reactivar un bono',
         description: 'Cambia solo los campos que vienen. `activo: false` retira el bono de la venta y `activo: true` lo vuelve a poner; retirarlo o cambiarle el precio no toca los bonos que los clientes ya compraron, que conservan su saldo, su vigencia y lo que pagaron (BO-01). Si el bono ya tiene ventas, sus `sesiones`, su `vigencia_dias` y sus `servicios` no se cambian: pedir un valor distinto responde 409 `bono-con-ventas`, y solo se pueden editar `nombre` y `precio` o retirarlo. Sin ventas se puede editar todo. Un servicio que no existe en la barbería responde 422 `datos-invalidos`, y un bono que no existe en ella, 404 `no-encontrado`. Solo el dueño.',
     )]
-    public function update(UpdateVoucherDefinitionRequest $request, UpdateVoucherDefinition $updateVoucherDefinition): VoucherDefinitionResource
+    public function update(UpdateVoucherDefinitionRequest $request, UpdateVoucherDefinition $updateVoucherDefinition, FlagVoucherDefinitionsWithSales $flagSales): VoucherDefinitionResource
     {
         try {
-            return new VoucherDefinitionResource($updateVoucherDefinition->execute($request->toCommand()));
+            return new VoucherDefinitionResource($flagSales->execute([$updateVoucherDefinition->execute($request->toCommand())])[0]);
         } catch (UnknownCoveredServiceException $exception) {
             throw ValidationException::withMessages(['servicios.'.$exception->index() => [__($exception->translationKey())]]);
         }

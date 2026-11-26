@@ -38,6 +38,16 @@ final class OpenApiContractTest extends TestCase
         }
     }
 
+    /** A voucher lists its covered services as UUIDs and says whether it has sales (RF-26). */
+    public function test_voucher_contract_types_its_services_and_sales_flag(): void
+    {
+        $voucher = File::json(base_path(self::CONTRACT_PATH))['components']['schemas']['Bono'];
+
+        $this->assertSame(['type' => 'string', 'format' => 'uuid'], $voucher['properties']['servicios']['items']);
+        $this->assertSame('boolean', $voucher['properties']['tiene_ventas']['type']);
+        $this->assertContains('tiene_ventas', $voucher['required']);
+    }
+
     /** The interactive documentation and its document are published. */
     public function test_interactive_documentation_is_published(): void
     {

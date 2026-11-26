@@ -93,6 +93,7 @@ final class ManageVoucherDefinitionsTest extends TestCase
             'vigencia_dias' => 90,
             'servicios' => [$this->classicCut, $this->fade],
             'activo' => true,
+            'tiene_ventas' => false,
         ]]);
         $response->assertHeader('Location', url($this->url($this->puraNavaja, $id)));
 
@@ -260,7 +261,7 @@ final class ManageVoucherDefinitionsTest extends TestCase
 
         $this->getJson($this->url($this->puraNavaja, $definition))->assertExactJson(['data' => [
             'id' => $definition, 'nombre' => 'Bono 5 cortes', 'sesiones' => 5, 'precio' => 30000, 'vigencia_dias' => 90,
-            'servicios' => [$this->classicCut, $this->fade], 'activo' => true,
+            'servicios' => [$this->classicCut, $this->fade], 'activo' => true, 'tiene_ventas' => true,
         ]]);
     }
 
@@ -290,7 +291,7 @@ final class ManageVoucherDefinitionsTest extends TestCase
             'nombre' => 'Bono 10 cortes y barba', 'sesiones' => 10, 'precio' => 55000, 'vigencia_dias' => 180, 'servicios' => [$this->fade, $this->beard],
         ])->assertOk()->assertExactJson(['data' => [
             'id' => $definition, 'nombre' => 'Bono 10 cortes y barba', 'sesiones' => 10, 'precio' => 55000, 'vigencia_dias' => 180,
-            'servicios' => [$this->fade, $this->beard], 'activo' => true,
+            'servicios' => [$this->fade, $this->beard], 'activo' => true, 'tiene_ventas' => false,
         ]]);
 
         $this->scopeQueriesTo($this->puraNavaja);
@@ -327,6 +328,61 @@ final class ManageVoucherDefinitionsTest extends TestCase
         $this->assertSame([$first, $second], $response->json('data.*.id'));
         $this->assertSame([true, false], $response->json('data.*.activo'));
         $this->assertSame([$this->beard], $response->json('data.1.servicios'));
+    }
+
+    /** The sales flag is false until a customer buys the voucher (paid or not) and then true, in the list, the read and the edit (RF-26). */
+    public function test_the_sales_flag_follows_the_purchases_in_every_read(): void
+    {
+        Sanctum::actingAs($this->owner, []);
+        $sold = $this->postJson($this->url($this->puraNavaja), $this->payload([$this->beard], name: 'Bono barba'))->assertCreated()->assertJsonPath('data.tiene_ventas', false)->json('data.id');
+        $unsold = $this->postJson($this->url($this->puraNavaja), $this->payload())->json('data.id');
+        $this->getJson($this->url($this->puraNavaja, $sold))->assertJsonPath('data.tiene_ventas', false);
+
+        $this->insertPurchasedVoucher($this->puraNavaja, $this->customerMembership, $sold, 'pending');
+        $this->insertPurchasedVoucher($this->puraNavaja, $this->customerMembership, $sold);
+
+        $this->getJson($this->url($this->puraNavaja, $sold))->assertJsonPath('data.tiene_ventas', true);
+        $this->patchJson($this->url($this->puraNavaja, $sold), ['precio' => 1500])->assertOk()->assertJsonPath('data.tiene_ventas', true);
+        $this->patchJson($this->url($this->puraNavaja, $unsold), ['precio' => 1500])->assertOk()->assertJsonPath('data.tiene_ventas', false);
+        $list = $this->getJson($this->url($this->puraNavaja))->assertOk();
+        $this->assertSame([$unsold => false, $sold => true], array_combine($list->json('data.*.id'), $list->json('data.*.tiene_ventas')));
+    }
+
+    /** A sale in another barbershop does not mark a voucher of this one as sold. */
+    public function test_a_sale_of_another_barbershop_does_not_set_the_flag(): void
+    {
+        Sanctum::actingAs($this->owner, []);
+        $definition = $this->postJson($this->url($this->puraNavaja), $this->payload())->json('data.id');
+        $foreignDefinition = $this->insertVoucherDefinition($this->fadeLab, [$this->foreignService], 'Bono de Fade Lab');
+        $foreignMembership = (string) MembershipModel::query()->where('user_id', $this->foreignOwner->id)->value('id');
+        $this->insertPurchasedVoucher($this->fadeLab, $foreignMembership, $foreignDefinition);
+
+        $this->getJson($this->url($this->puraNavaja, $definition))->assertJsonPath('data.tiene_ventas', false);
+    }
+
+    /** The list takes the same number of queries with 1 voucher as with 6: the sales are read once, not once per voucher. */
+    public function test_the_list_does_not_query_the_sales_once_per_voucher(): void
+    {
+        Sanctum::actingAs($this->owner, []);
+        $first = $this->postJson($this->url($this->puraNavaja), $this->payload(name: 'Bono 1'))->json('data.id');
+        $this->insertPurchasedVoucher($this->puraNavaja, $this->customerMembership, $first);
+        $count = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->getJson($this->url($this->puraNavaja))->assertOk();
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $withOne = $count();
+        foreach (range(2, 6) as $number) {
+            $id = $this->postJson($this->url($this->puraNavaja), $this->payload(name: 'Bono '.$number))->json('data.id');
+            $this->insertPurchasedVoucher($this->puraNavaja, $this->customerMembership, $id);
+        }
+        $withSix = $count();
+
+        $this->assertSame($withOne, $withSix);
     }
 
     /** A barbershop without vouchers gets an empty list. */

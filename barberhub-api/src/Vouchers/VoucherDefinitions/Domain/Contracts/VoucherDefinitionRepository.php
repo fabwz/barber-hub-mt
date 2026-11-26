@@ -54,6 +54,14 @@ interface VoucherDefinitionRepository
     public function hasPurchases(VoucherDefinitionId $id): bool;
 
     /**
+     * Which of the given definitions of the current barbershop a customer has bought, paid or not, in one query (RF-26).
+     *
+     * @param  list<VoucherDefinitionId>  $ids
+     * @return list<string> The identifiers that have purchases.
+     */
+    public function idsWithPurchases(array $ids): array;
+
+    /**
      * The identifiers of the definitions of the current barbershop that cover the service, on sale or withdrawn: a withdrawn voucher
      * is no longer sold, but the ones already bought keep what they cover (RF-26, BO-06).
      *
