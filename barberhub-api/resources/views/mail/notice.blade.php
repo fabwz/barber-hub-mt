@@ -9,6 +9,10 @@
         @foreach ($lines as $line)
             <p style="margin:0 0 12px 0;">{{ $line }}</p>
         @endforeach
+        @if ($actionUrl !== null)
+            <p style="margin:16px 0 12px 0;"><a href="{{ $actionUrl }}" style="display:inline-block;padding:12px 20px;border:1px solid #1a1a1a;background:#1a1a1a;color:#ffffff;text-decoration:none;">{{ $actionLabel }}</a></p>
+            <p style="margin:0 0 12px 0;font-size:13px;color:#595959;word-break:break-all;">{{ $actionUrl }}</p>
+        @endif
         <p style="margin:24px 0 0 0;font-size:13px;color:#595959;">{{ $footer }}</p>
     </div>
 </body>

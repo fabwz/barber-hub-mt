@@ -52,7 +52,9 @@ final class NoticeMail extends Mailable
         return [
             'greeting' => __('notices.greeting', ['name' => $this->notice->recipient->name]),
             'lines' => $this->lines(),
-            'footer' => __('notices.footer', ['barbershop' => $this->notice->branding->barbershopName]),
+            'footer' => $this->footer(),
+            'actionUrl' => $this->notice->actionUrl,
+            'actionLabel' => $this->notice->actionUrl === null ? null : __("notices.{$this->key()}.action_label"),
             'barbershop' => $this->notice->branding->barbershopName,
             'logoUrl' => $this->notice->branding->logoUrl,
         ];
@@ -70,11 +72,26 @@ final class NoticeMail extends Mailable
         $body = match ($this->notice->type) {
             NoticeType::Offer => [...$lines, __('notices.offer.deadline', ['deadline' => $this->time($this->notice->expiresAt)]), __('notices.offer.action')],
             NoticeType::Cancellation => [...$lines, __('notices.cancellation.apology')],
+            NoticeType::PasswordReset => [...$lines, __('notices.password_reset.validity', ['minutes' => $this->validityMinutes()]), __('notices.password_reset.ignore')],
             NoticeType::Reschedule => [...$lines, __('notices.reschedule.before', ['previous' => $this->moment($this->notice->previousStartsAt)]), __('notices.reschedule.after', ['when' => $this->moment($this->notice->startsAt)])],
             default => $lines,
         };
 
         return array_map($this->closeSentence(...), $body);
+    }
+
+    /** The sign-off: a notice of a barbershop is sent on its behalf; one of the platform is not. */
+    private function footer(): string
+    {
+        return $this->notice->type === NoticeType::PasswordReset
+            ? __('notices.password_reset.footer')
+            : __('notices.footer', ['barbershop' => $this->notice->branding->barbershopName]);
+    }
+
+    /** Minutes the link of a notice is valid, from the moment it is sent to the moment it expires. */
+    private function validityMinutes(): int
+    {
+        return $this->notice->expiresAt === null ? 0 : (int) round(($this->notice->expiresAt->getTimestamp() - $this->notice->startsAt->getTimestamp()) / 60);
     }
 
     /** The period of «a. m.» or «p. m.» followed by the period of the sentence is one point, not two; the texts have no ellipsis. */

@@ -9,4 +9,9 @@ return [
     | Check the current limits of the plan in the Resend documentation before raising it.
     */
     'mail_per_second' => (int) env('NOTICES_MAIL_PER_SECOND', 2),
+
+    /*
+    | Address of the web client, which the links of the emails point to (the link to reset a password, RF-41). No slash at the end.
+    */
+    'web_url' => env('WEB_URL', 'http://localhost:5173'),
 ];
