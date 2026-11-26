@@ -131,7 +131,14 @@ Llaves candidatas: `id`, `(user_id, barbershop_id)` y `(id, barbershop_id)`. La 
 
 ### personal_access_tokens y password_reset_tokens
 
-Las crean Laravel y Sanctum. `personal_access_tokens` (migración del #41) guarda un token por dispositivo (`token` es el hash SHA-256; `tokenable_id` es un UUID, y `abilities` queda con el valor por defecto porque el rol no viaja en el token). `password_reset_tokens` guarda el hash del enlace de restablecimiento, que caduca a los 60 minutos y se borra al usarse (SE-06).
+`personal_access_tokens` la crea Sanctum y `password_reset_tokens` el #104, con el nombre que Laravel usa para esa tabla pero con columnas propias. `personal_access_tokens` (migración del #41) guarda un token por dispositivo (`token` es el hash SHA-256; `tokenable_id` es un UUID, y `abilities` queda con el valor por defecto porque el rol no viaja en el token). `password_reset_tokens` (migración del #104) guarda el hash del enlace de restablecimiento, que caduca a los 60 minutos y se borra al usarse (SE-06). Es una tabla de cuenta, global como `users`: sin barbería y sin política de fila.
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| `user_id` | `uuid` | Llave primaria y llave foránea a `users` (`ON DELETE CASCADE`): una sola fila por cuenta, así que un enlace nuevo reemplaza al pendiente |
+| `token_hash` | `char(64)` | SHA-256 del token en hexadecimal; único; `CHECK` de 64 caracteres hexadecimales. El token nunca se guarda |
+| `expires_at` | `timestamptz` | Instante de la solicitud más 60 minutos; el enlace deja de valer en ese instante exacto |
+| `created_at` | `timestamptz` | Instante en que se creó el enlace |
 
 ## Barbería y configuración
 
