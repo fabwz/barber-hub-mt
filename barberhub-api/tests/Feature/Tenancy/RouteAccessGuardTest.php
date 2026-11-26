@@ -8,6 +8,7 @@ use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Route;
 use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
 use Src\Shared\Infrastructure\Tenancy\ScopeRequestToBarbershop;
+use Src\Shared\Monitoring\Infrastructure\Http\Middleware\RequireMonitoringCredentials;
 use Tests\Support\Tenancy\AccessAudit;
 use Tests\Support\Tenancy\AccessMatrix;
 use Tests\Support\Tenancy\RouteRule;
@@ -63,6 +64,29 @@ final class RouteAccessGuardTest extends TestCase
             'POST api/v1/barberias/{barberia}/dinero: is declared role but has no session middleware (auth:sanctum)',
             'POST api/v1/barberias/{barberia}/mas: is declared for [owner] but its role filter is [owner, collaborator]',
             'GET api/v1/abierta: is declared public and outside any barbershop but its middleware is different',
+        ], $violations);
+    }
+
+    /** A platform route must pass through its credentials middleware and through nothing of a barbershop or of a session. */
+    public function test_a_platform_route_with_the_wrong_middleware_is_reported(): void
+    {
+        $routes = new RouteCollection;
+        $routes->add(Route::get('monitoreo', fn (): string => 'x'));
+        $routes->add(Route::get('privado', fn (): string => 'x')->middleware([RequireMonitoringCredentials::class, 'auth:sanctum']));
+        $routes->add(Route::get('con-rol', fn (): string => 'x')->middleware([RequireMonitoringCredentials::class, ScopeRequestToBarbershop::class, RequireRole::class.':owner']));
+        $routes->add(Route::get('bien', fn (): string => 'x')->middleware(RequireMonitoringCredentials::class));
+
+        $violations = AccessAudit::violations($routes, [
+            'GET monitoreo' => RouteRule::platform('Prueba.'),
+            'GET privado' => RouteRule::platform('Prueba.'),
+            'GET con-rol' => RouteRule::platform('Prueba.'),
+            'GET bien' => RouteRule::platform('Prueba.'),
+        ]);
+
+        $this->assertSame([
+            'GET monitoreo: is declared platform but does not pass through the credentials middleware of the platform',
+            'GET privado: is declared platform but has the session, barbershop or role middleware',
+            'GET con-rol: is declared platform but has the session, barbershop or role middleware',
         ], $violations);
     }
 

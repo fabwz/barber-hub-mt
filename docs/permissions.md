@@ -51,6 +51,14 @@ La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin
 | `GET storage/{path}` | Disco local del framework: solo sirve URL firmadas. |
 | `PUT storage/{path}` | Disco local del framework: solo recibe URL firmadas. |
 
+## Rutas de plataforma
+
+Ni públicas ni de una barbería: no llevan `{barberia}`, no usan la sesión de Sanctum ni ningún rol, y pasan por su propio middleware de credenciales, que falla cerrado. Un rol de barbería (dueño, colaborador o cliente) no abre nada aquí. Cuando exista el operador de plataforma (#245), estas rutas pasarán a su comprobación. La regla es `RouteRule::platform()` en `AccessMatrix`, y la prueba guardiana exige que la ruta pase por `RequireMonitoringCredentials` y por nada de una barbería.
+
+| Ruta | Comprobación | Nota |
+| --- | --- | --- |
+| `GET monitoreo` | Autenticación básica (`MONITOR_USER` y `MONITOR_PASSWORD_HASH`) | Panel de monitoreo de solo lectura (RNF-15, ADR 0013). Sin credenciales o con unas incorrectas, 401 con `WWW-Authenticate`; tras 5 intentos fallidos desde una misma dirección, 429 con `Retry-After` incluso con la contraseña correcta. Con `MONITOR_ENABLED=false` o sin el usuario o el hash configurados responde 404, como cualquier ruta que no existe: nunca queda abierta. Fuera de `/api/v1`, así que no está en el contrato OpenAPI. |
+
 ## Rutas que solo piden sesión
 
 Los datos son de la propia persona.
@@ -131,7 +139,7 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 
 ## Cómo agregar una ruta
 
-1. Escribir su regla en `AccessMatrix::rules()` con la clase que corresponda (pública, con sesión, de primer uso, con rol o con rol y propiedad) y, si no es pública, el perfil de respuestas de `AccessMatrix::OUTCOMES`.
+1. Escribir su regla en `AccessMatrix::rules()` con la clase que corresponda (pública, de plataforma, con sesión, de primer uso, con rol o con rol y propiedad) y, si no es pública, el perfil de respuestas de `AccessMatrix::OUTCOMES`.
 2. Agregarla a este documento.
 3. Si la ruta tiene un recurso propio, registrarlo además en `TenantResources` (`docs/architecture.md`, «Aislamiento entre barberías»).
 

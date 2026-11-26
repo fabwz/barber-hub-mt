@@ -10,6 +10,7 @@ use Illuminate\Routing\RouteCollectionInterface;
 use Illuminate\Routing\Router;
 use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
 use Src\Shared\Infrastructure\Tenancy\ScopeRequestToBarbershop;
+use Src\Shared\Monitoring\Infrastructure\Http\Middleware\RequireMonitoringCredentials;
 
 /**
  * The check behind the guard test (RF-42). It returns the list of violations instead of asserting, so a test can also feed
@@ -74,6 +75,22 @@ final class AccessAudit
 
             if ($rule->note === '') {
                 $violations[] = "{$key}: is public without a reason";
+            }
+
+            return $violations;
+        }
+
+        if ($rule->kind === RouteRule::PLATFORM) {
+            if (self::argumentsOf($middleware, RequireMonitoringCredentials::class) === null) {
+                $violations[] = "{$key}: is declared platform but does not pass through the credentials middleware of the platform";
+            }
+
+            if ($authenticated || $scopeMode !== null || $roles !== null) {
+                $violations[] = "{$key}: is declared platform but has the session, barbershop or role middleware";
+            }
+
+            if ($rule->note === '') {
+                $violations[] = "{$key}: is platform without a reason";
             }
 
             return $violations;

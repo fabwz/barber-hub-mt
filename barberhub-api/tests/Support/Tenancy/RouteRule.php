@@ -26,6 +26,12 @@ final readonly class RouteRule
     public const string FIRST_USE = 'first-use';
 
     /**
+     * A route of the platform, not of a barbershop (ADR 0013): it has no `{barberia}`, no session of Sanctum and no role, and passes
+     * through its own credentials middleware, which fails closed. A role in a barbershop opens nothing here.
+     */
+    public const string PLATFORM = 'platform';
+
+    /**
      * @param  list<string>  $roles  The roles allowed; empty for public and authenticated routes.
      * @param  string  $note  Why it is public, or which resource must belong to whom.
      * @param  bool  $scoped  Public route that sets the barbershop of the URL ("barbershop:public").
@@ -44,6 +50,12 @@ final readonly class RouteRule
     public static function public(string $reason, bool $scoped = false, bool $conditional = false): self
     {
         return new self(self::PUBLIC, [], $reason, $scoped, $conditional);
+    }
+
+    /** A route of the platform: its own credentials, no barbershop (ADR 0013). It has no profile of outcomes: its own tests cover who gets in. */
+    public static function platform(string $note): self
+    {
+        return new self(self::PLATFORM, [], $note);
     }
 
     public static function authenticated(string $note): self
