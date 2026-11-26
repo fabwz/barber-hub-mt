@@ -86,6 +86,19 @@ export const routes: RouteRecordRaw[] = [
     meta: { public: true, guestOnly: true },
   },
   {
+    // Both are reachable with or without a session: the link of the email may be opened on any browser.
+    path: '/olvide-mi-contrasena',
+    name: 'forgot-password',
+    component: () => import('@/views/ForgotPasswordView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/restablecer-contrasena',
+    name: 'reset-password',
+    component: () => import('@/views/ResetPasswordView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/preferencias',
     name: 'preferences',
     component: () => import('@/views/PreferencesView.vue'),

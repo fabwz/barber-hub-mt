@@ -79,6 +79,12 @@ export const SCREENS: Record<string, Screen> = {
   preferences: { session: 'guest', prepare: () => (offline(), '/preferencias') },
   login: { session: 'guest', prepare: () => (offline(), '/ingresar') },
   register: { session: 'guest', prepare: () => (offline(), '/registro') },
+  'forgot-password': { session: 'guest', prepare: () => (offline(), '/olvide-mi-contrasena') },
+  // The screen takes the token out of the address once it has read it; the form is what axe looks at.
+  'reset-password': {
+    session: 'guest',
+    prepare: () => (offline(), '/restablecer-contrasena?token=a1b2c3'),
+  },
 
   // Client
   shops: {
