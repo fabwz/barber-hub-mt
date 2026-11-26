@@ -1,0 +1,14 @@
+# Used only by web.Dockerfile (BuildKit reads <Dockerfile>.dockerignore). The context is the root of the monorepo.
+.git
+.github
+.claude
+.impeccable
+context
+docs
+deploy
+barberhub-api
+barberhub-web/node_modules
+barberhub-web/dist
+barberhub-web/.env
+barberhub-web/.env.*
+!barberhub-web/.env.example

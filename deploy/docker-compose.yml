@@ -1,0 +1,126 @@
+# Production stack of BarberHub on one VPS (ADR 0014). Run it from this folder, with deploy/.env next to it (copy .env.production.example):
+#   ./deploy.sh            builds, migrates and starts everything
+#   docker compose ps      state of the services
+# Only the proxy publishes ports (80 and 443). The database, php-fpm and Reverb are reachable only inside the `backend` network.
+
+name: barberhub
+
+x-api: &api
+  image: barberhub-api:${IMAGE_TAG:-latest}
+  build:
+    context: ..
+    dockerfile: deploy/api.Dockerfile
+  env_file: .env
+  restart: unless-stopped
+  init: true
+  networks: [backend]
+  depends_on:
+    db:
+      condition: service_healthy
+
+# What the topology decides, not the operator: it overrides deploy/.env.
+x-api-environment: &api-environment
+  DB_HOST: db
+  DB_PORT: "5432"
+  DB_DATABASE: barberhub
+  LOG_CHANNEL: stderr
+  APP_URL: https://${DOMAIN:?DOMAIN is not set}
+  TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.28.0.0/16}
+  # The API publishes to Reverb inside the network, over plain HTTP. The browsers use the public domain (wss on 443) through the proxy.
+  REVERB_HOST: reverb
+  REVERB_PORT: "8080"
+  REVERB_SCHEME: http
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set}
+      POSTGRES_DB: postgres
+      # Read only by postgres/init/01-roles.sh, the first time the volume is empty.
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:?DB_ADMIN_PASSWORD is not set}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+    volumes:
+      # PostgreSQL 18 keeps its data under /var/lib/postgresql/18/docker, so the volume is mounted one level up.
+      - pgdata:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./postgres/roles.production.sql:/roles/roles.production.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d barberhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  app:
+    <<: *api
+    environment: *api-environment
+    volumes:
+      # Logos, banners and service images (storage/app/public). They must survive deployments.
+      - media:/var/www/html/storage/app/public
+
+  worker-default:
+    <<: *api
+    environment: *api-environment
+    command: ["php", "artisan", "queue:work", "--queue=default"]
+
+  worker-realtime:
+    <<: *api
+    environment: *api-environment
+    command: ["php", "artisan", "queue:work", "--queue=realtime", "--sleep=1"]
+
+  reverb:
+    <<: *api
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: barberhub
+      LOG_CHANNEL: stderr
+      APP_URL: https://${DOMAIN}
+      REVERB_HOST: ${DOMAIN}
+      REVERB_ALLOWED_ORIGINS: ${DOMAIN}
+    command: ["php", "artisan", "reverb:start", "--no-interaction"]
+
+  proxy:
+    image: barberhub-web:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        NODE_VERSION: ${NODE_VERSION:-26}
+        VITE_ONVO_PUBLISHABLE_KEY: ${VITE_ONVO_PUBLISHABLE_KEY:-}
+        VITE_ONVO_API_URL: ${VITE_ONVO_API_URL:-https://api.onvopay.com/v1}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-}
+        VITE_REVERB_HOST: ${DOMAIN}
+        VITE_REVERB_PORT: "443"
+        VITE_REVERB_SCHEME: https
+    restart: unless-stopped
+    networks: [backend]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+      - reverb
+
+networks:
+  backend:
+    ipam:
+      config:
+        # Fixed so that TRUSTED_PROXIES can name it. Change both together if it collides with a network of the host.
+        - subnet: 172.28.0.0/16
+
+volumes:
+  pgdata:
+  media:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,48 @@
+# Reverse proxy and TLS terminator of BarberHub, one domain for everything (ADR 0014).
+#   /api/v1/*, /salud, /monitoreo  ->  php-fpm of the API (FastCGI)
+#   /app/*                         ->  Reverb (WebSocket, wss)
+#   everything else                ->  the static files of the web client, with the fallback of the SPA
+#
+# DOMAIN comes from the environment of the proxy container (docker-compose.yml). With a domain as the address, Caddy gets and renews
+# the Let's Encrypt certificate by itself and redirects HTTP (80) to HTTPS (443). Ports 80 and 443 must be reachable from the internet.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	# The API. Every path is handled by public/index.php; PHP still sees the original REQUEST_URI.
+	@api path /api/v1/* /salud /monitoreo /monitoreo/*
+	handle @api {
+		rewrite * /index.php
+		reverse_proxy app:9000 {
+			transport fastcgi {
+				root /var/www/html/public
+				split .php
+			}
+		}
+	}
+
+	# Live agenda (ADR 0012). The publish API of Reverb (/apps/*) is NOT exposed: the workers reach it inside the Docker network.
+	# reverse_proxy forwards Upgrade and Connection by itself.
+	handle /app/* {
+		reverse_proxy reverb:8080
+	}
+
+	# The web client (Vue SPA).
+	handle {
+		root * /srv/www
+
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+
+		@shell not path /assets/*
+		header @shell Cache-Control "no-cache"
+
+		try_files {path} /index.html
+		file_server
+	}
+}
