@@ -21,10 +21,14 @@ export const useAccountStore = defineStore('account', () => {
    * The router reads it to send the person to the mandatory change.
    */
   const temporaryPassword = ref<boolean | null>(null)
+  /** Whether the person wants the reminders by email (RF-47); `null` until `GET /cuenta/avisos` answers. */
+  const remindersEnabled = ref<boolean | null>(null)
+  const noticesStatus = ref<AccountStatus>('idle')
 
   // `clear()` bumps the generation so an answer that arrives after it (a 401, a logout) is dropped.
   let generation = 0
   let pending: Promise<void> | null = null
+  let pendingNotices: Promise<void> | null = null
 
   async function fetchAccount(current: number): Promise<void> {
     try {
@@ -88,23 +92,65 @@ export const useAccountStore = defineStore('account', () => {
     temporaryPassword.value = true
   }
 
+  async function fetchNotices(current: number): Promise<void> {
+    try {
+      const { data } = await api.GET('/cuenta/avisos')
+      if (current !== generation) return
+      remindersEnabled.value = data!.data.recordatorios_correo
+      noticesStatus.value = 'ready'
+    } catch {
+      if (current !== generation) return
+      noticesStatus.value = 'error'
+    }
+  }
+
+  /** Reads the notice preferences (GET /cuenta/avisos). Never throws: the outcome is `noticesStatus`. */
+  function loadNotices(): Promise<void> {
+    if (noticesStatus.value === 'loading' && pendingNotices) return pendingNotices
+    noticesStatus.value = 'loading'
+    const request = fetchNotices(generation).finally(() => {
+      if (pendingNotices === request) pendingNotices = null
+    })
+    pendingNotices = request
+    return request
+  }
+
+  /**
+   * Turns the reminders on or off (PUT /cuenta/avisos). Nothing changes until the API answers: the value
+   * shown is the one it confirms. Throws an ApiError, leaving the previous value in place.
+   */
+  async function saveReminders(enabled: boolean): Promise<void> {
+    const current = generation
+    const { data } = await api.PUT('/cuenta/avisos', { body: { recordatorios_correo: enabled } })
+    if (current !== generation) return
+    remindersEnabled.value = data!.data.recordatorios_correo
+    noticesStatus.value = 'ready'
+  }
+
   /** Forgets everything; called when the session closes or the API answers 401. */
   function clear(): void {
     generation += 1
     pending = null
+    pendingNotices = null
     profile.value = null
     status.value = 'idle'
     temporaryPassword.value = null
+    remindersEnabled.value = null
+    noticesStatus.value = 'idle'
   }
 
   return {
     profile,
     status,
     temporaryPassword,
+    remindersEnabled,
+    noticesStatus,
     load,
     ensureLoaded,
     save,
     changePassword,
+    loadNotices,
+    saveReminders,
     markTemporary,
     clear,
   }

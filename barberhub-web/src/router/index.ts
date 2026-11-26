@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+import { useActiveShopStore } from '@/stores/activeShop'
 import { useSessionStore } from '@/stores/session'
 import HomeView from '@/views/HomeView.vue'
 import { installGuards } from './guard'
@@ -107,6 +108,18 @@ export const routes: RouteRecordRaw[] = [
         path: 'seguridad',
         name: 'account-security',
         component: () => import('@/views/account/AccountSecurityView.vue'),
+      },
+      {
+        // Only the customer has reminders to choose (RF-47): the staff goes to Datos. The rule is the one
+        // «Mi cuenta» uses for its bar: an active shop, confirmed by the list, means owner or collaborator.
+        path: 'avisos',
+        name: 'account-notices',
+        component: () => import('@/views/account/AccountNoticesView.vue'),
+        beforeEnter: async () => {
+          const shops = useActiveShopStore()
+          if (shops.status === 'idle' && shops.activeId !== null) await shops.loadStaffShops()
+          return shops.active === null ? true : { name: 'account-data' }
+        },
       },
       {
         path: 'apariencia',

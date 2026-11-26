@@ -659,13 +659,14 @@ Un solo componente (`PreferencesLink`), con la apariencia de la navegación con 
 
 ## Mi cuenta (pantalla de la persona con sesión)
 
-Rutas `/cuenta/datos`, `/cuenta/seguridad` y `/cuenta/apariencia` (`/cuenta` lleva a Datos), **comunes a cliente, colaborador y dueño** (RF-45, RF-40, RF-48). Diseño de origen: láminas 20 a 25 de la v7. Un solo `h1` «Mi cuenta» y un `h2` por sección. Usa la barra del personal si hay una barbería activa y el navbar del cliente si no (ver «Barra del personal»); el dueño y el colaborador entran por «Mi cuenta» de su menú.
+Rutas `/cuenta/datos`, `/cuenta/seguridad`, `/cuenta/avisos` (solo cliente) y `/cuenta/apariencia` (`/cuenta` lleva a Datos), **comunes a cliente, colaborador y dueño** salvo Avisos (RF-45, RF-40, RF-47, RF-48). Diseño de origen: láminas 20 a 25 de la v7 (Avisos es la 22). Un solo `h1` «Mi cuenta» y un `h2` por sección. Usa la barra del personal si hay una barbería activa y el navbar del cliente si no (ver «Barra del personal»); el dueño y el colaborador entran por «Mi cuenta» de su menú.
 
 ### Navegación de las secciones (`AccountNav`)
 **Enlaces**, no pestañas: cada sección es una ruta, así que no lleva `role="tab"`, `tablist` ni `tabpanel`; la actual lleva `aria-current="page"`.
 - **Celular:** píldoras de 44 px (`rounded-pill`, borde `line`, texto `fg`) que **pasan a otra línea**: ninguna queda oculta. Actual: relleno `elevated`, borde `line-strong` y peso 500. Una línea `line` de 1 px las separa del contenido.
 - **Escritorio (768 px):** lista vertical a la izquierda de 220 px, con la píldora actual rellena y las demás sin borde; una línea vertical de 1 px y 32 px de separación hacia el contenido. Todo dentro de la tarjeta de 16 px con borde `line` y 32 px de relleno, como «Preferencias».
-- **Secciones visibles hoy:** Datos, Seguridad y Apariencia. **Avisos** (solo cliente, #106) e **Idioma** (#108) se suman cuando existan sus pantallas: no hay enlaces rotos.
+- **Secciones visibles hoy:** Datos, Seguridad, Avisos (solo cliente) y Apariencia, en ese orden. **Idioma** (#108) se suma cuando exista su pantalla: no hay enlaces rotos.
+- **Quién ve «Avisos»:** la misma regla que decide la barra: con una barbería activa (dueño o colaborador, confirmada por `GET /mis-barberias`) no hay enlace; sin ella, sí. Mientras una barbería guardada se está confirmando el enlace espera, para que no aparezca y desaparezca. Quien es del personal y entra por la dirección `/cuenta/avisos` va a Datos.
 
 ### Datos
 «Datos personales» y la línea «Su nombre, su teléfono y el correo con el que ingresa a BarberHub.» Tres campos (nombre, teléfono y correo, con las mismas reglas de filtrado que crear cuenta) en una columna de hasta 672 px y «Guardar cambios».
@@ -684,6 +685,14 @@ Bajo «Contraseña nueva»: «La contraseña nueva debe tener» (14 px, peso 500
 - **Cumplido:** check, texto `fg` («Cumplido: »).
 - **Falta** (solo tras un envío fallido): `X` y texto en `danger` («Falta: »).
 El campo de la contraseña nueva apunta a la lista con `aria-describedby`. La frase única de crear cuenta no cambia.
+
+### Avisos
+`h2` «Avisos» y la línea «Elija qué correos recordatorios quiere recibir.» (RF-47, lámina 22). Una fila de columna de hasta 672 px, con borde `line` de 1 px, radio de 16 px y 16 px de relleno: título «Recordatorios por correo» (peso 500), descripción de 14 px `fg-muted` («Un correo 24 horas antes y otro 2 horas antes de cada cita. Aplica a sus reservas en todas las barberías.») y a la derecha el interruptor de `SwitchField` (56 × 44, `role="switch"`, `aria-checked`, `aria-labelledby` y `aria-describedby`). Debajo, la nota fija de 14 px `fg-muted`: «Siempre le enviaremos por correo la confirmación de sus reservas, las ofertas de espacio, las cancelaciones o reprogramaciones de la barbería, los reembolsos y el restablecimiento de contraseña. Estos avisos no se pueden desactivar.»
+- **Por defecto** activado. La preferencia se lee de `GET /cuenta/avisos` y se guarda con `PUT /cuenta/avisos`; no se guarda nada en el navegador.
+- **Cargando:** esqueleto de una fila con «Cargando sus avisos» y `aria-busy`. **Error de carga:** `ErrorState` «No pudimos cargar sus avisos» con «Reintentar».
+- **Guardando (sin optimismo):** el interruptor sigue mostrando el valor guardado, atenuado (`opacity-60`) y con `aria-busy`; no responde a otra pulsación; «Guardando…» (`role="status"`) debajo. Al responder la API, el interruptor toma el valor confirmado.
+- **Error al guardar:** el interruptor no cambia y aparece el `ErrorState` «No pudimos guardar el cambio» con «Su preferencia sigue como estaba. Inténtelo de nuevo.» y «Reintentar», que repite el mismo cambio. La nota fija se mantiene.
+- Mostrar el estado de un interruptor no depende del color: lo marca la posición de la perilla y su marca de verificación.
 
 ### Apariencia
 `h2` «Apariencia» y el mismo `PreferencesPanel` de «Preferencias» (tema, tamaño del texto y movimiento), con el mismo almacén: no llama a la API y se guarda en el navegador.
@@ -902,7 +911,7 @@ Ejemplos de uso: `bg-canvas text-fg`, `border border-line-strong rounded-pill bg
 
 ## Pendiente
 
-- **Mi cuenta:** las secciones «Avisos» (#106) e «Idioma» (#108) se suman cuando existan sus pantallas. El dueño y el colaborador entran a «Mi cuenta» por el menú de su barra (ver «Barra del personal»).
+- **Mi cuenta:** la sección «Idioma» (#108) se suma cuando exista su pantalla; «Avisos» (#106) ya existe y es solo del cliente. El dueño y el colaborador entran a «Mi cuenta» por el menú de su barra (ver «Barra del personal»).
 - **Agenda del personal (láminas 26 a 28):** se omitió lo que la API aún no entrega. (1) «Pago», «Depósito» y «Estado del depósito» del dueño: la API aún no entrega el pago del detalle (solo `precio` y `saldo_pendiente`); se muestran «Total» y «Saldo pendiente». (2) «(dueño)» junto al autor del historial: la API entrega el nombre o «Sistema», sin rol. (3) «Le avisamos al cliente por correo»: el aviso llega con #96. (4) El desplegable de barbería de la lámina 26b: se usa el selector `/negocios` con el enlace «Cambiar de barbería». (5) Las etiquetas de estado van sin punto, como en el resto de pantallas (ver «Etiqueta de estado»).
 - **Por confirmar con ONVO:** los formatos de la identificación del SINPE Móvil de cada tipo (tabla de «Campo de texto»).
 - **Pantalla de pago:** la fila «Sucursal» y el banner y el logo de la cabecera dependen de que la API los entregue; el pago muestra la cabecera con los mismos datos de ejemplo que la portada.

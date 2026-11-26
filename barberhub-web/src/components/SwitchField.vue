@@ -5,6 +5,8 @@ import { Check } from 'lucide-vue-next'
 interface Props {
   label: string
   description?: string
+  /** A change is being saved: the switch is dimmed, announces `aria-busy` and ignores presses until it ends. */
+  busy?: boolean
 }
 
 defineProps<Props>()
@@ -29,8 +31,10 @@ const descriptionId = useId()
       :aria-checked="model ? 'true' : 'false'"
       :aria-labelledby="labelId"
       :aria-describedby="description ? descriptionId : undefined"
+      :aria-busy="busy ? 'true' : undefined"
       class="group grid h-11 w-14 flex-none cursor-pointer place-items-center focus-visible:outline-none"
-      @click="model = !model"
+      :class="busy ? 'opacity-60' : ''"
+      @click="busy || (model = !model)"
     >
       <span
         class="relative block h-7 w-12 rounded-pill border transition-colors duration-150 ease-out group-focus-visible:outline group-focus-visible:outline-1 group-focus-visible:outline-offset-2 group-focus-visible:outline-accent"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 
 import AccountNav, { type AccountSection } from '@/components/AccountNav.vue'
 import ClientNavbar from '@/components/ClientNavbar.vue'
@@ -15,13 +15,22 @@ onMounted(() => {
 })
 
 // «Mi cuenta» (RF-45, RF-40): common to customer, collaborator and owner. One route per section.
-// Avisos (#106) and Idioma (#108) join this list when their screens exist: no link to a screen
-// that is not there.
-const SECTIONS: AccountSection[] = [
+// Avisos (RF-47) is only for the customer: the same rule as the bar above, an active shop means
+// staff. While a stored shop is still being confirmed the person is not known yet, so the link
+// waits instead of flashing for someone who is staff. Idioma (#108) joins this list when its
+// screen exists: no link to a screen that is not there.
+const isCustomer = computed(
+  () =>
+    shops.active === null &&
+    !(shops.activeId !== null && (shops.status === 'idle' || shops.status === 'loading')),
+)
+
+const sections = computed<AccountSection[]>(() => [
   { label: 'Datos', to: { name: 'account-data' } },
   { label: 'Seguridad', to: { name: 'account-security' } },
+  ...(isCustomer.value ? [{ label: 'Avisos', to: { name: 'account-notices' } }] : []),
   { label: 'Apariencia', to: { name: 'account-appearance' } },
-]
+])
 </script>
 
 <template>
@@ -35,7 +44,7 @@ const SECTIONS: AccountSection[] = [
       >
         <h1 class="text-2xl">Mi cuenta</h1>
         <div class="mt-5 md:mt-8 md:grid md:grid-cols-[13.75rem_1px_minmax(0,1fr)] md:gap-8">
-          <AccountNav :sections="SECTIONS" />
+          <AccountNav :sections="sections" />
           <div class="hidden self-stretch bg-line md:block" aria-hidden="true" />
           <div
             class="mt-8 min-w-0 border-t border-line pt-6 md:mt-0 md:border-t-0 md:pt-0"
