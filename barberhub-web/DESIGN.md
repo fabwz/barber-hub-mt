@@ -265,6 +265,11 @@ Solo el texto, sin punto ni relleno, en 14 px y peso 500 (`fg-muted` en «Expira
 | Activo | Activo | `fg` |
 | Vencido | Vencido | `fg-muted` |
 
+| Estado de venta del bono (dueño) | Texto | Texto en |
+|---|---|---|
+| A la venta | A la venta | `fg` |
+| Retirado | Retirado | `fg-muted` |
+
 | Estado del servicio | Texto | Texto en |
 |---|---|---|
 | Activo | Activo | `fg` |
@@ -553,6 +558,26 @@ Diseño de origen: láminas 34 y 35 de la v7. Ruta `/barberias/:barberia/configu
 - **Texto del aviso de bonos:** nombra la modalidad «Sin pago» como en el diseño, aunque también aparece si se cobra y aún no hay pasarela; en ese caso el guardado pide elegirla.
 - **Teléfono:** la API lo exige y no impone formato; el campo es de texto libre de hasta 30 caracteres.
 - **Alta de la barbería:** queda fuera de #77. No hay pantalla ni lámina para ella.
+
+## Bonos del negocio (dueño)
+
+Rutas `/barberias/:barberia/bonos` (nombre `staff-vouchers`, «Bonos del negocio»), `/bonos/vendidos` (`staff-vouchers-sold`, «Bonos vendidos»), `/bonos/nuevo` y `/bonos/:bono` (el formulario). Solo el dueño: las rutas llevan `requiresOwner` y el guard envía al colaborador a su agenda; la API sigue respondiendo 403. El enlace «Bonos» de la barra del personal es solo del dueño y solo existe porque la ruta existe. Diseño de origen: lámina 36 de la v7 (36a a 36n), entregada como especificación de texto. Sin sucursales.
+
+- **Encabezado:** «Bonos» (24 px), «Paquetes de sesiones que sus clientes compran por adelantado.» y, a la derecha, «Nuevo bono» (enlace con el aspecto del botón, 44 px). Debajo, `SectionNav` con «Bonos del negocio» y «Bonos vendidos» como enlaces con `aria-current`, no pestañas (como en Equipo y Configuración).
+- **Lista (36a, 36b):** escritorio, una fila por bono con las columnas Bono, «Sesiones y vigencia» («5 sesiones · 90 días»), Precio («₡32.000» con «IVA incluido» debajo), «Servicios cubiertos» («Corte clásico, Corte degradado»), Estado («A la venta» o «Retirado», ver «Etiqueta de estado») y las acciones «Editar» y «Retirar» (retirado: «Volver a vender»), separadas por líneas de 1 px. Celular, una tarjeta por bono en este orden: nombre, estado, «5 sesiones · 90 días · ₡32.000», «IVA incluido», «Cubre: …» y las acciones. Los nombres de los servicios salen del catálogo del dueño porque la API del bono solo entrega sus identificadores.
+- **Retirar (36c, 36d):** `ConfirmDialog` «¿Retirar «{bono}» de la venta?» con «Los clientes que ya lo compraron conservan su saldo y su vigencia. Podrá volver a ponerlo a la venta cuando quiera.», botones «No, mantenerlo» (principal, con el foco) y «Sí, retirar». Éxito: ««{bono}» se retiró de la venta. Los saldos de quienes lo compraron no cambian.» (BO-01). «Volver a vender» no pregunta y avisa ««{bono}» volvió a la venta.».
+- **Bonos desactivados (36e):** con `bonos_activos` falso (se lee de `GET …/administracion/funciones`) un aviso «Los bonos están desactivados. Los bonos ya vendidos siguen vigentes, pero no puede crear bonos nuevos ni los clientes comprarlos. Actívelos en Configuración, en «Cobro y políticas».», el botón «Ir a Cobro y políticas», y «Nuevo bono» deshabilitado con una nota. La lista sigue visible y los bonos existentes se siguen editando y retirando, porque la API lo permite. Si no se puede leer el interruptor, el botón queda activo y la API responde 409.
+- **Formulario (36f a 36l):** «Volver a bonos», título «Nuevo bono» o «Editar bono». Campos: «Nombre del bono», «Sesiones» («Cuántas visitas incluye.»), «Vigencia (días)» («Cuenta desde que el cliente paga.»), «Precio (₡, IVA incluido)» («En colones enteros.») y «Servicios cubiertos» (casillas de 44 px con el nombre y, debajo, «30 min · ₡7.000»), con «Guardar bono» («Guardando…» mientras se envía) y «Cancelar». Las casillas ofrecen los servicios activos y, al editar, también uno inactivo que el bono ya cubre. Al editar solo se envía lo que cambió.
+- **Errores (36h, 36i):** «Las sesiones deben ser al menos 1.» bajo Sesiones y «Elija al menos un servicio cubierto.» bajo Servicios, antes de enviar; el 422 de la API se muestra en su campo (`servicios.N` bajo Servicios), con ícono y texto. El foco va al primer campo con problema.
+- **Bono con ventas (36j):** el contrato trae `tiene_ventas`. Con ventas, un aviso «Este bono ya tiene ventas: solo puede cambiar el nombre y el precio. Las sesiones, la vigencia y los servicios cubiertos ya no se pueden modificar.» y esos tres campos deshabilitados. Si la venta ocurre con el formulario abierto, el 409 `bono-con-ventas` se muestra y el formulario se bloquea igual.
+- **Cambios que aplican a bonos nuevos:** bajo el precio, al editar: «Cambiar el precio no cambia los bonos ya comprados.»; al guardar una edición: «Bono guardado. El cambio aplica a bonos nuevos; los ya comprados no cambian.» y, si está a la venta, «Ya está a la venta.». Al crear: «Bono guardado. Ya está a la venta.».
+- **Bonos vendidos (36m, 36n):** solo lectura. Columnas Cliente, Bono, Saldo («3 de 5 sesiones»), Vencimiento («Vence vie 15 ene 2027», «Venció mar 20 oct 2026») y Estado («Activo» o «Vencido»); celular: tarjeta con el cliente, el estado, el bono y «3 de 5 sesiones · vence …». De a 15 por página, del más reciente al más antiguo, con «Mostrar más» (parámetro `pagina`, sin numeración); si la página siguiente falla, lo mostrado se queda con un aviso y el botón vuelve a intentarlo. Solo el nombre del cliente, nunca su correo ni su teléfono.
+- **Estados:** cada lista tiene esqueleto con `aria-busy`, error con «Reintentar» («No pudimos cargar los bonos» y «No pudimos cargar los bonos vendidos») y vacío («Aún no tiene bonos.» con «Crear mi primer bono»; «Aún no ha vendido bonos.»).
+- **Accesibilidad y tamaño:** objetivos de 44 px, textos que se parten (sin truncar) hasta con «Muy grande» al 150 %, 360 px de ancho, y el estado siempre con texto.
+
+### Divergencias de la lámina 36
+- **Nota de «Nuevo bono» deshabilitado:** la especificación dice «Crear y editar»; la API sigue permitiendo editar y retirar con los bonos desactivados, así que la nota dice «No puede crear bonos nuevos mientras estén desactivados.».
+- **Sin sucursales:** no hay selector de sucursal en ninguna pantalla.
 
 ## Bonos (pantallas del cliente)
 
