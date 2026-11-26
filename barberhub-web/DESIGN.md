@@ -579,6 +579,22 @@ Rutas `/barberias/:barberia/bonos` (nombre `staff-vouchers`, «Bonos del negocio
 - **Nota de «Nuevo bono» deshabilitado:** la especificación dice «Crear y editar»; la API sigue permitiendo editar y retirar con los bonos desactivados, así que la nota dice «No puede crear bonos nuevos mientras estén desactivados.».
 - **Sin sucursales:** no hay selector de sucursal en ninguna pantalla.
 
+## Ingresos (dueño, #114)
+
+Ruta `/barberias/:barberia/ingresos` (nombre `staff-income`, `requiresOwner`). El enlace «Ingresos» de la barra del personal es solo del dueño y existe porque la ruta existe; el colaborador va a su agenda y la API responde 403. Diseño de origen: lámina 37 de la v7 (37a a 37i), leída del artefacto. Solo lectura. Sin sucursales.
+
+- **Encabezado:** «Ingresos» (24 px) y «Lo que su barbería cobró en el rango de fechas, en hora de Costa Rica.». No hay pestañas: «Reembolsos» (lámina 38) depende del #103 y de una API que no existe, así que ni se muestra ni tiene ruta. Una navegación con un solo enlace no aporta, por eso tampoco hay `SectionNav`.
+- **Filtro:** campos de fecha «Desde» y «Hasta» (`TextField` con `type="date"`, 48 px) y el botón «Ver ingresos» (`BaseButton`). En celular van apilados; desde `sm`, en una fila. Rango inicial: el mes en curso, del día 1 a hoy en hora de Costa Rica (la API exige ambas fechas y no define un rango por defecto); se consulta al abrir la pantalla.
+- **Validación (sin llamar a la API):** «La fecha final no puede ser anterior a la inicial.» bajo «Hasta», con ícono y texto (`aria-invalid` y `aria-describedby`); «Elija la fecha inicial.» y «Elija la fecha final.» si un campo queda vacío. El 422 de la API (por ejemplo más de 366 días) se muestra en su campo. Lo que ya está en pantalla no cambia.
+- **Resultado (`IncomeBlock`):** tres tarjetas de 16 px con borde `line` de 1 px, sin sombra: una columna en celular y tres desde `lg`. Cada una lleva el título (16 px, peso 500), la cifra grande (`text-4xl`, peso 500, cifras tabulares, se parte si no cabe), la nota (14 px `fg-muted`) y un desglose `dl` con líneas de 1 px. 1) «Cobrado en línea, neto de reembolsos»: cifra = neto; desglose «Cobrado en línea», «Reembolsos» (con el signo «−», `U+2212`; el cero sin signo) y «Neto». 2) «Bonos vendidos»: cifra = total; desglose «Bonos vendidos» (cantidad) y «Total». 3) «Aparte» y «Valor atendido»: cifra = total; desglose «Servicios atendidos» (cantidad) y «Valor atendido». Las cifras entran tal cual de la API: la web no suma, resta ni redondea, y nunca muestra un total combinado (PA-11).
+- **Pie fijo (PA-10):** «El saldo que se cobra en el local no se incluye. Aquí solo entra lo que se cobró en línea.», en todos los estados.
+- **Estados:** cargando (tres esqueletos de bloque con texto para lector de pantalla), error («No pudimos cargar los ingresos» / «Revise su conexión e inténtelo de nuevo.» con «Reintentar», que repite el mismo rango) y vacío («No hay ingresos en este rango.» / «No hubo cobros, bonos vendidos ni servicios atendidos entre el lun 2 nov y el sáb 7 nov. Pruebe con otro rango de fechas.», con las fechas pedidas). Vacío es la respuesta 200 con todas las cifras en cero.
+- **Accesibilidad:** el resultado es una región `aria-live="polite"` con `aria-busy` mientras carga, así que un cambio de rango se anuncia; campos con etiqueta visible, objetivos de 44 px o más, y los textos se parten (sin truncar) hasta con «Muy grande» al 150 % y a 360 px, sin desplazamiento horizontal.
+
+### Divergencias de la lámina 37
+- **Sin «Reembolsos»:** la lámina dibuja las dos pestañas; solo se construye «Ingresos» (ver arriba).
+- **Textos de campo vacío:** la lámina no los trae; «Elija la fecha inicial.» y «Elija la fecha final.» son los más sobrios que siguen la voz del documento.
+
 ## Bonos (pantallas del cliente)
 
 Rutas `/b/:enlace/bonos` (Mis bonos y bonos a la venta) y `/b/:enlace/bonos/:bono/compra` (compra). Diseño de origen: las láminas 14 a 16 de la v7 (Mis bonos, compra de un bono y reservar con bono). Todo sale de la API tal cual: saldo, estado, vencimiento, precio, vigencia y servicios cubiertos nunca se calculan en el cliente.
