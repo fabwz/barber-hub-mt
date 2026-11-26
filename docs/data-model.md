@@ -79,7 +79,7 @@ erDiagram
     }
 ```
 
-El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` (se describe en Pagos) y `audit_log` para mantenerse legible; sus columnas están más abajo.
+El diagrama omite `invitations`, `personal_access_tokens`, `webhook_events` (se describe en Pagos), `audit_log`, `http_stats` y `health_checks` para mantenerse legible; sus columnas están más abajo.
 
 ## Cuentas y acceso
 
@@ -479,6 +479,43 @@ Acciones sensibles con autor, fecha y cambio, sin pantalla de consulta (SE-04). 
 Acciones que existen hoy: `barbershop.payment_policy.updated` (modalidad, porcentaje del depósito y plazo de cancelación), `barbershop.payment_gateway.updated` (pasarela), `barbershop.features.updated` (bonos y lista de espera), `barbershop.directory_listing.updated` (`listed_in_directory`, el indicador del directorio, #223), `reservation.cancelled_by_barbershop` (estado de la reserva) y `payment.refunded` (estado del pago y `refunded_amount`, el monto devuelto en colones). Una lista permitida por acción, en `AuditAction`, decide qué campos entran: lo que no figura nunca se guarda.
 
 Solo crece: el rol de la aplicación puede insertar y leer, pero no tiene `UPDATE` ni `DELETE`, y el disparador `trg_audit_log_append_only` los rechaza para cualquier rol, el dueño de la tabla incluido (el mismo enfoque que `voucher_movements`). Tiene seguridad a nivel de fila con la política `audit_log_barbershop_isolation`. Los índices `audit_log_barbershop_idx` `(barbershop_id, created_at)` y `audit_log_subject_idx` `(barbershop_id, subject_type, subject_id)` sirven para leerla cuando una consulta exista. La columna `correlation_id` llegó con el #119, con una migración posterior que no toca el disparador ni los permisos.
+
+## Monitoreo
+
+Dos tablas técnicas del panel de monitoreo (RNF-15, ADR 0013), creadas por el #118. **No pertenecen a una barbería:** no tienen `barbershop_id` ni seguridad a nivel de fila (como `jobs`), están en `FRAMEWORK_TABLES` de `SchemaConventionsTest` y no figuran en `TenantResources`. Las migra el rol dueño y el rol de la aplicación recibe `SELECT`, `INSERT`, `UPDATE` y `DELETE` por los privilegios por defecto. Solo guardan la lista cerrada de abajo: nunca usuario, correo, teléfono, token, cuerpo de la petición, SQL ni datos de las tareas (RNF-24, SE-03).
+
+### http_stats
+
+Un agregado por minuto de las peticiones. La llave primaria es compuesta (no hay `id`).
+
+| Columna | Tipo | Regla |
+| --- | --- | --- |
+| `bucket_minute` | `timestamptz` | El minuto de la petición, con los segundos en cero |
+| `method` | `varchar(10)` | `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` u `OTHER` |
+| `route_pattern` | `varchar(200)` | El patrón de la ruta (`api/v1/barberias/{barberia}/reservas`), nunca la URL; `(sin ruta)` si ninguna coincidió |
+| `status_class` | `smallint` | 1 a 5 (`CHECK`): la centena del estado HTTP |
+| `exception_class` | `varchar(200)` | La clase de la excepción, nunca su mensaje ni su traza. Cadena vacía (no `NULL`) si no hubo excepción, para poder ser parte de la llave |
+| `requests` | `integer` | Peticiones del grupo; `CHECK` mayor que 0 |
+| `total_ms`, `max_ms` | `bigint`, `integer` | Suma y máximo de las duraciones, en milisegundos; `CHECK` no negativos y `max_ms <= total_ms` |
+
+Llave primaria: `(bucket_minute, method, route_pattern, status_class, exception_class)`. Se escribe con `INSERT ... ON CONFLICT DO UPDATE` y sirve también para leer por ventana de tiempo, porque `bucket_minute` va primero.
+
+### health_checks
+
+Un registro por minuto y resultado de la ruta de salud (`GET /salud`), de modo que una avalancha de llamadas a la ruta pública no hace crecer la tabla.
+
+| Columna | Tipo | Regla |
+| --- | --- | --- |
+| `bucket_minute` | `timestamptz` | El minuto de la respuesta, con los segundos en cero |
+| `database_ok`, `queue_ok` | `boolean` | Qué dependencia funcionó |
+| `healthy` | `boolean` | `CHECK (healthy = (database_ok AND queue_ok))`: lo que respondió la ruta (200 o 503) |
+| `ai_status` | `varchar(20)` | El estado público de la IA que la ruta informó; `CHECK` no vacío |
+| `checks` | `integer` | Cuántas veces se consultó en ese minuto con ese resultado; `CHECK` mayor que 0 |
+| `last_checked_at` | `timestamptz` | El instante de la última consulta del grupo |
+
+Llave primaria: `(bucket_minute, database_ok, queue_ok)`.
+
+**Retención.** 14 días (la ventana de RNF-04). La escritura intenta, como máximo una vez por hora y con un candado de caché (`monitoring:purge`), borrar hasta 10 000 filas vencidas de cada tabla (`DatabaseMonitoringRetention`). No hay planificador todavía: cuando el #117 lo traiga, basta programar el caso de uso `PurgeExpiredMonitoringData` y dejar de llamarlo desde `RecordRequestStats`.
 
 ## Tablas de infraestructura de Laravel
 

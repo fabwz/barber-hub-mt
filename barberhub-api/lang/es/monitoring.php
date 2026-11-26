@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+
+    'title' => 'Monitoreo de BarberHub',
+    'intro' => 'Estado del sistema desplegado. Esta página es de solo lectura: actualícela para ver datos nuevos.',
+    'window_hours' => 'Los datos de errores y tiempos son de las últimas :hours horas.',
+    'skip_to_content' => 'Ir al contenido',
+
+    'errors_title' => 'Errores',
+    'errors_caption' => 'Peticiones que terminaron en una excepción, por clase y ruta',
+    'errors_empty' => 'No hay errores registrados en este período.',
+    'exception_class' => 'Clase de la excepción',
+    'method' => 'Método',
+    'route' => 'Ruta',
+    'status_class' => 'Estado',
+    'status_class_value' => ':class xx',
+    'requests' => 'Peticiones',
+
+    'timings_title' => 'Tiempos de respuesta',
+    'timings_caption' => 'Tiempos por ruta, de la más lenta a la más rápida en promedio',
+    'timings_empty' => 'Todavía no hay peticiones registradas en este período.',
+    'average_ms' => 'Promedio (ms)',
+    'max_ms' => 'Máximo (ms)',
+    'server_errors' => 'Errores 5xx',
+
+    'queues_title' => 'Colas',
+    'queues_caption' => 'Estado de cada cola de tareas',
+    'queue' => 'Cola',
+    'pending' => 'Pendientes',
+    'delayed' => 'Programadas',
+    'reserved' => 'En proceso',
+    'oldest_seconds' => 'Más antigua (s)',
+    'queue_state' => 'Estado',
+    'queue_late' => 'Atrasada',
+    'queue_ok' => 'Al día',
+    'queues_note' => 'Pendientes son las tareas listas para correr; programadas esperan su hora. Si hay tareas pendientes y ningún worker, no se ejecutan.',
+
+    'failed_title' => 'Tareas fallidas',
+    'failed_groups_caption' => 'Tareas que agotaron sus intentos, agrupadas por tarea y cola',
+    'failed_recent_caption' => 'Tareas fallidas más recientes',
+    'failed_empty' => 'No hay tareas fallidas.',
+    'job' => 'Tarea',
+    'failures' => 'Fallos',
+    'last_failure' => 'Último fallo',
+    'failed_at' => 'Fecha',
+    'identifier' => 'Identificador',
+    'unknown_job' => '(sin nombre)',
+
+    'health_title' => 'Ruta de salud',
+    'health_empty' => 'Todavía no se ha consultado la ruta de salud.',
+    'health_last' => 'Última respuesta',
+    'health_ok' => 'Correcta (200)',
+    'health_failed' => 'Falló (503)',
+    'health_stale' => 'Sin chequeos recientes: nadie ha consultado la ruta de salud en los últimos :minutes minutos. Revise que el monitor externo funcione y que el servidor esté en línea.',
+    'availability' => 'Disponibilidad de los últimos :days días',
+    'availability_value' => ':percent % de :total consultas',
+    'availability_none' => 'Sin consultas en la ventana.',
+    'health_failures_caption' => 'Fallos recientes de la ruta de salud',
+    'health_failures_empty' => 'No hubo fallos en la ventana.',
+    'database' => 'Base de datos',
+    'queue_dependency' => 'Cola',
+    'dependency_ok' => 'Funciona',
+    'dependency_failed' => 'Falló',
+    'checks' => 'Consultas',
+    'last_check' => 'Última consulta',
+
+];

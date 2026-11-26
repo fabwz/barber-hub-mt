@@ -47,6 +47,22 @@ php artisan serve
 
 La API queda en `http://localhost:8000` (`APP_URL`), bajo `/api/v1`. El cliente web (`barberhub-web`) la consume por el proxy de desarrollo de Vite.
 
+### Panel de monitoreo
+
+`GET /monitoreo` muestra los errores, los tiempos de respuesta, el estado de las colas, las tareas fallidas y la ruta de salud (RNF-15, [ADR 0013](../docs/adr/0013-own-monitoring-panel.md)). Está apagado por defecto y se abre con autenticación básica:
+
+1. Genere el hash de la contraseña (bcrypt) y no escriba la contraseña en ningún archivo:
+
+   ```sh
+   php -r "echo password_hash('la-contraseña-que-elija', PASSWORD_BCRYPT), PHP_EOL;"
+   ```
+
+2. En su `.env` (nunca en el repositorio) ponga `MONITOR_ENABLED=true`, `MONITOR_USER` con el nombre que elija y `MONITOR_PASSWORD_HASH` con el hash entre comillas simples (lleva signos `$`).
+3. Aplique las tablas con el rol dueño: `php artisan migrate --database=pgsql_admin`.
+4. Abra `http://localhost:8000/monitoreo` e ingrese el usuario y la contraseña.
+
+Sin `MONITOR_ENABLED=true`, o sin el usuario y el hash, la ruta responde 404. Para ver datos de verdad en local hay que consultar `/salud` y navegar la API, y levantar un worker (`php artisan queue:work`, más `--queue=realtime` para la cola de tiempo real): el panel solo muestra, no lanza procesos. En producción solo debe usarse sobre HTTPS.
+
 ## Pruebas y comprobaciones
 
 | Comando | Qué hace |
@@ -101,5 +117,8 @@ Se definen en `.env`, copia de `.env.example`. El `.env` no se versiona y nunca 
 | `GEMINI_MODEL`, `GEMINI_BASE_URL` | Modelo (obligatorio, no se escribe en el código) y URL base del proveedor. | `https://generativelanguage.googleapis.com/v1beta` | No |
 | `AI_CIRCUIT_FAILURES`, `AI_CIRCUIT_WINDOW_SECONDS`, `AI_CIRCUIT_OPEN_SECONDS` | Circuito de corte del proveedor de IA (IA-05, RNF-11): fallos seguidos, ventana y tiempo abierto, en segundos. | `3`, `60`, `60` | No |
 | `AI_CIRCUIT_CACHE_STORE` | Caché que guarda el estado del circuito; no es la de la base de datos a propósito. | `file` | No |
+| `MONITOR_ENABLED` | Enciende el registro de las peticiones y el panel `/monitoreo` (RNF-15). Apagado por defecto y en las pruebas. | `false` | No |
+| `MONITOR_USER` | Usuario de la autenticación básica del panel. Sin él (o sin el hash) el panel responde 404. | _(vacía)_ | No |
+| `MONITOR_PASSWORD_HASH` | Hash bcrypt de la contraseña del panel (nunca la contraseña). | _(vacía)_ | **Sí** |
 
 Las marcadas como secretas solo viven en el `.env` real o en las variables del servidor: la CI escanea el historial con gitleaks y el registro nunca las escribe. El detalle de las variables de las pasarelas, con sus valores por defecto y los avisos (*webhooks*), está en la sección «Cobro con dos pasarelas» del [README de la raíz](../README.md#cobro-con-dos-pasarelas). El comentario de cada variable en `.env.example` explica su valor por defecto.

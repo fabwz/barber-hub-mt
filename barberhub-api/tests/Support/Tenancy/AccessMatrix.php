@@ -97,6 +97,9 @@ final class AccessMatrix
             'GET storage/{path}' => RouteRule::public('Disco local del framework: solo sirve URL firmadas.', conditional: true),
             'PUT storage/{path}' => RouteRule::public('Disco local del framework: solo recibe URL firmadas.', conditional: true),
 
+            // Of the platform, not of a barbershop (ADR 0013).
+            'GET monitoreo' => RouteRule::platform('Panel de monitoreo (RNF-15, #118): solo lectura, con su propia autenticación básica de plataforma; un rol de barbería no abre nada y, sin el secreto configurado, responde 404.'),
+
             // A session and nothing more: the data are the person's own.
             'POST api/v1/barberias' => RouteRule::authenticated('Registrar una barbería: quien la registra queda como su dueño (UP-03).'),
             'GET api/v1/mis-barberias' => RouteRule::authenticated('Barberías de la persona con su rol: nunca otras (UP-08, RF-43).'),
