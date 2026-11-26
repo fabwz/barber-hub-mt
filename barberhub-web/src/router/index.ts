@@ -215,6 +215,13 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
   },
   {
+    // «Ingresos» (#114, RF-25): only the owner. One screen; «Reembolsos» (lámina 38) is not built and has no route.
+    path: '/barberias/:barberia/ingresos',
+    name: 'staff-income',
+    component: () => import('@/views/StaffIncomeView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
     // «Configuración» (#77, RF-01, RF-08, RF-09): only the owner. Each section is a child route, as in «Equipo».
     path: '/barberias/:barberia/configuracion',
     component: () => import('@/views/StaffSettingsView.vue'),
