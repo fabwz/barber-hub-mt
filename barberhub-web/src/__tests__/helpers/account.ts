@@ -30,6 +30,12 @@ export interface AccountRoutes {
   put?: (body: Record<string, string>) => Response
   /** Response of `PUT /cuenta/contrasena`; by default 204. */
   password?: (body: Record<string, string>) => Response
+  /** What `GET /cuenta/avisos` answers: whether the reminders are on (they are, by default). */
+  reminders?: boolean
+  /** Response of `GET /cuenta/avisos`; by default 200 with `reminders`. */
+  getNotices?: () => Response | Promise<Response>
+  /** Response of `PUT /cuenta/avisos`; by default it echoes the body. */
+  putNotices?: (body: { recordatorios_correo: unknown }) => Response | Promise<Response>
   /** Answers the routes of the account does not know. */
   other?: (request: Request) => Response
 }
@@ -55,6 +61,17 @@ export function accountHandler(routes: AccountRoutes = {}) {
           correo: body!.correo,
         },
       })
+    }
+    if (route === 'GET /api/v1/cuenta/avisos') {
+      return routes.getNotices
+        ? routes.getNotices()
+        : jsonResponse(200, { data: { recordatorios_correo: routes.reminders ?? true } })
+    }
+    if (route === 'PUT /api/v1/cuenta/avisos') {
+      const notices = body as unknown as { recordatorios_correo: unknown }
+      return routes.putNotices
+        ? routes.putNotices(notices)
+        : jsonResponse(200, { data: { recordatorios_correo: notices.recordatorios_correo } })
     }
     if (route === 'PUT /api/v1/cuenta/contrasena') {
       return routes.password ? routes.password(body!) : new Response(null, { status: 204 })

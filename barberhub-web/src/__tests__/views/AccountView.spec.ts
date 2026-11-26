@@ -28,31 +28,52 @@ async function open(path: string) {
 }
 
 describe('«Mi cuenta»: the sections', () => {
-  it('has one h1 and three links to the sections that exist today, the current one marked', async () => {
+  it('has one h1 and four links to the sections that exist today for a customer, the current one marked', async () => {
     const { wrapper } = await open('/cuenta/seguridad')
 
     expect(wrapper.findAll('h1').map((heading) => heading.text())).toEqual(['Mi cuenta'])
     const links = wrapper.get('nav[aria-label="Mi cuenta"]').findAll('a')
-    expect(links.map((link) => link.text())).toEqual(['Datos', 'Seguridad', 'Apariencia'])
+    expect(links.map((link) => link.text())).toEqual(['Datos', 'Seguridad', 'Avisos', 'Apariencia'])
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/cuenta/datos',
       '/cuenta/seguridad',
+      '/cuenta/avisos',
       '/cuenta/apariencia',
     ])
     expect(links.map((link) => link.attributes('aria-current'))).toEqual([
       undefined,
       'page',
       undefined,
+      undefined,
     ])
   })
 
-  it('does not show «Avisos» (#106) nor «Idioma» (#108): their screens do not exist yet', async () => {
+  it('does not show «Idioma» (#108): its screen does not exist yet', async () => {
     const { wrapper, router } = await open('/cuenta/datos')
 
-    const section = wrapper.get('nav[aria-label="Mi cuenta"]').text()
-    expect(section).not.toContain('Avisos')
-    expect(section).not.toContain('Idioma')
-    expect(router.getRoutes().some((route) => /avisos|idioma/.test(route.path))).toBe(false)
+    expect(wrapper.get('nav[aria-label="Mi cuenta"]').text()).not.toContain('Idioma')
+    expect(router.getRoutes().some((route) => /idioma/.test(route.path))).toBe(false)
+  })
+
+  it('«Avisos» is only for the customer: with an active shop (owner or collaborator) there is no link', async () => {
+    sessionStorage.setItem(ACTIVE_SHOP_STORAGE_KEY, JSON.stringify({ id: SHOP_A }))
+    const { calls } = accountHandler({ other: staffHandler([OWNER_SHOP, STAFF_SHOP]) })
+    const { wrapper } = await mountView(App, '/cuenta/datos')
+    await flushPromises()
+
+    expect(calls.some((call) => call.route === 'GET /api/v1/mis-barberias')).toBe(true)
+    const links = wrapper.get('nav[aria-label="Mi cuenta"]').findAll('a')
+    expect(links.map((link) => link.text())).toEqual(['Datos', 'Seguridad', 'Apariencia'])
+  })
+
+  it('a customer that has a stored shop that is no longer theirs sees «Avisos» once the list confirms it', async () => {
+    sessionStorage.setItem(ACTIVE_SHOP_STORAGE_KEY, JSON.stringify({ id: SHOP_A }))
+    accountHandler({ other: staffHandler([]) })
+    const { wrapper } = await mountView(App, '/cuenta/datos')
+    await flushPromises()
+
+    const links = wrapper.get('nav[aria-label="Mi cuenta"]').findAll('a')
+    expect(links.map((link) => link.text())).toContain('Avisos')
   })
 
   it('uses links and no tab roles', async () => {
