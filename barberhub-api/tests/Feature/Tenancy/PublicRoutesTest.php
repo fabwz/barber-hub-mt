@@ -34,6 +34,8 @@ final class PublicRoutesTest extends TestCase
             'GET api/v1' => ['GET', 'api/v1', [], [200]],
             'POST api/v1/cuentas' => ['POST', 'api/v1/cuentas', [], [422]],
             'POST api/v1/tokens' => ['POST', 'api/v1/tokens', [], [422]],
+            'POST api/v1/contrasena/recuperacion' => ['POST', 'api/v1/contrasena/recuperacion', [], [422]],
+            'POST api/v1/contrasena/restablecimiento' => ['POST', 'api/v1/contrasena/restablecimiento', [], [422]],
             'GET api/v1/enlaces/{enlace}' => ['GET', 'api/v1/enlaces/pura-navaja', [], [200]],
             'GET api/v1/directorio' => ['GET', 'api/v1/directorio', [], [200]],
             'GET api/v1/barberias/{barberia}/servicios' => ['GET', 'api/v1/barberias/{barberia}/servicios', [], [200]],

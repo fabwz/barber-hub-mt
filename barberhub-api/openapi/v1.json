@@ -1475,6 +1475,64 @@
                 }
             }
         },
+        "/contrasena/recuperacion": {
+            "post": {
+                "operationId": "identity.password-recovery.store",
+                "description": "Ruta p\u00fablica (RF-41). Responde siempre 202 sin cuerpo, exista o no una cuenta con ese correo: la respuesta no permite saberlo. Si la cuenta existe y est\u00e1 activa, el enlace sale por correo desde la cola; es v\u00e1lido 60 minutos, se usa una sola vez y reemplaza al anterior (SE-06). Se aceptan como m\u00e1ximo 5 solicitudes por hora por correo y 5 por direcci\u00f3n IP; la sexta responde 429 `demasiadas-solicitudes` con `Retry-After` en segundos.",
+                "summary": "Solicitar el enlace para restablecer la contrase\u00f1a",
+                "tags": [
+                    "Cuentas"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SolicitudDeRestablecimiento"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": ""
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/contrasena/restablecimiento": {
+            "post": {
+                "operationId": "identity.password-recovery.update",
+                "description": "Ruta p\u00fablica (RF-41). Recibe el `token` del enlace y la `contrasena_nueva`, que debe tener al menos 8 caracteres, con may\u00fascula, min\u00fascula, n\u00famero y signo especial (SE-07); `errores.contrasena_nueva` lista todos los requisitos que faltan y el enlace no se gasta. Un enlace desconocido, vencido (a los 60 minutos) o ya usado responde 422 `datos-invalidos` con `errores.token`, sin decir cu\u00e1l de los tres casos es. Al terminar cierra todas las sesiones y todos los tokens de la cuenta, y la contrase\u00f1a deja de ser temporal. Responde 204.",
+                "summary": "Restablecer la contrase\u00f1a con el enlace",
+                "tags": [
+                    "Cuentas"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RestablecimientoDeContrasena"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                },
+                "security": []
+            }
+        },
         "/cuenta/avisos": {
             "get": {
                 "operationId": "identity.notice-preferences.show",
@@ -7057,6 +7115,23 @@
                 ],
                 "title": "ReservaDetalleDeCliente"
             },
+            "RestablecimientoDeContrasena": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "maxLength": 128
+                    },
+                    "contrasena_nueva": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "token",
+                    "contrasena_nueva"
+                ],
+                "title": "RestablecimientoDeContrasena"
+            },
             "Servicio": {
                 "type": "object",
                 "properties": {
@@ -7159,6 +7234,20 @@
                     "iva"
                 ],
                 "title": "ServicioPublico"
+            },
+            "SolicitudDeRestablecimiento": {
+                "type": "object",
+                "properties": {
+                    "correo": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "correo"
+                ],
+                "title": "SolicitudDeRestablecimiento"
             },
             "TokenDeAcceso": {
                 "type": "object",

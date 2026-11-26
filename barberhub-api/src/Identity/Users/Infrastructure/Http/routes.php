@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Src\Identity\Users\Infrastructure\Http\Controllers\AccountController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\NoticePreferencesController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\PasswordController;
+use Src\Identity\Users\Infrastructure\Http\Controllers\PasswordRecoveryController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\ProfileController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\TokenController;
 
@@ -19,6 +20,9 @@ Route::middleware('auth:sanctum')->controller(ProfileController::class)->group(f
 Route::put('cuenta/contrasena', [PasswordController::class, 'update'])
     ->middleware('auth:sanctum')
     ->name('identity.password.update');
+
+Route::post('contrasena/recuperacion', [PasswordRecoveryController::class, 'store'])->name('identity.password-recovery.store');
+Route::post('contrasena/restablecimiento', [PasswordRecoveryController::class, 'update'])->name('identity.password-recovery.update');
 
 Route::middleware('auth:sanctum')->controller(NoticePreferencesController::class)->group(function (): void {
     Route::get('cuenta/avisos', 'show')->name('identity.notice-preferences.show');
