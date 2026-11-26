@@ -12,6 +12,7 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # Dependencias y compilados
 node_modules/
