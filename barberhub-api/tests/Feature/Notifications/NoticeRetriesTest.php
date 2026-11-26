@@ -45,10 +45,15 @@ final class NoticeRetriesTest extends TestCase
         $this->scopeQueriesTo($this->puraNavaja);
     }
 
-    /** Run what is available in the queue, as `queue:work` does, until it is empty. */
+    /**
+     * Run what is available in the queue, as `queue:work` does, until it is empty.
+     *
+     * The worker runs inside the already loaded test process, so the default `--memory=128` is exceeded in the full
+     * suite and the worker exits with code 12. An explicit, sufficient limit keeps the result independent of the suite.
+     */
     private function work(): void
     {
-        $this->assertSame(0, Artisan::call('queue:work', ['--stop-when-empty' => true, '--sleep' => 0, '--quiet' => true]));
+        $this->assertSame(0, Artisan::call('queue:work', ['--stop-when-empty' => true, '--sleep' => 0, '--memory' => 512, '--quiet' => true]));
     }
 
     /** The email fails every time: the reservation is not undone, the task runs 3 times with the wait of the backoff in between, and then it is recorded as failed. */
