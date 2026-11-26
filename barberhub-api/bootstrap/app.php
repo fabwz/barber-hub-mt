@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Src\Identity\Users\Infrastructure\Http\Middleware\RequireChangedPassword;
 use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 use Src\Shared\Infrastructure\Http\Middleware\EncodeJsonAsUnicode;
@@ -24,6 +25,16 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind the reverse proxy of the deployment (deploy/Caddyfile) the request arrives from the Docker network: only the proxies
+        // listed in TRUSTED_PROXIES (comma-separated IPs or CIDR blocks) may tell the scheme, host and client address.
+        // The default is the private range Docker draws its networks from; an empty value trusts none; "*" trusts any (never in production).
+        $middleware->trustProxies(
+            at: (string) env('TRUSTED_PROXIES', '172.16.0.0/12'),
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
         $middleware->prepend(AssignRequestId::class);
         $middleware->append(EncodeJsonAsUnicode::class);
         $middleware->append(RecordRequestStats::class);
