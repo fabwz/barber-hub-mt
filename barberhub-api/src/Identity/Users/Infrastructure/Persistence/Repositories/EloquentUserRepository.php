@@ -77,10 +77,16 @@ final readonly class EloquentUserRepository implements UserRepository
         return array_values($models->map($this->toDomain(...))->all());
     }
 
-    /** Rebuild the entity from its stored state. */
+    /** Read the preference of the account; it is on until the account turns it off, and an unknown account is on too. */
     public function remindersEnabled(UserId $id): bool
     {
         return UserModel::query()->whereKey($id->value)->value('reminders_enabled') !== false;
+    }
+
+    /** Store the preference of the account and nothing else of it. */
+    public function setRemindersEnabled(UserId $id, bool $enabled): void
+    {
+        UserModel::query()->whereKey($id->value)->update(['reminders_enabled' => $enabled]);
     }
 
     private function toDomain(UserModel $model): User

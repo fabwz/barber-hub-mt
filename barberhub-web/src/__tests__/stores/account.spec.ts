@@ -209,3 +209,80 @@ describe('account store', () => {
     expect(sessionStorage.getItem('barberhub.session')).toContain('nuevo@correo.cr')
   })
 })
+
+describe('account store: notice preferences (RF-47)', () => {
+  it('starts without a value, and loadNotices reads GET /cuenta/avisos', async () => {
+    const { calls } = accountHandler({ reminders: false })
+    const account = useAccountStore()
+    expect(account.noticesStatus).toBe('idle')
+    expect(account.remindersEnabled).toBeNull()
+
+    await account.loadNotices()
+
+    expect(calls.map((call) => call.route)).toEqual(['GET /api/v1/cuenta/avisos'])
+    expect(account.noticesStatus).toBe('ready')
+    expect(account.remindersEnabled).toBe(false)
+  })
+
+  it('a failed read is an error status, not an exception, and can be read again', async () => {
+    let fail = true
+    accountHandler({
+      getNotices: () =>
+        fail
+          ? problem(500, { type: 'error-interno' })
+          : jsonResponse(200, { data: { recordatorios_correo: true } }),
+    })
+    const account = useAccountStore()
+
+    await account.loadNotices()
+    expect(account.noticesStatus).toBe('error')
+
+    fail = false
+    await account.loadNotices()
+    expect(account.noticesStatus).toBe('ready')
+    expect(account.remindersEnabled).toBe(true)
+  })
+
+  it('saveReminders sends only the boolean and keeps the value the API confirms', async () => {
+    const { calls } = accountHandler()
+    const account = useAccountStore()
+
+    await account.saveReminders(false)
+
+    expect(calls).toEqual([
+      { route: 'PUT /api/v1/cuenta/avisos', body: { recordatorios_correo: false } },
+    ])
+    expect(account.remindersEnabled).toBe(false)
+  })
+
+  it('a failed save leaves the previous value and throws the typed error', async () => {
+    accountHandler({
+      reminders: true,
+      putNotices: () =>
+        problem(422, { type: 'datos-invalidos', errores: { recordatorios_correo: ['x'] } }),
+    })
+    const account = useAccountStore()
+    await account.loadNotices()
+
+    await expect(account.saveReminders(false)).rejects.toBeInstanceOf(ApiError)
+
+    expect(account.remindersEnabled).toBe(true)
+  })
+
+  it('clear forgets the preference and drops an answer that arrives after it', async () => {
+    let release: (response: Response) => void = () => {}
+    accountHandler({
+      getNotices: () => new Promise<Response>((resolve) => (release = resolve)),
+    })
+    const account = useAccountStore()
+    const loading = account.loadNotices()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    account.clear()
+    release(jsonResponse(200, { data: { recordatorios_correo: false } }))
+    await loading
+
+    expect(account.noticesStatus).toBe('idle')
+    expect(account.remindersEnabled).toBeNull()
+  })
+})

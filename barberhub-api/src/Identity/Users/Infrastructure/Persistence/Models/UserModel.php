@@ -22,9 +22,10 @@ use Laravel\Sanctum\HasApiTokens;
  * @property bool $must_change_password
  * @property CarbonInterface|null $terms_accepted_at
  * @property CarbonInterface|null $privacy_accepted_at
+ * @property bool $reminders_enabled
  */
 #[Table('users')]
-#[Fillable(['id', 'name', 'email', 'password', 'phone', 'is_active', 'must_change_password', 'terms_accepted_at', 'privacy_accepted_at'])]
+#[Fillable(['id', 'name', 'email', 'password', 'phone', 'is_active', 'must_change_password', 'terms_accepted_at', 'privacy_accepted_at', 'reminders_enabled'])]
 #[Hidden(['password'])]
 final class UserModel extends Authenticatable
 {
@@ -42,6 +43,7 @@ final class UserModel extends Authenticatable
             'must_change_password' => 'boolean',
             'terms_accepted_at' => 'datetime',
             'privacy_accepted_at' => 'datetime',
+            'reminders_enabled' => 'boolean',
         ];
     }
 }

@@ -147,6 +147,10 @@ export const SCREENS: Record<string, Screen> = {
     session: 'client',
     prepare: () => (accountHandler(), '/cuenta/seguridad'),
   },
+  'account-notices': {
+    session: 'client',
+    prepare: () => (accountHandler(), '/cuenta/avisos'),
+  },
   'account-appearance': {
     session: 'client',
     prepare: () => (accountHandler(), '/cuenta/apariencia'),

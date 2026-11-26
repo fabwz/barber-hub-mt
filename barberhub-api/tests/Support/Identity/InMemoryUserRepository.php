@@ -69,6 +69,16 @@ final class InMemoryUserRepository implements UserRepository
         return ! in_array($id->value, $this->remindersOff, true);
     }
 
+    /** Turn the reminders of the account on or off. */
+    public function setRemindersEnabled(UserId $id, bool $enabled): void
+    {
+        $this->remindersOff = array_values(array_filter($this->remindersOff, fn (string $off): bool => $off !== $id->value));
+
+        if (! $enabled) {
+            $this->remindersOff[] = $id->value;
+        }
+    }
+
     /** Turn the reminders of an account off. */
     public function turnRemindersOff(UserId $id): void
     {

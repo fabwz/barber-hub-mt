@@ -106,6 +106,8 @@ final class AccessMatrix
             'GET api/v1/cuenta' => RouteRule::authenticated('Datos de la propia cuenta y si la contraseña es temporal (RF-45, UP-04); es de las pocas rutas que una contraseña temporal permite.'),
             'PUT api/v1/cuenta' => RouteRule::authenticated('Corrige nombre, teléfono y correo de la propia cuenta (RF-45, CL-03): nunca la de otra persona.'),
             'PUT api/v1/cuenta/contrasena' => RouteRule::authenticated('Cambia la contraseña de la propia cuenta (RF-40); es de las pocas rutas que una contraseña temporal permite (UP-04).'),
+            'GET api/v1/cuenta/avisos' => RouteRule::authenticated('Preferencias de avisos de la propia cuenta: si recibe los recordatorios por correo (RF-47, NO-10); es de la persona, de cualquier rol o sin ninguno, y no lleva barbería.'),
+            'PUT api/v1/cuenta/avisos' => RouteRule::authenticated('Activa o desactiva los recordatorios por correo de la propia cuenta (RF-47, NO-10): nunca los de otra persona; la confirmación y los demás avisos no se pueden desactivar.'),
             'DELETE api/v1/tokens' => RouteRule::authenticated('Cierra todas las sesiones de la persona.'),
             'DELETE api/v1/tokens/actual' => RouteRule::authenticated('Cierra la sesión actual de la persona.'),
             'POST api/v1/tiempo-real/autorizacion' => RouteRule::authenticated('Autoriza la suscripción a un canal privado en vivo (RF-36, RF-35): el rol en la barbería sale del nombre del canal y lo decide el caso de uso (dueño: la agenda de la barbería; colaborador: la suya), con 404 sin rol y 403 con rol insuficiente (CO-04, UP-06); el canal de una persona (`usuario.{usuario}`, sus ofertas) es solo de ella, y el de otra, 404.'),
