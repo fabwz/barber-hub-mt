@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
 
 import AgendaRow from '@/components/AgendaRow.vue'
 import BaseButton from '@/components/BaseButton.vue'
@@ -173,11 +173,24 @@ const SELECT_CLASS =
         class="min-w-0 flex-1 px-5 py-6 md:px-8"
         :class="panelOpen ? 'max-md:hidden' : ''"
       >
-        <h1 id="agenda-title" class="text-2xl">{{ permissions.title }}</h1>
-        <p class="mt-1 text-sm text-fg-muted" aria-live="polite">
-          {{ dayLabel
-          }}<template v-if="agenda.status.value === 'ready'"> · {{ countLabel }}</template>
-        </p>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 id="agenda-title" class="text-2xl">{{ permissions.title }}</h1>
+            <p class="mt-1 text-sm text-fg-muted" aria-live="polite">
+              {{ dayLabel
+              }}<template v-if="agenda.status.value === 'ready'"> · {{ countLabel }}</template>
+            </p>
+          </div>
+          <!-- RF-12: only the owner registers a reservation for a person without an account. -->
+          <RouterLink
+            v-if="permissions.canRegisterAssisted && shop"
+            :to="{ name: 'staff-assisted-booking', params: { barberia: shop.id } }"
+            class="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-pill border border-line-strong bg-elevated px-5 text-sm font-medium text-fg no-underline transition-colors duration-150 ease-out hover:bg-btn-hover"
+          >
+            <Plus :size="16" :stroke-width="1.5" aria-hidden="true" />
+            Reserva asistida
+          </RouterLink>
+        </div>
 
         <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
           <LiveIndicator :state="live.state.value" />
