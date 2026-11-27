@@ -258,7 +258,7 @@ final class PasswordResetTest extends TestCase
     public function test_nothing_secret_reaches_the_log(): void
     {
         $token = $this->requestLink();
-        $this->reset('b'.substr($token, 1), self::NEW)->assertUnprocessable();
+        $this->reset($this->differentToken($token), self::NEW)->assertUnprocessable();
         $this->reset($token, 'debil')->assertUnprocessable();
         $this->reset($token, self::NEW)->assertNoContent();
         $this->reset($token, self::NEW)->assertUnprocessable();
@@ -282,6 +282,12 @@ final class PasswordResetTest extends TestCase
         $this->assertStringNotContainsString('ana@barberhub', $payload);
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
         Mail::assertNothingSent();
+    }
+
+    /** A token of the same shape that is never the given one: its first character is always replaced by a different one. */
+    private function differentToken(string $token): string
+    {
+        return ($token[0] === 'b' ? 'c' : 'b').substr($token, 1);
     }
 
     /** Ask for the link and answer the token that went in the email. */
