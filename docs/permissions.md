@@ -38,6 +38,8 @@ La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin
 | `POST api/v1/tokens` | Inicio de sesión: entrega el token; limita los intentos (SE-05). |
 | `POST api/v1/contrasena/recuperacion` | Solicitud del enlace para restablecer la contraseña (RF-41): todavía no hay sesión; responde igual exista o no el correo y limita 5 solicitudes por hora por correo y por dirección (SE-06). |
 | `POST api/v1/contrasena/restablecimiento` | Restablece la contraseña con el enlace del correo (RF-41): todavía no hay sesión; el token es de un solo uso y vence a los 60 minutos (SE-06). |
+| `POST api/v1/invitaciones/consulta` | Dice qué barbería invita y si el correo ya tiene cuenta (RF-06): todavía no hay sesión; solo quien tiene el enlace del correo la usa y no lo gasta. La barbería sale del propio enlace, que la base de datos localiza con `locate_invitation_of_link`, nunca del cuerpo. Un enlace desconocido, vencido, usado o cancelado responde igual (UP-04). 10 por minuto por dirección. |
+| `POST api/v1/invitaciones/aceptacion` | Acepta la invitación de un colaborador (RF-06): todavía no hay sesión; el token es de un solo uso y vence a los 7 días (UP-04). Crea la cuenta con la contraseña que la persona eligió (SE-07) o, si el correo ya tiene cuenta, le asigna el rol sin cambiar su contraseña; un correo con rol en esa barbería recibe 409 (UP-07). 10 por minuto por dirección. |
 | `GET api/v1/enlaces/{enlace}` | Portada de la barbería por su enlace público (MT-07, RD-18): datos públicos (MT-09). |
 | `GET api/v1/directorio` | Directorio de las barberías que eligieron aparecer (RF-54, MT-10): solo nombre, ciudad, logo y enlace (MT-09). |
 | `GET api/v1/barberias/{barberia}/servicios` | Servicios activos de una barbería antes de tener sesión (RD-18). |
@@ -135,6 +137,9 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `PATCH api/v1/barberias/{barberia}/administracion/colaboradores/{colaborador}` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PUT api/v1/barberias/{barberia}/administracion/colaboradores/{colaborador}/servicios` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `PUT api/v1/barberias/{barberia}/administracion/colaboradores/{colaborador}/horario` | Rol | dueño | Administración de la barbería: solo su dueño. |
+| `GET api/v1/barberias/{barberia}/administracion/invitaciones` | Rol | dueño | Invitaciones de colaboradores: solo el dueño las ve, las envía y las cancela (RF-06, UP-03, UP-04). |
+| `POST api/v1/barberias/{barberia}/administracion/invitaciones` | Rol | dueño | Invitaciones de colaboradores: solo el dueño las ve, las envía y las cancela (RF-06, UP-03, UP-04). |
+| `DELETE api/v1/barberias/{barberia}/administracion/invitaciones/{invitacion}` | Rol | dueño | Invitaciones de colaboradores: solo el dueño las ve, las envía y las cancela (RF-06, UP-03, UP-04). |
 | `GET api/v1/barberias/{barberia}/administracion/bonos` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
 | `POST api/v1/barberias/{barberia}/administracion/bonos` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
 | `GET api/v1/barberias/{barberia}/administracion/bonos/{bono}` | Rol | dueño | Bonos de la barbería: solo su dueño (UP-03, RF-26). |
