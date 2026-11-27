@@ -8,6 +8,7 @@ declare(strict_types=1);
  */
 return [
     'greeting' => 'Hola, :name.',
+    'greeting_anonymous' => 'Hola.',
     'footer' => 'Este mensaje fue enviado por BarberHub en nombre de :barbershop.',
 
     'confirmation' => [
@@ -42,6 +43,14 @@ return [
         'ignore' => 'Si usted no hizo la solicitud, ignore este mensaje: su contraseña no cambia.',
         'action_label' => 'Crear nueva contraseña',
         'footer' => 'Este mensaje fue enviado por BarberHub.',
+    ],
+
+    'collaborator_invitation' => [
+        'subject' => ':barbershop le invita a unirse a su equipo en BarberHub',
+        'line' => ':barbershop le invitó a unirse a su equipo en BarberHub. Cree su contraseña para activar su cuenta.',
+        'validity' => 'El enlace es válido por :days días y solo se puede usar una vez.',
+        'ignore' => 'Si usted no esperaba esta invitación, ignore este mensaje: no se crea ninguna cuenta.',
+        'action_label' => 'Crear mi contraseña',
     ],
 
     'reminder' => [
