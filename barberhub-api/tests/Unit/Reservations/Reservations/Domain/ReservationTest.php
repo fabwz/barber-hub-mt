@@ -50,7 +50,7 @@ final class ReservationTest extends TestCase
         $this->assertSame(ReservationStatus::Temporary, $reservation->status);
         $this->assertSame(self::COLLABORATOR_ID, $reservation->collaboratorId->value);
         $this->assertSame(self::SERVICE_ID, $reservation->serviceId->value);
-        $this->assertSame(self::CUSTOMER_ID, $reservation->customerMembershipId->value);
+        $this->assertSame(self::CUSTOMER_ID, $reservation->customerMembershipId?->value);
         $this->assertSame(0, $reservation->rescheduleCount);
     }
 

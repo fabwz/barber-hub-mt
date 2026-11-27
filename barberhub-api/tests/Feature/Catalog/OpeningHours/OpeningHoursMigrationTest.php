@@ -63,6 +63,11 @@ final class OpeningHoursMigrationTest extends TestCase
     // The reminders point at the reservations, so they go first of all when rolling back and last when applying again.
     private const string RESERVATION_REMINDERS = '2026_11_24_110000_create_reservation_reminders_table';
 
+    // The reservations point at the assisted clients: the column goes before them (and the table of clients after it) when rolling back, and the other way round when applying again.
+    private const string ASSISTED_CLIENTS = '2026_11_28_100000_create_assisted_clients_table';
+
+    private const string ASSISTED_RESERVATIONS = '2026_11_28_110000_add_assisted_client_to_reservations_table';
+
     /** Rolling back drops both tables, the range type and the extension; applying again brings them back. */
     public function test_migrations_roll_back_and_apply_again_without_leftovers(): void
     {
@@ -70,6 +75,8 @@ final class OpeningHoursMigrationTest extends TestCase
         $schema = Schema::connection('pgsql_admin');
 
         $this->asOwner(function (): void {
+            $this->apply(self::ASSISTED_RESERVATIONS, 'down');
+            $this->apply(self::ASSISTED_CLIENTS, 'down');
             $this->apply(self::RESERVATION_REMINDERS, 'down');
             $this->apply(self::ABSENCES, 'down');
             $this->apply(self::OFFER_RESERVATION, 'down');
@@ -112,6 +119,8 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::WAITLIST_OFFERS, 'up');
             $this->apply(self::OFFER_RESERVATION, 'up');
             $this->apply(self::RESERVATION_REMINDERS, 'up');
+            $this->apply(self::ASSISTED_CLIENTS, 'up');
+            $this->apply(self::ASSISTED_RESERVATIONS, 'up');
         });
 
         $this->assertTrue($schema->hasTable('opening_hours'));
@@ -126,6 +135,8 @@ final class OpeningHoursMigrationTest extends TestCase
         $admin = DB::connection('pgsql_admin');
 
         $this->asOwner(function () use ($admin): void {
+            $this->apply(self::ASSISTED_RESERVATIONS, 'down');
+            $this->apply(self::ASSISTED_CLIENTS, 'down');
             $this->apply(self::RESERVATION_REMINDERS, 'down');
             $this->apply(self::ABSENCES, 'down');
             $this->apply(self::OFFER_RESERVATION, 'down');
@@ -162,6 +173,8 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::WAITLIST_OFFERS, 'up');
             $this->apply(self::OFFER_RESERVATION, 'up');
             $this->apply(self::RESERVATION_REMINDERS, 'up');
+            $this->apply(self::ASSISTED_CLIENTS, 'up');
+            $this->apply(self::ASSISTED_RESERVATIONS, 'up');
         });
 
         $this->assertSame(1, $admin->table('pg_type')->where('typname', 'timerange')->count());

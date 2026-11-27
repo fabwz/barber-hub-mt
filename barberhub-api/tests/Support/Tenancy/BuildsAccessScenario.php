@@ -239,7 +239,7 @@ trait BuildsAccessScenario
         foreach ([$this->puraNavaja, $this->fadeLab] as $barbershopId) {
             $this->scopeQueriesTo($barbershopId);
 
-            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'collaborator_absences', 'opening_hours', 'waitlist_entries', 'waitlist_offers'] as $table) {
+            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'collaborator_absences', 'assisted_clients', 'opening_hours', 'waitlist_entries', 'waitlist_offers'] as $table) {
                 $fingerprint["{$barbershopId} {$table}"] = md5((string) json_encode(DB::table($table)->orderBy('id')->get()));
             }
         }

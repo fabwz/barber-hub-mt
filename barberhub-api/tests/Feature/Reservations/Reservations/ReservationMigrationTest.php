@@ -44,6 +44,11 @@ final class ReservationMigrationTest extends TestCase
     // The reminders point at the reservations, so they go first of all when rolling back and last when applying again.
     private const string RESERVATION_REMINDERS = '2026_11_24_110000_create_reservation_reminders_table';
 
+    // The assisted clients of the reservations (#102): their column goes before the reservations when rolling back and after them when applying again.
+    private const string ASSISTED_CLIENTS = '2026_11_28_100000_create_assisted_clients_table';
+
+    private const string ASSISTED_RESERVATIONS = '2026_11_28_110000_add_assisted_client_to_reservations_table';
+
     /** Rolling back drops both tables with their constraints and policies and keeps the extension; applying again brings them back. */
     public function test_migration_rolls_back_and_applies_again_without_leftovers(): void
     {
@@ -60,10 +65,14 @@ final class ReservationMigrationTest extends TestCase
         $reservationVoucher = require base_path('database/migrations/'.self::RESERVATION_VOUCHER.'.php');
         $offerReservation = require base_path('database/migrations/'.self::OFFER_RESERVATION.'.php');
         $reminders = require base_path('database/migrations/'.self::RESERVATION_REMINDERS.'.php');
+        $assistedClients = require base_path('database/migrations/'.self::ASSISTED_CLIENTS.'.php');
+        $assistedReservations = require base_path('database/migrations/'.self::ASSISTED_RESERVATIONS.'.php');
         $default = DB::getDefaultConnection();
         DB::setDefaultConnection('pgsql_admin');
 
         try {
+            $assistedReservations->down();
+            $assistedClients->down();
             $reminders->down();
             $offerReservation->down();
             $reservationVoucher->down();
@@ -93,6 +102,8 @@ final class ReservationMigrationTest extends TestCase
             $reservationVoucher->up();
             $offerReservation->up();
             $reminders->up();
+            $assistedClients->up();
+            $assistedReservations->up();
 
             $this->assertTrue($schema->hasTable('reservations'));
             $this->assertTrue($schema->hasTable('reservation_status_history'));

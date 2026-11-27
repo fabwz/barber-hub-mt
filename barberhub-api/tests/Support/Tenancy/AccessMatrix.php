@@ -133,6 +133,8 @@ final class AccessMatrix
             "DELETE {$base}/filas/{fila}" => RouteRule::firstUse(self::CUSTOMER_OWN, 'Solo el cliente sale de su propia fila; la de otra persona, la inexistente y quien no tiene rol responden 404 (CL-04); dueño y colaborador reciben 403.'),
 
             // Reservations.
+            "POST {$base}/reservas/asistida" => $admin('Reserva asistida (RF-12, UP-03): solo el dueño registra una reserva para una persona sin cuenta; colaborador y cliente reciben 403.'),
+            "GET {$base}/clientes-asistidos" => $admin('Búsqueda de clientes asistidos (RF-12, CL-06): solo el dueño, solo los de su barbería.'),
             "GET {$base}/reservas" => RouteRule::owned(['owner', 'collaborator'], self::STAFF_AGENDA, 'El dueño ve la agenda de todos; un colaborador solo la suya (CO-04).'),
             "GET {$base}/reservas/{reserva}" => RouteRule::owned(self::ALL_ROLES, self::RESERVATION_DETAIL, 'Cliente: solo las suyas; colaborador: solo las de su agenda; dueño: cualquiera de su barbería (UP-02, CO-04, CL-04).'),
             "PATCH {$base}/reservas/{reserva}" => RouteRule::owned(['owner', 'customer'], self::OWNER_OR_CUSTOMER_OWN, 'El cliente reprograma la suya; el dueño, cualquiera de su barbería.'),

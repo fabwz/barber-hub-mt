@@ -331,7 +331,7 @@ final class CreateReservationTest extends TestCase
         $this->assertCount(1, $announced);
         $this->assertSame(self::BARBERSHOP_ID, $announced[0]->barbershopId);
         $this->assertSame($reservation->id->value, $announced[0]->reservationId);
-        $this->assertSame($reservation->customerMembershipId->value, $announced[0]->customerMembershipId);
+        $this->assertSame($reservation->customerMembershipId?->value, $announced[0]->customerMembershipId);
         $this->assertSame(self::SERVICE_ID, $announced[0]->serviceId);
         $this->assertEquals(self::at('2030-03-06 10:00'), $announced[0]->startsAt);
         $this->assertEquals(self::at('2030-03-06 10:45'), $announced[0]->endsAt);
@@ -371,7 +371,7 @@ final class CreateReservationTest extends TestCase
         $membership = $this->memberships->findByUserAndBarbershop(new UserId(self::ANA_ID), new BarbershopId(self::BARBERSHOP_ID));
         $this->assertNotNull($membership);
         $this->assertSame(Role::Customer, $membership->role);
-        $this->assertSame($membership->id->value, $reservation->customerMembershipId->value);
+        $this->assertSame($membership->id->value, $reservation->customerMembershipId?->value);
     }
 
     /** Without a collaborator the candidates are locked in the order of their identifiers, then the assignment is asked, and the reservation is the assigned one's (DI-04, RE-01). */

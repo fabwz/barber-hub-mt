@@ -6,9 +6,11 @@ namespace Tests\Support\Notifications;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Src\Notifications\Notices\Application\Contracts\AssistedRecipients;
 use Src\Notifications\Notices\Application\Contracts\BarbershopBranding;
 use Src\Notifications\Notices\Application\Contracts\CatalogNames;
 use Src\Notifications\Notices\Application\Contracts\Recipients;
+use Src\Notifications\Notices\Application\CustomerRecipient;
 use Src\Notifications\Notices\Application\DTOs\Branding;
 use Src\Notifications\Notices\Application\DTOs\Recipient;
 use Src\Notifications\Notices\Application\DTOs\ReservationFacts;
@@ -61,6 +63,13 @@ trait BuildsNoticeScenario
                 return $membershipId === 'membership-ana' ? new Recipient('Ana Rojas', 'ana@barberhub.test') : null;
             }
         };
+        $assisted = new class implements AssistedRecipients
+        {
+            public function ofAssistedClient(string $assistedClientId): ?Recipient
+            {
+                return $assistedClientId === 'assisted-rosa' ? new Recipient('Rosa Campos', 'rosa@barberhub.test') : null;
+            }
+        };
         $branding = new class implements BarbershopBranding
         {
             public function current(): Branding
@@ -81,8 +90,9 @@ trait BuildsNoticeScenario
             }
         };
 
-        $composer = new NoticeComposer($recipients, $branding, $names);
-        $this->scheduleReminders = new ScheduleReminders($this->reminders, $this->jobs, $recipients, $this->preferences);
+        $recipient = new CustomerRecipient($recipients, $assisted);
+        $composer = new NoticeComposer($recipient, $branding, $names);
+        $this->scheduleReminders = new ScheduleReminders($this->reminders, $this->jobs, $recipient, $this->preferences);
         $this->sendReminder = new SendReminder($this->reservations, $this->preferences, $composer, $this->reminders, $this->channel);
         $this->sendNotice = new SendNotice($composer, $this->channel);
     }
@@ -94,8 +104,8 @@ trait BuildsNoticeScenario
     }
 
     /** Tell the lookup about a confirmed (or not) reservation that starts at the instant. */
-    private function reservation(DateTimeImmutable $startsAt, bool $confirmed = true, string $membership = self::ANA, string $id = self::RESERVATION): void
+    private function reservation(DateTimeImmutable $startsAt, bool $confirmed = true, ?string $membership = self::ANA, string $id = self::RESERVATION, ?string $assistedClient = null): void
     {
-        $this->reservations->items[$id] = new ReservationFacts($confirmed, $startsAt, $startsAt->modify('+45 minutes'), $membership, 'service-1', 'collaborator-1');
+        $this->reservations->items[$id] = new ReservationFacts($confirmed, $startsAt, $startsAt->modify('+45 minutes'), $membership, 'service-1', 'collaborator-1', $assistedClient);
     }
 }

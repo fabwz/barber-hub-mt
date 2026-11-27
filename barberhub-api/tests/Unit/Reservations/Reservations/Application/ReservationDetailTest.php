@@ -9,6 +9,7 @@ use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 use Src\Payments\Payments\Application\DTOs\ChargePolicy;
 use Src\Reservations\Reservations\Application\AttachNames;
+use Src\Reservations\Reservations\Application\Contracts\AssistedCustomers;
 use Src\Reservations\Reservations\Application\Contracts\AuthorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
@@ -190,7 +191,29 @@ final class ReservationDetailTest extends TestCase
             },
             $this->collaborators(),
             $this->customers(),
+            $this->assistedCustomers(),
         );
+    }
+
+    private function assistedCustomers(): AssistedCustomers
+    {
+        return new class implements AssistedCustomers
+        {
+            public function register(string $name, string $phone, ?string $email): string
+            {
+                return 'assisted-1';
+            }
+
+            public function exists(string $assistedClientId): bool
+            {
+                return true;
+            }
+
+            public function contactsOf(array $assistedClientIds): array
+            {
+                return [];
+            }
+        };
     }
 
     private function collaborators(): CollaboratorDirectory
