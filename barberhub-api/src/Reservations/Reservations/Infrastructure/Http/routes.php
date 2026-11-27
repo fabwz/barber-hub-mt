@@ -11,6 +11,13 @@ Route::post('barberias/{barberia}/reservas', [ReservationController::class, 'sto
     ->name('reservations.reservations.store')
     ->whereUuid('barberia');
 
+// The owner registers a reservation for a person without an account (RF-12, UP-03). Only the owner: a collaborator or a customer gets 403 and
+// a person without a role in the barbershop, the usual 404 (UP-06). The barbershop never comes from the body (RD-18).
+Route::post('barberias/{barberia}/reservas/asistida', [ReservationController::class, 'storeAssisted'])
+    ->middleware(['auth:sanctum', 'barbershop', 'role:owner'])
+    ->name('reservations.reservations.store-assisted')
+    ->whereUuid('barberia');
+
 // A customer asks for a proposal from a phrase (RF-37). Like booking, it is an exception of RD-18: a person without a role goes
 // through and the owner or a collaborator of the barbershop gets 403. It creates nothing and calls an external provider, so each
 // person may ask 10 times a minute; the limiter comes after the barbershop so a request refused there costs no turn. It is

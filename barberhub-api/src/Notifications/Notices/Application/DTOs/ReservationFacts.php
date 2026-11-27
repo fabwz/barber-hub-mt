@@ -13,8 +13,9 @@ final readonly class ReservationFacts
         public bool $confirmed,
         public DateTimeImmutable $startsAt,
         public DateTimeImmutable $endsAt,
-        public string $customerMembershipId,
+        public ?string $customerMembershipId,
         public string $serviceId,
         public string $collaboratorId,
+        public ?string $assistedClientId = null,
     ) {}
 }

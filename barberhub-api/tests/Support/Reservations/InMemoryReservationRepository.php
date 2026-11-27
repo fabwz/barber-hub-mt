@@ -59,7 +59,7 @@ final class InMemoryReservationRepository implements ReservationRepository
         return array_any(
             $this->reservations,
             fn (Reservation $reservation): bool => ($ignoring === null || $reservation->id->value !== $ignoring->value)
-                && $reservation->customerMembershipId->equals($customer)
+                && $reservation->customerMembershipId?->equals($customer) === true
                 && $reservation->status === ReservationStatus::Confirmed
                 && $reservation->interval->overlaps($interval),
         );
@@ -100,7 +100,7 @@ final class InMemoryReservationRepository implements ReservationRepository
         $window = $filter->window();
         $matches = array_values(array_filter(
             $this->reservations,
-            fn (Reservation $reservation): bool => ($filter->customer === null || $reservation->customerMembershipId->equals($filter->customer))
+            fn (Reservation $reservation): bool => ($filter->customer === null || $reservation->customerMembershipId?->equals($filter->customer) === true)
                 && ($filter->collaborator === null || $reservation->collaboratorId->equals($filter->collaborator))
                 && ($filter->status === null || $reservation->statusAt($filter->now ?? new DateTimeImmutable('@0')) === $filter->status)
                 && ($window === null || ($reservation->interval->start >= $window->start && $reservation->interval->start < $window->end))

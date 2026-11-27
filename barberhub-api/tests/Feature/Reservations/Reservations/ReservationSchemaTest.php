@@ -65,7 +65,7 @@ final class ReservationSchemaTest extends TestCase
 
         $this->assertEqualsCanonicalizing([
             'id', 'barbershop_id', 'collaborator_id', 'service_id', 'customer_membership_id', 'status', 'starts_at', 'ends_at',
-            'blocked_until', 'price', 'duration_minutes', 'cancellation_deadline_hours', 'reschedule_count', 'expires_at', 'purchased_voucher_id', 'created_at', 'updated_at',
+            'blocked_until', 'price', 'duration_minutes', 'cancellation_deadline_hours', 'reschedule_count', 'expires_at', 'purchased_voucher_id', 'assisted_client_id', 'created_by_membership_id', 'created_at', 'updated_at',
         ], $schema->getColumnListing('reservations'));
         $this->assertEqualsCanonicalizing(
             ['id', 'barbershop_id', 'reservation_id', 'from_status', 'to_status', 'changed_by_user_id', 'changed_at'],

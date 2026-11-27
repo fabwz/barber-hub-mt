@@ -90,7 +90,7 @@ final readonly class RescheduleReservation
                     throw SlotUnavailableException::create();
                 }
 
-                if ($this->reservations->hasConfirmedOverlapping($reservation->customerMembershipId, $reservation->interval, $id)) {
+                if ($reservation->customerMembershipId !== null && $this->reservations->hasConfirmedOverlapping($reservation->customerMembershipId, $reservation->interval, $id)) {
                     throw OverlappingReservationException::create();
                 }
 
@@ -99,7 +99,7 @@ final readonly class RescheduleReservation
                 $this->events->publish(new ReservationRescheduled(
                     $this->context->current()->value,
                     $reservation->id->value,
-                    $reservation->customerMembershipId->value,
+                    $reservation->customerMembershipId?->value,
                     $service,
                     $reservation->collaboratorId->value,
                     $releasedCollaborator,
@@ -107,6 +107,7 @@ final readonly class RescheduleReservation
                     $reservation->interval->start,
                     $reservation->interval->end,
                     $isOwner,
+                    $reservation->assistedClientId?->value,
                 ));
 
                 return $reservation;
@@ -121,6 +122,6 @@ final readonly class RescheduleReservation
     {
         $membershipId = $this->customers->find($userId);
 
-        return $membershipId !== null && $reservation->customerMembershipId->value === $membershipId;
+        return $membershipId !== null && $reservation->customerMembershipId?->value === $membershipId;
     }
 }

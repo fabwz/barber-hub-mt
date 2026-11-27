@@ -153,7 +153,7 @@ final class ListReservationsTest extends TestCase
         $this->assertStringNotContainsString($this->fadeLabReservation, (string) $response->getContent());
     }
 
-    /** The staff listing carries the name of the customer and no way to reach them: no email, no phone (CO-04). */
+    /** The staff listing carries the name of the customer and no way to reach them: no email, and a phone only for an assisted client (always null here, CO-04, RF-12). */
     public function test_the_listing_does_not_expose_contact_data(): void
     {
         $this->actAs($this->owner);
@@ -164,7 +164,7 @@ final class ListReservationsTest extends TestCase
         $keys = array_keys($response->json('data.0'));
         sort($keys);
         $this->assertSame(
-            ['barbero', 'barbero_nombre', 'cliente_nombre', 'duracion_minutos', 'estado', 'expira_en', 'fin', 'id', 'inicio', 'precio', 'servicio', 'servicio_nombre'],
+            ['asistida', 'barbero', 'barbero_nombre', 'cliente_nombre', 'cliente_telefono', 'duracion_minutos', 'estado', 'expira_en', 'fin', 'id', 'inicio', 'precio', 'servicio', 'servicio_nombre'],
             $keys,
         );
     }

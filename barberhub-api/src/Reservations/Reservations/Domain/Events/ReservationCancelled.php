@@ -16,11 +16,12 @@ final readonly class ReservationCancelled
     public function __construct(
         public string $barbershopId,
         public string $reservationId,
-        public string $customerMembershipId,
+        public ?string $customerMembershipId,
         public string $serviceId,
         public string $collaboratorId,
         public DateTimeImmutable $startsAt,
         public DateTimeImmutable $endsAt,
         public bool $byBarbershop,
+        public ?string $assistedClientId = null,
     ) {}
 }

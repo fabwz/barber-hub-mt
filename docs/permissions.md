@@ -103,6 +103,8 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 
 | Ruta | Comprobación | Roles | Nota |
 | --- | --- | --- | --- |
+| `POST api/v1/barberias/{barberia}/reservas/asistida` | Rol | dueño | Reserva asistida (RF-12, UP-03): solo el dueño registra una reserva para una persona sin cuenta; colaborador y cliente reciben 403 `prohibido`; quien no tiene rol en la barbería, 404. Es una operación del dueño en su propia barbería: la barbería sale de la ruta y el cliente asistido, que existe solo en ella (CL-06), de la barbería del contexto; el identificador de uno de otra barbería responde 404. |
+| `GET api/v1/barberias/{barberia}/clientes-asistidos` | Rol | dueño | Búsqueda de clientes asistidos (RF-12, CL-06): solo el dueño y solo los de su barbería. El colaborador y el cliente reciben 403; quien no tiene rol en la barbería, 404. |
 | `GET api/v1/barberias/{barberia}/reservas` | Rol y propiedad | dueño, colaborador | El dueño ve la agenda de todos; un colaborador solo la suya (CO-04). |
 | `GET api/v1/barberias/{barberia}/reservas/{reserva}` | Rol y propiedad | dueño, colaborador, cliente | Cliente: solo las suyas; colaborador: solo las de su agenda; dueño: cualquiera de su barbería (UP-02, CO-04, CL-04). |
 | `PATCH api/v1/barberias/{barberia}/reservas/{reserva}` | Rol y propiedad | dueño, cliente | El cliente reprograma la suya; el dueño, cualquiera de su barbería. |

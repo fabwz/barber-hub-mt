@@ -14,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 use Src\Reservations\Reservations\Application\Contracts\ActiveCollaboratorNames;
 use Src\Reservations\Reservations\Application\Contracts\ActiveServiceNames;
 use Src\Reservations\Reservations\Application\Contracts\AnyAvailableCollaborators;
+use Src\Reservations\Reservations\Application\Contracts\AssistedCustomers;
 use Src\Reservations\Reservations\Application\Contracts\AttendedServiceTotals;
 use Src\Reservations\Reservations\Application\Contracts\AuthorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\BarbershopPresence;
@@ -37,6 +38,7 @@ use Src\Reservations\Reservations\Application\Contracts\ReservationExpiries;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExtractor;
 use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
+use Src\Reservations\Reservations\Application\Contracts\StaffMemberships;
 use Src\Reservations\Reservations\Application\Exceptions\ExtractorMisconfiguredException;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Infrastructure\Accounts\UsersAuthorDirectory;
@@ -44,6 +46,7 @@ use Src\Reservations\Reservations\Infrastructure\Ai\AiCircuitStore;
 use Src\Reservations\Reservations\Infrastructure\Ai\CircuitBreakerReservationExtractor;
 use Src\Reservations\Reservations\Infrastructure\Ai\GeminiReservationExtractor;
 use Src\Reservations\Reservations\Infrastructure\Ai\ReservationAssistantStatus;
+use Src\Reservations\Reservations\Infrastructure\AssistedClients\AssistedClientsAssistedCustomers;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityAnyAvailableCollaborators;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityFreeSlots;
 use Src\Reservations\Reservations\Infrastructure\Availability\AvailabilityProposalAvailability;
@@ -57,6 +60,7 @@ use Src\Reservations\Reservations\Infrastructure\Collaborators\CollaboratorsProp
 use Src\Reservations\Reservations\Infrastructure\Console\ExtractReservationCommand;
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerDirectory;
 use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsCustomerMemberships;
+use Src\Reservations\Reservations\Infrastructure\Memberships\MembershipsStaffMemberships;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentAmounts;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsPaymentChannels;
 use Src\Reservations\Reservations\Infrastructure\Payments\PaymentsReservationDeposits;
@@ -96,6 +100,8 @@ final class ReservationsServiceProvider extends ServiceProvider
         AnyAvailableCollaborators::class => AvailabilityAnyAvailableCollaborators::class,
         CollaboratorDirectory::class => CollaboratorsCollaboratorDirectory::class,
         CustomerDirectory::class => MembershipsCustomerDirectory::class,
+        StaffMemberships::class => MembershipsStaffMemberships::class,
+        AssistedCustomers::class => AssistedClientsAssistedCustomers::class,
         ServiceNames::class => ServicesServiceNames::class,
         AuthorDirectory::class => UsersAuthorDirectory::class,
         BarbershopPresence::class => BarbershopsBarbershopPresence::class,

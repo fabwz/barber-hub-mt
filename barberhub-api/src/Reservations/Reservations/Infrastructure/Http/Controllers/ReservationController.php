@@ -19,13 +19,16 @@ use Src\Reservations\Reservations\Application\UseCases\GetStaffReservation;
 use Src\Reservations\Reservations\Application\UseCases\ListCustomerReservations;
 use Src\Reservations\Reservations\Application\UseCases\ListStaffReservations;
 use Src\Reservations\Reservations\Application\UseCases\ProposeReservation;
+use Src\Reservations\Reservations\Application\UseCases\RegisterAssistedReservation;
 use Src\Reservations\Reservations\Application\UseCases\RescheduleReservation;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CloseReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\CreateReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListMyReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ListReservationsRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\ProposeReservationRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Requests\RegisterAssistedReservationRequest;
 use Src\Reservations\Reservations\Infrastructure\Http\Requests\RescheduleReservationRequest;
+use Src\Reservations\Reservations\Infrastructure\Http\Resources\AssistedReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CancelledReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CreatedReservationResource;
 use Src\Reservations\Reservations\Infrastructure\Http\Resources\CustomerReservationDetailResource;
@@ -55,6 +58,18 @@ final readonly class ReservationController
         $reservation = $createReservation->execute($request->toCommand(), $now);
 
         return new CreatedReservationResource($reservation, $quote->one($reservation, $now))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /** Register a reservation for a person without an account. */
+    #[Endpoint(
+        title: 'Registrar una reserva asistida',
+        description: 'El dueño registra una reserva para una persona que llega o llama y no tiene cuenta (RF-12). La persona es `cliente_asistido`, el identificador de uno ya registrado en la barbería (de `GET /clientes-asistidos`), o los datos de uno nuevo: `cliente_nombre` y `cliente_telefono` obligatorios y `cliente_correo` opcional; si se manda `cliente_asistido`, los `cliente_*` se ignoran. El cliente asistido existe solo en su barbería (CL-06): el identificador de uno de otra barbería responde 404 `no-encontrado`. `servicio`, `barbero` e `inicio` son los de un espacio de la consulta de disponibilidad (RF-10); aquí el `barbero` es obligatorio. Ocupa el espacio igual que una reserva en línea: en la misma transacción bloquea al barbero, vuelve a validar la disponibilidad y la exclusión de la base de datos es la segunda barrera, así que una reserva asistida y una en línea por el mismo espacio dejan exactamente una (RE-01). No hay cobro en línea: la reserva queda `confirmada` en la misma operación (RE-07), con la creación y la confirmación en su historial y el dueño que la registró como autor, y guarda el precio, la duración y el plazo de cancelación vigentes. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` con hasta 3 `alternativas` del mismo día, barbero y servicio, y no queda ningún cliente asistido creado. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`; un dato mal escrito, 422 `datos-invalidos` con el campo. Sin correo el cliente no recibe avisos ni recordatorios; con correo recibe la confirmación y los recordatorios como cualquier cliente. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`. La agenda y el detalle del dueño traen `asistida` y `cliente_telefono`; el colaborador ve el nombre pero no el teléfono (CO-04). Reprogramar, cancelar y cerrar la reserva asistida se hacen con las mismas acciones de cualquier reserva.',
+    )]
+    public function storeAssisted(RegisterAssistedReservationRequest $request, RegisterAssistedReservation $registerAssisted): JsonResponse
+    {
+        return new AssistedReservationResource($registerAssisted->execute($request->toCommand(), $this->clock->now()))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }

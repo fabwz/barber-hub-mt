@@ -11,9 +11,11 @@ use Src\Reservations\Reservations\Domain\Exceptions\RescheduleDeadlineExpiredExc
 use Src\Reservations\Reservations\Domain\Exceptions\RescheduleLimitReachedException;
 use Src\Reservations\Reservations\Domain\Exceptions\ReservationNotYetDueException;
 use Src\Reservations\Reservations\Domain\Exceptions\TransitionNotAllowedException;
+use Src\Reservations\Reservations\Domain\ValueObjects\AssistedClientId;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CancellationClass;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
+use Src\Reservations\Reservations\Domain\ValueObjects\CreatorMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -48,7 +50,9 @@ final class Reservation
         public readonly ReservationId $id,
         public private(set) CollaboratorId $collaboratorId,
         public readonly ServiceId $serviceId,
-        public readonly CustomerMembershipId $customerMembershipId,
+        public readonly ?CustomerMembershipId $customerMembershipId,
+        public readonly ?AssistedClientId $assistedClientId,
+        public readonly ?CreatorMembershipId $createdByMembershipId,
         public private(set) TimeInterval $interval,
         public private(set) DateTimeImmutable $blockedUntil,
         public readonly Money $price,
@@ -59,7 +63,11 @@ final class Reservation
         public private(set) ?DateTimeImmutable $expiresAt,
         public private(set) ?PurchasedVoucherId $purchasedVoucherId,
         public private(set) array $pendingChanges,
-    ) {}
+    ) {
+        if (($customerMembershipId === null) === ($assistedClientId === null)) {
+            throw new LogicException('A reservation belongs to a customer role or to an assisted client, never to both or to none.');
+        }
+    }
 
     /**
      * Create a reservation. It starts temporary (RE-05); one that needs no payment is confirmed right after (RE-07).
@@ -81,6 +89,44 @@ final class Reservation
         DateTimeImmutable $at,
         ?DateTimeImmutable $payUntil = null,
     ): self {
+        return self::born($id, $collaboratorId, $serviceId, $customerMembershipId, null, null, $startsAt, $price, $duration, $cancellationDeadlineHours, $author, $at, $payUntil);
+    }
+
+    /**
+     * Create a reservation the owner registers for an assisted client, who has no account (RF-12, CL-06). It is born like any other and the
+     * caller confirms it at once, because it asks for no online payment (RE-07); the owner who registered it stays on record.
+     */
+    public static function createAssisted(
+        ReservationId $id,
+        CollaboratorId $collaboratorId,
+        ServiceId $serviceId,
+        AssistedClientId $assistedClientId,
+        CreatorMembershipId $createdBy,
+        DateTimeImmutable $startsAt,
+        Money $price,
+        Duration $duration,
+        int $cancellationDeadlineHours,
+        Author $author,
+        DateTimeImmutable $at,
+    ): self {
+        return self::born($id, $collaboratorId, $serviceId, null, $assistedClientId, $createdBy, $startsAt, $price, $duration, $cancellationDeadlineHours, $author, $at, null);
+    }
+
+    private static function born(
+        ReservationId $id,
+        CollaboratorId $collaboratorId,
+        ServiceId $serviceId,
+        ?CustomerMembershipId $customerMembershipId,
+        ?AssistedClientId $assistedClientId,
+        ?CreatorMembershipId $createdBy,
+        DateTimeImmutable $startsAt,
+        Money $price,
+        Duration $duration,
+        int $cancellationDeadlineHours,
+        Author $author,
+        DateTimeImmutable $at,
+        ?DateTimeImmutable $payUntil,
+    ): self {
         if ($price->colones <= 0) {
             throw new InvalidValueException('reservations.price_invalid');
         }
@@ -96,6 +142,8 @@ final class Reservation
             $collaboratorId,
             $serviceId,
             $customerMembershipId,
+            $assistedClientId,
+            $createdBy,
             TimeInterval::between($startsAt, $endsAt),
             $endsAt->modify('+'.self::CLEANUP_MINUTES.' minutes'),
             $price,
@@ -109,12 +157,18 @@ final class Reservation
         );
     }
 
+    /** Tell whether the owner registered it for a person without an account (RF-12). */
+    public function isAssisted(): bool
+    {
+        return $this->assistedClientId !== null;
+    }
+
     /** Rebuild a reservation from its stored state; its history is already saved, so nothing is pending. */
     public static function reconstitute(
         ReservationId $id,
         CollaboratorId $collaboratorId,
         ServiceId $serviceId,
-        CustomerMembershipId $customerMembershipId,
+        ?CustomerMembershipId $customerMembershipId,
         TimeInterval $interval,
         DateTimeImmutable $blockedUntil,
         Money $price,
@@ -124,8 +178,10 @@ final class Reservation
         ReservationStatus $status,
         ?DateTimeImmutable $expiresAt,
         ?PurchasedVoucherId $purchasedVoucherId = null,
+        ?AssistedClientId $assistedClientId = null,
+        ?CreatorMembershipId $createdByMembershipId = null,
     ): self {
-        return new self($id, $collaboratorId, $serviceId, $customerMembershipId, $interval, $blockedUntil, $price, $duration, $cancellationDeadlineHours, $rescheduleCount, $status, $expiresAt, $purchasedVoucherId, []);
+        return new self($id, $collaboratorId, $serviceId, $customerMembershipId, $assistedClientId, $createdByMembershipId, $interval, $blockedUntil, $price, $duration, $cancellationDeadlineHours, $rescheduleCount, $status, $expiresAt, $purchasedVoucherId, []);
     }
 
     /**

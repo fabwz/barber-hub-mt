@@ -36,7 +36,11 @@ const { reservation, to, selected = false, showCollaborator = false } = definePr
       }}</span>
       <span class="block text-sm text-fg-muted">
         {{ reservation.servicio_nombre
-        }}<template v-if="showCollaborator"> · {{ reservation.barbero_nombre }}</template>
+        }}<template v-if="showCollaborator"> · {{ reservation.barbero_nombre }}</template
+        ><template v-if="reservation.asistida"> · Asistida</template
+        ><template v-if="reservation.cliente_telefono">
+          · {{ reservation.cliente_telefono }}</template
+        >
       </span>
     </span>
     <StatusLabel :status="statusKeyOf(reservation.estado)" />

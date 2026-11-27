@@ -9,6 +9,7 @@ use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 use Src\Payments\Payments\Application\DTOs\ChargePolicy;
 use Src\Reservations\Reservations\Application\AttachNames;
+use Src\Reservations\Reservations\Application\Contracts\AssistedCustomers;
 use Src\Reservations\Reservations\Application\Contracts\CollaboratorDirectory;
 use Src\Reservations\Reservations\Application\Contracts\CustomerDirectory;
 use Src\Reservations\Reservations\Application\Contracts\ServiceNames;
@@ -126,7 +127,7 @@ final class ListReservationsTest extends TestCase
 
         $this->assertSame(2, $page->total);
         $this->assertSame([null, null], array_map(fn ($view): ?string => $view->customerName, $page->items));
-        $this->assertSame([self::ANA_ROLE, self::ANA_ROLE], array_map(fn ($view): string => $view->reservation->customerMembershipId->value, $page->items));
+        $this->assertSame([self::ANA_ROLE, self::ANA_ROLE], array_map(fn ($view): ?string => $view->reservation->customerMembershipId?->value, $page->items));
     }
 
     /** A person without a customer role has an empty page and the repository and the directories are not read (RD-18). */
@@ -179,7 +180,29 @@ final class ListReservationsTest extends TestCase
             },
             $this->collaborators(),
             $this->customers(),
+            $this->assistedCustomers(),
         );
+    }
+
+    private function assistedCustomers(): AssistedCustomers
+    {
+        return new class implements AssistedCustomers
+        {
+            public function register(string $name, string $phone, ?string $email): string
+            {
+                return 'assisted-1';
+            }
+
+            public function exists(string $assistedClientId): bool
+            {
+                return true;
+            }
+
+            public function contactsOf(array $assistedClientIds): array
+            {
+                return [];
+            }
+        };
     }
 
     private function collaborators(): CollaboratorDirectory

@@ -13,14 +13,15 @@ use DateTimeImmutable;
  */
 final readonly class ReservationConfirmed
 {
-    /** Hold the reservation, its customer role, its service and collaborator and the interval of the service, from which the day is read. */
+    /** Hold the reservation, its customer role (none when the owner registered it for an assisted client, who is named instead), its service and collaborator and the interval of the service, from which the day is read. */
     public function __construct(
         public string $barbershopId,
         public string $reservationId,
-        public string $customerMembershipId,
+        public ?string $customerMembershipId,
         public string $serviceId,
         public string $collaboratorId,
         public DateTimeImmutable $startsAt,
         public DateTimeImmutable $endsAt,
+        public ?string $assistedClientId = null,
     ) {}
 }

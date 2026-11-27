@@ -43,7 +43,7 @@ final readonly class GetStaffReservation
         }
 
         return new ReservationDetail(
-            $this->attachNames->one($reservation, true, $now),
+            $this->attachNames->one($reservation, true, $now, $isOwner),
             $reservation->price->colones,
             $isOwner ? $this->entriesOf($this->reservations->history($id)) : null,
         );

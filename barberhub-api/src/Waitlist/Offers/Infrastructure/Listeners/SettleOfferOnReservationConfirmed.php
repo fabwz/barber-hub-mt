@@ -25,13 +25,16 @@ final readonly class SettleOfferOnReservationConfirmed
         private Clock $clock,
     ) {}
 
-    /** Accept the offer of the reservation, if one waits for it, and take the customer out of the lines of that service and day (RF-32, LE-06). */
+    /** Accept the offer of the reservation, if one waits for it, and take the customer out of the lines of that service and day (RF-32, LE-06); an assisted client has no role and so waits in no line. */
     public function handle(ReservationConfirmed $event): void
     {
         $now = $this->clock->now();
         $day = $event->startsAt->setTimezone(new DateTimeZone((string) config('app.timezone')))->format('Y-m-d');
 
         $this->settleOffer->execute($event->reservationId, $now);
-        $this->leaveLines->execute($event->customerMembershipId, $event->serviceId, $day, $now);
+
+        if ($event->customerMembershipId !== null) {
+            $this->leaveLines->execute($event->customerMembershipId, $event->serviceId, $day, $now);
+        }
     }
 }

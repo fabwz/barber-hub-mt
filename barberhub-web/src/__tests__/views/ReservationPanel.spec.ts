@@ -5,7 +5,7 @@ import App from '@/App.vue'
 import { mountView } from '../helpers/mountView'
 import { signIn } from '../helpers/account'
 import { jsonResponse, problem } from '../helpers/http'
-import { agendaApi, freezeClock } from '../helpers/agenda'
+import { agendaApi, freezeClock, listItem } from '../helpers/agenda'
 
 beforeEach(() => {
   signIn('marco@example.test')
@@ -116,6 +116,42 @@ describe('ReservationPanel: the owner', () => {
     await button(wrapper, 'Reprogramar').trigger('click')
     await flushPromises()
     expect(wrapper.text()).not.toContain('correo')
+  })
+})
+
+describe('ReservationPanel: the assisted reservation (RF-12)', () => {
+  const assisted = listItem('ra', {
+    cliente_nombre: 'Rodrigo Chaves',
+    asistida: true,
+    cliente_telefono: '8812 3456',
+  })
+
+  it('shows the owner who it is for, that it is assisted and the phone', async () => {
+    const { wrapper } = await openPanel('ra', { items: [assisted] })
+
+    const panel = wrapper.get('aside')
+    expect(panel.text()).toContain('Rodrigo Chaves')
+    expect(panel.text()).toContain('Reserva asistida')
+    expect(panel.text()).toContain('Teléfono')
+    expect(panel.text()).toContain('8812 3456')
+  })
+
+  it('shows the collaborator the name and the mark, but not the phone', async () => {
+    const { wrapper } = await openPanel('ra', {
+      role: 'colaborador',
+      items: [{ ...assisted, cliente_telefono: null }],
+    })
+
+    const panel = wrapper.get('aside')
+    expect(panel.text()).toContain('Rodrigo Chaves')
+    expect(panel.text()).toContain('Reserva asistida')
+    expect(panel.text()).not.toContain('Teléfono')
+  })
+
+  it('does not mark an online reservation as assisted', async () => {
+    const { wrapper } = await openPanel('r4')
+
+    expect(wrapper.get('aside').text()).not.toContain('Reserva asistida')
   })
 })
 

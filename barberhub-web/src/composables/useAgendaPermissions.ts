@@ -8,6 +8,8 @@ export interface AgendaPermissions {
   canFilterByCollaborator: boolean
   canReschedule: boolean
   canCancel: boolean
+  /** Register a reservation for a person without an account (RF-12): only the owner. */
+  canRegisterAssisted: boolean
   canClose: boolean
   /** The total of the reservation (the collaborator sees only the pending balance, PA-10). */
   canSeeTotal: boolean
@@ -25,6 +27,7 @@ export function agendaPermissions(role: StaffRole): AgendaPermissions {
     canFilterByCollaborator: owner,
     canReschedule: owner,
     canCancel: owner,
+    canRegisterAssisted: owner,
     canClose: true,
     canSeeTotal: owner,
     canSeeHistory: owner,

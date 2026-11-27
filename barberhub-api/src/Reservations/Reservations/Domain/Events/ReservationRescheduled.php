@@ -16,7 +16,7 @@ final readonly class ReservationRescheduled
     public function __construct(
         public string $barbershopId,
         public string $reservationId,
-        public string $customerMembershipId,
+        public ?string $customerMembershipId,
         public string $serviceId,
         public string $collaboratorId,
         public string $previousCollaboratorId,
@@ -24,5 +24,6 @@ final readonly class ReservationRescheduled
         public DateTimeImmutable $startsAt,
         public DateTimeImmutable $endsAt,
         public bool $byBarbershop,
+        public ?string $assistedClientId = null,
     ) {}
 }

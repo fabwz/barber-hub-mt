@@ -35,6 +35,10 @@ interface Detail {
   precio: number
   duracion_minutos: number
   cliente_nombre: string
+  /** Registered by the owner for a person without an account (RF-12). */
+  asistida?: boolean
+  /** Phone of the assisted client; only the owner gets it (CO-04). */
+  cliente_telefono?: string | null
   plazo_cancelacion_horas: number
   saldo_pendiente: number | null
   historial?: HistoryEntry[]
@@ -166,7 +170,14 @@ function historyDate(moment: string): string {
           </div>
           <div class="flex justify-between gap-4 py-3">
             <dt class="text-fg-muted">Cliente</dt>
-            <dd class="text-right">{{ detail.cliente_nombre }}</dd>
+            <dd class="text-right">
+              {{ detail.cliente_nombre }}
+              <span v-if="detail.asistida" class="block text-fg-muted">Reserva asistida</span>
+            </dd>
+          </div>
+          <div v-if="detail.cliente_telefono" class="flex justify-between gap-4 py-3">
+            <dt class="text-fg-muted">Teléfono</dt>
+            <dd class="text-right tabular-nums">{{ detail.cliente_telefono }}</dd>
           </div>
         </dl>
       </section>

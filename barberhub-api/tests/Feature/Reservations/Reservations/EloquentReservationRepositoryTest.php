@@ -80,7 +80,7 @@ final class EloquentReservationRepositoryTest extends TestCase
         $this->assertSame($reservation->id->value, $found->id->value);
         $this->assertSame($this->kevin, $found->collaboratorId->value);
         $this->assertSame($this->haircut, $found->serviceId->value);
-        $this->assertSame($this->ana, $found->customerMembershipId->value);
+        $this->assertSame($this->ana, $found->customerMembershipId?->value);
         $this->assertSame(ReservationStatus::Temporary, $found->status);
         $this->assertSame(self::at('2030-03-04 10:00')->getTimestamp(), $found->interval->start->getTimestamp());
         $this->assertSame(self::at('2030-03-04 10:45')->getTimestamp(), $found->interval->end->getTimestamp());

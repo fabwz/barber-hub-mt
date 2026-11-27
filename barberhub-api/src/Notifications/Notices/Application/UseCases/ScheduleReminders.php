@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Src\Notifications\Notices\Application\UseCases;
 
 use DateTimeImmutable;
-use Src\Notifications\Notices\Application\Contracts\Recipients;
 use Src\Notifications\Notices\Application\Contracts\ReminderJobs;
 use Src\Notifications\Notices\Application\Contracts\ReminderPreferences;
+use Src\Notifications\Notices\Application\CustomerRecipient;
 use Src\Notifications\Notices\Domain\Contracts\ReminderRepository;
 use Src\Notifications\Notices\Domain\Services\ReminderSchedule;
 use Src\Notifications\Notices\Domain\ValueObjects\ReminderKind;
@@ -22,14 +22,17 @@ final readonly class ScheduleReminders
     public function __construct(
         private ReminderRepository $reminders,
         private ReminderJobs $jobs,
-        private Recipients $recipients,
+        private CustomerRecipient $recipient,
         private ReminderPreferences $preferences,
     ) {}
 
-    /** Schedule the reminders of the reservation that starts at `$startsAt`, seen from `$now`. */
-    public function execute(string $reservationId, string $customerMembershipId, DateTimeImmutable $startsAt, DateTimeImmutable $now): void
+    /**
+     * Schedule the reminders of the reservation that starts at `$startsAt`, seen from `$now`. An assisted client has no account to turn them off: they
+     * have them on, as the default is, whenever they have an email (CL-06).
+     */
+    public function execute(string $reservationId, ?string $customerMembershipId, DateTimeImmutable $startsAt, DateTimeImmutable $now, ?string $assistedClientId = null): void
     {
-        $wanted = $this->recipients->ofMembership($customerMembershipId) !== null && $this->preferences->isEnabledFor($customerMembershipId);
+        $wanted = $this->recipient->of($customerMembershipId, $assistedClientId) !== null && ($customerMembershipId === null || $this->preferences->isEnabledFor($customerMembershipId));
         $due = [];
 
         foreach ($wanted ? ReminderSchedule::from($startsAt, $now) : [] as $reminder) {

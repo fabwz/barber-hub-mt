@@ -256,15 +256,17 @@ El índice `collaborator_absences_lookup_idx` `(barbershop_id, collaborator_id, 
 
 ### assisted_clients
 
-La persona que el dueño registra para una reserva asistida, sin cuenta (CL-06). Existe solo dentro de su barbería.
+La persona que el dueño registra para una reserva asistida, sin cuenta (CL-06). Existe solo dentro de su barbería. La tabla existe desde el issue #102 (migración `create_assisted_clients_table`), con la política de fila `assisted_clients_barbershop_isolation` (ver [database.md](database.md)). No es una cuenta ni una membresía: no está en `users` ni en `memberships`, no inicia sesión y nadie la ve fuera de la barbería que la creó.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
 | `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` |
-| `name` | `varchar(120)` | Obligatoria |
-| `phone` | `varchar(30)` | Obligatoria |
-| `email` | `varchar(255)` | Opcional; sin correo no recibe recordatorios |
+| `name` | `varchar(120)` | Obligatoria; `CHECK` `assisted_clients_name_check`: no vacía |
+| `phone` | `varchar(30)` | Obligatoria; `CHECK` `assisted_clients_phone_check`: no vacío |
+| `email` | `varchar(255)` | Opcional; sin correo no recibe avisos ni recordatorios. `CHECK` `assisted_clients_email_check`: nulo o no vacío |
 | `created_at`, `updated_at` | `timestamptz` | |
+
+Llaves: `id` y `(id, barbershop_id)`, para que `reservations` la referencie junto con su barbería. El índice `assisted_clients_name_idx` `(barbershop_id, name)` sirve a la búsqueda del dueño por nombre o teléfono (`ILIKE`). **Nada es único**: dos personas pueden compartir un teléfono y el dueño elige entre los resultados de la búsqueda. Desde el #102 el cliente asistido se registra dentro de la reserva (`POST .../reservas/asistida`), en la misma transacción: si el espacio ya no está libre, la transacción se deshace y no queda ningún cliente huérfano.
 
 ### reservations
 
@@ -275,9 +277,9 @@ El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es 
 | `id` | `uuid` | Creada en el #126. Llave primaria, `DEFAULT uuidv7()` |
 | `barbershop_id` | `uuid` | Creada en el #126. Llave foránea a `barbershops`, borrado en cascada |
 | `collaborator_id`, `service_id` | `uuid` | Creadas en el #126. Llaves foráneas compuestas con `barbershop_id` a `collaborators` y `services`, sin cascada: un servicio nunca se borra (SV-04) y un colaborador con reservas tampoco |
-| `customer_membership_id` | `uuid` | Creada en el #126, obligatoria por ahora. Llave foránea compuesta a `memberships`. Pasa a ser opcional con las reservas asistidas |
-| `assisted_client_id` | `uuid` | Prevista, con las reservas asistidas. Opcional; llave foránea compuesta a `assisted_clients` |
-| `created_by_membership_id` | `uuid` | Prevista, con las reservas asistidas. Opcional; quien la creó cuando es asistida |
+| `customer_membership_id` | `uuid` | Creada en el #126. Llave foránea compuesta a `memberships`. Opcional desde el #102: nula en una reserva asistida |
+| `assisted_client_id` | `uuid` | Creada en el #102 (migración `add_assisted_client_to_reservations_table`). Opcional; llave foránea compuesta `(assisted_client_id, barbershop_id)` a `assisted_clients`, sin cascada. Índice parcial `reservations_assisted_client_idx` |
+| `created_by_membership_id` | `uuid` | Creada en el #102. Opcional; el rol de dueño que registró la reserva asistida. Llave foránea compuesta `(created_by_membership_id, barbershop_id)` a `memberships` |
 | `purchased_voucher_id` | `uuid` | Creada en el #89 (migración `add_purchased_voucher_to_reservations_table`). Opcional; el bono cuya sesión paga la reserva (RF-28). Llave foránea compuesta `(purchased_voucher_id, barbershop_id)` a `purchased_vouchers`, sin cascada: una reserva solo usa un bono de su barbería (MT-04, BO-07). Índice parcial `reservations_purchased_voucher_idx` sobre `(barbershop_id, purchased_voucher_id)` |
 | `status` | `varchar(30)` | Creada en el #126. `CHECK` entre los siete estados de RE-04 |
 | `starts_at`, `ends_at` | `timestamptz` | Creadas en el #126. Inicio y fin del servicio; `CHECK (starts_at < ends_at)` |
@@ -292,9 +294,9 @@ El espacio de un colaborador asignado a un cliente para un servicio (RE-03). Es 
 
 Restricciones:
 
-- Prevista, con las reservas asistidas: `CHECK (num_nonnulls(customer_membership_id, assisted_client_id) = 1)`: la reserva es de una cuenta o de un cliente asistido, nunca de ambos.
+- `reservations_customer_check` (#102): `CHECK (num_nonnulls(customer_membership_id, assisted_client_id) = 1)`: la reserva es de una cuenta o de un cliente asistido, nunca de ambos ni de ninguno. Es la forma mínima de que «el cliente» sea una cosa o la otra: dos columnas con llaves foráneas compuestas que cargan la barbería (MT-04), en vez de una columna polimórfica que no podría tener llave foránea, y la restricción está en la base, no solo en el código. El agregado `Reservation` lo repite: su constructor rechaza una reserva de ambos o de ninguno.
 - `reservations_no_overlap_excl` (#126): un colaborador no tiene dos reservas temporales o confirmadas con intervalos solapados, incluida la limpieza (RE-01). Ver [database.md](database.md).
-- `reservations_customer_no_overlap_excl` (#126), sobre `(barbershop_id, customer_membership_id, tstzrange(starts_at, ends_at))`, solo para el estado `confirmed`: un cliente no tiene dos reservas confirmadas solapadas en la barbería (RE-06). No incluye la limpieza: es el tiempo del servicio, no el del colaborador.
+- `reservations_customer_no_overlap_excl` (#126), sobre `(barbershop_id, customer_membership_id, tstzrange(starts_at, ends_at))`, solo para el estado `confirmed`: un cliente no tiene dos reservas confirmadas solapadas en la barbería (RE-06). No incluye la limpieza: es el tiempo del servicio, no el del colaborador. Como un nulo nunca es igual a otro, la restricción ignora las reservas asistidas: **RE-06 no se aplica a un cliente asistido** (decisión del #102; el dueño ve la agenda y elige el espacio, y ni `requirements.md` ni el modelo piden más). Si hiciera falta, bastaría una exclusión gemela sobre `assisted_client_id`.
 - Llaves candidatas: `id` y `(id, barbershop_id)`, para que otras tablas referencien la reserva junto con su barbería.
 
 **Expiración perezosa (#66).** Una temporal vencida (`expires_at <= ahora`) no ocupa el espacio aunque su estado siga siendo `temporary`: la consulta de intervalos bloqueados la ignora (DI-05) y las lecturas la muestran `expirada` sin escribir. El estado se actualiza a `expired` la próxima vez que se reserva o reprograma con ese colaborador (ya bloqueado), antes de revalidar la disponibilidad, para que la exclusión `reservations_no_overlap_excl` no choque con la vencida. **Pendiente:** la devolución de un pago que llega después del vencimiento (PA-07).

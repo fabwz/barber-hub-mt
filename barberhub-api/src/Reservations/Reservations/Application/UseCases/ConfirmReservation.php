@@ -48,11 +48,12 @@ final readonly class ConfirmReservation
         $this->events->publish(new ReservationConfirmed(
             $this->context->current()->value,
             $reservation->id->value,
-            $reservation->customerMembershipId->value,
+            $reservation->customerMembershipId?->value,
             $reservation->serviceId->value,
             $reservation->collaboratorId->value,
             $reservation->interval->start,
             $reservation->interval->end,
+            $reservation->assistedClientId?->value,
         ));
 
         return $reservation;

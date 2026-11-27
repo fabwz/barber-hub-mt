@@ -28,9 +28,10 @@ final readonly class GetReservationNotice
             $reservation->statusAt($now) === ReservationStatus::Confirmed,
             $reservation->interval->start,
             $reservation->interval->end,
-            $reservation->customerMembershipId->value,
+            $reservation->customerMembershipId?->value,
             $reservation->serviceId->value,
             $reservation->collaboratorId->value,
+            $reservation->assistedClientId?->value,
         );
     }
 }

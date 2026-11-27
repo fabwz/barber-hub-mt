@@ -150,6 +150,20 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/administracion/ausencias',
                 [TenantResource::LIST, TenantResource::DELETE],
             ),
+            // The people the owner registers for assisted reservations (#102, CL-06): the search lists only those of the barbershop, and the
+            // owner of one barbershop never sees, in the list or in the database, a client of the other. Registering one is part of the
+            // reservation, served at reservas/asistida, which the reservations resource owns.
+            new TenantResource(
+                'assisted_clients',
+                function (string $barbershopId): string {
+                    $id = (string) Str::uuid7();
+                    DB::table('assisted_clients')->insert(['id' => $id, 'barbershop_id' => $barbershopId, 'name' => 'Rosa Campos', 'phone' => '87440021']);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/clientes-asistidos',
+                [TenantResource::LIST],
+            ),
             // The collaborators the owner administers (#48). A profile belongs to an account, so each row brings its own.
             new TenantResource(
                 'collaborators',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
 
     'assistant_unavailable' => 'El asistente de reservas no está disponible en este momento. Puede reservar con el formulario normal.',
+    'assisted_client_not_found' => 'Este cliente asistido no existe',
     'author_system' => 'sistema',
     'cancellation_deadline_invalid' => 'El plazo de cancelación no puede ser negativo.',
     'clarification' => [

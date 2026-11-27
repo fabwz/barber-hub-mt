@@ -32,6 +32,7 @@ final class DispatchNotices
             null,
             null,
             "confirmation-{$event->reservationId}",
+            $event->assistedClientId,
         );
     }
 
@@ -70,6 +71,7 @@ final class DispatchNotices
             null,
             null,
             "cancellation-{$event->reservationId}",
+            $event->assistedClientId,
         );
     }
 
@@ -91,6 +93,7 @@ final class DispatchNotices
             null,
             $event->previousStartsAt,
             "reschedule-{$event->reservationId}-{$event->startsAt->getTimestamp()}",
+            $event->assistedClientId,
         );
     }
 }

@@ -17,6 +17,7 @@ use Src\Notifications\LiveUpdates\Infrastructure\LiveUpdatesServiceProvider;
 use Src\Notifications\Notices\Infrastructure\NoticesServiceProvider;
 use Src\Payments\Income\Infrastructure\IncomeServiceProvider;
 use Src\Payments\Payments\Infrastructure\PaymentsServiceProvider;
+use Src\Reservations\AssistedClients\Infrastructure\AssistedClientsServiceProvider;
 use Src\Reservations\Reservations\Infrastructure\ReservationsServiceProvider;
 use Src\Shared\Infrastructure\SharedServiceProvider;
 use Src\Shared\Monitoring\Infrastructure\MonitoringServiceProvider;
@@ -39,6 +40,7 @@ return [
     AbsencesServiceProvider::class,
     InvitationsServiceProvider::class,
     SlotsServiceProvider::class,
+    AssistedClientsServiceProvider::class,
     ReservationsServiceProvider::class,
     PaymentsServiceProvider::class,
     IncomeServiceProvider::class,
