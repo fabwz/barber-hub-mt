@@ -46,7 +46,7 @@ final readonly class ListStaffReservations
 
         $filter = new ReservationFilter(null, $collaboratorId === null ? null : new CollaboratorId($collaboratorId), $search->status, $search->day, $now);
 
-        return $this->attachNames->to($this->reservations->page($filter, $page), true, $now);
+        return $this->attachNames->to($this->reservations->page($filter, $page), true, $now, $isOwner);
     }
 
     /** The collaborator the owner narrows to, which must be in the barbershop. */

@@ -13,8 +13,10 @@ use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
 use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationException;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
+use Src\Reservations\Reservations\Domain\ValueObjects\AssistedClientId;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
+use Src\Reservations\Reservations\Domain\ValueObjects\CreatorMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationFilter;
@@ -96,7 +98,9 @@ final readonly class EloquentReservationRepository implements ReservationReposit
                     'barbershop_id' => $barbershopId,
                     'collaborator_id' => $reservation->collaboratorId->value,
                     'service_id' => $reservation->serviceId->value,
-                    'customer_membership_id' => $reservation->customerMembershipId->value,
+                    'customer_membership_id' => $reservation->customerMembershipId?->value,
+                    'assisted_client_id' => $reservation->assistedClientId?->value,
+                    'created_by_membership_id' => $reservation->createdByMembershipId?->value,
                     'status' => $reservation->status->value,
                     'starts_at' => $reservation->interval->start,
                     'ends_at' => $reservation->interval->end,
@@ -297,7 +301,7 @@ final readonly class EloquentReservationRepository implements ReservationReposit
             new ReservationId($model->id),
             new CollaboratorId($model->collaborator_id),
             new ServiceId($model->service_id),
-            new CustomerMembershipId($model->customer_membership_id),
+            $model->customer_membership_id === null ? null : new CustomerMembershipId($model->customer_membership_id),
             TimeInterval::between($model->starts_at, $model->ends_at),
             $model->blocked_until,
             Money::of($model->price),
@@ -307,6 +311,8 @@ final readonly class EloquentReservationRepository implements ReservationReposit
             ReservationStatus::from($model->status),
             $model->expires_at,
             $model->purchased_voucher_id === null ? null : new PurchasedVoucherId($model->purchased_voucher_id),
+            $model->assisted_client_id === null ? null : new AssistedClientId($model->assisted_client_id),
+            $model->created_by_membership_id === null ? null : new CreatorMembershipId($model->created_by_membership_id),
         );
     }
 }

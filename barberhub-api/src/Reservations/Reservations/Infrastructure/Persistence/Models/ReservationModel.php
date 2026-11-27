@@ -15,7 +15,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $barbershop_id
  * @property string $collaborator_id
  * @property string $service_id
- * @property string $customer_membership_id
+ * @property string|null $customer_membership_id
+ * @property string|null $assisted_client_id
+ * @property string|null $created_by_membership_id
  * @property string $status
  * @property CarbonImmutable $starts_at
  * @property CarbonImmutable $ends_at
@@ -34,6 +36,8 @@ use Illuminate\Database\Eloquent\Model;
     'collaborator_id',
     'service_id',
     'customer_membership_id',
+    'assisted_client_id',
+    'created_by_membership_id',
     'status',
     'starts_at',
     'ends_at',

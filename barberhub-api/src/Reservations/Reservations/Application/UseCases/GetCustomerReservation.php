@@ -42,7 +42,7 @@ final readonly class GetCustomerReservation
         $membershipId = $this->customers->find($userId);
         $reservation = $this->reservations->find(new ReservationId($reservationId));
 
-        if ($membershipId === null || $reservation === null || $reservation->customerMembershipId->value !== $membershipId) {
+        if ($membershipId === null || $reservation === null || $reservation->customerMembershipId?->value !== $membershipId) {
             throw ReservationNotFoundException::create();
         }
 

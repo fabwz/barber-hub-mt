@@ -99,12 +99,13 @@ final readonly class CancelReservation
             $this->events->publish(new ReservationCancelled(
                 $this->context->current()->value,
                 $reservation->id->value,
-                $reservation->customerMembershipId->value,
+                $reservation->customerMembershipId?->value,
                 $reservation->serviceId->value,
                 $reservation->collaboratorId->value,
                 $reservation->interval->start,
                 $reservation->interval->end,
                 $isOwner,
+                $reservation->assistedClientId?->value,
             ));
 
             return new CancelledReservation($reservation, $class, $consequence);
@@ -154,7 +155,7 @@ final readonly class CancelReservation
     {
         $membershipId = $this->customers->find($userId);
 
-        return $membershipId !== null && $reservation->customerMembershipId->value === $membershipId;
+        return $membershipId !== null && $reservation->customerMembershipId?->value === $membershipId;
     }
 
     /** The instant of the entry that cancelled the reservation, or now if the history has none. */

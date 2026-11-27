@@ -17,7 +17,7 @@ final readonly class ReservationCreated
     public function __construct(
         public string $barbershopId,
         public string $reservationId,
-        public string $customerMembershipId,
+        public ?string $customerMembershipId,
         public string $serviceId,
         public string $collaboratorId,
         public DateTimeImmutable $startsAt,

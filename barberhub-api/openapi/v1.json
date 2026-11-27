@@ -95,6 +95,10 @@
             "description": "Espacios libres de una barber\u00eda para reservar, sin iniciar sesi\u00f3n."
         },
         {
+            "name": "Clientes asistidos",
+            "description": "Personas sin cuenta que el due\u00f1o registra para una reserva asistida; existen solo en su barber\u00eda."
+        },
+        {
             "name": "Reservas",
             "description": "Reservar el espacio de un barbero y consultar las reservas seg\u00fan el rol."
         },
@@ -940,6 +944,68 @@
                 "responses": {
                     "204": {
                         "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/clientes-asistidos": {
+            "get": {
+                "operationId": "reservations.assisted-clients.index",
+                "description": "Busca entre los clientes asistidos de la barber\u00eda por una parte del `nombre` o del tel\u00e9fono (`busqueda`, sin distinguir may\u00fasculas), ordenados por nombre y hasta 10; sin `busqueda` trae los primeros. Nunca trae a un cliente asistido de otra barber\u00eda (CL-06). No hay lista paginada: el due\u00f1o escribe m\u00e1s para acotar. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`. El cliente asistido se crea al registrar la reserva (`POST /reservas/asistida`).",
+                "summary": "Buscar clientes asistidos",
+                "tags": [
+                    "Clientes asistidos"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "busqueda",
+                        "in": "query",
+                        "description": "Parte del nombre o del tel\u00e9fono; sin ella trae los primeros por nombre.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 120
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ClienteAsistido`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ClienteAsistido"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
@@ -3606,6 +3672,66 @@
                 }
             }
         },
+        "/barberias/{barberia}/reservas/asistida": {
+            "post": {
+                "operationId": "reservations.reservations.store-assisted",
+                "description": "El due\u00f1o registra una reserva para una persona que llega o llama y no tiene cuenta (RF-12). La persona es `cliente_asistido`, el identificador de uno ya registrado en la barber\u00eda (de `GET /clientes-asistidos`), o los datos de uno nuevo: `cliente_nombre` y `cliente_telefono` obligatorios y `cliente_correo` opcional; si se manda `cliente_asistido`, los `cliente_*` se ignoran. El cliente asistido existe solo en su barber\u00eda (CL-06): el identificador de uno de otra barber\u00eda responde 404 `no-encontrado`. `servicio`, `barbero` e `inicio` son los de un espacio de la consulta de disponibilidad (RF-10); aqu\u00ed el `barbero` es obligatorio. Ocupa el espacio igual que una reserva en l\u00ednea: en la misma transacci\u00f3n bloquea al barbero, vuelve a validar la disponibilidad y la exclusi\u00f3n de la base de datos es la segunda barrera, as\u00ed que una reserva asistida y una en l\u00ednea por el mismo espacio dejan exactamente una (RE-01). No hay cobro en l\u00ednea: la reserva queda `confirmada` en la misma operaci\u00f3n (RE-07), con la creaci\u00f3n y la confirmaci\u00f3n en su historial y el due\u00f1o que la registr\u00f3 como autor, y guarda el precio, la duraci\u00f3n y el plazo de cancelaci\u00f3n vigentes. Si el espacio ya no est\u00e1 disponible responde 409 `espacio-no-disponible` con hasta 3 `alternativas` del mismo d\u00eda, barbero y servicio, y no queda ning\u00fan cliente asistido creado. Un servicio o un barbero inexistente, inactivo o de otra barber\u00eda responde 404 `no-encontrado`; un dato mal escrito, 422 `datos-invalidos` con el campo. Sin correo el cliente no recibe avisos ni recordatorios; con correo recibe la confirmaci\u00f3n y los recordatorios como cualquier cliente. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`. La agenda y el detalle del due\u00f1o traen `asistida` y `cliente_telefono`; el colaborador ve el nombre pero no el tel\u00e9fono (CO-04). Reprogramar, cancelar y cerrar la reserva asistida se hacen con las mismas acciones de cualquier reserva.",
+                "summary": "Registrar una reserva asistida",
+                "tags": [
+                    "Reservas"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistrarReservaAsistida"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`ReservaAsistida`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ReservaAsistida"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/reservas/propuesta": {
             "post": {
                 "operationId": "reservations.reservations.propose",
@@ -5511,6 +5637,34 @@
                 ],
                 "title": "Cierre"
             },
+            "ClienteAsistido": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "telefono": {
+                        "type": "string"
+                    },
+                    "correo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nulo si no tiene correo: sin \u00e9l no recibe avisos ni recordatorios."
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "telefono",
+                    "correo"
+                ],
+                "title": "ClienteAsistido"
+            },
             "Cobro": {
                 "type": "object",
                 "properties": {
@@ -6910,6 +7064,64 @@
                 ],
                 "title": "RegistrarCierre"
             },
+            "RegistrarReservaAsistida": {
+                "type": "object",
+                "properties": {
+                    "servicio": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Identificador del servicio activo de la barber\u00eda."
+                    },
+                    "barbero": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Identificador del barbero, el de un espacio de la consulta de disponibilidad. Aqu\u00ed es obligatorio: el due\u00f1o elige el espacio."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del espacio, fecha y hora ISO 8601 con desfase, por ejemplo `2030-03-05T10:00:00-06:00`."
+                    },
+                    "cliente_asistido": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "Identificador de un cliente asistido ya registrado en esta barber\u00eda (de `GET /clientes-asistidos`). Si va, se ignoran los datos de `cliente_*`."
+                    },
+                    "cliente_nombre": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre del cliente nuevo. Obligatorio si no se manda `cliente_asistido`.",
+                        "maxLength": 120
+                    },
+                    "cliente_telefono": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Tel\u00e9fono del cliente nuevo. Obligatorio si no se manda `cliente_asistido`.",
+                        "maxLength": 30
+                    },
+                    "cliente_correo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "email",
+                        "description": "Correo del cliente nuevo, opcional. Sin correo el cliente no recibe avisos ni recordatorios (CL-06).",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "servicio",
+                    "barbero",
+                    "inicio"
+                ],
+                "title": "RegistrarReservaAsistida"
+            },
             "RegistroDeBarberia": {
                 "type": "object",
                 "properties": {
@@ -7130,6 +7342,71 @@
                     "expira_en"
                 ],
                 "title": "Reserva"
+            },
+            "ReservaAsistida": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "servicio": {
+                        "type": "string"
+                    },
+                    "barbero": {
+                        "type": "string"
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Estado de la reserva; al crearla queda `confirmada` si la barber\u00eda no cobra y `temporal` si cobra."
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`."
+                    },
+                    "precio": {
+                        "type": "integer",
+                        "description": "Colones con el IVA incluido, el precio vigente al reservar."
+                    },
+                    "duracion_minutos": {
+                        "type": "integer"
+                    },
+                    "plazo_cancelacion_horas": {
+                        "type": "integer",
+                        "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
+                    },
+                    "expira_en": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora l\u00edmite para pagar, mismo formato que `inicio`; nula si la reserva ya est\u00e1 confirmada."
+                    },
+                    "cliente_asistido": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Identificador del cliente asistido de la reserva, el encontrado o el reci\u00e9n registrado."
+                    }
+                },
+                "required": [
+                    "id",
+                    "servicio",
+                    "barbero",
+                    "estado",
+                    "inicio",
+                    "fin",
+                    "precio",
+                    "duracion_minutos",
+                    "plazo_cancelacion_horas",
+                    "expira_en",
+                    "cliente_asistido"
+                ],
+                "title": "ReservaAsistida"
             },
             "ReservaCancelada": {
                 "type": "object",
@@ -7358,6 +7635,17 @@
                     "cliente_nombre": {
                         "type": "string",
                         "description": "Nombre de la persona que reserv\u00f3."
+                    },
+                    "asistida": {
+                        "type": "boolean",
+                        "description": "Verdadero si el due\u00f1o la registr\u00f3 para una persona sin cuenta (RF-12)."
+                    },
+                    "cliente_telefono": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Tel\u00e9fono del cliente asistido; solo lo ve el due\u00f1o y es nulo en las reservas con cuenta y para el colaborador."
                     }
                 },
                 "required": [
@@ -7372,7 +7660,9 @@
                     "precio",
                     "duracion_minutos",
                     "expira_en",
-                    "cliente_nombre"
+                    "cliente_nombre",
+                    "asistida",
+                    "cliente_telefono"
                 ],
                 "title": "ReservaDeAgenda"
             },
@@ -7522,6 +7812,17 @@
                         "type": "string",
                         "description": "Nombre de la persona que reserv\u00f3."
                     },
+                    "asistida": {
+                        "type": "boolean",
+                        "description": "Verdadero si el due\u00f1o la registr\u00f3 para una persona sin cuenta (RF-12)."
+                    },
+                    "cliente_telefono": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Tel\u00e9fono del cliente asistido; solo lo ve el due\u00f1o y es nulo en las reservas con cuenta y para el colaborador."
+                    },
                     "plazo_cancelacion_horas": {
                         "type": "integer",
                         "description": "Horas antes del inicio hasta las cuales se cancela sin penalizaci\u00f3n, el plazo vigente al reservar."
@@ -7551,6 +7852,8 @@
                     "duracion_minutos",
                     "expira_en",
                     "cliente_nombre",
+                    "asistida",
+                    "cliente_telefono",
                     "plazo_cancelacion_horas",
                     "saldo_pendiente",
                     "historial"

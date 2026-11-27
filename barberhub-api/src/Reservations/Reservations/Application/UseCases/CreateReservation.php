@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Src\Reservations\Reservations\Application\UseCases;
 
 use DateTimeImmutable;
+use LogicException;
 use Src\Reservations\Reservations\Application\Contracts\AnyAvailableCollaborators;
 use Src\Reservations\Reservations\Application\Contracts\BookableServices;
 use Src\Reservations\Reservations\Application\Contracts\CancellationDeadlines;
@@ -14,6 +15,7 @@ use Src\Reservations\Reservations\Application\Contracts\FreeSlots;
 use Src\Reservations\Reservations\Application\Contracts\PaymentRequirement;
 use Src\Reservations\Reservations\Application\Contracts\ReservationExpiries;
 use Src\Reservations\Reservations\Application\Contracts\ReservationVouchers;
+use Src\Reservations\Reservations\Application\DTOs\BookableService;
 use Src\Reservations\Reservations\Application\DTOs\CreateReservationCommand;
 use Src\Reservations\Reservations\Domain\Contracts\ReservationRepository;
 use Src\Reservations\Reservations\Domain\Entities\Reservation;
@@ -23,8 +25,10 @@ use Src\Reservations\Reservations\Domain\Exceptions\OverlappingReservationExcept
 use Src\Reservations\Reservations\Domain\Exceptions\ServiceNotBookableException;
 use Src\Reservations\Reservations\Domain\Exceptions\SlotUnavailableException;
 use Src\Reservations\Reservations\Domain\Exceptions\VoucherNotRequiredException;
+use Src\Reservations\Reservations\Domain\ValueObjects\AssistedClientId;
 use Src\Reservations\Reservations\Domain\ValueObjects\Author;
 use Src\Reservations\Reservations\Domain\ValueObjects\CollaboratorId;
+use Src\Reservations\Reservations\Domain\ValueObjects\CreatorMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\CustomerMembershipId;
 use Src\Reservations\Reservations\Domain\ValueObjects\PurchasedVoucherId;
 use Src\Reservations\Reservations\Domain\ValueObjects\ReservationId;
@@ -91,22 +95,13 @@ final readonly class CreateReservation
         try {
             return $this->transaction->run(function () use ($command, $service, $author, $now): Reservation {
                 $collaboratorId = $this->claimCollaborator($command, $now);
-                $customer = new CustomerMembershipId($this->customers->ensure($command->userId));
-                $reservation = Reservation::create(
-                    $command->reservationId === null ? $this->reservations->nextId() : new ReservationId($command->reservationId),
-                    new CollaboratorId($collaboratorId),
-                    new ServiceId($command->serviceId),
-                    $customer,
-                    $command->startsAt,
-                    $service->price,
-                    $service->duration,
-                    $this->deadlines->current(),
-                    $author,
-                    $now,
-                    $command->payUntil,
-                );
+                $reservation = $command->assistedClientId === null
+                    ? $this->newOnlineReservation($command, $service, $collaboratorId, $author, $now)
+                    : $this->newAssistedReservation($command, $command->assistedClientId, $service, $collaboratorId, $author, $now);
 
-                if ($this->reservations->hasConfirmedOverlapping($customer, $reservation->interval)) {
+                $customer = $reservation->customerMembershipId;
+
+                if ($customer !== null && $this->reservations->hasConfirmedOverlapping($customer, $reservation->interval)) {
                     throw OverlappingReservationException::create();
                 }
 
@@ -114,13 +109,13 @@ final readonly class CreateReservation
                     $reservation->confirm($now, $author);
                     $this->reservations->save($reservation);
                     $reservation->payWithVoucher(new PurchasedVoucherId($this->vouchers->hold(
-                        $customer->value,
+                        ($customer ?? throw new LogicException('A voucher pays an online reservation.'))->value,
                         $command->serviceId,
                         $reservation->id->value,
                         $command->startsAt,
                         $now,
                     )));
-                } elseif (! $this->payment->isRequired()) {
+                } elseif ($reservation->isAssisted() || ! $this->payment->isRequired()) {
                     $reservation->confirm($now, $author);
                 }
 
@@ -131,7 +126,7 @@ final readonly class CreateReservation
                     $this->events->publish(new ReservationCreated(
                         $this->context->current()->value,
                         $reservation->id->value,
-                        $reservation->customerMembershipId->value,
+                        $reservation->customerMembershipId?->value,
                         $reservation->serviceId->value,
                         $reservation->collaboratorId->value,
                         $reservation->interval->start,
@@ -141,11 +136,12 @@ final readonly class CreateReservation
                     $this->events->publish(new ReservationConfirmed(
                         $this->context->current()->value,
                         $reservation->id->value,
-                        $reservation->customerMembershipId->value,
+                        $reservation->customerMembershipId?->value,
                         $reservation->serviceId->value,
                         $reservation->collaboratorId->value,
                         $reservation->interval->start,
                         $reservation->interval->end,
+                        $reservation->assistedClientId?->value,
                     ));
                 }
 
@@ -158,6 +154,42 @@ final readonly class CreateReservation
                     : $this->slots->alternatives($command->serviceId, $command->collaboratorId, $command->startsAt, $now),
             );
         }
+    }
+
+    /** Start the reservation of the person of the session, who becomes a customer of the barbershop if they were not (UP-09). */
+    private function newOnlineReservation(CreateReservationCommand $command, BookableService $service, string $collaboratorId, Author $author, DateTimeImmutable $now): Reservation
+    {
+        return Reservation::create(
+            $command->reservationId === null ? $this->reservations->nextId() : new ReservationId($command->reservationId),
+            new CollaboratorId($collaboratorId),
+            new ServiceId($command->serviceId),
+            new CustomerMembershipId($this->customers->ensure($command->userId)),
+            $command->startsAt,
+            $service->price,
+            $service->duration,
+            $this->deadlines->current(),
+            $author,
+            $now,
+            $command->payUntil,
+        );
+    }
+
+    /** Start the reservation the owner registers for an assisted client, who has no role and pays nothing online (RF-12, RE-07). */
+    private function newAssistedReservation(CreateReservationCommand $command, string $assistedClientId, BookableService $service, string $collaboratorId, Author $author, DateTimeImmutable $now): Reservation
+    {
+        return Reservation::createAssisted(
+            $this->reservations->nextId(),
+            new CollaboratorId($collaboratorId),
+            new ServiceId($command->serviceId),
+            new AssistedClientId($assistedClientId),
+            new CreatorMembershipId($command->createdByMembershipId ?? throw new LogicException('An assisted reservation records who registered it.')),
+            $command->startsAt,
+            $service->price,
+            $service->duration,
+            $this->deadlines->current(),
+            $author,
+            $now,
+        );
     }
 
     /**
