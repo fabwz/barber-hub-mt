@@ -64,6 +64,10 @@ return [
         'title' => 'Colaborador con reservas',
         'detail' => 'El colaborador tiene reservas confirmadas por atender. Reprográmelas o cancélelas antes de desactivarlo.',
     ],
+    'ausencia-con-reservas' => [
+        'title' => 'Bloqueo sobre reservas',
+        'detail' => 'El bloqueo cae sobre reservas del colaborador. Reprográmelas o cancélelas antes de guardarlo.',
+    ],
     'datos-invalidos' => [
         'title' => 'Datos inválidos',
         'detail' => 'Los datos enviados no son válidos.',
