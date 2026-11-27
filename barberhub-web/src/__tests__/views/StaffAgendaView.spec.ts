@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App.vue'
 import { mountView } from '../helpers/mountView'
 import { signIn } from '../helpers/account'
-import { DAY, DAY_ITEMS, agendaApi, freezeClock } from '../helpers/agenda'
+import { DAY, DAY_ITEMS, agendaApi, freezeClock, listItem } from '../helpers/agenda'
 
 beforeEach(() => {
   signIn('marco@example.test')
@@ -115,11 +115,10 @@ describe('StaffAgendaView: the owner', () => {
     expect(wrapper.findAll('ul[aria-label="Reservas del día"] a')).toHaveLength(5)
   })
 
-  it('does not offer «Bloqueos» nor «Reserva asistida» yet', async () => {
+  it('does not offer «Bloqueos» in the agenda: they live in «Equipo»', async () => {
     const { wrapper } = await open()
 
     expect(wrapper.text()).not.toContain('Bloqueos')
-    expect(wrapper.text()).not.toContain('Reserva asistida')
   })
 
   it('shows the empty state of the day', async () => {
@@ -151,6 +150,54 @@ describe('StaffAgendaView: the owner', () => {
 
     expect(mounted.wrapper.get('section[aria-busy="true"]').text()).toContain('Cargando la agenda')
     await flushPromises()
+  })
+})
+
+describe('StaffAgendaView: the assisted reservation (RF-12)', () => {
+  const assisted = listItem('ra', {
+    cliente_nombre: 'Rodrigo Chaves',
+    asistida: true,
+    cliente_telefono: '8812 3456',
+    inicio: `${DAY}T15:00:00-06:00`,
+    fin: `${DAY}T15:30:00-06:00`,
+  })
+
+  it('leads the owner to «Reserva asistida» from the header', async () => {
+    const { wrapper, shopId, router } = await open()
+
+    const link = wrapper.findAll('a').find((item) => item.text() === 'Reserva asistida')!
+    expect(link.attributes('href')).toBe(`/barberias/${shopId}/reserva-asistida`)
+
+    await link.trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('staff-assisted-booking'))
+  })
+
+  it('does not offer it to the collaborator', async () => {
+    const { wrapper } = await open({ role: 'colaborador' })
+
+    expect(wrapper.findAll('a').some((item) => item.text() === 'Reserva asistida')).toBe(false)
+  })
+
+  it('marks the assisted reservation and gives the owner the phone of the client', async () => {
+    const { wrapper } = await open({ items: [...DAY_ITEMS, assisted] })
+
+    const row = wrapper
+      .findAll('ul[aria-label="Reservas del día"] a')
+      .find((item) => item.text().includes('Rodrigo Chaves'))!
+    expect(row.text()).toContain('Asistida')
+    expect(row.text()).toContain('8812 3456')
+  })
+
+  it('shows the collaborator the name and the mark, never the phone', async () => {
+    const { wrapper } = await open({
+      role: 'colaborador',
+      items: [{ ...assisted, cliente_telefono: null }],
+    })
+
+    const row = wrapper.get('ul[aria-label="Reservas del día"] a')
+    expect(row.text()).toContain('Rodrigo Chaves')
+    expect(row.text()).toContain('Asistida')
+    expect(row.text()).not.toContain('8812')
   })
 })
 

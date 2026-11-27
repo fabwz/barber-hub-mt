@@ -15,7 +15,11 @@ import { useAccountStore } from '@/stores/account'
 // never leads to a screen that is not there yet. Whoever adds a screen adds its route name here.
 const OWNER_ONLY = ['Servicios', 'Equipo', 'Bonos', 'Ingresos', 'Configuración']
 const LINKS = [
-  { label: 'Agenda', name: 'staff-agenda', match: ['staff-agenda', 'staff-reservation'] },
+  {
+    label: 'Agenda',
+    name: 'staff-agenda',
+    match: ['staff-agenda', 'staff-reservation', 'staff-assisted-booking'],
+  },
   { label: 'Servicios', name: 'staff-services', match: ['staff-services'] },
   {
     label: 'Equipo',

@@ -13,6 +13,7 @@ import { servicesApi, service } from '../helpers/services'
 import { settingsApi } from '../helpers/settings'
 import { OWNER_SHOP, SHOP_A, STAFF_SHOP, staffHandler } from '../helpers/staff'
 import { absence, absencesApi } from '../helpers/absences'
+import { assistedApi, assistedClient } from '../helpers/assisted'
 import { collaborator, teamApi } from '../helpers/team'
 import { voucher, voucherDefinitionsApi } from '../helpers/voucherDefinitions'
 import { VOUCHER_ID, mockVoucherFetch } from '../helpers/vouchers'
@@ -215,6 +216,11 @@ export const SCREENS: Record<string, Screen> = {
     session: 'owner',
     prepare: () =>
       `/barberias/${invitationsApi({ invitations: [invitation()] }).shopId}/equipo/invitaciones`,
+  },
+  'staff-assisted-booking': {
+    session: 'owner',
+    prepare: () =>
+      `/barberias/${assistedApi({ clients: [assistedClient()] }).shopId}/reserva-asistida`,
   },
   'staff-team-absences': {
     session: 'owner',

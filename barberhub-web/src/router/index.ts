@@ -163,6 +163,14 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // «Reserva asistida» (#102, RF-12): only the owner registers a reservation for a person without an account. It has
+    // its own address, outside `/agenda`, so it is never read as the id of a reservation of the panel.
+    path: '/barberias/:barberia/reserva-asistida',
+    name: 'staff-assisted-booking',
+    component: () => import('@/views/AssistedBookingView.vue'),
+    meta: { requiresAuth: true, requiresStaffShop: true, requiresOwner: true },
+  },
+  {
     // The services of a shop (#76, RF-03): only the owner. The form has its own address, new and edit.
     path: '/barberias/:barberia/servicios',
     name: 'staff-services',
