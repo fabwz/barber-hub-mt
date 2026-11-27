@@ -47,6 +47,15 @@ final readonly class User
         return new self($id, $name, $email, null, $passwordHash, true, null, null, true);
     }
 
+    /**
+     * Register an active account for a person who accepted the invitation of a barbershop (RF-06): they chose their own password, so it is
+     * not temporary. Like the account of the staff it has no phone and no acceptances.
+     */
+    public static function createInvited(UserId $id, UserName $name, Email $email, string $passwordHash): self
+    {
+        return new self($id, $name, $email, null, $passwordHash, true, null, null, false);
+    }
+
     /** Replace the password with a new hash; the password is no longer temporary (UP-04). */
     public function changePassword(string $passwordHash): self
     {

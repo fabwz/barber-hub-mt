@@ -68,10 +68,14 @@ describe('TeamMembersView: the list', () => {
     expect(wrapper.text()).not.toMatch(/Teléfono|\d{4}[ -]\d{4}/)
   })
 
-  it('the section links show both sections and mark «Colaboradores» as current', async () => {
+  it('the section links show the three sections and mark «Colaboradores» as current', async () => {
     const { wrapper } = await open({ collaborators: [KEVIN] })
     const links = wrapper.findAll('nav[aria-label="Secciones de Equipo"] a')
-    expect(links.map((l) => l.text())).toEqual(['Colaboradores', 'Horario de la barbería'])
+    expect(links.map((l) => l.text())).toEqual([
+      'Colaboradores',
+      'Invitaciones',
+      'Horario de la barbería',
+    ])
     expect(links[0]!.attributes('aria-current')).toBe('page')
     expect(links[1]!.attributes('aria-current')).toBeUndefined()
   })

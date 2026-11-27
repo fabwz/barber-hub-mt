@@ -79,6 +79,14 @@
             "description": "Personal con agenda propia: sus servicios, su horario semanal y sus pausas. Solo el due\u00f1o de la barber\u00eda los administra."
         },
         {
+            "name": "Invitaciones de colaboradores",
+            "description": "Invitar por correo a quien se une al personal, ver las invitaciones pendientes y cancelarlas. Solo el due\u00f1o de la barber\u00eda."
+        },
+        {
+            "name": "Aceptar una invitaci\u00f3n",
+            "description": "Rutas p\u00fablicas, sin sesi\u00f3n, de quien abre el enlace de la invitaci\u00f3n que recibi\u00f3 por correo: ver a qu\u00e9 invita y crear su contrase\u00f1a."
+        },
+        {
             "name": "Disponibilidad",
             "description": "Espacios libres de una barber\u00eda para reservar, sin iniciar sesi\u00f3n."
         },
@@ -125,6 +133,79 @@
         }
     ],
     "paths": {
+        "/invitaciones/consulta": {
+            "post": {
+                "operationId": "catalog.invitation-links.show",
+                "description": "Ruta p\u00fablica, sin sesi\u00f3n (RF-06). Recibe el `token` del enlace y responde la barber\u00eda que invita, el correo invitado y si ese correo ya tiene cuenta (`cuenta_existente`), para que la pantalla pida solo lo que falta. No gasta el enlace. Un enlace desconocido, vencido, ya usado o cancelado responde 422 `datos-invalidos` con `errores.token`, sin decir cu\u00e1l de los casos es. Se limita a 10 solicitudes por minuto por direcci\u00f3n IP; la siguiente responde 429 `demasiadas-solicitudes` con `Retry-After`. Es POST para que el token no viaje en la direcci\u00f3n ni quede en los registros.",
+                "summary": "Consultar una invitaci\u00f3n con su enlace",
+                "tags": [
+                    "Aceptar una invitaci\u00f3n"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultaDeInvitacion"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`DetalleDeInvitacion`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DetalleDeInvitacion"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/invitaciones/aceptacion": {
+            "post": {
+                "operationId": "catalog.invitation-links.accept",
+                "description": "Ruta p\u00fablica, sin sesi\u00f3n (RF-06, UP-04). La barber\u00eda sale del propio enlace, nunca del cuerpo. Si el correo no tiene cuenta, `nombre` y `contrasena` son obligatorias y la contrase\u00f1a debe cumplir SE-07 (`errores.contrasena` lista los requisitos que faltan, y el enlace no se gasta); la cuenta queda activa, con la contrase\u00f1a que la persona eligi\u00f3. Si ya tiene cuenta, se le asigna el rol de colaborador sin cambiar su contrase\u00f1a y `nombre` y `contrasena` se ignoran. En ambos casos queda su perfil de colaborador con los servicios invitados. Un enlace desconocido, vencido, ya usado o cancelado responde 422 `datos-invalidos` con `errores.token`. Si el correo ya tiene un rol en esa barber\u00eda responde 409 `conflicto` y el enlace no se gasta (UP-07). Se limita a 10 solicitudes por minuto por direcci\u00f3n IP. Responde 204.",
+                "summary": "Aceptar una invitaci\u00f3n",
+                "tags": [
+                    "Aceptar una invitaci\u00f3n"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AceptacionDeInvitacion"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    }
+                },
+                "security": []
+            }
+        },
         "/archivos/barbershops/{barberia}/{carpeta}/{archivo}": {
             "get": {
                 "operationId": "shared.files.show",
@@ -2409,6 +2490,155 @@
                 }
             }
         },
+        "/barberias/{barberia}/administracion/invitaciones": {
+            "get": {
+                "operationId": "catalog.invitations.index",
+                "description": "Trae las invitaciones que nadie ha aceptado y cuyo enlace no ha vencido (RF-06), de la m\u00e1s nueva a la m\u00e1s antigua. Las aceptadas, canceladas o vencidas no aparecen. Solo el due\u00f1o: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Listar las invitaciones pendientes",
+                "tags": [
+                    "Invitaciones de colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `Invitacion`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Invitacion"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "catalog.invitations.store",
+                "description": "Guarda la invitaci\u00f3n y deja en la cola el correo con el enlace para crear su contrase\u00f1a (RF-06): v\u00e1lido 7 d\u00edas y de un solo uso. El token no se guarda ni se devuelve; solo viaja en el correo. Invitar de nuevo al mismo correo reemplaza la invitaci\u00f3n pendiente, y el enlace anterior deja de funcionar. Un servicio que no existe en la barber\u00eda responde 422 `datos-invalidos` con `errores` en `servicios.N`. Solo el due\u00f1o.",
+                "summary": "Invitar a un colaborador por correo",
+                "tags": [
+                    "Invitaciones de colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InvitarColaborador"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Invitacion`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Invitacion"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/invitaciones/{invitacion}": {
+            "delete": {
+                "operationId": "catalog.invitations.destroy",
+                "description": "Borra la invitaci\u00f3n: su enlace deja de funcionar al instante (RF-06). Responde 404 `no-encontrado` si no existe en la barber\u00eda, ya fue aceptada o ya venci\u00f3. Solo el due\u00f1o.",
+                "summary": "Cancelar una invitaci\u00f3n pendiente",
+                "tags": [
+                    "Invitaciones de colaboradores"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "invitacion",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/filas": {
             "post": {
                 "operationId": "waitlist.entries.store",
@@ -4277,6 +4507,35 @@
             }
         },
         "schemas": {
+            "AceptacionDeInvitacion": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "El `token` del enlace que lleg\u00f3 por correo.",
+                        "maxLength": 128
+                    },
+                    "nombre": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre de la persona; obligatorio si el correo no tiene cuenta, se ignora si la tiene.",
+                        "maxLength": 120
+                    },
+                    "contrasena": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Contrase\u00f1a: al menos 8 caracteres, con may\u00fascula, min\u00fascula, n\u00famero y signo especial; obligatoria si el correo no tiene cuenta, se ignora si la tiene."
+                    }
+                },
+                "required": [
+                    "token"
+                ],
+                "title": "AceptacionDeInvitacion"
+            },
             "AceptarOferta": {
                 "type": "object",
                 "properties": {
@@ -5198,6 +5457,20 @@
                 ],
                 "title": "ComprarBono"
             },
+            "ConsultaDeInvitacion": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "El `token` del enlace que lleg\u00f3 por correo.",
+                        "maxLength": 128
+                    }
+                },
+                "required": [
+                    "token"
+                ],
+                "title": "ConsultaDeInvitacion"
+            },
             "CorreccionDeCuenta": {
                 "type": "object",
                 "properties": {
@@ -5517,6 +5790,28 @@
                 ],
                 "title": "DatosDeBarberia"
             },
+            "DetalleDeInvitacion": {
+                "type": "object",
+                "properties": {
+                    "barberia": {
+                        "type": "string",
+                        "description": "Nombre de la barber\u00eda que invita."
+                    },
+                    "correo": {
+                        "type": "string"
+                    },
+                    "cuenta_existente": {
+                        "type": "boolean",
+                        "description": "`true` si el correo ya tiene cuenta: solo hay que aceptar, sin nombre ni contrase\u00f1a nuevos, y su contrase\u00f1a no cambia."
+                    }
+                },
+                "required": [
+                    "barberia",
+                    "correo",
+                    "cuenta_existente"
+                ],
+                "title": "DetalleDeInvitacion"
+            },
             "Disponibilidad": {
                 "type": "object",
                 "properties": {
@@ -5711,6 +6006,63 @@
                     "banner"
                 ],
                 "title": "ImagenesDeLaBarberia"
+            },
+            "Invitacion": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "correo": {
+                        "type": "string"
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "enviada": {
+                        "type": "string",
+                        "description": "Instante en que se envi\u00f3 la invitaci\u00f3n, en ISO 8601."
+                    },
+                    "vence": {
+                        "type": "string",
+                        "description": "Instante en que el enlace deja de funcionar, en ISO 8601: siete d\u00edas despu\u00e9s de enviada."
+                    }
+                },
+                "required": [
+                    "id",
+                    "correo",
+                    "servicios",
+                    "enviada",
+                    "vence"
+                ],
+                "title": "Invitacion"
+            },
+            "InvitarColaborador": {
+                "type": "object",
+                "properties": {
+                    "correo": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Correo de la persona invitada; recibe el enlace para crear su contrase\u00f1a.",
+                        "maxLength": 255
+                    },
+                    "servicios": {
+                        "type": "array",
+                        "description": "Identificadores de los servicios de la barber\u00eda que ofrecer\u00e1; puede estar vac\u00eda.",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "correo",
+                    "servicios"
+                ],
+                "title": "InvitarColaborador"
             },
             "LogoDeLaBarberia": {
                 "type": "object",

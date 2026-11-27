@@ -505,7 +505,7 @@ Campo de texto de 96 px, Source Code Pro, centrado, con `HH:MM` de ejemplo, 24 h
 ### Divergencias de la lámina 32
 - **Sin «Guardar horario»:** la API aplica cada franja por separado (agregar o quitar, sin editar ni guardado en bloque), así que cada acción se aplica al instante y muestra su resultado.
 - **Sin interruptor «Abierto» por día:** un día cerrado se abre con «Abrir este día» y un día abierto se cierra al quitar su última franja. No hay un interruptor que cierre el día entero, porque eso sería quitar todas sus franjas de una vez.
-- **«Invitaciones» no aparece** en Equipo (#100) y el subtítulo de la sección no las nombra.
+- **«Invitaciones»** aparece en Equipo desde el #100 (ver «Invitaciones de colaboradores (#100)»), con el subtítulo «Colaboradores, invitaciones y el horario de la barbería.».
 - **Motivo del cierre:** el texto «Solo lo ve usted y su equipo» se cambia por «Una nota breve para recordar el motivo. Los clientes no la ven.»: la ruta de los cierres es solo del dueño.
 - **Franja solapada:** el mensaje nombra la franja con la que se cruza («Esta franja se solapa con la de 09:00 a 12:30. Corrija las horas.») en lugar de numerarlas.
 - **Láminas 32h a 32j** (reservas confirmadas que quedan fuera del horario o dentro de un cierre, HO-04): no se muestran. Dependen de una API que no existe y se difieren al #101; en `TeamScheduleView` queda un comentario donde irá el aviso.
@@ -528,12 +528,29 @@ Rutas hijas de Equipo: `/barberias/:barberia/equipo/colaboradores` (`staff-team-
 
 ### Divergencias de la lámina 33
 - **Sin teléfono** (33g, 33o): la API no lo guarda.
-- **Sin invitaciones** (33t a 33z, #100): ni la pestaña, ni «Invitar por correo», ni «API pendiente». El error de correo repetido (33l) no manda a «enviar una invitación»: dice solo que el correo ya está registrado.
+- **Invitaciones** (33t a 33z y 33ab, #100): ya se construyen, sin la etiqueta «API pendiente» (ver «Invitaciones de colaboradores (#100)»). El error de correo repetido (33l) sigue sin mandar a «enviar una invitación»: dice solo que el correo ya está registrado.
 - **«Editar»** cambia servicios y horario; no nombre ni correo.
 - **Textos sin género** en el diálogo de desactivar («No, conservar») y en los avisos.
 - **El dueño se identifica con `es_dueno`**, no por el correo de la sesión.
 - **Contraseña visible antes del final** solo si la creación quedó a medias (la cuenta ya existe y un paso posterior falló): se muestra en el aviso para que no se pierda.
 - **Servicios «N de M»:** M es el total de servicios de la barbería, activos e inactivos.
+
+## Invitaciones de colaboradores (#100)
+Diseño de origen: láminas 33t a 33z y 33ab de la v7 (pantalla del dueño). La vista pública de aceptar la invitación **no tiene lámina: pendiente de lámina**.
+
+### «Invitaciones» en Equipo
+- Ruta hija de Equipo, `/barberias/:barberia/equipo/invitaciones` (`staff-team-invitations`), solo para el dueño. Es un enlace de sección más (`SectionNav`, con `aria-current`) entre «Colaboradores» y «Horario de la barbería».
+- **Invitar por correo:** «Correo de la persona» (`TextField`, con «Recibirá un enlace para crear su propia contraseña.»), «Servicios que ofrecerá» (casillas con duración y precio, como el formulario de colaboradores) y «Enviar invitación». «El enlace es válido por 7 días y de un solo uso.» va bajo el título. Un correo que no parece uno (sin `@` ni dominio) se rechaza antes de enviar: «Escriba un correo válido, como nombre@correo.cr.», con el campo marcado (`aria-invalid`).
+- **Éxito:** «Invitación enviada a lucia@correo.cr. Vence en 7 días.» en un aviso `role="status"`; el formulario se limpia. Invitar de nuevo al mismo correo reemplaza la pendiente: la lista no repite el correo.
+- **Invitaciones pendientes** («Aún no aceptadas.»): por fila el correo, «Enviada jue 5 nov 2026, 09:14» y «Vence en 7 días · jue 12 nov 2026, 09:14», con «Cancelar invitación» (secundario, con `aria-label` que nombra el correo). Cancelar pide confirmación («¿Cancelar la invitación a lucia@correo.cr?», «El enlace dejará de funcionar. Podrá enviar otra invitación cuando quiera.»; «No, mantenerla» principal y «Sí, cancelar invitación» secundario) y avisa «Invitación cancelada. El enlace dejó de funcionar.». Si la API responde 404 (ya se aceptó, venció o se canceló), la lista se lee de nuevo.
+- **Estados:** cargando (esqueleto «Cargando las invitaciones»), error («No pudimos cargar las invitaciones» con «Reintentar»), vacío («No hay invitaciones pendientes.», lámina 33ab) y, para los servicios, su propio esqueleto, error (la invitación se puede enviar sin servicios) y vacío.
+- **El token nunca llega a la pantalla:** solo viaja en el correo.
+
+### «Aceptar invitación» (pública, pendiente de lámina)
+- Ruta `/aceptar-invitacion?token=…` (`accept-invitation`), pública: la persona todavía no tiene cuenta y puede abrir el enlace en cualquier navegador. Usa la estructura, los campos y los avisos de «Crear nueva contraseña» (encabezado con la marca, columna de 390 a 440 px, `PasswordField`, `PasswordChecklist`, `NoticeBanner`). Como esa pantalla, lee el token de la dirección, lo guarda solo en memoria y lo quita de la dirección al instante.
+- **Cargando:** esqueleto mientras la API dice a qué invita el enlace (sin gastarlo). **Error:** «No pudimos cargar la invitación» con «Reintentar». **Vacío:** «Enlace no válido», para un enlace sin token o que la API no acepta (desconocido, vencido, usado o cancelado, sin decir cuál): «Cada enlace vale 7 días y se puede usar una sola vez.» y la salida «Ir a iniciar sesión».
+- **Correo sin cuenta:** «{Barbería} le invita a su equipo», «Nombre completo», «Contraseña» (con la lista de requisitos de SE-07) y «Confirmar contraseña»; botón «Crear cuenta y unirme». Errores por campo, con el foco en el primero. **Correo con cuenta:** sin campos, «su contraseña no cambia» y «Aceptar invitación». Un 409 (ya tiene un rol en esa barbería) se muestra como aviso de error y el formulario se mantiene.
+- **Listo:** «Ya forma parte del equipo de {barbería}.» con «Ir a iniciar sesión» (o «Ir a mis negocios» si ya hay sesión).
 
 ## Configuración del dueño (#77)
 Diseño de origen: láminas 34 y 35 de la v7. Ruta `/barberias/:barberia/configuracion`, solo para el dueño, con dos secciones como rutas hijas y enlaces con `aria-current` (`SectionNav`, como Equipo): «Datos públicos» (la ruta base) y «Cobro y políticas» (`/cobro`). El enlace «Configuración» de la barra del personal queda activo en las dos. Cada sección carga con esqueleto, muestra su error con «Reintentar» y guarda con un solo botón.

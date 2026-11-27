@@ -7,6 +7,7 @@ use Src\Availability\Slots\Infrastructure\SlotsServiceProvider;
 use Src\Catalog\Barbershops\Infrastructure\BarbershopsServiceProvider;
 use Src\Catalog\Closures\Infrastructure\ClosuresServiceProvider;
 use Src\Catalog\Collaborators\Infrastructure\CollaboratorsServiceProvider;
+use Src\Catalog\Invitations\Infrastructure\InvitationsServiceProvider;
 use Src\Catalog\OpeningHours\Infrastructure\OpeningHoursServiceProvider;
 use Src\Catalog\Services\Infrastructure\ServicesServiceProvider;
 use Src\Identity\Memberships\Infrastructure\MembershipsServiceProvider;
@@ -34,6 +35,7 @@ return [
     OpeningHoursServiceProvider::class,
     ClosuresServiceProvider::class,
     CollaboratorsServiceProvider::class,
+    InvitationsServiceProvider::class,
     SlotsServiceProvider::class,
     ReservationsServiceProvider::class,
     PaymentsServiceProvider::class,

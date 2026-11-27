@@ -176,6 +176,19 @@ final class TenantResources
                 ),
                 ['collaborator_shifts', 'collaborator_breaks'],
             ),
+            // The invitations of collaborators the owner administers (#100): listed and cancelled. The services of an invitation are served inside it.
+            new TenantResource(
+                'invitations',
+                fn (string $barbershopId): string => self::createInvitation($barbershopId)[0],
+                'api/v1/barberias/{barberia}/administracion/invitaciones',
+                [TenantResource::LIST, TenantResource::DELETE],
+            ),
+            new TenantResource(
+                'invitation_services',
+                fn (string $barbershopId): string => self::createInvitation($barbershopId)[1],
+                'api/v1/barberias/{barberia}/administracion/invitaciones',
+                [],
+            ),
             // The creation of #56 and "my reservations" of #57 are customer routes (in CUSTOMER_ROUTES); the listing of the staff
             // is the LIST operation, which the owner of Pura Navaja tries against Fade Lab; the detail of #58 is SHOW; the
             // cancellation of #60 is CANCEL, the closing of #61 is CLOSE (only against the other barbershop: the rows are in the future) and the reschedule of #59 is UPDATE, which moves the reservation 15 minutes.
@@ -386,6 +399,34 @@ final class TenantResources
         DB::table('collaborators')->insert(['id' => $collaboratorId, 'barbershop_id' => $barbershopId, 'user_id' => $userId]);
 
         return $collaboratorId;
+    }
+
+    /**
+     * Insert a pending invitation with a service, made by a member of the barbershop that the row needs to reference.
+     *
+     * @return array{string, string} The identifiers of the invitation and of the row of its service.
+     */
+    private static function createInvitation(string $barbershopId): array
+    {
+        $userId = (string) Str::uuid7();
+        $membershipId = (string) Str::uuid7();
+        $serviceId = (string) Str::uuid7();
+        $invitationId = (string) Str::uuid7();
+        $linkId = (string) Str::uuid7();
+        DB::table('users')->insert(['id' => $userId, 'name' => 'Dueño', 'email' => "{$userId}@barberhub.test", 'password' => 'hash']);
+        DB::table('memberships')->insert(['id' => $membershipId, 'user_id' => $userId, 'barbershop_id' => $barbershopId, 'role' => 'owner']);
+        DB::table('services')->insert(['id' => $serviceId, 'barbershop_id' => $barbershopId, 'name' => 'Corte infantil', 'duration_minutes' => 30, 'price' => 5000]);
+        DB::table('invitations')->insert([
+            'id' => $invitationId,
+            'barbershop_id' => $barbershopId,
+            'email' => "{$invitationId}@correo.cr",
+            'token_hash' => hash('sha256', $invitationId),
+            'expires_at' => '2099-01-01 00:00:00-06',
+            'invited_by_membership_id' => $membershipId,
+        ]);
+        DB::table('invitation_services')->insert(['id' => $linkId, 'barbershop_id' => $barbershopId, 'invitation_id' => $invitationId, 'service_id' => $serviceId]);
+
+        return [$invitationId, $linkId];
     }
 
     /**

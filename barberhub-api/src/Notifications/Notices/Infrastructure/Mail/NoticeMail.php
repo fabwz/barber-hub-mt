@@ -50,7 +50,7 @@ final class NoticeMail extends Mailable
     private function data(): array
     {
         return [
-            'greeting' => __('notices.greeting', ['name' => $this->notice->recipient->name]),
+            'greeting' => $this->notice->recipient->name === '' ? __('notices.greeting_anonymous') : __('notices.greeting', ['name' => $this->notice->recipient->name]),
             'lines' => $this->lines(),
             'footer' => $this->footer(),
             'actionUrl' => $this->notice->actionUrl,
@@ -73,6 +73,7 @@ final class NoticeMail extends Mailable
             NoticeType::Offer => [...$lines, __('notices.offer.deadline', ['deadline' => $this->time($this->notice->expiresAt)]), __('notices.offer.action')],
             NoticeType::Cancellation => [...$lines, __('notices.cancellation.apology')],
             NoticeType::PasswordReset => [...$lines, __('notices.password_reset.validity', ['minutes' => $this->validityMinutes()]), __('notices.password_reset.ignore')],
+            NoticeType::CollaboratorInvitation => [...$lines, __('notices.collaborator_invitation.validity', ['days' => $this->validityDays()]), __('notices.collaborator_invitation.ignore')],
             NoticeType::Reschedule => [...$lines, __('notices.reschedule.before', ['previous' => $this->moment($this->notice->previousStartsAt)]), __('notices.reschedule.after', ['when' => $this->moment($this->notice->startsAt)])],
             default => $lines,
         };
@@ -92,6 +93,12 @@ final class NoticeMail extends Mailable
     private function validityMinutes(): int
     {
         return $this->notice->expiresAt === null ? 0 : (int) round(($this->notice->expiresAt->getTimestamp() - $this->notice->startsAt->getTimestamp()) / 60);
+    }
+
+    /** Days the link of a notice is valid, from the moment it is sent to the moment it expires. */
+    private function validityDays(): int
+    {
+        return $this->notice->expiresAt === null ? 0 : (int) round(($this->notice->expiresAt->getTimestamp() - $this->notice->startsAt->getTimestamp()) / 86400);
     }
 
     /** The period of «a. m.» or «p. m.» followed by the period of the sentence is one point, not two; the texts have no ellipsis. */

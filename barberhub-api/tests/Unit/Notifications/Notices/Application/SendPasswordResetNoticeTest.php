@@ -79,6 +79,11 @@ final class SendPasswordResetNoticeTest extends TestCase
             {
                 return 'https://web.test/restablecer?t='.$token;
             }
+
+            public function invitationAcceptance(string $token): string
+            {
+                return 'https://web.test/invitacion?t='.$token;
+            }
         };
 
         return new SendPasswordResetNotice($resets, $links, $this->channel, new MutableClock(new DateTimeImmutable('2030-03-01 08:00:00')))->execute('ana@barberhub.test');

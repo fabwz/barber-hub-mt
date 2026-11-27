@@ -251,8 +251,10 @@ describe('TeamMemberFormView: new collaborator', () => {
     expect(api.wrapper.text()).toContain('Este correo ya está registrado.')
     expect(api.wrapper.get('input[type="email"]').attributes('aria-invalid')).toBe('true')
     expect(writes(api)).toEqual([`POST ${api.base}/colaboradores`])
-    // The wording does not send the owner to an invitation (#100).
-    expect(api.wrapper.text()).not.toMatch(/invitaci/i)
+    // The wording of the field does not send the owner to an invitation (#100); the section nav may name them.
+    expect(api.wrapper.get('input[type="email"]').element.parentElement?.textContent).not.toMatch(
+      /invitaci/i,
+    )
   })
 
   it('if the services fail the account exists: a new try sends only the services, never the account again', async () => {

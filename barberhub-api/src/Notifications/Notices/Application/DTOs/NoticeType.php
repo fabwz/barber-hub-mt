@@ -14,4 +14,6 @@ enum NoticeType: string
     case Reminder = 'reminder';
     /** The link to reset the password (RF-41): it protects the account, so the customer cannot turn it off either (NO-10). */
     case PasswordReset = 'password_reset';
+    /** The link of the invitation of a collaborator (RF-06): the owner asked for it and there is no account to set a preference in, so it never asks for one. */
+    case CollaboratorInvitation = 'collaborator_invitation';
 }

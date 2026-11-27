@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Resend;
+use Src\Catalog\Invitations\Domain\Events\CollaboratorInvited;
 use Src\Identity\Users\Domain\Events\PasswordResetRequested;
 use Src\Notifications\Notices\Application\Contracts\BarbershopBranding;
 use Src\Notifications\Notices\Application\Contracts\CatalogNames;
+use Src\Notifications\Notices\Application\Contracts\CollaboratorInvitations;
 use Src\Notifications\Notices\Application\Contracts\NoticeChannel;
 use Src\Notifications\Notices\Application\Contracts\PasswordResets;
 use Src\Notifications\Notices\Application\Contracts\Recipients;
@@ -22,11 +24,13 @@ use Src\Notifications\Notices\Application\Contracts\ReservationLookup;
 use Src\Notifications\Notices\Application\Contracts\WebLinks;
 use Src\Notifications\Notices\Domain\Contracts\ReminderRepository;
 use Src\Notifications\Notices\Infrastructure\Catalog\CatalogBarbershopBranding;
+use Src\Notifications\Notices\Infrastructure\Catalog\CatalogCollaboratorInvitations;
 use Src\Notifications\Notices\Infrastructure\Catalog\CatalogNoticeNames;
 use Src\Notifications\Notices\Infrastructure\Identity\IdentityPasswordResets;
 use Src\Notifications\Notices\Infrastructure\Identity\IdentityRecipients;
 use Src\Notifications\Notices\Infrastructure\Identity\IdentityReminderPreferences;
 use Src\Notifications\Notices\Infrastructure\Jobs\SendNoticeJob;
+use Src\Notifications\Notices\Infrastructure\Listeners\DispatchCollaboratorInvitationNotice;
 use Src\Notifications\Notices\Infrastructure\Listeners\DispatchNotices;
 use Src\Notifications\Notices\Infrastructure\Listeners\DispatchPasswordResetNotice;
 use Src\Notifications\Notices\Infrastructure\Listeners\ScheduleRemindersOnReservation;
@@ -58,6 +62,7 @@ final class NoticesServiceProvider extends ServiceProvider
         ReminderPreferences::class => IdentityReminderPreferences::class,
         BarbershopBranding::class => CatalogBarbershopBranding::class,
         CatalogNames::class => CatalogNoticeNames::class,
+        CollaboratorInvitations::class => CatalogCollaboratorInvitations::class,
     ];
 
     /** The address of the web client, which the links of the emails point to, comes from the configuration where the deployment sets it. */
@@ -73,6 +78,7 @@ final class NoticesServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(PasswordResetRequested::class, DispatchPasswordResetNotice::class);
+        Event::listen(CollaboratorInvited::class, DispatchCollaboratorInvitationNotice::class);
         Event::listen(ReservationConfirmed::class, [DispatchNotices::class, 'onConfirmed']);
         Event::listen(OfferCreated::class, [DispatchNotices::class, 'onOffered']);
         Event::listen(ReservationCancelled::class, [DispatchNotices::class, 'onCancelled']);

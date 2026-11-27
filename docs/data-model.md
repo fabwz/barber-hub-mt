@@ -118,16 +118,23 @@ El rol de una persona en una barbería (UP-01). Es la fuente de verdad de quién
 
 Llaves candidatas: `id`, `(user_id, barbershop_id)` y `(id, barbershop_id)`. La segunda garantiza un único rol por persona y barbería (UP-07); la tercera permite que otras tablas referencien la membresía junto con su barbería. Una barbería siempre conserva al menos un dueño activo (UP-05): lo verifica el caso de uso.
 
-### invitations (complementaria, RF-06)
+### invitations e invitation_services (complementaria, RF-06, #100)
+
+La invitación de un colaborador. Es una tabla de barbería: lleva `barbershop_id`, sus llaves foráneas lo incluyen y tiene seguridad a nivel de fila forzada con su política (ver [database.md](database.md)). Una invitación **pendiente** es la que no tiene `used_at` y cuyo `expires_at` no ha llegado; **cancelarla** la borra, y con ella sus servicios.
 
 | Columna | Tipo | Regla |
 | --- | --- | --- |
-| `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` |
-| `email` | `varchar(255)` | Correo invitado |
-| `token_hash` | `varchar(64)` | Única; hash del token, nunca el token |
-| `expires_at` | `timestamptz` | Siete días desde el envío (UP-04) |
+| `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` (`ON DELETE CASCADE`) |
+| `email` | `varchar(255)` | Correo invitado, siempre en minúsculas (`CHECK email = lower(email)`) |
+| `token_hash` | `char(64)` | Única; SHA-256 del token en hexadecimal (`CHECK` de 64 caracteres hexadecimales). El token nunca se guarda |
+| `expires_at` | `timestamptz` | Siete días desde que se hizo la invitación (UP-04); posterior a `created_at` (`CHECK`) |
 | `used_at` | `timestamptz` | Nula hasta que se usa; de un solo uso |
-| `invited_by_membership_id` | `uuid` | Quién la creó |
+| `invited_by_membership_id` | `uuid` | Quién la creó; llave foránea `(invited_by_membership_id, barbershop_id)` a `memberships (id, barbershop_id)` |
+| `created_at` | `timestamptz` | Por defecto `now()` |
+
+Llaves candidatas: `id`, `token_hash` y `(id, barbershop_id)`. El índice único parcial `invitations_one_pending_per_email_idx` sobre `(barbershop_id, email)` donde `used_at IS NULL` deja una sola pendiente por correo en cada barbería: invitar de nuevo la reemplaza. El hash que se guarda al invitar es el de un token que nadie tiene; el correo sale de la cola, que crea el enlace de verdad (reemplaza el hash) y escribe el token solo en el mensaje.
+
+`invitation_services` guarda los servicios que ofrecerá el colaborador: `id`, `barbershop_id`, `invitation_id` y `service_id`, con llaves únicas `(invitation_id, service_id)` y foráneas `(invitation_id, barbershop_id)` (`ON DELETE CASCADE`) y `(service_id, barbershop_id)`.
 
 ### personal_access_tokens y password_reset_tokens
 

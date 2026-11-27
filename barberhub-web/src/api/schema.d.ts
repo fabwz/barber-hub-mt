@@ -5,6 +5,46 @@
  */
 
 export interface paths {
+    "/invitaciones/consulta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Consultar una invitación con su enlace
+         * @description Ruta pública, sin sesión (RF-06). Recibe el `token` del enlace y responde la barbería que invita, el correo invitado y si ese correo ya tiene cuenta (`cuenta_existente`), para que la pantalla pida solo lo que falta. No gasta el enlace. Un enlace desconocido, vencido, ya usado o cancelado responde 422 `datos-invalidos` con `errores.token`, sin decir cuál de los casos es. Se limita a 10 solicitudes por minuto por dirección IP; la siguiente responde 429 `demasiadas-solicitudes` con `Retry-After`. Es POST para que el token no viaje en la dirección ni quede en los registros.
+         */
+        post: operations["catalog.invitation-links.show"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invitaciones/aceptacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aceptar una invitación
+         * @description Ruta pública, sin sesión (RF-06, UP-04). La barbería sale del propio enlace, nunca del cuerpo. Si el correo no tiene cuenta, `nombre` y `contrasena` son obligatorias y la contraseña debe cumplir SE-07 (`errores.contrasena` lista los requisitos que faltan, y el enlace no se gasta); la cuenta queda activa, con la contraseña que la persona eligió. Si ya tiene cuenta, se le asigna el rol de colaborador sin cambiar su contraseña y `nombre` y `contrasena` se ignoran. En ambos casos queda su perfil de colaborador con los servicios invitados. Un enlace desconocido, vencido, ya usado o cancelado responde 422 `datos-invalidos` con `errores.token`. Si el correo ya tiene un rol en esa barbería responde 409 `conflicto` y el enlace no se gasta (UP-07). Se limita a 10 solicitudes por minuto por dirección IP. Responde 204.
+         */
+        post: operations["catalog.invitation-links.accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/archivos/barbershops/{barberia}/{carpeta}/{archivo}": {
         parameters: {
             query?: never;
@@ -666,6 +706,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/invitaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar las invitaciones pendientes
+         * @description Trae las invitaciones que nadie ha aceptado y cuyo enlace no ha vencido (RF-06), de la más nueva a la más antigua. Las aceptadas, canceladas o vencidas no aparecen. Solo el dueño: un colaborador recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         */
+        get: operations["catalog.invitations.index"];
+        put?: never;
+        /**
+         * Invitar a un colaborador por correo
+         * @description Guarda la invitación y deja en la cola el correo con el enlace para crear su contraseña (RF-06): válido 7 días y de un solo uso. El token no se guarda ni se devuelve; solo viaja en el correo. Invitar de nuevo al mismo correo reemplaza la invitación pendiente, y el enlace anterior deja de funcionar. Un servicio que no existe en la barbería responde 422 `datos-invalidos` con `errores` en `servicios.N`. Solo el dueño.
+         */
+        post: operations["catalog.invitations.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/barberias/{barberia}/administracion/invitaciones/{invitacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancelar una invitación pendiente
+         * @description Borra la invitación: su enlace deja de funcionar al instante (RF-06). Responde 404 `no-encontrado` si no existe en la barbería, ya fue aceptada o ya venció. Solo el dueño.
+         */
+        delete: operations["catalog.invitations.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/filas": {
         parameters: {
             query?: never;
@@ -1246,6 +1330,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AceptacionDeInvitacion */
+        AceptacionDeInvitacion: {
+            /** @description El `token` del enlace que llegó por correo. */
+            token: string;
+            /** @description Nombre de la persona; obligatorio si el correo no tiene cuenta, se ignora si la tiene. */
+            nombre?: string | null;
+            /** @description Contraseña: al menos 8 caracteres, con mayúscula, minúscula, número y signo especial; obligatoria si el correo no tiene cuenta, se ignora si la tiene. */
+            contrasena?: string | null;
+        };
         /** AceptarOferta */
         AceptarOferta: {
             /** @description Verdadero para pagar con una sesión de un bono de la persona en esta barbería, sin depósito (RF-28): la reserva queda `confirmada` de inmediato. Por omisión es falso: la reserva sigue la modalidad de pago de la barbería. */
@@ -1576,6 +1669,11 @@ export interface components {
              */
             tipo_identificacion?: "0" | "1" | "2" | "3" | "4" | "5" | "9" | null;
         };
+        /** ConsultaDeInvitacion */
+        ConsultaDeInvitacion: {
+            /** @description El `token` del enlace que llegó por correo. */
+            token: string;
+        };
         /** CorreccionDeCuenta */
         CorreccionDeCuenta: {
             nombre: string;
@@ -1673,6 +1771,14 @@ export interface components {
                 tiktok: string | null;
             };
         };
+        /** DetalleDeInvitacion */
+        DetalleDeInvitacion: {
+            /** @description Nombre de la barbería que invita. */
+            barberia: string;
+            correo: string;
+            /** @description `true` si el correo ya tiene cuenta: solo hay que aceptar, sin nombre ni contraseña nuevos, y su contraseña no cambia. */
+            cuenta_existente: boolean;
+        };
         /** Disponibilidad */
         Disponibilidad: {
             servicio: {
@@ -1737,6 +1843,26 @@ export interface components {
             logo: string | null;
             /** @description Dirección del banner, relativa al servidor (`/api/v1/archivos/...`), o `null` si no tiene. */
             banner: string | null;
+        };
+        /** Invitacion */
+        Invitacion: {
+            id: string;
+            correo: string;
+            servicios: string[];
+            /** @description Instante en que se envió la invitación, en ISO 8601. */
+            enviada: string;
+            /** @description Instante en que el enlace deja de funcionar, en ISO 8601: siete días después de enviada. */
+            vence: string;
+        };
+        /** InvitarColaborador */
+        InvitarColaborador: {
+            /**
+             * Format: email
+             * @description Correo de la persona invitada; recibe el enlace para crear su contraseña.
+             */
+            correo: string;
+            /** @description Identificadores de los servicios de la barbería que ofrecerá; puede estar vacía. */
+            servicios: string[];
         };
         /** LogoDeLaBarberia */
         LogoDeLaBarberia: {
@@ -2332,6 +2458,56 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "catalog.invitation-links.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsultaDeInvitacion"];
+            };
+        };
+        responses: {
+            /** @description `DetalleDeInvitacion` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DetalleDeInvitacion"];
+                    };
+                };
+            };
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.invitation-links.accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AceptacionDeInvitacion"];
+            };
+        };
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            422: components["responses"]["InvalidData"];
+        };
+    };
     "shared.files.show": {
         parameters: {
             query?: never;
@@ -3523,6 +3699,86 @@ export interface operations {
                         data: components["schemas"]["ReporteIngresos"];
                     };
                 };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "catalog.invitations.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `Invitacion` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Invitacion"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "catalog.invitations.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitarColaborador"];
+            };
+        };
+        responses: {
+            /** @description `Invitacion` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Invitacion"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.invitations.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                invitacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];

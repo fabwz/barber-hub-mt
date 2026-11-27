@@ -67,6 +67,7 @@ trait BuildsAccessScenario
             'colaborador' => $this->daniela,
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->puraNavaja),
+            'invitacion' => $this->insertInvitation($this->puraNavaja),
             'bono' => $this->insertVoucherDefinition($this->puraNavaja, [$this->degradado]),
             'fila' => $this->insertWaitlistEntry($this->puraNavaja, $this->anaMembership, $this->degradado),
             'oferta' => $this->insertLostOffer($this->puraNavaja, $this->anaMembership, $this->degradado, $this->daniela),
@@ -86,6 +87,7 @@ trait BuildsAccessScenario
             'colaborador' => $this->mauricio,
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->fadeLab),
+            'invitacion' => $this->insertInvitation($this->fadeLab),
             'bono' => $this->insertVoucherDefinition($this->fadeLab, [$this->corte]),
             'fila' => $this->insertWaitlistEntry($this->fadeLab, $beaMembership, $this->corte),
             'oferta' => $this->insertLostOffer($this->fadeLab, $beaMembership, $this->corte, $this->mauricio),
@@ -164,6 +166,22 @@ trait BuildsAccessScenario
             'method' => 'card',
             'status' => 'pending',
             'amount' => 2100,
+        ]);
+
+        return $id;
+    }
+
+    private function insertInvitation(string $barbershopId): string
+    {
+        $id = (string) Str::uuid7();
+        $this->scopeQueriesTo($barbershopId);
+        DB::table('invitations')->insert([
+            'id' => $id,
+            'barbershop_id' => $barbershopId,
+            'email' => 'invitada-'.substr($id, -6).'@correo.cr',
+            'token_hash' => hash('sha256', $id),
+            'expires_at' => '2099-01-01 00:00:00-06',
+            'invited_by_membership_id' => (string) DB::table('memberships')->where('barbershop_id', $barbershopId)->where('role', 'owner')->value('id'),
         ]);
 
         return $id;

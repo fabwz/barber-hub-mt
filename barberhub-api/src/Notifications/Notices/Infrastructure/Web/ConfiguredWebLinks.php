@@ -17,4 +17,10 @@ final readonly class ConfiguredWebLinks implements WebLinks
     {
         return rtrim($this->baseUrl, '/').'/restablecer-contrasena?'.http_build_query(['token' => $token]);
     }
+
+    /** The screen «Aceptar invitación» of the web client, with the token in the query. */
+    public function invitationAcceptance(#[SensitiveParameter] string $token): string
+    {
+        return rtrim($this->baseUrl, '/').'/aceptar-invitacion?'.http_build_query(['token' => $token]);
+    }
 }
