@@ -85,6 +85,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/administracion/ausencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar los bloqueos vigentes
+         * @description Trae los bloqueos de agenda de todos los colaboradores que todavía no terminan, del más próximo al más lejano. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`.
+         */
+        get: operations["catalog.absences.index"];
+        put?: never;
+        /**
+         * Bloquear la agenda de un colaborador
+         * @description Bloquea al `colaborador` desde `fecha_desde` hasta `fecha_hasta` (ambas incluidas, hora de Costa Rica). Sin horas cubre los días completos; con `hora_desde` y `hora_hasta` (juntas) empieza a esa hora el primer día y termina a esa hora el último. Un rango que ya terminó o que termina antes de empezar responde 422 `datos-invalidos`; un colaborador inactivo, 409 `conflicto`; uno que no es de la barbería, 404 `no-encontrado`. Si el rango cae sobre reservas confirmadas o temporales vigentes del colaborador no se guarda y responde 409 `ausencia-con-reservas` con las más próximas en `reservas` y cuántas son en `total_reservas`: el dueño las reprograma o las cancela con las acciones de las reservas y vuelve a guardar. Solo el dueño.
+         */
+        post: operations["catalog.absences.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/barberias/{barberia}/administracion/ausencias/{ausencia}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Quitar un bloqueo
+         * @description Los espacios del colaborador vuelven a ofrecerse según su horario. Responde 404 `no-encontrado` si el bloqueo no existe en la barbería. Solo el dueño.
+         */
+        delete: operations["catalog.absences.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/bonos": {
         parameters: {
             query?: never;
@@ -1451,6 +1495,16 @@ export interface components {
              */
             barbero?: string | null;
         };
+        /** Ausencia */
+        Ausencia: {
+            id: string;
+            colaborador: string;
+            /** @description Inicio del bloqueo, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00). */
+            inicio: string;
+            /** @description Fin del bloqueo, que no se incluye: un bloqueo de días completos termina a la medianoche del día siguiente al último. */
+            fin: string;
+            motivo: string | null;
+        };
         /** AutorizarCanal */
         AutorizarCanal: {
             /** @description Identificador de la conexión que el servidor de tiempo real entrega al navegador. */
@@ -2066,6 +2120,30 @@ export interface components {
             /** @description Hasta 3 espacios libres del mismo día y servicio, los de inicio más próximo al pedido, cuando el estado es `no_disponible` (RE-02). */
             alternativas: unknown[];
         };
+        /** RegistrarAusencia */
+        RegistrarAusencia: {
+            /**
+             * Format: uuid
+             * @description Identificador del colaborador cuya agenda se bloquea.
+             */
+            colaborador: string;
+            /**
+             * Format: date
+             * @description Primer día del bloqueo, AAAA-MM-DD, en hora de Costa Rica.
+             */
+            fecha_desde: string;
+            /**
+             * Format: date
+             * @description Último día del bloqueo, AAAA-MM-DD, incluido. Para un solo día, la misma fecha.
+             */
+            fecha_hasta: string;
+            /** @description Hora de inicio del primer día, HH:MM. Se envía junto con `hora_hasta` o no se envía: sin horas, el bloqueo cubre los días completos. */
+            hora_desde?: string | null;
+            /** @description Hora de fin del último día, HH:MM. Se envía junto con `hora_desde`. */
+            hora_hasta?: string | null;
+            /** @description Motivo opcional, por ejemplo vacaciones o incapacidad. */
+            motivo?: string | null;
+        };
         /** RegistrarCierre */
         RegistrarCierre: {
             /**
@@ -2558,6 +2636,86 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.absences.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `Ausencia` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Ausencia"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "catalog.absences.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarAusencia"];
+            };
+        };
+        responses: {
+            /** @description `Ausencia` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Ausencia"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "catalog.absences.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+                ausencia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
         };
     };
     "vouchers.on-sale.index": {
