@@ -386,7 +386,7 @@ final class CollaboratorInvitationTest extends TestCase
         $this->invite();
         $token = $this->tokenOfLastMail();
 
-        foreach ([str_repeat('a', 64), 'b'.substr($token, 1), 'corto'] as $wrong) {
+        foreach ([str_repeat('a', 64), $this->differentToken($token), 'corto'] as $wrong) {
             $this->consult($wrong)->assertUnprocessable()->assertJsonPath('errores.token.0', $this->invalidLink());
             $this->accept($wrong, ['nombre' => 'Lucía Mora', 'contrasena' => self::PASSWORD])->assertUnprocessable()->assertJsonPath('errores.token.0', $this->invalidLink());
         }
@@ -584,7 +584,7 @@ final class CollaboratorInvitationTest extends TestCase
     {
         $this->invite('lucia@correo.cr');
         $token = $this->tokenOfLastMail();
-        $this->accept('b'.substr($token, 1), ['nombre' => 'Lucía Mora', 'contrasena' => self::PASSWORD])->assertUnprocessable();
+        $this->accept($this->differentToken($token), ['nombre' => 'Lucía Mora', 'contrasena' => self::PASSWORD])->assertUnprocessable();
         $this->accept($token, ['nombre' => 'Lucía Mora', 'contrasena' => 'debil'])->assertUnprocessable();
         $this->accept($token, ['nombre' => 'Lucía Mora', 'contrasena' => self::PASSWORD])->assertNoContent();
         $this->accept($token, ['nombre' => 'Lucía Mora', 'contrasena' => self::PASSWORD])->assertUnprocessable();
@@ -615,6 +615,12 @@ final class CollaboratorInvitationTest extends TestCase
         Sanctum::actingAs($owner, []);
 
         return (string) $this->postJson($this->admin($barbershopId), ['correo' => $email, 'servicios' => $services])->assertCreated()->json('data.id');
+    }
+
+    /** A token of the same shape that is never the given one: its first character is always replaced by a different one. */
+    private function differentToken(string $token): string
+    {
+        return ($token[0] === 'b' ? 'c' : 'b').substr($token, 1);
     }
 
     /** The token that went in the last email. */
