@@ -241,6 +241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/clientes-asistidos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Buscar clientes asistidos
+         * @description Busca entre los clientes asistidos de la barbería por una parte del `nombre` o del teléfono (`busqueda`, sin distinguir mayúsculas), ordenados por nombre y hasta 10; sin `busqueda` trae los primeros. Nunca trae a un cliente asistido de otra barbería (CL-06). No hay lista paginada: el dueño escribe más para acotar. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`. El cliente asistido se crea al registrar la reserva (`POST /reservas/asistida`).
+         */
+        get: operations["reservations.assisted-clients.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/administracion/cobro": {
         parameters: {
             query?: never;
@@ -1078,6 +1098,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/barberias/{barberia}/reservas/asistida": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registrar una reserva asistida
+         * @description El dueño registra una reserva para una persona que llega o llama y no tiene cuenta (RF-12). La persona es `cliente_asistido`, el identificador de uno ya registrado en la barbería (de `GET /clientes-asistidos`), o los datos de uno nuevo: `cliente_nombre` y `cliente_telefono` obligatorios y `cliente_correo` opcional; si se manda `cliente_asistido`, los `cliente_*` se ignoran. El cliente asistido existe solo en su barbería (CL-06): el identificador de uno de otra barbería responde 404 `no-encontrado`. `servicio`, `barbero` e `inicio` son los de un espacio de la consulta de disponibilidad (RF-10); aquí el `barbero` es obligatorio. Ocupa el espacio igual que una reserva en línea: en la misma transacción bloquea al barbero, vuelve a validar la disponibilidad y la exclusión de la base de datos es la segunda barrera, así que una reserva asistida y una en línea por el mismo espacio dejan exactamente una (RE-01). No hay cobro en línea: la reserva queda `confirmada` en la misma operación (RE-07), con la creación y la confirmación en su historial y el dueño que la registró como autor, y guarda el precio, la duración y el plazo de cancelación vigentes. Si el espacio ya no está disponible responde 409 `espacio-no-disponible` con hasta 3 `alternativas` del mismo día, barbero y servicio, y no queda ningún cliente asistido creado. Un servicio o un barbero inexistente, inactivo o de otra barbería responde 404 `no-encontrado`; un dato mal escrito, 422 `datos-invalidos` con el campo. Sin correo el cliente no recibe avisos ni recordatorios; con correo recibe la confirmación y los recordatorios como cualquier cliente. Solo el dueño: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barbería, 404 `no-encontrado`. La agenda y el detalle del dueño traen `asistida` y `cliente_telefono`; el colaborador ve el nombre pero no el teléfono (CO-04). Reprogramar, cancelar y cerrar la reserva asistida se hacen con las mismas acciones de cualquier reserva.
+         */
+        post: operations["reservations.reservations.store-assisted"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/reservas/propuesta": {
         parameters: {
             query?: never;
@@ -1685,6 +1725,14 @@ export interface components {
             fecha: string;
             motivo: string | null;
         };
+        /** ClienteAsistido */
+        ClienteAsistido: {
+            id: string;
+            nombre: string;
+            telefono: string;
+            /** @description Nulo si no tiene correo: sin él no recibe avisos ni recordatorios. */
+            correo: string | null;
+        };
         /** Cobro */
         Cobro: {
             modalidad: string;
@@ -2153,6 +2201,35 @@ export interface components {
             fecha: string;
             motivo?: string | null;
         };
+        /** RegistrarReservaAsistida */
+        RegistrarReservaAsistida: {
+            /**
+             * Format: uuid
+             * @description Identificador del servicio activo de la barbería.
+             */
+            servicio: string;
+            /**
+             * Format: uuid
+             * @description Identificador del barbero, el de un espacio de la consulta de disponibilidad. Aquí es obligatorio: el dueño elige el espacio.
+             */
+            barbero: string;
+            /** @description Inicio del espacio, fecha y hora ISO 8601 con desfase, por ejemplo `2030-03-05T10:00:00-06:00`. */
+            inicio: string;
+            /**
+             * Format: uuid
+             * @description Identificador de un cliente asistido ya registrado en esta barbería (de `GET /clientes-asistidos`). Si va, se ignoran los datos de `cliente_*`.
+             */
+            cliente_asistido?: string | null;
+            /** @description Nombre del cliente nuevo. Obligatorio si no se manda `cliente_asistido`. */
+            cliente_nombre?: string | null;
+            /** @description Teléfono del cliente nuevo. Obligatorio si no se manda `cliente_asistido`. */
+            cliente_telefono?: string | null;
+            /**
+             * Format: email
+             * @description Correo del cliente nuevo, opcional. Sin correo el cliente no recibe avisos ni recordatorios (CL-06).
+             */
+            cliente_correo?: string | null;
+        };
         /** RegistroDeBarberia */
         RegistroDeBarberia: {
             nombre: string;
@@ -2218,6 +2295,27 @@ export interface components {
             plazo_cancelacion_horas: number;
             /** @description Hora límite para pagar, mismo formato que `inicio`; nula si la reserva ya está confirmada. */
             expira_en: string | null;
+        };
+        /** ReservaAsistida */
+        ReservaAsistida: {
+            id: string;
+            servicio: string;
+            barbero: string;
+            /** @description Estado de la reserva; al crearla queda `confirmada` si la barbería no cobra y `temporal` si cobra. */
+            estado: string;
+            /** @description Inicio del servicio, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00). */
+            inicio: string;
+            /** @description Fin del servicio, sin la limpieza que le sigue; mismo formato que `inicio`. */
+            fin: string;
+            /** @description Colones con el IVA incluido, el precio vigente al reservar. */
+            precio: number;
+            duracion_minutos: number;
+            /** @description Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
+            plazo_cancelacion_horas: number;
+            /** @description Hora límite para pagar, mismo formato que `inicio`; nula si la reserva ya está confirmada. */
+            expira_en: string | null;
+            /** @description Identificador del cliente asistido de la reserva, el encontrado o el recién registrado. */
+            cliente_asistido: string | null;
         };
         /** ReservaCancelada */
         ReservaCancelada: {
@@ -2304,6 +2402,10 @@ export interface components {
             expira_en: string | null;
             /** @description Nombre de la persona que reservó. */
             cliente_nombre: string;
+            /** @description Verdadero si el dueño la registró para una persona sin cuenta (RF-12). */
+            asistida: boolean;
+            /** @description Teléfono del cliente asistido; solo lo ve el dueño y es nulo en las reservas con cuenta y para el colaborador. */
+            cliente_telefono: string | null;
         };
         /** ReservaDeCliente */
         ReservaDeCliente: {
@@ -2358,6 +2460,10 @@ export interface components {
             expira_en: string | null;
             /** @description Nombre de la persona que reservó. */
             cliente_nombre: string;
+            /** @description Verdadero si el dueño la registró para una persona sin cuenta (RF-12). */
+            asistida: boolean;
+            /** @description Teléfono del cliente asistido; solo lo ve el dueño y es nulo en las reservas con cuenta y para el colaborador. */
+            cliente_telefono: string | null;
             /** @description Horas antes del inicio hasta las cuales se cancela sin penalización, el plazo vigente al reservar. */
             plazo_cancelacion_horas: number;
             /** @description Colones por cobrar en el local (PA-10): mientras no exista un depósito, el precio completo. */
@@ -2949,6 +3055,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    "reservations.assisted-clients.index": {
+        parameters: {
+            query?: {
+                /** @description Parte del nombre o del teléfono; sin ella trae los primeros por nombre. */
+                busqueda?: string | null;
+            };
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `ClienteAsistido` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ClienteAsistido"][];
+                    };
+                };
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
@@ -4343,6 +4478,37 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ReservaCreada"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["InvalidData"];
+        };
+    };
+    "reservations.reservations.store-assisted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barberia: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarReservaAsistida"];
+            };
+        };
+        responses: {
+            /** @description `ReservaAsistida` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ReservaAsistida"];
                     };
                 };
             };
