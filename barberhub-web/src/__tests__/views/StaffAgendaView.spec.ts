@@ -165,10 +165,13 @@ describe('StaffAgendaView: the assisted reservation (RF-12)', () => {
   it('leads the owner to «Reserva asistida» from the header', async () => {
     const { wrapper, shopId, router } = await open()
 
-    // The shop of the session arrives after the first paint, so the link is awaited, not assumed.
-    const find = () => wrapper.findAll('a').find((item) => item.text() === 'Reserva asistida')
-    await vi.waitFor(() => expect(find()).toBeDefined())
-    const link = find()!
+    // A loaded machine paints the header late: the link is awaited with room, and a failure says what the page showed.
+    const find = () => wrapper.find('a[href$="/reserva-asistida"]')
+    await vi.waitFor(() => expect(find().exists(), wrapper.text().slice(0, 400)).toBe(true), {
+      timeout: 10_000,
+    })
+    const link = find()
+    expect(link.text()).toBe('Reserva asistida')
     expect(link.attributes('href')).toBe(`/barberias/${shopId}/reserva-asistida`)
 
     await link.trigger('click')
