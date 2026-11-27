@@ -25,6 +25,9 @@ const sections = computed<Section[]>(() => {
   if (router.hasRoute('staff-team-invitations')) {
     list.push({ label: 'Invitaciones', to: { name: 'staff-team-invitations', params } })
   }
+  if (router.hasRoute('staff-team-absences')) {
+    list.push({ label: 'Bloqueos de agenda', to: { name: 'staff-team-absences', params } })
+  }
   list.push({ label: 'Horario de la barbería', to: { name: 'staff-team', params } })
   return list
 })
@@ -36,7 +39,7 @@ const sections = computed<Section[]>(() => {
     <main class="mx-auto w-full max-w-5xl flex-1 px-5 py-6 md:px-8">
       <h1 class="text-2xl">Equipo</h1>
       <p class="mt-1 text-sm text-fg-muted">
-        Colaboradores, invitaciones y el horario de la barbería.
+        Colaboradores, invitaciones, bloqueos de agenda y el horario de la barbería.
       </p>
       <div class="mt-5">
         <SectionNav label="Secciones de Equipo" :sections="sections" />

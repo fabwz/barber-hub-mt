@@ -74,6 +74,7 @@ describe('TeamMembersView: the list', () => {
     expect(links.map((l) => l.text())).toEqual([
       'Colaboradores',
       'Invitaciones',
+      'Bloqueos de agenda',
       'Horario de la barbería',
     ])
     expect(links[0]!.attributes('aria-current')).toBe('page')

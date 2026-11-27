@@ -12,6 +12,7 @@ import { scheduleApi, slot } from '../helpers/schedule'
 import { servicesApi, service } from '../helpers/services'
 import { settingsApi } from '../helpers/settings'
 import { OWNER_SHOP, SHOP_A, STAFF_SHOP, staffHandler } from '../helpers/staff'
+import { absence, absencesApi } from '../helpers/absences'
 import { collaborator, teamApi } from '../helpers/team'
 import { voucher, voucherDefinitionsApi } from '../helpers/voucherDefinitions'
 import { VOUCHER_ID, mockVoucherFetch } from '../helpers/vouchers'
@@ -214,6 +215,10 @@ export const SCREENS: Record<string, Screen> = {
     session: 'owner',
     prepare: () =>
       `/barberias/${invitationsApi({ invitations: [invitation()] }).shopId}/equipo/invitaciones`,
+  },
+  'staff-team-absences': {
+    session: 'owner',
+    prepare: () => `/barberias/${absencesApi({ absences: [absence()] }).shopId}/equipo/bloqueos`,
   },
   'staff-team-member-new': {
     session: 'owner',
