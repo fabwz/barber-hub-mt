@@ -37,6 +37,6 @@ final class ScheduleRemindersOnReservation implements ShouldQueue
     /** Schedule the reminders for the hours the reservation has now, as the barbershop it belongs to. */
     public function handle(ReservationConfirmed|ReservationRescheduled $event): void
     {
-        $this->scope->run($event->barbershopId, fn () => $this->schedule->execute($event->reservationId, $event->customerMembershipId, $event->startsAt, $this->clock->now()));
+        $this->scope->run($event->barbershopId, fn () => $this->schedule->execute($event->reservationId, $event->customerMembershipId, $event->startsAt, $this->clock->now(), $event->assistedClientId));
     }
 }

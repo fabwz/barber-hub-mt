@@ -26,6 +26,6 @@ final readonly class ReservationsReservationLookup implements ReservationLookup
             return null;
         }
 
-        return new ReservationFacts($notice->confirmed, $notice->startsAt, $notice->endsAt, $notice->customerMembershipId, $notice->serviceId, $notice->collaboratorId);
+        return new ReservationFacts($notice->confirmed, $notice->startsAt, $notice->endsAt, $notice->customerMembershipId, $notice->serviceId, $notice->collaboratorId, $notice->assistedClientId);
     }
 }

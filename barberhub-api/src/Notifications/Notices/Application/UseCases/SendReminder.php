@@ -39,7 +39,7 @@ final readonly class SendReminder
             return false;
         }
 
-        if (! $this->preferences->isEnabledFor($reservation->customerMembershipId)) {
+        if ($reservation->customerMembershipId !== null && ! $this->preferences->isEnabledFor($reservation->customerMembershipId)) {
             return false;
         }
 
@@ -52,6 +52,7 @@ final readonly class SendReminder
             $reservation->endsAt,
             reminder: $kind,
             idempotencyKey: "reminder-{$reservationId}-{$kind->value}-{$scheduledFor->getTimestamp()}",
+            assistedClientId: $reservation->assistedClientId,
         ));
 
         if ($notice === null || ! $this->reminders->claim($reservationId, $kind, $scheduledFor, $now)) {

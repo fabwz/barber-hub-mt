@@ -6,15 +6,14 @@ namespace Src\Notifications\Notices\Application;
 
 use Src\Notifications\Notices\Application\Contracts\BarbershopBranding;
 use Src\Notifications\Notices\Application\Contracts\CatalogNames;
-use Src\Notifications\Notices\Application\Contracts\Recipients;
 use Src\Notifications\Notices\Application\DTOs\Notice;
 use Src\Notifications\Notices\Application\DTOs\NoticeCommand;
 
-/** Builds a notice from its facts, adding the person, the barbershop and the names; there is none when the customer has no email (CL-06). */
+/** Builds a notice from its facts, adding the person (an account or an assisted client), the barbershop and the names; there is none when the customer has no email (CL-06). */
 final readonly class NoticeComposer
 {
     public function __construct(
-        private Recipients $recipients,
+        private CustomerRecipient $recipient,
         private BarbershopBranding $branding,
         private CatalogNames $names,
     ) {}
@@ -22,7 +21,7 @@ final readonly class NoticeComposer
     /** The notice of the command, or null when nobody can receive it. */
     public function compose(NoticeCommand $command): ?Notice
     {
-        $recipient = $this->recipients->ofMembership($command->customerMembershipId);
+        $recipient = $this->recipient->of($command->customerMembershipId, $command->assistedClientId);
 
         if ($recipient === null) {
             return null;

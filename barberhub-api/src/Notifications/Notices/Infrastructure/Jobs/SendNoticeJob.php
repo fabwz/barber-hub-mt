@@ -23,7 +23,7 @@ final class SendNoticeJob implements ShouldQueueAfterCommit
     public function __construct(
         public readonly string $barbershopId,
         public readonly NoticeType $type,
-        public readonly string $customerMembershipId,
+        public readonly ?string $customerMembershipId,
         public readonly string $serviceId,
         public readonly string $collaboratorId,
         public readonly DateTimeImmutable $startsAt,
@@ -31,6 +31,7 @@ final class SendNoticeJob implements ShouldQueueAfterCommit
         public readonly ?DateTimeImmutable $expiresAt,
         public readonly ?DateTimeImmutable $previousStartsAt,
         public readonly string $idempotencyKey,
+        public readonly ?string $assistedClientId = null,
     ) {}
 
     /** Send the notice as its barbershop, in its transaction. */
@@ -46,6 +47,7 @@ final class SendNoticeJob implements ShouldQueueAfterCommit
             $this->expiresAt,
             $this->previousStartsAt,
             idempotencyKey: $this->idempotencyKey,
+            assistedClientId: $this->assistedClientId,
         )));
     }
 }

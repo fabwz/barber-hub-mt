@@ -12,6 +12,7 @@ use Illuminate\Support\ServiceProvider;
 use Resend;
 use Src\Catalog\Invitations\Domain\Events\CollaboratorInvited;
 use Src\Identity\Users\Domain\Events\PasswordResetRequested;
+use Src\Notifications\Notices\Application\Contracts\AssistedRecipients;
 use Src\Notifications\Notices\Application\Contracts\BarbershopBranding;
 use Src\Notifications\Notices\Application\Contracts\CatalogNames;
 use Src\Notifications\Notices\Application\Contracts\CollaboratorInvitations;
@@ -23,6 +24,7 @@ use Src\Notifications\Notices\Application\Contracts\ReminderPreferences;
 use Src\Notifications\Notices\Application\Contracts\ReservationLookup;
 use Src\Notifications\Notices\Application\Contracts\WebLinks;
 use Src\Notifications\Notices\Domain\Contracts\ReminderRepository;
+use Src\Notifications\Notices\Infrastructure\AssistedClients\AssistedClientsAssistedRecipients;
 use Src\Notifications\Notices\Infrastructure\Catalog\CatalogBarbershopBranding;
 use Src\Notifications\Notices\Infrastructure\Catalog\CatalogCollaboratorInvitations;
 use Src\Notifications\Notices\Infrastructure\Catalog\CatalogNoticeNames;
@@ -58,6 +60,7 @@ final class NoticesServiceProvider extends ServiceProvider
         ReminderJobs::class => QueuedReminders::class,
         ReservationLookup::class => ReservationsReservationLookup::class,
         Recipients::class => IdentityRecipients::class,
+        AssistedRecipients::class => AssistedClientsAssistedRecipients::class,
         PasswordResets::class => IdentityPasswordResets::class,
         ReminderPreferences::class => IdentityReminderPreferences::class,
         BarbershopBranding::class => CatalogBarbershopBranding::class,
