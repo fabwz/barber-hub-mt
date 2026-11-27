@@ -51,12 +51,17 @@ describe('StaffTeamView: the section', () => {
   it('is Equipo with a link per section, the current one marked, and no tabs', async () => {
     const { wrapper } = await open()
     expect(wrapper.get('h1').text()).toBe('Equipo')
-    expect(wrapper.text()).toContain('Colaboradores y el horario de la barbería.')
+    expect(wrapper.text()).toContain('Colaboradores, invitaciones y el horario de la barbería.')
     const nav = wrapper.get('nav[aria-label="Secciones de Equipo"]')
     const links = nav.findAll('a')
-    expect(links.map((l) => l.text())).toEqual(['Colaboradores', 'Horario de la barbería'])
+    expect(links.map((l) => l.text())).toEqual([
+      'Colaboradores',
+      'Invitaciones',
+      'Horario de la barbería',
+    ])
     expect(links[0]!.attributes('aria-current')).toBeUndefined()
-    expect(links[1]!.attributes('aria-current')).toBe('page')
+    expect(links[1]!.attributes('aria-current')).toBeUndefined()
+    expect(links[2]!.attributes('aria-current')).toBe('page')
     expect(wrapper.find('[role="tab"], [role="tablist"], [role="tabpanel"]').exists()).toBe(false)
   })
 

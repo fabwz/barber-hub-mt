@@ -4,6 +4,7 @@ import { bookingHandler } from '../helpers/booking'
 import { PURA_NAVAJA, FADE_LAB, CORTE_FINO, directoryHandler } from '../helpers/directory'
 import { installFakeEcho } from '../helpers/echo'
 import { jsonResponse, mockFetch, pathOf, problem } from '../helpers/http'
+import { invitation, invitationLinkApi, invitationsApi } from '../helpers/invitations'
 import { DETAIL_ID, mockBookingsFetch } from '../helpers/myBookings'
 import { mockOffersApi } from '../helpers/offers'
 import { RESERVATION_ID, detail, mockPaymentFetch } from '../helpers/payment'
@@ -84,6 +85,12 @@ export const SCREENS: Record<string, Screen> = {
   'reset-password': {
     session: 'guest',
     prepare: () => (offline(), '/restablecer-contrasena?token=a1b2c3'),
+  },
+
+  // The screen reads what the link invites to, so the fake API answers it; the form is what axe looks at.
+  'accept-invitation': {
+    session: 'guest',
+    prepare: () => (invitationLinkApi(), '/aceptar-invitacion?token=a1b2c3'),
   },
 
   // Client
@@ -202,6 +209,11 @@ export const SCREENS: Record<string, Screen> = {
     session: 'owner',
     prepare: () =>
       `/barberias/${teamApi({ collaborators: [collaborator()] }).shopId}/equipo/colaboradores`,
+  },
+  'staff-team-invitations': {
+    session: 'owner',
+    prepare: () =>
+      `/barberias/${invitationsApi({ invitations: [invitation()] }).shopId}/equipo/invitaciones`,
   },
   'staff-team-member-new': {
     session: 'owner',

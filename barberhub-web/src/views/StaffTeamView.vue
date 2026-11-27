@@ -22,6 +22,9 @@ const sections = computed<Section[]>(() => {
       exact: false,
     })
   }
+  if (router.hasRoute('staff-team-invitations')) {
+    list.push({ label: 'Invitaciones', to: { name: 'staff-team-invitations', params } })
+  }
   list.push({ label: 'Horario de la barbería', to: { name: 'staff-team', params } })
   return list
 })
@@ -32,7 +35,9 @@ const sections = computed<Section[]>(() => {
     <StaffNavbar />
     <main class="mx-auto w-full max-w-5xl flex-1 px-5 py-6 md:px-8">
       <h1 class="text-2xl">Equipo</h1>
-      <p class="mt-1 text-sm text-fg-muted">Colaboradores y el horario de la barbería.</p>
+      <p class="mt-1 text-sm text-fg-muted">
+        Colaboradores, invitaciones y el horario de la barbería.
+      </p>
       <div class="mt-5">
         <SectionNav label="Secciones de Equipo" :sections="sections" />
       </div>

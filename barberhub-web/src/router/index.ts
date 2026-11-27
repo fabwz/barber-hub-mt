@@ -99,6 +99,13 @@ export const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
   {
+    // The link of the email of an invitation (RF-06): the person has no account yet, or may open it on any browser.
+    path: '/aceptar-invitacion',
+    name: 'accept-invitation',
+    component: () => import('@/views/AcceptInvitationView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/preferencias',
     name: 'preferences',
     component: () => import('@/views/PreferencesView.vue'),
@@ -206,6 +213,12 @@ export const routes: RouteRecordRaw[] = [
         path: 'colaboradores/:colaborador',
         name: 'staff-team-member-edit',
         component: () => import('@/views/TeamMemberFormView.vue'),
+      },
+      {
+        // Invite by email, the pending ones and cancelling them (#100, RF-06).
+        path: 'invitaciones',
+        name: 'staff-team-invitations',
+        component: () => import('@/views/TeamInvitationsView.vue'),
       },
     ],
   },
