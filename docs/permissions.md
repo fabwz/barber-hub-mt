@@ -130,6 +130,9 @@ Quien no tiene rol pasa y la operación le crea el de cliente; el dueño y el co
 | `GET api/v1/barberias/{barberia}/administracion/cierres` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/cierres` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `DELETE api/v1/barberias/{barberia}/administracion/cierres/{cierre}` | Rol | dueño | Administración de la barbería: solo su dueño. |
+| `GET api/v1/barberias/{barberia}/administracion/ausencias` | Rol | dueño | Bloqueos de agenda: solo el dueño los ve, los crea y los quita (RF-07). El colaborador y el cliente reciben 403; quien no tiene rol en la barbería, 404. |
+| `POST api/v1/barberias/{barberia}/administracion/ausencias` | Rol | dueño | Administración de la barbería: solo su dueño. |
+| `DELETE api/v1/barberias/{barberia}/administracion/ausencias/{ausencia}` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `GET api/v1/barberias/{barberia}/administracion/colaboradores` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/colaboradores` | Rol | dueño | Administración de la barbería: solo su dueño. |
 | `POST api/v1/barberias/{barberia}/administracion/colaboradores/mi-perfil` | Rol | dueño | Administración de la barbería: solo su dueño. |

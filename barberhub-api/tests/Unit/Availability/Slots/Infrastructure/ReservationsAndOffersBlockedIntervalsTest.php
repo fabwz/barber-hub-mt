@@ -7,14 +7,19 @@ namespace Tests\Unit\Availability\Slots\Infrastructure;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;
+use Src\Availability\Slots\Infrastructure\Absences\AbsencesBlockedIntervals;
 use Src\Availability\Slots\Infrastructure\Reservations\ReservationsBlockedIntervals;
 use Src\Availability\Slots\Infrastructure\ReservationsAndOffersBlockedIntervals;
 use Src\Availability\Slots\Infrastructure\Waitlist\OffersBlockedIntervals;
+use Src\Catalog\Absences\Application\UseCases\ListAbsenceIntervals;
+use Src\Catalog\Absences\Domain\Entities\Absence;
+use Src\Catalog\Absences\Domain\ValueObjects\CollaboratorId as AbsenceCollaboratorId;
 use Src\Reservations\Reservations\Application\Contracts\BlockedIntervalReader;
 use Src\Reservations\Reservations\Application\UseCases\ListBlockedIntervals;
 use Src\Shared\Domain\ValueObjects\TimeInterval;
 use Src\Waitlist\Offers\Application\Contracts\OfferedSpaceReader;
 use Src\Waitlist\Offers\Application\UseCases\ListOfferedSpaces;
+use Tests\Support\Catalog\InMemoryAbsenceRepository;
 
 /** What a collaborator holds is what their reservations hold plus the whole space of their pending offers, so an offered space does not show free (DI-05). */
 final class ReservationsAndOffersBlockedIntervalsTest extends TestCase
@@ -58,6 +63,19 @@ final class ReservationsAndOffersBlockedIntervalsTest extends TestCase
         $this->assertCount(2, $held[self::DANIELA]);
     }
 
+    /** The time a collaborator is absent is held too, so no space is offered inside it (DI-01, CO-06), and only for that collaborator. */
+    public function test_the_absence_of_a_collaborator_is_held_for_them_only(): void
+    {
+        $absences = new InMemoryAbsenceRepository;
+        $absences->save(Absence::reconstitute($absences->nextId(), new AbsenceCollaboratorId(self::DANIELA), self::space('14:00', '16:00'), null));
+
+        $held = $this->blocked([self::DANIELA => [self::space('09:00', '09:50')]], [], $absences)
+            ->between([self::DANIELA, self::KEVIN], self::space('08:00', '19:00'), self::now());
+
+        $this->assertSame(['09:00', '14:00'], array_map(fn (TimeInterval $interval): string => $interval->start->format('H:i'), $held[self::DANIELA]));
+        $this->assertArrayNotHasKey(self::KEVIN, $held);
+    }
+
     /** Nothing held anywhere is an empty answer. */
     public function test_nothing_held_is_an_empty_answer(): void
     {
@@ -70,7 +88,7 @@ final class ReservationsAndOffersBlockedIntervalsTest extends TestCase
      * @param  array<string, list<TimeInterval>>  $reservations
      * @param  array<string, list<TimeInterval>>  $offers
      */
-    private function blocked(array $reservations, array $offers): ReservationsAndOffersBlockedIntervals
+    private function blocked(array $reservations, array $offers, ?InMemoryAbsenceRepository $absences = null): ReservationsAndOffersBlockedIntervals
     {
         $reservationReader = new class($reservations) implements BlockedIntervalReader
         {
@@ -96,6 +114,7 @@ final class ReservationsAndOffersBlockedIntervalsTest extends TestCase
         return new ReservationsAndOffersBlockedIntervals(
             new ReservationsBlockedIntervals(new ListBlockedIntervals($reservationReader)),
             new OffersBlockedIntervals(new ListOfferedSpaces($offerReader)),
+            new AbsencesBlockedIntervals(new ListAbsenceIntervals($absences ?? new InMemoryAbsenceRepository)),
         );
     }
 

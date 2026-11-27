@@ -22,6 +22,9 @@ final class OpeningHoursMigrationTest extends TestCase
     // The shifts and breaks of the collaborators use the range type, so they go first when rolling back.
     private const string COLLABORATORS = '2026_10_20_140000_create_collaborators_tables';
 
+    // The absences point at the collaborators, so they go before them when rolling back and after them when applying again.
+    private const string ABSENCES = '2026_11_27_100000_create_collaborator_absences_table';
+
     // The exclusions of the reservations use the extension, so they go first of all when rolling back.
     private const string RESERVATIONS = '2026_10_20_150000_create_reservations_tables';
 
@@ -68,6 +71,7 @@ final class OpeningHoursMigrationTest extends TestCase
 
         $this->asOwner(function (): void {
             $this->apply(self::RESERVATION_REMINDERS, 'down');
+            $this->apply(self::ABSENCES, 'down');
             $this->apply(self::OFFER_RESERVATION, 'down');
             $this->apply(self::WAITLIST_OFFERS, 'down');
             $this->apply(self::WAITLIST_ENTRIES, 'down');
@@ -94,6 +98,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::OPENING_HOURS, 'up');
             $this->apply(self::CLOSURES, 'up');
             $this->apply(self::COLLABORATORS, 'up');
+            $this->apply(self::ABSENCES, 'up');
             $this->apply(self::RESERVATIONS, 'up');
             $this->apply(self::PAYMENTS, 'up');
             $this->apply(self::REFUND_PENDING, 'up');
@@ -122,6 +127,7 @@ final class OpeningHoursMigrationTest extends TestCase
 
         $this->asOwner(function () use ($admin): void {
             $this->apply(self::RESERVATION_REMINDERS, 'down');
+            $this->apply(self::ABSENCES, 'down');
             $this->apply(self::OFFER_RESERVATION, 'down');
             $this->apply(self::WAITLIST_OFFERS, 'down');
             $this->apply(self::WAITLIST_ENTRIES, 'down');
@@ -142,6 +148,7 @@ final class OpeningHoursMigrationTest extends TestCase
             $this->apply(self::OPENING_HOURS, 'up');
             $this->apply(self::CLOSURES, 'up');
             $this->apply(self::COLLABORATORS, 'up');
+            $this->apply(self::ABSENCES, 'up');
             $this->apply(self::RESERVATIONS, 'up');
             $this->apply(self::PAYMENTS, 'up');
             $this->apply(self::REFUND_PENDING, 'up');

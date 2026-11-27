@@ -14,7 +14,9 @@ final readonly class ReservationFilter
      * Keep the criteria: the customer role the reservations belong to, the collaborator whose agenda they are, their
      * status and the day they start, given as the instant the day begins in the time zone of the barbershop. The instant
      * `now` decides which temporary reservations are overdue, so they count as expired and not as temporary. `startingFrom`
-     * keeps only the reservations that start at that instant or later.
+     * keeps only the reservations that start at that instant or later. `holding` keeps only the reservations that hold time
+     * inside the interval, that is, the confirmed ones and the temporary ones still open at `now`, whose blocked time (service
+     * plus cleaning) overlaps it (DI-01); it needs `now`.
      */
     public function __construct(
         public ?CustomerMembershipId $customer = null,
@@ -23,6 +25,7 @@ final readonly class ReservationFilter
         public ?DateTimeImmutable $day = null,
         public ?DateTimeImmutable $now = null,
         public ?DateTimeImmutable $startingFrom = null,
+        public ?TimeInterval $holding = null,
     ) {}
 
     /** The instants of the day asked for, from its beginning to the beginning of the next one, or none. */

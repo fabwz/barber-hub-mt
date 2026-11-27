@@ -192,6 +192,10 @@ final readonly class EloquentReservationRepository implements ReservationReposit
             $query->where('starts_at', '>=', $filter->startingFrom);
         }
 
+        if ($filter->holding !== null) {
+            $this->whereHolding($query, $filter->holding, $filter->now ?? new DateTimeImmutable);
+        }
+
         return EloquentPages::of($query->orderBy('starts_at')->orderBy('id'), $page, fn (ReservationModel $model): Reservation => $this->toDomain($model));
     }
 
@@ -243,6 +247,24 @@ final readonly class EloquentReservationRepository implements ReservationReposit
         $query->where(fn (Builder $either): Builder => $either
             ->where('status', ReservationStatus::Expired->value)
             ->orWhere(fn (Builder $overdue): Builder => $overdue->where('status', $temporary)->where('expires_at', '<=', $now)));
+    }
+
+    /**
+     * Narrow the query to the reservations that hold time inside an interval, the way the availability counts them: confirmed, or
+     * temporary with the payment window still open, and whose service plus cleaning overlaps the interval (DI-01, DI-05).
+     *
+     * @param  Builder<ReservationModel>  $query
+     */
+    private function whereHolding(Builder $query, TimeInterval $interval, DateTimeImmutable $now): void
+    {
+        $query
+            ->where(fn (Builder $held): Builder => $held
+                ->where('status', ReservationStatus::Confirmed->value)
+                ->orWhere(fn (Builder $temporary): Builder => $temporary
+                    ->where('status', ReservationStatus::Temporary->value)
+                    ->where(fn (Builder $open): Builder => $open->whereNull('expires_at')->orWhere('expires_at', '>', $now))))
+            ->where('starts_at', '<', $interval->end)
+            ->where('blocked_until', '>', $interval->start);
     }
 
     /** Insert one entry of the history. */

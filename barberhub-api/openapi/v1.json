@@ -79,6 +79,10 @@
             "description": "Personal con agenda propia: sus servicios, su horario semanal y sus pausas. Solo el due\u00f1o de la barber\u00eda los administra."
         },
         {
+            "name": "Bloqueos de agenda",
+            "description": "Ausencias de un colaborador (vacaciones, incapacidad): mientras duran, sus espacios dejan de ofrecerse."
+        },
+        {
             "name": "Invitaciones de colaboradores",
             "description": "Invitar por correo a quien se une al personal, ver las invitaciones pendientes y cancelarlas. Solo el due\u00f1o de la barber\u00eda."
         },
@@ -303,6 +307,155 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/InvalidData"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/ausencias": {
+            "get": {
+                "operationId": "catalog.absences.index",
+                "description": "Trae los bloqueos de agenda de todos los colaboradores que todav\u00eda no terminan, del m\u00e1s pr\u00f3ximo al m\u00e1s lejano. Solo el due\u00f1o: un colaborador o un cliente recibe 403 `prohibido` y quien no tiene rol en la barber\u00eda, 404 `no-encontrado`.",
+                "summary": "Listar los bloqueos vigentes",
+                "tags": [
+                    "Bloqueos de agenda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `Ausencia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ausencia"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "catalog.absences.store",
+                "description": "Bloquea al `colaborador` desde `fecha_desde` hasta `fecha_hasta` (ambas incluidas, hora de Costa Rica). Sin horas cubre los d\u00edas completos; con `hora_desde` y `hora_hasta` (juntas) empieza a esa hora el primer d\u00eda y termina a esa hora el \u00faltimo. Un rango que ya termin\u00f3 o que termina antes de empezar responde 422 `datos-invalidos`; un colaborador inactivo, 409 `conflicto`; uno que no es de la barber\u00eda, 404 `no-encontrado`. Si el rango cae sobre reservas confirmadas o temporales vigentes del colaborador no se guarda y responde 409 `ausencia-con-reservas` con las m\u00e1s pr\u00f3ximas en `reservas` y cu\u00e1ntas son en `total_reservas`: el due\u00f1o las reprograma o las cancela con las acciones de las reservas y vuelve a guardar. Solo el due\u00f1o.",
+                "summary": "Bloquear la agenda de un colaborador",
+                "tags": [
+                    "Bloqueos de agenda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistrarAusencia"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`Ausencia`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Ausencia"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/InvalidData"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/barberias/{barberia}/administracion/ausencias/{ausencia}": {
+            "delete": {
+                "operationId": "catalog.absences.destroy",
+                "description": "Los espacios del colaborador vuelven a ofrecerse seg\u00fan su horario. Responde 404 `no-encontrado` si el bloqueo no existe en la barber\u00eda. Solo el due\u00f1o.",
+                "summary": "Quitar un bloqueo",
+                "tags": [
+                    "Bloqueos de agenda"
+                ],
+                "parameters": [
+                    {
+                        "name": "barberia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "ausencia",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             }
@@ -4783,6 +4936,39 @@
                 ],
                 "title": "AnotarseEnFila"
             },
+            "Ausencia": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "colaborador": {
+                        "type": "string"
+                    },
+                    "inicio": {
+                        "type": "string",
+                        "description": "Inicio del bloqueo, fecha y hora ISO 8601 con el desfase de Costa Rica (-06:00)."
+                    },
+                    "fin": {
+                        "type": "string",
+                        "description": "Fin del bloqueo, que no se incluye: un bloqueo de d\u00edas completos termina a la medianoche del d\u00eda siguiente al \u00faltimo."
+                    },
+                    "motivo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "colaborador",
+                    "inicio",
+                    "fin",
+                    "motivo"
+                ],
+                "title": "Ausencia"
+            },
             "AutorizarCanal": {
                 "type": "object",
                 "properties": {
@@ -6654,6 +6840,54 @@
                     "alternativas"
                 ],
                 "title": "PropuestaDeReserva"
+            },
+            "RegistrarAusencia": {
+                "type": "object",
+                "properties": {
+                    "colaborador": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Identificador del colaborador cuya agenda se bloquea."
+                    },
+                    "fecha_desde": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Primer d\u00eda del bloqueo, AAAA-MM-DD, en hora de Costa Rica."
+                    },
+                    "fecha_hasta": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "\u00daltimo d\u00eda del bloqueo, AAAA-MM-DD, incluido. Para un solo d\u00eda, la misma fecha."
+                    },
+                    "hora_desde": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora de inicio del primer d\u00eda, HH:MM. Se env\u00eda junto con `hora_hasta` o no se env\u00eda: sin horas, el bloqueo cubre los d\u00edas completos."
+                    },
+                    "hora_hasta": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hora de fin del \u00faltimo d\u00eda, HH:MM. Se env\u00eda junto con `hora_desde`."
+                    },
+                    "motivo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Motivo opcional, por ejemplo vacaciones o incapacidad.",
+                        "maxLength": 200
+                    }
+                },
+                "required": [
+                    "colaborador",
+                    "fecha_desde",
+                    "fecha_hasta"
+                ],
+                "title": "RegistrarAusencia"
             },
             "RegistrarCierre": {
                 "type": "object",

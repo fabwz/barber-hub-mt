@@ -220,6 +220,12 @@ export const routes: RouteRecordRaw[] = [
         name: 'staff-team-invitations',
         component: () => import('@/views/TeamInvitationsView.vue'),
       },
+      {
+        // Block the agenda of a collaborator by hours or by days, and the reservations to resolve (#101, RF-07).
+        path: 'bloqueos',
+        name: 'staff-team-absences',
+        component: () => import('@/views/TeamAbsencesView.vue'),
+      },
     ],
   },
   {

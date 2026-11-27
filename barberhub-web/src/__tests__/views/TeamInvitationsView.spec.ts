@@ -60,6 +60,7 @@ describe('TeamInvitationsView: the section', () => {
     expect(links.map((l) => l.text())).toEqual([
       'Colaboradores',
       'Invitaciones',
+      'Bloqueos de agenda',
       'Horario de la barbería',
     ])
     expect(links[1]!.attributes('aria-current')).toBe('page')

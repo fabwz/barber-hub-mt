@@ -67,6 +67,7 @@ trait BuildsAccessScenario
             'colaborador' => $this->daniela,
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->puraNavaja),
+            'ausencia' => $this->insertAbsence($this->puraNavaja, $this->daniela),
             'invitacion' => $this->insertInvitation($this->puraNavaja),
             'bono' => $this->insertVoucherDefinition($this->puraNavaja, [$this->degradado]),
             'fila' => $this->insertWaitlistEntry($this->puraNavaja, $this->anaMembership, $this->degradado),
@@ -87,6 +88,7 @@ trait BuildsAccessScenario
             'colaborador' => $this->mauricio,
             'franja' => (string) DB::table('opening_hours')->value('id'),
             'cierre' => $this->insertClosure($this->fadeLab),
+            'ausencia' => $this->insertAbsence($this->fadeLab, $this->mauricio),
             'invitacion' => $this->insertInvitation($this->fadeLab),
             'bono' => $this->insertVoucherDefinition($this->fadeLab, [$this->corte]),
             'fila' => $this->insertWaitlistEntry($this->fadeLab, $beaMembership, $this->corte),
@@ -187,6 +189,18 @@ trait BuildsAccessScenario
         return $id;
     }
 
+    private function insertAbsence(string $barbershopId, string $collaboratorId): string
+    {
+        $id = (string) Str::uuid7();
+        $this->scopeQueriesTo($barbershopId);
+        DB::table('collaborator_absences')->insert([
+            'id' => $id, 'barbershop_id' => $barbershopId, 'collaborator_id' => $collaboratorId,
+            'starts_at' => '2030-04-01 00:00:00-06', 'ends_at' => '2030-04-02 00:00:00-06', 'reason' => 'Vacaciones',
+        ]);
+
+        return $id;
+    }
+
     private function insertClosure(string $barbershopId): string
     {
         $id = (string) Str::uuid7();
@@ -225,7 +239,7 @@ trait BuildsAccessScenario
         foreach ([$this->puraNavaja, $this->fadeLab] as $barbershopId) {
             $this->scopeQueriesTo($barbershopId);
 
-            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'opening_hours', 'waitlist_entries', 'waitlist_offers'] as $table) {
+            foreach (['reservations', 'reservation_status_history', 'payments', 'services', 'collaborators', 'collaborator_services', 'collaborator_shifts', 'closures', 'collaborator_absences', 'opening_hours', 'waitlist_entries', 'waitlist_offers'] as $table) {
                 $fingerprint["{$barbershopId} {$table}"] = md5((string) json_encode(DB::table($table)->orderBy('id')->get()));
             }
         }

@@ -240,7 +240,17 @@ Lo que la base no puede verificar lo verifica el caso de uso `ReplaceSchedule` (
 
 ### collaborator_absences
 
-Complementaria (RF-07, CO-06) y todavía sin crear. Prevista con las columnas `id`, `barbershop_id`, `collaborator_id`, `starts_at`, `ends_at` y `reason`; los instantes llevan `timestamptz` y `CHECK (starts_at < ends_at)`.
+Existe desde el issue #101 (RF-07, CO-06), con la política de fila `collaborator_absences_barbershop_isolation`. Un bloqueo es un solo intervalo `[starts_at, ends_at)`: sin horas, de la medianoche del primer día a la del día siguiente al último; con horas, de la hora inicial del primer día a la hora final del último. Las horas son de Costa Rica (HO-03).
+
+| Columna | Tipo | Regla |
+| --- | --- | --- |
+| `id`, `barbershop_id` | `uuid` | Llave primaria y llave foránea a `barbershops` en cascada. Llave candidata `(id, barbershop_id)` |
+| `collaborator_id` | `uuid` | Llave foránea compuesta `(collaborator_id, barbershop_id)` a `collaborators`, en cascada: un bloqueo no apunta a un colaborador de otra barbería |
+| `starts_at`, `ends_at` | `timestamptz` | `CHECK (starts_at < ends_at)` |
+| `reason` | `varchar(200)` | Opcional |
+| `created_at`, `updated_at` | `timestamptz` | |
+
+El índice `collaborator_absences_lookup_idx` `(barbershop_id, collaborator_id, starts_at, ends_at)` sirve a la disponibilidad. **No lleva `EXCLUDE`**: dos bloqueos del mismo colaborador pueden traslaparse, porque bloquear dos veces el mismo tiempo no cambia nada; que no haya reservas dentro lo garantiza el caso de uso `RegisterAbsence` con el bloqueo de la fila del colaborador (ver «Los bloqueos de agenda (#101)» en `architecture.md`).
 
 ## Reservas
 
