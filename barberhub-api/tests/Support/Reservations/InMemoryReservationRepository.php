@@ -104,7 +104,9 @@ final class InMemoryReservationRepository implements ReservationRepository
                 && ($filter->collaborator === null || $reservation->collaboratorId->equals($filter->collaborator))
                 && ($filter->status === null || $reservation->statusAt($filter->now ?? new DateTimeImmutable('@0')) === $filter->status)
                 && ($window === null || ($reservation->interval->start >= $window->start && $reservation->interval->start < $window->end))
-                && ($filter->startingFrom === null || $reservation->interval->start >= $filter->startingFrom),
+                && ($filter->startingFrom === null || $reservation->interval->start >= $filter->startingFrom)
+                && ($filter->holding === null || (in_array($reservation->statusAt($filter->now ?? new DateTimeImmutable('@0')), [ReservationStatus::Confirmed, ReservationStatus::Temporary], true)
+                    && $reservation->interval->start < $filter->holding->end && $reservation->blockedUntil > $filter->holding->start)),
         ));
         usort($matches, fn (Reservation $a, Reservation $b): int => $a->interval->start <=> $b->interval->start);
 

@@ -37,7 +37,7 @@ final class CollaboratorsSchemaTest extends TestCase
         $this->kevin = $this->insertCollaborator($this->puraNavaja, 'kevin@barberhub.test');
     }
 
-    /** The tables have the columns of the data model and no others; there is no table of absences. */
+    /** The tables have the columns of the data model and no others; the absences have their own table, tested apart (#101). */
     public function test_tables_have_only_the_columns_of_this_issue(): void
     {
         $schema = Schema::connection('pgsql_admin');
@@ -49,7 +49,7 @@ final class CollaboratorsSchemaTest extends TestCase
             $this->assertEqualsCanonicalizing(['id', 'barbershop_id', 'collaborator_id', 'day_of_week', 'starts_at', 'ends_at', 'created_at', 'updated_at'], $schema->getColumnListing($table));
         }
 
-        $this->assertFalse($schema->hasTable('collaborator_absences'));
+        $this->assertTrue($schema->hasTable('collaborator_absences'));
     }
 
     /** A collaborator is active by default and gets a version 7 identifier and timestamps. */

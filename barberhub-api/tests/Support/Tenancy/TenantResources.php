@@ -131,6 +131,25 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/administracion/cierres',
                 [TenantResource::LIST, TenantResource::DELETE],
             ),
+            // The absences that block the agenda of a collaborator (#101). Each row takes the next day of the first collaborator of the barbershop.
+            new TenantResource(
+                'collaborator_absences',
+                function (string $barbershopId): string {
+                    static $day = 1;
+                    $id = (string) Str::uuid7();
+                    DB::table('collaborator_absences')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'collaborator_id' => DB::table('collaborators')->orderBy('id')->value('id'),
+                        'starts_at' => sprintf('2030-02-%02d 00:00:00-06', $day),
+                        'ends_at' => sprintf('2030-02-%02d 00:00:00-06', ++$day),
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/administracion/ausencias',
+                [TenantResource::LIST, TenantResource::DELETE],
+            ),
             // The collaborators the owner administers (#48). A profile belongs to an account, so each row brings its own.
             new TenantResource(
                 'collaborators',
