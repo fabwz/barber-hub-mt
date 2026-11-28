@@ -1,6 +1,6 @@
 # Matriz de permisos
 
-Qué puede hacer cada persona en cada operación de la API (RF-42; reglas UP-01, UP-02, UP-03, UP-06, UP-07, UP-09, CO-04, CL-04). La fuente es `tests/Support/Tenancy/AccessMatrix.php`: una prueba guardiana recorre la lista real de rutas y falla si alguna no figura allí o si su middleware no es el que su regla declara. Este documento muestra la misma lista; otra prueba comprueba que no le falte ninguna ruta.
+Qué puede hacer cada persona en cada operación de la API (RF-42, RF-55; reglas PL-01, PL-03, UP-01, UP-02, UP-03, UP-06, UP-07, UP-09, CO-04, CL-04). La fuente es `tests/Support/Tenancy/AccessMatrix.php`: una prueba guardiana recorre la lista real de rutas y falla si alguna no figura allí o si su middleware no es el que su regla declara. Este documento muestra la misma lista; otra prueba comprueba que no le falte ninguna ruta.
 
 ## Cómo se decide
 
@@ -13,21 +13,24 @@ Qué puede hacer cada persona en cada operación de la API (RF-42; reglas UP-01,
 
 ## Quién recibe qué
 
-La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin sesión; la clienta dueña del recurso; otra clienta de la misma barbería; un colaborador sin relación con el recurso; el colaborador al que pertenece; el dueño de la barbería; el dueño de otra barbería; y un colaborador de otra barbería.
+La prueba `AccessMatrixTest` ejecuta cada ruta protegida como nueve personas: sin sesión; la clienta dueña del recurso; otra clienta de la misma barbería; un colaborador sin relación con el recurso; el colaborador al que pertenece; el dueño de la barbería; el dueño de otra barbería; un colaborador de otra barbería; y el **operador de plataforma**, que no tiene rol ni membresía en ninguna barbería (PL-01).
 
-| Perfil | Sin sesión | Clienta dueña | Otra clienta | Colaborador ajeno | Colaborador asignado | Dueño | Dueño de otra | Colaborador de otra |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Solo el dueño | 401 | 403 | 403 | 403 | 403 | pasa | 404 | 404 |
-| Agenda del personal | 401 | 403 | 403 | pasa (la suya) | pasa (la suya) | pasa | 404 | 404 |
-| Detalle de una reserva | 401 | pasa | 404 | 404 | pasa | pasa | 404 | 404 |
-| Dueño o cliente dueño | 401 | pasa | 404 | 403 | 403 | pasa | 404 | 404 |
-| Dueño o colaborador asignado | 401 | 403 | 403 | 404 | pasa | pasa | 404 | 404 |
-| Solo el cliente dueño | 401 | pasa | 404 | 403 | 403 | 403 | 404 | 404 |
-| Cliente de primer uso (RD-18, UP-09) | 401 | pasa | pasa | 403 | 403 | 403 | pasa | pasa |
-| Mis reservas y mis bonos | 401 | pasa | pasa | 403 | 403 | 403 | lista vacía | lista vacía |
-| Solo con sesión | 401 | pasa | pasa | pasa | pasa | pasa | pasa | pasa |
+| Perfil | Sin sesión | Clienta dueña | Otra clienta | Colaborador ajeno | Colaborador asignado | Dueño | Dueño de otra | Colaborador de otra | Operador |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Solo el dueño | 401 | 403 | 403 | 403 | 403 | pasa | 404 | 404 | 404 |
+| Agenda del personal | 401 | 403 | 403 | pasa (la suya) | pasa (la suya) | pasa | 404 | 404 | 404 |
+| Detalle de una reserva | 401 | pasa | 404 | 404 | pasa | pasa | 404 | 404 | 404 |
+| Dueño o cliente dueño | 401 | pasa | 404 | 403 | 403 | pasa | 404 | 404 | 404 |
+| Dueño o colaborador asignado | 401 | 403 | 403 | 404 | pasa | pasa | 404 | 404 | 404 |
+| Solo el cliente dueño | 401 | pasa | 404 | 403 | 403 | 403 | 404 | 404 | 404 |
+| Cliente de primer uso (RD-18, UP-09) | 401 | pasa | pasa | 403 | 403 | 403 | pasa | pasa | 404 |
+| Mis reservas y mis bonos | 401 | pasa | pasa | 403 | 403 | 403 | lista vacía | lista vacía | 404 |
+| Solo con sesión | 401 | pasa | pasa | pasa | pasa | pasa | pasa | pasa | pasa |
+| Solo el operador de plataforma (RF-55) | 401 | 403 | 403 | 403 | 403 | 403 | 403 | 403 | pasa |
 
 «Pasa» significa que la autorización deja pasar la petición; después puede fallar por el cuerpo o por el estado del recurso (422, 409).
+
+**El operador de plataforma en una ruta de barbería.** No tiene membresía y nunca la recibe (PL-01), así que en toda ruta de una barbería que pide rol recibe el mismo 404 que cualquier persona sin rol (UP-06). En las operaciones de cliente de primer uso (RD-18, UP-09) también recibe 404 y no se le crea la membresía de cliente, ni siquiera en las lecturas de lo propio que a otra persona sin rol le dan una lista vacía: `ScopeRequestToBarbershop` lo comprueba con el puerto `PlatformOperators` antes de mirar los roles. Las rutas públicas y las que solo piden sesión (`cuenta`, `tokens`) no cambian para él.
 
 ## Rutas públicas a propósito
 
@@ -57,7 +60,19 @@ La prueba `AccessMatrixTest` ejecuta cada ruta protegida como ocho personas: sin
 
 ## Rutas de plataforma
 
-Ni públicas ni de una barbería: no llevan `{barberia}`, no usan la sesión de Sanctum ni ningún rol, y pasan por su propio middleware de credenciales, que falla cerrado. Un rol de barbería (dueño, colaborador o cliente) no abre nada aquí. Cuando exista el operador de plataforma (#245), estas rutas pasarán a su comprobación. La regla es `RouteRule::platform()` en `AccessMatrix`, y la prueba guardiana exige que la ruta pase por `RequireMonitoringCredentials` y por nada de una barbería.
+Ni públicas ni de una barbería: no llevan `{barberia}`. Hay dos clases.
+
+### Rutas del operador de plataforma
+
+Viven bajo `api/v1/plataforma/...`, piden sesión (`auth:sanctum`) y el middleware `platform.operator` (`RequirePlatformOperator`), que lee la marca `users.is_platform_operator` en cada petición: el token no lleva permisos. Un dueño, un colaborador o un cliente, y cualquier otra cuenta, reciben 403 `prohibido`; sin sesión, 401. Una cuenta de operador con contraseña temporal recibe 403 `contrasena-temporal` hasta que la cambia (RF-40). La regla es `RouteRule::operator()` en `AccessMatrix`, el perfil de resultados es `OPERATOR_ONLY` (solo el operador pasa) y la prueba guardiana exige `auth:sanctum` y `RequirePlatformOperator`, y ni la barbería ni un filtro de rol, y una ruta bajo `plataforma`. Cada ruta de plataforma tiene su caso en `AccessMatrixTest`.
+
+| Ruta | Comprobación | Nota |
+| --- | --- | --- |
+| `GET api/v1/plataforma/cuenta` | Operador | Identidad del operador autenticado: `id`, `nombre` y `correo` (RF-55, PL-01). Es la ruta mínima de solo lectura que respalda la matriz; el listado de barberías es del RF-56. |
+
+### Panel de monitoreo
+
+Pasa por su propio middleware de credenciales, que falla cerrado, y no usa la sesión de Sanctum ni ningún rol. Un rol de barbería (dueño, colaborador o cliente) no abre nada aquí. Sigue con su autenticación básica; pasarlo a la comprobación del operador queda fuera del #293. La regla es `RouteRule::platform()` en `AccessMatrix`, y la prueba guardiana exige que la ruta pase por `RequireMonitoringCredentials` y por nada de una barbería.
 
 | Ruta | Comprobación | Nota |
 | --- | --- | --- |
