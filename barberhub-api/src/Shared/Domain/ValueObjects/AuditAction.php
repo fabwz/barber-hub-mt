@@ -17,6 +17,8 @@ enum AuditAction: string
     case DirectoryListingUpdated = 'barbershop.directory_listing.updated';
     case ReservationCancelledByBarbershop = 'reservation.cancelled_by_barbershop';
     case PaymentRefunded = 'payment.refunded';
+    case BarbershopBlocked = 'barbershop.blocked';
+    case BarbershopUnblocked = 'barbershop.unblocked';
 
     /**
      * The fields whose previous and new values are kept.
@@ -32,6 +34,7 @@ enum AuditAction: string
             self::DirectoryListingUpdated => ['listed_in_directory'],
             self::ReservationCancelledByBarbershop => ['status'],
             self::PaymentRefunded => ['status', 'refunded_amount'],
+            self::BarbershopBlocked, self::BarbershopUnblocked => ['blocked_at'],
         };
     }
 

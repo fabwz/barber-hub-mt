@@ -31,7 +31,7 @@ final class AuditEntryTest extends TestCase
         );
 
         $this->assertNotNull($entry);
-        $this->assertSame([self::ACTOR, 'barbershop.payment_policy.updated', 'barbershop', self::SUBJECT], [$entry->actor->value, $entry->action->value, $entry->subjectType, $entry->subjectId]);
+        $this->assertSame([self::ACTOR, 'barbershop.payment_policy.updated', 'barbershop', self::SUBJECT], [$entry->actor?->value, $entry->action->value, $entry->subjectType, $entry->subjectId]);
         $this->assertSame(['mode' => ['previous' => 'none', 'new' => 'deposit'], 'deposit_percentage' => ['previous' => null, 'new' => 30]], $entry->changes);
     }
 

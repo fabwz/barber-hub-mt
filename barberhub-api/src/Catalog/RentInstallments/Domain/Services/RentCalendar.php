@@ -33,6 +33,12 @@ final readonly class RentCalendar
         return new DateTimeImmutable($instant->setTimezone($zone)->format('Y-m-d'), $zone);
     }
 
+    /** An instant as text in Costa Rica time with its offset (`2026-11-11T00:10:00-06:00`), for the technical record. */
+    public static function stamp(DateTimeImmutable $instant): string
+    {
+        return $instant->setTimezone(new DateTimeZone(self::ZONE))->format('Y-m-d\TH:i:sP');
+    }
+
     /** The day the installment of a month falls due: the anniversary day, or the last day of a shorter month. */
     public function dueOn(int $year, int $month): DateTimeImmutable
     {

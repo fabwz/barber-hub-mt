@@ -25,7 +25,7 @@ final readonly class DatabaseAuditLog implements AuditLog
         DB::table('audit_log')->insert([
             'id' => (string) Str::uuid7(),
             'barbershop_id' => $this->context->current()->value,
-            'actor_user_id' => $entry->actor->value,
+            'actor_user_id' => $entry->actor?->value,
             'action' => $entry->action->value,
             'subject_type' => $entry->subjectType,
             'subject_id' => $entry->subjectId,
