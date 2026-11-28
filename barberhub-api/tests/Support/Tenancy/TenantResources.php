@@ -164,6 +164,25 @@ final class TenantResources
                 'api/v1/barberias/{barberia}/clientes-asistidos',
                 [TenantResource::LIST],
             ),
+            // The monthly rent installments (#295). They have no route yet (the owner's payment and the operator's listing come later), so the
+            // isolation test only checks that the database hides them. Each row takes the next day, because a barbershop has one installment per due date.
+            new TenantResource(
+                'rent_installments',
+                function (string $barbershopId): string {
+                    static $day = 1;
+                    $id = (string) Str::uuid7();
+                    DB::table('rent_installments')->insert([
+                        'id' => $id,
+                        'barbershop_id' => $barbershopId,
+                        'amount' => 25000,
+                        'due_on' => sprintf('2030-01-%02d', $day++),
+                    ]);
+
+                    return $id;
+                },
+                'api/v1/barberias/{barberia}/administracion/cuotas',
+                [],
+            ),
             // The collaborators the owner administers (#48). A profile belongs to an account, so each row brings its own.
             new TenantResource(
                 'collaborators',
