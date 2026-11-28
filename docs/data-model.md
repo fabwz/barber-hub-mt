@@ -23,6 +23,7 @@ erDiagram
     collaborators ||--o{ collaborator_breaks : "descansa en"
     collaborators ||--o{ collaborator_absences : "se ausenta en"
     barbershops ||--o{ assisted_clients : "registra"
+    barbershops ||--o{ rent_installments : "paga"
     collaborators ||--o{ reservations : "atiende"
     services ||--o{ reservations : "se reserva en"
     memberships |o--o{ reservations : "reserva"
@@ -252,6 +253,22 @@ Existe desde el issue #101 (RF-07, CO-06), con la política de fila `collaborato
 | `created_at`, `updated_at` | `timestamptz` | |
 
 El índice `collaborator_absences_lookup_idx` `(barbershop_id, collaborator_id, starts_at, ends_at)` sirve a la disponibilidad. **No lleva `EXCLUDE`**: dos bloqueos del mismo colaborador pueden traslaparse, porque bloquear dos veces el mismo tiempo no cambia nada; que no haya reservas dentro lo garantiza el caso de uso `RegisterAbsence` con el bloqueo de la fila del colaborador (ver «Los bloqueos de agenda (#101)» en `architecture.md`).
+
+## Alquiler de la plataforma
+
+### rent_installments
+
+La cuota mensual de alquiler que una barbería paga a la plataforma (RF-57, PL-04, PL-05). Existe desde el issue #295 (migración `create_rent_installments_table`), con la política de fila `rent_installments_barbershop_isolation` (ver [database.md](database.md)). Cada fila es el alquiler de **un mes**: guarda el monto con que nació y el día en que vence.
+
+| Columna | Tipo | Regla |
+| --- | --- | --- |
+| `id`, `barbershop_id` | `uuid` | Llave primaria (UUID v7, con `DEFAULT uuidv7()` de respaldo) y llave foránea a `barbershops` en cascada. Llave candidata `(id, barbershop_id)` |
+| `amount` | `integer` | Colones enteros con IVA de 13 % incluido; `CHECK (amount > 0)`. Se copia del alquiler vigente al crear la cuota y **nunca cambia**: modificar el monto vigente solo afecta a las cuotas que se creen después (la cuota es el hecho de cuánto se debía ese mes, como el precio de una reserva, SV-03) |
+| `due_on` | `date` | Día de vencimiento en hora de Costa Rica (HO-03): el día del mes en que se dio de alta la barbería o, si el mes no lo tiene, el último día del mes (PL-05) |
+| `status` | `varchar(20)` | `pending` (por defecto) o `paid`; `CHECK` `rent_installments_status_check`. Pagar es del RF-59: este issue solo crea cuotas pendientes |
+| `created_at`, `updated_at` | `timestamptz` | |
+
+La llave única `rent_installments_due_unique` `(barbershop_id, due_on)` es la idempotencia: una barbería tiene una cuota por vencimiento, y la generación inserta con `ON CONFLICT DO NOTHING`, así que dos ejecuciones el mismo día (o dos procesos a la vez) no duplican nada. **No hay contador de meses pendientes**: son las cuotas con `status = 'pending'` y `due_on` anterior al día de hoy en Costa Rica, contadas (consulta `CountPendingRentMonths`). Una cuota que vence hoy todavía no está vencida: lo está desde la medianoche de Costa Rica.
 
 ## Reservas
 
@@ -565,6 +582,7 @@ Laravel y Sanctum aportan sus propias tablas. Ya existen `personal_access_tokens
 | `reservations.blocked_until` es `ends_at` más 5 minutos | Una expresión de índice debe ser inmutable y sumar un intervalo a un `timestamptz` no lo es; guardarlo permite la restricción `EXCLUDE` que impide el solape |
 | `purchased_vouchers.remaining_sessions` se puede calcular desde `voucher_movements` | Se mantiene para decrementarlo de forma atómica y condicional, con `CHECK (>= 0)`, sin leer el registro completo (BO-03). Las pruebas `EloquentPurchasedVoucherRepositoryTest` y `SimultaneousVoucherHoldsTest` verifican que ambos coincidan |
 | `purchased_vouchers` copia `name`, `price`, `sessions_count` y `validity_days` de la definición | Es lo que se compró: editar o retirar la definición no cambia el bono adquirido ni el reporte de ingresos, y la vigencia se cuenta desde la activación con los días que tenía al comprar |
+| `rent_installments.amount` copia el alquiler vigente | Es lo que se debía ese mes: cambiar el monto del alquiler (PD-09) no altera cuotas ya generadas |
 | `personal_access_tokens.id` es `bigint` y no `uuid` | La tabla pertenece a Sanctum: el token que recibe el cliente tiene la forma `<id>\|<secreto>` y Sanctum busca la fila por ese número |
 | `personal_access_tokens` no tiene llave foránea a `users` | Sanctum define una relación polimórfica; un token cuya cuenta ya no existe no autentica a nadie |
 

@@ -256,6 +256,18 @@ Aceptar la invitación de un colaborador (RF-06) es una ruta pública, `POST /ap
 
 `tests/Feature/Tenancy/PublicRoutesTest.php` prueba las rutas y `tests/Feature/Catalog/Invitations/CollaboratorInvitationTest.php` la función (encuentra la barbería desde cualquier contexto y restaura el de la conexión) y el aislamiento entre barberías.
 
+### Procesos sin sesión: la generación diaria de las cuotas del alquiler (#295)
+
+`php artisan rent:generate-installments` recorre todas las barberías sin sesión, sin petición y sin que nadie abra una pantalla (RF-57). La decisión 20 pedía el «rol de mantenimiento» porque `barbershops` no tiene política de fila; **al construirlo resultó que no hace falta un tercer rol de base de datos**, y el mecanismo es el que ya existe:
+
+1. **Listar las barberías.** `DatabaseRegisteredBarbershops` lee `barbershops` (sin política de fila, ver «Excepciones») con el rol de la aplicación: solo `id` y `created_at`, que es el día del mes en que vence cada cuota. Es la única lectura entre barberías del módulo.
+2. **Fijar la barbería de cada una.** `ProcessBarbershopScope` (puerto `BarbershopScope` del módulo) usa `BarbershopProcessScope`, el mismo de las tareas en cola: fija la barbería en `app.barbershop_id` y abre su transacción. `rent_installments` conserva su política forzada y la tarea solo alcanza las filas de la barbería que está procesando; la barbería sale de la lista, nunca de una petición.
+3. **Una transacción por barbería.** Si una falla, las demás se procesan igual; el comando lo informa y termina con código de error.
+
+Lo que sigue pendiente es lo de abajo: leer **tablas con política de fila** a través de todas las barberías (por ejemplo, contar las cuotas vencidas de todas para el listado del operador, RF-56) no se resuelve con esto, y ese issue debe decidir entre recorrer las barberías con el mismo alcance, una función `SECURITY DEFINER` de solo lectura o el rol de mantenimiento.
+
+La programación diaria (00:05, hora de Costa Rica) está declarada en `RentInstallmentsServiceProvider`. En producción solo corre cuando exista el planificador (#117); mientras tanto se ejecuta a mano y es idempotente.
+
 ## Pendientes
 
-1. **Tareas programadas que recorren todas las barberías.** Un barrido que atrape una tarea perdida de la cola (una expiración, una oferta o un recordatorio) recorre todas las barberías: no tiene persona ni barbería en la ruta ni una tarea que la traiga en su carga. Para él sigue pendiente decidir si hace falta un tercer rol de base de datos, de mantenimiento. **Los recordatorios (#95) no lo necesitan**: cada uno es una tarea con retraso que lleva su barbería, como las de arriba, y por eso el sistema no tiene hoy ese barrido y **una tarea perdida de la cola (la tabla `jobs` borrada, por ejemplo) hace que su recordatorio no salga**. Es un límite conocido y aceptado; ver «Avisos por correo y recordatorios» en [architecture.md](architecture.md).
+1. **Tareas programadas que recorren todas las barberías.** Un barrido que atrape una tarea perdida de la cola (una expiración, una oferta o un recordatorio) recorre todas las barberías: no tiene persona ni barbería en la ruta ni una tarea que la traiga en su carga. Para él sigue pendiente decidir si hace falta un tercer rol de base de datos, de mantenimiento. **Los recordatorios (#95) no lo necesitan**: cada uno es una tarea con retraso que lleva su barbería, como las de arriba, y por eso el sistema no tiene hoy ese barrido y **una tarea perdida de la cola (la tabla `jobs` borrada, por ejemplo) hace que su recordatorio no salga**. Es un límite conocido y aceptado; ver «Avisos por correo y recordatorios» en [architecture.md](architecture.md). **Las cuotas del alquiler (#295) tampoco lo necesitan**: recorren las barberías porque `barbershops` no tiene política de fila (ver «Procesos sin sesión: la generación diaria de las cuotas del alquiler (#295)»).
