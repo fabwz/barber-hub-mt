@@ -23,9 +23,9 @@ final class ProfileResource extends JsonResource
 
     /**
      * Expose the id of the own account (the web client subscribes to its private channel with it), the personal
-     * data and whether the password is still temporary, never the password or its hash.
+     * data, whether the password is still temporary and whether the person is a platform operator (RF-55), never the password or its hash.
      *
-     * @return array{id: string, nombre: string, telefono: string|null, correo: string, contrasena_temporal: bool}
+     * @return array{id: string, nombre: string, telefono: string|null, correo: string, contrasena_temporal: bool, operador_de_plataforma: bool}
      */
     public function toArray(Request $request): array
     {
@@ -35,6 +35,7 @@ final class ProfileResource extends JsonResource
             'telefono' => $this->user->phone?->value,
             'correo' => $this->user->email->value,
             'contrasena_temporal' => $this->user->mustChangePassword,
+            'operador_de_plataforma' => $this->user->platformOperator,
         ];
     }
 }
