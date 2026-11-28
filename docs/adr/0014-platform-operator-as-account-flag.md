@@ -28,5 +28,5 @@ RF-55 y PL-01 piden que el operador de plataforma sea una condición de la cuent
 
 ## Consecuencias
 
-- Nada impide en la base que una cuenta operadora reciba una membresía por otra vía (por ejemplo, el alta actual de barbería o la aceptación de una invitación a su correo): eso pertenece al alta de barbería por el operador (RF-01, PL-02) y se cierra allí, con una restricción en la base si se decide.
+- Nada impide en la base que una cuenta operadora reciba una membresía por otra vía (por ejemplo, el alta actual de barbería o la aceptación de una invitación a su correo): eso pertenece al alta de barbería por el operador (RF-01, PL-02) y se cierra allí, con una restricción en la base si se decide. Se cerró en el [ADR 0017](0017-barbershop-registered-by-the-platform-operator.md) (#299).
 - El panel de monitoreo sigue con su autenticación básica; pasarlo a la comprobación del operador es otro cambio.

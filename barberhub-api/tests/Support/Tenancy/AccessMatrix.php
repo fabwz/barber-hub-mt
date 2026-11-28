@@ -108,10 +108,10 @@ final class AccessMatrix
 
             // Of the platform, not of a barbershop (ADR 0013).
             'GET api/v1/plataforma/cuenta' => RouteRule::operator('Cuenta del operador de plataforma (RF-55, PL-01): solo la abre una cuenta marcada como operador; dueño, colaborador y cliente reciben 403 `prohibido`. No lleva barbería.'),
+            'POST api/v1/plataforma/barberias' => RouteRule::operator('Registrar una barbería y su dueño (RF-01, PL-02): solo el operador de plataforma; dueño, colaborador y cliente reciben 403 `prohibido`. Es la única ruta que registra una barbería y no lleva barbería: todavía no existe.'),
             'GET monitoreo' => RouteRule::platform('Panel de monitoreo (RNF-15, #118): solo lectura, con su propia autenticación básica de plataforma; un rol de barbería no abre nada y, sin el secreto configurado, responde 404.'),
 
             // A session and nothing more: the data are the person's own.
-            'POST api/v1/barberias' => RouteRule::authenticated('Registrar una barbería: quien la registra queda como su dueño (UP-03).'),
             'GET api/v1/mis-barberias' => RouteRule::authenticated('Barberías de la persona con su rol: nunca otras (UP-08, RF-43).'),
             'GET api/v1/cuenta' => RouteRule::authenticated('Datos de la propia cuenta y si la contraseña es temporal (RF-45, UP-04); es de las pocas rutas que una contraseña temporal permite.'),
             'PUT api/v1/cuenta' => RouteRule::authenticated('Corrige nombre, teléfono y correo de la propia cuenta (RF-45, CL-03): nunca la de otra persona.'),

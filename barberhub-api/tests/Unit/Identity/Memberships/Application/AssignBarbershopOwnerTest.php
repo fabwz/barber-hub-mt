@@ -7,12 +7,14 @@ namespace Tests\Unit\Identity\Memberships\Application;
 use PHPUnit\Framework\TestCase;
 use Src\Identity\Memberships\Application\DTOs\AssignBarbershopOwnerCommand;
 use Src\Identity\Memberships\Application\UseCases\AssignBarbershopOwner;
+use Src\Identity\Memberships\Domain\Exceptions\OperatorCannotHoldRoleException;
 use Src\Identity\Memberships\Domain\Exceptions\RoleAlreadyAssignedException;
 use Src\Identity\Memberships\Domain\ValueObjects\Role;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Identity\InMemoryMembershipRepository;
+use Tests\Support\Identity\InMemoryPlatformOperators;
 
 final class AssignBarbershopOwnerTest extends TestCase
 {
@@ -22,13 +24,16 @@ final class AssignBarbershopOwnerTest extends TestCase
 
     private InMemoryMembershipRepository $memberships;
 
+    private InMemoryPlatformOperators $operators;
+
     private AssignBarbershopOwner $assignOwner;
 
     /** Wire the use case to an in-memory port. */
     protected function setUp(): void
     {
         $this->memberships = new InMemoryMembershipRepository;
-        $this->assignOwner = new AssignBarbershopOwner($this->memberships);
+        $this->operators = new InMemoryPlatformOperators;
+        $this->assignOwner = new AssignBarbershopOwner($this->memberships, $this->operators);
     }
 
     /** The person becomes an active owner of the barbershop. */
@@ -42,6 +47,20 @@ final class AssignBarbershopOwnerTest extends TestCase
             $membership,
             $this->memberships->findByUserAndBarbershop(new UserId(self::USER_ID), new BarbershopId(self::BARBERSHOP_ID)),
         );
+    }
+
+    /** A platform operator never becomes the owner of a barbershop: nothing is stored (PL-01, PL-02). */
+    public function test_a_platform_operator_cannot_become_an_owner(): void
+    {
+        $this->operators->mark(self::USER_ID);
+
+        try {
+            $this->assignOwner->execute(new AssignBarbershopOwnerCommand(self::BARBERSHOP_ID, self::USER_ID));
+            $this->fail('An operator became an owner.');
+        } catch (OperatorCannotHoldRoleException $exception) {
+            $this->assertSame('conflicto', $exception->rule());
+            $this->assertSame(0, $this->memberships->count());
+        }
     }
 
     /** A person has a single role per barbershop (UP-07). */

@@ -51,6 +51,7 @@ use Tests\Support\Catalog\InMemoryStaffMemberships;
 use Tests\Support\Catalog\InMemoryTimeSlotRepository;
 use Tests\Support\Catalog\InMemoryUpcomingReservations;
 use Tests\Support\Identity\InMemoryMembershipRepository;
+use Tests\Support\Identity\InMemoryPlatformOperators;
 use Tests\Support\Identity\InMemoryUserRepository;
 use Tests\Support\Shared\FixedBarbershopContext;
 use Tests\Support\Shared\RecordingTransactionRunner;
@@ -107,7 +108,7 @@ final class ManageCollaboratorsTest extends TestCase
 
         $this->services->add(self::HAIRCUT);
         $this->services->add(self::KIDS_HAIRCUT);
-        new AssignBarbershopOwner($this->memberships)->execute(new AssignBarbershopOwnerCommand(self::BARBERSHOP_ID, self::OWNER_ID));
+        new AssignBarbershopOwner($this->memberships, new InMemoryPlatformOperators)->execute(new AssignBarbershopOwnerCommand(self::BARBERSHOP_ID, self::OWNER_ID));
     }
 
     /** The account, the collaborator role and the profile are created together, and the account must change its password. */

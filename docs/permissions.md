@@ -69,6 +69,7 @@ Viven bajo `api/v1/plataforma/...`, piden sesión (`auth:sanctum`) y el middlewa
 | Ruta | Comprobación | Nota |
 | --- | --- | --- |
 | `GET api/v1/plataforma/cuenta` | Operador | Identidad del operador autenticado: `id`, `nombre` y `correo` (RF-55, PL-01). Es la ruta mínima de solo lectura que respalda la matriz; el listado de barberías es del RF-56. |
+| `POST api/v1/plataforma/barberias` | Operador | Registra una barbería y su dueño (RF-01, PL-02, #299). Es la **única** ruta que registra una barbería: la ruta abierta `POST api/v1/barberias`, que cualquier cuenta podía usar, dejó de existir. No lleva `{barberia}` porque la barbería todavía no existe. Dueño, colaborador y cliente reciben 403 `prohibido`; sin sesión, 401. El correo de un operador como dueño responde 409 `conflicto` (PL-01) y no queda nada. En una sola transacción crea la barbería (sin servicios, sin horario, modalidad «sin pago»), su enlace, su primera cuota, la cuenta del dueño si no existe y su rol, y deja la entrada `barbershop.registered` en el registro técnico con el operador como autor. |
 
 ### Panel de monitoreo
 
@@ -84,9 +85,8 @@ Los datos son de la propia persona.
 
 | Ruta | Nota |
 | --- | --- |
-| `POST api/v1/barberias` | Registrar una barbería: quien la registra queda como su dueño (UP-03). |
 | `GET api/v1/mis-barberias` | Barberías de la persona con su rol y, en cada una, el `colaborador` (id de su propio perfil de colaborador, o `null`): nunca otras barberías ni el perfil de otra persona (UP-08, RF-43, CO-04, #113). |
-| `GET api/v1/cuenta` | Datos de la propia cuenta y si la contraseña es temporal (RF-45, UP-04); es de las pocas rutas que una contraseña temporal permite. |
+| `GET api/v1/cuenta` | Datos de la propia cuenta, si la contraseña es temporal (RF-45, UP-04) y si la persona es operador de plataforma (`operador_de_plataforma`, RF-55: es solo información para el cliente web, los permisos los decide cada ruta); es de las pocas rutas que una contraseña temporal permite. |
 | `PUT api/v1/cuenta` | Corrige nombre, teléfono y correo de la propia cuenta (RF-45, CL-03): nunca la de otra persona. |
 | `PUT api/v1/cuenta/contrasena` | Cambia la contraseña de la propia cuenta (RF-40); es de las pocas rutas que una contraseña temporal permite (UP-04). |
 | `GET api/v1/cuenta/avisos` | Preferencias de avisos de la propia cuenta: si recibe los recordatorios por correo (RF-47, NO-10); es de la persona, de cualquier rol o sin ninguno, y no lleva barbería. |

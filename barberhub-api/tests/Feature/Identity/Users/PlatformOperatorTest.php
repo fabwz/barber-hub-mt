@@ -152,8 +152,8 @@ final class PlatformOperatorTest extends TestCase
         $this->as($token)->getJson(self::PLATFORM_ACCOUNT)->assertForbidden()->assertJsonPath('type', 'http://localhost/problemas/prohibido');
     }
 
-    /** The routes of the platform only read for now: none writes, so none can create an operator (the command is the only way). */
-    public function test_every_platform_route_is_read_only(): void
+    /** The only route of the platform that writes is the registration of a barbershop; it never takes the mark of the operator from the body (the command is the only way). */
+    public function test_only_the_registration_of_a_barbershop_writes_and_it_cannot_create_an_operator(): void
     {
         $platformRoutes = array_filter(
             iterator_to_array(Route::getRoutes()->getRoutes()),
@@ -163,8 +163,33 @@ final class PlatformOperatorTest extends TestCase
         $this->assertNotEmpty($platformRoutes);
 
         foreach ($platformRoutes as $route) {
-            $this->assertSame(['GET', 'HEAD'], $route->methods(), "{$route->uri()} must be read-only.");
+            $writes = $route->methods() !== ['GET', 'HEAD'];
+
+            $this->assertSame($route->uri() === 'api/v1/plataforma/barberias', $writes, "{$route->uri()} has the wrong methods.");
         }
+
+        $operator = UserModel::query()->create(['name' => 'Operadora', 'email' => 'operadora@barberhub.test', 'password' => Hash::make('Clave#Previa1'), 'is_platform_operator' => true]);
+        $this->as($operator->createToken('Celular')->plainTextToken)->postJson('/api/v1/plataforma/barberias', [
+            'nombre' => 'Pura Navaja',
+            'ciudad' => 'San Carlos',
+            'telefono' => '2460-0000',
+            'dueno' => ['nombre' => 'Rodrigo Mora', 'correo' => 'rodrigo@barberhub.test', 'telefono' => '8888-0000', 'is_platform_operator' => true, 'operador_de_plataforma' => true],
+            'is_platform_operator' => true,
+        ])->assertCreated();
+
+        $this->assertFalse(UserModel::query()->where('email', 'rodrigo@barberhub.test')->sole()->is_platform_operator);
+    }
+
+    /** `GET /cuenta` says whether the person is a platform operator, and says no for anyone else (RF-55). */
+    public function test_the_own_account_says_whether_the_person_is_an_operator(): void
+    {
+        Artisan::call('platform:create-operator', ['email' => 'operadora@barberhub.test', 'name' => 'Operadora Plataforma']);
+        $temporary = $this->passwordShownIn(Artisan::output());
+        $token = $this->login('operadora@barberhub.test', $temporary);
+        $this->as($token)->getJson('/api/v1/cuenta')->assertOk()->assertJsonPath('data.operador_de_plataforma', true)->assertJsonPath('data.contrasena_temporal', true);
+
+        $customer = UserModel::query()->create(['name' => 'Cata', 'email' => 'cata@barberhub.test', 'password' => Hash::make('Clave#Previa1')]);
+        $this->as($customer->createToken('Celular')->plainTextToken)->getJson('/api/v1/cuenta')->assertOk()->assertJsonPath('data.operador_de_plataforma', false);
     }
 
     /** Run the command as a person who types the temporary password at the hidden prompt. */

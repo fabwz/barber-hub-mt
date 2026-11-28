@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Src\Identity\Memberships\Infrastructure\Persistence\Repositories;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Src\Identity\Memberships\Domain\Contracts\MembershipRepository;
 use Src\Identity\Memberships\Domain\Entities\Membership;
+use Src\Identity\Memberships\Domain\Exceptions\OperatorCannotHoldRoleException;
 use Src\Identity\Memberships\Domain\Exceptions\RoleAlreadyAssignedException;
 use Src\Identity\Memberships\Domain\ValueObjects\MembershipId;
 use Src\Identity\Memberships\Domain\ValueObjects\Role;
@@ -39,6 +41,9 @@ final readonly class EloquentMembershipRepository implements MembershipRepositor
             ));
         } catch (UniqueConstraintViolationException) {
             throw RoleAlreadyAssignedException::create();
+        } catch (QueryException $exception) {
+            // The trigger of the database refuses a role for a platform operator (PL-01) with a check violation.
+            throw $exception->getCode() === '23514' && str_contains($exception->getMessage(), 'platform operator') ? OperatorCannotHoldRoleException::create() : $exception;
         }
     }
 

@@ -40,6 +40,7 @@ final class OwnAccountTest extends TestCase
                 'telefono' => '8888-0000',
                 'correo' => 'ana@barberhub.test',
                 'contrasena_temporal' => false,
+                'operador_de_plataforma' => false,
             ]]);
     }
 
@@ -71,6 +72,7 @@ final class OwnAccountTest extends TestCase
                 'telefono' => null,
                 'correo' => 'kevin@barberhub.test',
                 'contrasena_temporal' => true,
+                'operador_de_plataforma' => false,
             ]]);
     }
 
@@ -89,6 +91,7 @@ final class OwnAccountTest extends TestCase
                 'telefono' => '8999-1234',
                 'correo' => 'ana.mora@barberhub.test',
                 'contrasena_temporal' => false,
+                'operador_de_plataforma' => false,
             ]]);
 
         $after = UserModel::query()->sole();

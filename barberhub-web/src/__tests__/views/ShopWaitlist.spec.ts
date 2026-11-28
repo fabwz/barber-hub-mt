@@ -1,7 +1,7 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { todayInCostaRica } from '@/composables/format'
+import { addDays, todayInCostaRica } from '@/composables/format'
 import { useBookingStore } from '@/stores/booking'
 import ShopView from '@/views/ShopView.vue'
 import { MAURICIO, bookingHandler } from '../helpers/booking'
@@ -219,7 +219,7 @@ describe('«Avisarme si se libera» (RF-30, RF-10)', () => {
     await join(wrapper)
     expect(wrapper.text()).toContain('Listo. Lo anotamos')
 
-    useBookingStore().selectDate(`${TODAY.slice(0, 8)}28`)
+    useBookingStore().selectDate(addDays(TODAY, 1))
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('Listo. Lo anotamos')

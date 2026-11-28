@@ -12,6 +12,7 @@ use Src\Identity\Memberships\Application\UseCases\GrantCollaboratorMembership;
 use Src\Identity\Memberships\Application\UseCases\ListBarbershopOwners;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Tests\Support\Identity\InMemoryMembershipRepository;
+use Tests\Support\Identity\InMemoryPlatformOperators;
 
 /** The staff memberships port answered by the Identity use cases over in-memory memberships, as the adapter does. */
 final readonly class InMemoryStaffMemberships implements StaffMemberships
@@ -32,7 +33,7 @@ final readonly class InMemoryStaffMemberships implements StaffMemberships
     /** Grant the collaborator role. */
     public function grantCollaboratorRole(BarbershopId $barbershopId, string $userId): void
     {
-        new GrantCollaboratorMembership($this->memberships)->execute(new CollaboratorMembershipCommand($barbershopId->value, $userId));
+        new GrantCollaboratorMembership($this->memberships, new InMemoryPlatformOperators)->execute(new CollaboratorMembershipCommand($barbershopId->value, $userId));
     }
 
     /** Switch the collaborator role off. */

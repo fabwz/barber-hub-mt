@@ -176,7 +176,7 @@ final class ChangePasswordTest extends TestCase
         foreach ([
             fn (): TestResponse => $this->mine($token),
             fn (): TestResponse => $this->withToken($token)->getJson('/api/v1/barberias/'.self::BARBERSHOP.'/mis-reservas'),
-            fn (): TestResponse => $this->withToken($token)->postJson('/api/v1/barberias', []),
+            fn (): TestResponse => $this->withToken($token)->postJson('/api/v1/plataforma/barberias', []),
         ] as $call) {
             Auth::forgetGuards();
 

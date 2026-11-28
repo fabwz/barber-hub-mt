@@ -12,6 +12,7 @@ use Src\Identity\Memberships\Application\UseCases\DeactivateCollaboratorMembersh
 use Src\Identity\Memberships\Application\UseCases\GrantCollaboratorMembership;
 use Src\Identity\Memberships\Application\UseCases\ListBarbershopOwners;
 use Tests\Support\Identity\InMemoryMembershipRepository;
+use Tests\Support\Identity\InMemoryPlatformOperators;
 
 /** Telling which accounts own a barbershop (CO-02): only an active owner role in that barbershop counts. */
 final class ListBarbershopOwnersTest extends TestCase
@@ -32,10 +33,10 @@ final class ListBarbershopOwnersTest extends TestCase
     protected function setUp(): void
     {
         $memberships = new InMemoryMembershipRepository;
-        $assign = new AssignBarbershopOwner($memberships);
+        $assign = new AssignBarbershopOwner($memberships, new InMemoryPlatformOperators);
         $assign->execute(new AssignBarbershopOwnerCommand(self::BARBERSHOP, self::OWNER));
         $assign->execute(new AssignBarbershopOwnerCommand(self::OTHER_BARBERSHOP, self::OWNER_ELSEWHERE));
-        new GrantCollaboratorMembership($memberships)->execute(new CollaboratorMembershipCommand(self::BARBERSHOP, self::COLLABORATOR));
+        new GrantCollaboratorMembership($memberships, new InMemoryPlatformOperators)->execute(new CollaboratorMembershipCommand(self::BARBERSHOP, self::COLLABORATOR));
         $this->listOwners = new ListBarbershopOwners($memberships);
     }
 
@@ -63,7 +64,7 @@ final class ListBarbershopOwnersTest extends TestCase
     public function test_a_deactivated_collaborator_is_not_an_owner(): void
     {
         $memberships = new InMemoryMembershipRepository;
-        new GrantCollaboratorMembership($memberships)->execute(new CollaboratorMembershipCommand(self::BARBERSHOP, self::COLLABORATOR));
+        new GrantCollaboratorMembership($memberships, new InMemoryPlatformOperators)->execute(new CollaboratorMembershipCommand(self::BARBERSHOP, self::COLLABORATOR));
         new DeactivateCollaboratorMembership($memberships)->execute(new CollaboratorMembershipCommand(self::BARBERSHOP, self::COLLABORATOR));
 
         $this->assertSame([], new ListBarbershopOwners($memberships)->execute([self::COLLABORATOR], self::BARBERSHOP));

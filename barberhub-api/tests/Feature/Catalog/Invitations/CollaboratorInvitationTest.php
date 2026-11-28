@@ -459,6 +459,23 @@ final class CollaboratorInvitationTest extends TestCase
         $this->login('dani@barberhub.test', 'Otra#Clave88')->assertUnauthorized();
     }
 
+    /** An invitation to the email of a platform operator cannot be accepted: 409 `conflicto`, no role, no profile, and the link is not spent (PL-01, UP-04). */
+    public function test_a_platform_operator_cannot_accept_an_invitation(): void
+    {
+        UserModel::query()->where('id', $this->stranger->id)->update(['is_platform_operator' => true]);
+        $this->invite('dani@barberhub.test');
+        $token = $this->tokenOfLastMail();
+
+        $this->accept($token, [])
+            ->assertConflict()
+            ->assertJsonPath('type', 'http://localhost/problemas/conflicto')
+            ->assertJsonPath('detail', 'Una cuenta de operador de plataforma no puede tener un rol en una barbería.');
+
+        $this->assertSame(0, MembershipModel::query()->where('user_id', $this->stranger->id)->count());
+        $this->assertSame(0, $this->rows('collaborators')->where('user_id', $this->stranger->id)->count());
+        $this->consult($token)->assertOk();
+    }
+
     /** An account that is a collaborator, an owner or a customer of another barbershop keeps that role there and joins this one (UP-07). */
     public function test_a_role_in_another_barbershop_does_not_get_in_the_way(): void
     {

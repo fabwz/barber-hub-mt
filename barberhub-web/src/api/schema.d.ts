@@ -65,7 +65,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/barberias": {
+    "/plataforma/barberias": {
         parameters: {
             query?: never;
             header?: never;
@@ -75,8 +75,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Registrar una barbería
-         * @description Crea una barbería con nombre, ciudad y teléfono de contacto, sin servicios ni horario, y deja a la persona autenticada como su dueña activa (`rol: dueno`). Una persona puede registrar varias barberías. La respuesta trae el `enlace` público, derivado del nombre (por ejemplo `pura-navaja`, o `pura-navaja-2` si ya existe), que se genera una sola vez y no cambia. Responde 401 `no-autenticado` sin token y 422 `datos-invalidos` si falta un dato o supera su largo máximo (`errores` lista cada campo).
+         * Registrar una barbería y su dueño
+         * @description Solo el operador de plataforma (RF-01, PL-02). Crea la barbería con nombre, ciudad y teléfono de contacto, sin servicios ni horario y con la modalidad de cobro «sin pago», su `enlace` público (derivado del nombre, por ejemplo `pura-navaja`, o `pura-navaja-2` si ya existe; se genera una sola vez y no cambia), su primera cuota de alquiler y el rol de dueño de la persona de `dueno` (nombre, correo y teléfono). Si el correo del dueño no tiene cuenta, la crea con una contraseña temporal que cumple la política, obliga a cambiarla en el primer ingreso y la devuelve **una sola vez** en `dueno.contrasena_temporal`, con `dueno.cuenta_creada: true`; la respuesta no se guarda en caché y la contraseña no queda en ningún registro. Si el correo ya tiene cuenta, esa persona recibe el rol sin cambiar nada de su cuenta: `dueno.cuenta_creada: false` y `dueno.contrasena_temporal: null`. Todo se hace en una sola transacción y queda en el registro técnico con el operador como autor. Responde 401 `no-autenticado` sin token, 403 `prohibido` a toda cuenta que no sea operador, 409 `conflicto` si el correo del dueño es de un operador (un operador no tiene rol en ninguna barbería, PL-01) y 422 `datos-invalidos` si falta un dato o supera su largo máximo (`errores` lista cada campo).
          */
         post: operations["catalog.barbershops.store"];
         delete?: never;
@@ -442,7 +442,7 @@ export interface paths {
         };
         /**
          * Ver mi cuenta
-         * @description Devuelve el `id` de la propia cuenta (el cliente web lo usa para suscribirse a su canal privado `private-usuario.{usuario}`, RF-35), el nombre, el teléfono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todavía debe cambiar la contraseña temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403. Es una de las pocas rutas que una contraseña temporal permite. Solo muestra la cuenta de la sesión, sea cliente, colaborador o dueño.
+         * @description Devuelve el `id` de la propia cuenta (el cliente web lo usa para suscribirse a su canal privado `private-usuario.{usuario}`, RF-35), el nombre, el teléfono y el correo de la persona autenticada (RF-45), y `contrasena_temporal`, que indica si todavía debe cambiar la contraseña temporal (UP-04) para que el cliente la lleve al cambio obligatorio sin esperar un 403, y `operador_de_plataforma`, que indica si la cuenta es de un operador de plataforma (RF-55) para que el cliente lo lleve a sus pantallas, sin que eso le dé permisos: la API los decide en cada ruta. Es una de las pocas rutas que una contraseña temporal permite. Solo muestra la cuenta de la sesión, sea cliente, colaborador o dueño.
          */
         get: operations["identity.profile.show"];
         /**
@@ -1587,8 +1587,11 @@ export interface components {
             ciudad: string;
             telefono: string;
             enlace: string;
-            /** @constant */
-            rol: "dueno";
+            dueno: {
+                correo: string;
+                cuenta_creada: boolean;
+                contrasena_temporal: string | null;
+            };
         };
         /** BarberiaDelDirectorio */
         BarberiaDelDirectorio: {
@@ -2036,6 +2039,7 @@ export interface components {
             telefono: string | null;
             correo: string;
             contrasena_temporal: boolean;
+            operador_de_plataforma: boolean;
         };
         /** MovimientoDeBono */
         MovimientoDeBono: {
@@ -2261,6 +2265,12 @@ export interface components {
             nombre: string;
             ciudad: string;
             telefono: string;
+            dueno: {
+                nombre: string;
+                /** Format: email */
+                correo: string;
+                telefono: string;
+            };
         };
         /** RegistroDeCuenta */
         RegistroDeCuenta: {
