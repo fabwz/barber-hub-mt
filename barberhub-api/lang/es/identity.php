@@ -12,6 +12,7 @@ return [
     'invalid_password_reset_link' => 'El enlace para restablecer la contraseña no es válido o ya venció. Solicite uno nuevo.',
     'name_invalid' => 'El nombre es obligatorio y no puede superar los :max caracteres.',
     'new_password_same_as_current' => 'Elija una contraseña distinta de la actual.',
+    'operator_cannot_hold_role' => 'Una cuenta de operador de plataforma no puede tener un rol en una barbería.',
     'password_too_short' => 'La contraseña debe tener al menos :min caracteres.',
     'password_without_lowercase' => 'La contraseña debe incluir al menos una letra minúscula.',
     'password_without_number' => 'La contraseña debe incluir al menos un número.',

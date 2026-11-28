@@ -12,11 +12,13 @@ use Src\Identity\Memberships\Application\UseCases\AssignBarbershopOwner;
 use Src\Identity\Memberships\Application\UseCases\DeactivateCollaboratorMembership;
 use Src\Identity\Memberships\Application\UseCases\GrantCollaboratorMembership;
 use Src\Identity\Memberships\Domain\Entities\Membership;
+use Src\Identity\Memberships\Domain\Exceptions\OperatorCannotHoldRoleException;
 use Src\Identity\Memberships\Domain\Exceptions\RoleAlreadyAssignedException;
 use Src\Identity\Memberships\Domain\ValueObjects\Role;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\UserId;
 use Tests\Support\Identity\InMemoryMembershipRepository;
+use Tests\Support\Identity\InMemoryPlatformOperators;
 
 final class CollaboratorMembershipTest extends TestCase
 {
@@ -26,10 +28,13 @@ final class CollaboratorMembershipTest extends TestCase
 
     private InMemoryMembershipRepository $memberships;
 
+    private InMemoryPlatformOperators $operators;
+
     /** Wire the use cases to an in-memory port. */
     protected function setUp(): void
     {
         $this->memberships = new InMemoryMembershipRepository;
+        $this->operators = new InMemoryPlatformOperators;
     }
 
     /** The person becomes an active collaborator. */
@@ -51,6 +56,19 @@ final class CollaboratorMembershipTest extends TestCase
         $this->grant();
     }
 
+    /** A platform operator never becomes a collaborator, as when an invitation to their email is accepted: nothing is stored (PL-01, UP-04). */
+    public function test_a_platform_operator_cannot_become_a_collaborator(): void
+    {
+        $this->operators->mark(self::USER_ID);
+
+        try {
+            $this->grant();
+            $this->fail('An operator became a collaborator.');
+        } catch (OperatorCannotHoldRoleException) {
+            $this->assertSame(0, $this->memberships->count());
+        }
+    }
+
     /** Switching a collaborator role off and on changes only its active flag. */
     public function test_collaborator_role_is_switched_off_and_on(): void
     {
@@ -69,7 +87,7 @@ final class CollaboratorMembershipTest extends TestCase
     /** The owner keeps an active membership however their collaborator profile changes (UP-05). */
     public function test_owner_membership_is_never_switched_off(): void
     {
-        new AssignBarbershopOwner($this->memberships)->execute(new AssignBarbershopOwnerCommand(self::BARBERSHOP_ID, self::USER_ID));
+        new AssignBarbershopOwner($this->memberships, new InMemoryPlatformOperators)->execute(new AssignBarbershopOwnerCommand(self::BARBERSHOP_ID, self::USER_ID));
 
         new DeactivateCollaboratorMembership($this->memberships)
             ->execute(new CollaboratorMembershipCommand(self::BARBERSHOP_ID, self::USER_ID));
@@ -90,7 +108,7 @@ final class CollaboratorMembershipTest extends TestCase
     /** Grant the collaborator role to the person of the scenario. */
     private function grant(): Membership
     {
-        return new GrantCollaboratorMembership($this->memberships)
+        return new GrantCollaboratorMembership($this->memberships, $this->operators)
             ->execute(new CollaboratorMembershipCommand(self::BARBERSHOP_ID, self::USER_ID));
     }
 
