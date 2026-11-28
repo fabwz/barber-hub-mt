@@ -7,6 +7,7 @@ namespace Src\Identity\Users\Infrastructure\Console;
 use Illuminate\Console\Command;
 use Src\Identity\Users\Application\DTOs\RegisterPlatformOperatorCommand;
 use Src\Identity\Users\Application\UseCases\RegisterPlatformOperator;
+use Src\Identity\Users\Domain\Contracts\TemporaryPasswordGenerator;
 use Src\Identity\Users\Domain\Exceptions\EmailAlreadyRegisteredException;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 
@@ -24,11 +25,11 @@ final class CreatePlatformOperatorCommand extends Command
     protected $description = 'Create a platform operator account with a temporary password (shown once)';
 
     /** Create the account and show its temporary password. */
-    public function handle(RegisterPlatformOperator $registerPlatformOperator): int
+    public function handle(RegisterPlatformOperator $registerPlatformOperator, TemporaryPasswordGenerator $passwords): int
     {
         $typed = $this->input->isInteractive() ? (string) $this->secret('Temporary password (leave empty to generate one)') : '';
         $generated = $typed === '';
-        $password = $generated ? $this->generatePassword() : $typed;
+        $password = $generated ? $passwords->generate() : $typed;
 
         try {
             $user = $registerPlatformOperator->execute(new RegisterPlatformOperatorCommand((string) $this->argument('name'), (string) $this->argument('email'), $password));
@@ -52,24 +53,5 @@ final class CreatePlatformOperatorCommand extends Command
         $this->components->info('The operator must change the password at the first login.');
 
         return self::SUCCESS;
-    }
-
-    /** A random password of 16 characters that meets the password policy (SE-07): one of each kind and the rest from all of them. */
-    private function generatePassword(): string
-    {
-        $kinds = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!#$%&*+-=?@^_'];
-        $characters = array_map(fn (string $kind): string => $kind[random_int(0, strlen($kind) - 1)], $kinds);
-        $all = implode('', $kinds);
-
-        while (count($characters) < 16) {
-            $characters[] = $all[random_int(0, strlen($all) - 1)];
-        }
-
-        for ($index = count($characters) - 1; $index > 0; $index--) {
-            $other = random_int(0, $index);
-            [$characters[$index], $characters[$other]] = [$characters[$other], $characters[$index]];
-        }
-
-        return implode('', $characters);
     }
 }

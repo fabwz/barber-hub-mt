@@ -58,6 +58,15 @@ final readonly class User
     }
 
     /**
+     * Register an active account the platform operator creates for the owner of a new barbershop (RF-01, UP-05), with a temporary password
+     * that must be changed at the first login (UP-04). It has no acceptances: the person gives them at that login.
+     */
+    public static function createOwner(UserId $id, UserName $name, Email $email, Phone $phone, string $passwordHash): self
+    {
+        return new self($id, $name, $email, $phone, $passwordHash, true, null, null, true);
+    }
+
+    /**
      * Register an active account that is a platform operator (RF-55, PL-01) with a temporary password that must be changed at the first
      * login (RF-40). It has no phone and no acceptances, and it never holds a role in a barbershop.
      */

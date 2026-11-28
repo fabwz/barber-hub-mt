@@ -9,6 +9,7 @@ use Src\Identity\Users\Domain\Contracts\LoginAttempts;
 use Src\Identity\Users\Domain\Contracts\PasswordHasher;
 use Src\Identity\Users\Domain\Contracts\PasswordResetLimiter;
 use Src\Identity\Users\Domain\Contracts\PasswordResetTokens;
+use Src\Identity\Users\Domain\Contracts\TemporaryPasswordGenerator;
 use Src\Identity\Users\Domain\Contracts\TokenIssuer;
 use Src\Identity\Users\Domain\Contracts\TokenRevoker;
 use Src\Identity\Users\Domain\Contracts\UserRepository;
@@ -17,6 +18,7 @@ use Src\Identity\Users\Infrastructure\Persistence\Repositories\EloquentPasswordR
 use Src\Identity\Users\Infrastructure\Persistence\Repositories\EloquentPlatformOperators;
 use Src\Identity\Users\Infrastructure\Persistence\Repositories\EloquentUserRepository;
 use Src\Identity\Users\Infrastructure\Security\BcryptPasswordHasher;
+use Src\Identity\Users\Infrastructure\Security\RandomTemporaryPasswordGenerator;
 use Src\Identity\Users\Infrastructure\Security\RateLimiterLoginAttempts;
 use Src\Identity\Users\Infrastructure\Security\RateLimiterPasswordResetLimiter;
 use Src\Identity\Users\Infrastructure\Security\SanctumTokenIssuer;
@@ -36,6 +38,7 @@ final class UsersServiceProvider extends ServiceProvider
         PasswordResetLimiter::class => RateLimiterPasswordResetLimiter::class,
         PasswordResetTokens::class => EloquentPasswordResetTokens::class,
         PlatformOperators::class => EloquentPlatformOperators::class,
+        TemporaryPasswordGenerator::class => RandomTemporaryPasswordGenerator::class,
         TokenIssuer::class => SanctumTokenIssuer::class,
         TokenRevoker::class => SanctumTokenRevoker::class,
         UserRepository::class => EloquentUserRepository::class,
