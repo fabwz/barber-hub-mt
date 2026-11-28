@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /*
  * Registers one barbershop in its own process, so a test can run it in parallel with another session.
- * Usage: php register_barbershop_worker.php "<name>" <owner id>. It prints the link as JSON.
+ * Usage: php register_barbershop_worker.php "<name>" <owner email> <operator id>. It prints the link as JSON.
  */
 
 use Illuminate\Contracts\Console\Kernel;
@@ -23,7 +23,7 @@ if (config('database.connections.pgsql.database') !== 'barberhub_testing') {
 }
 
 $barbershop = $app->make(RegisterBarbershop::class)->execute(
-    new RegisterBarbershopCommand($argv[1], 'San Carlos', '2460-0000', $argv[2]),
-);
+    new RegisterBarbershopCommand($argv[1], 'San Carlos', '2460-0000', 'Ana Mora', $argv[2], '8888-0000', $argv[3]),
+)->barbershop;
 
 echo json_encode(['id' => $barbershop->id->value, 'link' => $barbershop->link->value], JSON_THROW_ON_ERROR);

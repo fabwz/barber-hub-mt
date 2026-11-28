@@ -173,7 +173,7 @@ final class GenerateRentInstallmentsTest extends TestCase
         $ownerId = (string) Str::uuid7();
         DB::table('users')->insert(['id' => $ownerId, 'name' => 'Ana Mora', 'email' => 'ana@barberhub.test', 'password' => 'hash']);
 
-        $barbershop = $this->app->make(RegisterBarbershop::class)->execute(new RegisterBarbershopCommand('Barbería Pura Navaja', 'San Carlos', '2460-0000', $ownerId));
+        $barbershop = $this->app->make(RegisterBarbershop::class)->execute(new RegisterBarbershopCommand('Barbería Pura Navaja', 'San Carlos', '2460-0000', 'Ana Mora', 'ana@barberhub.test', '8888-0000', $ownerId))->barbershop;
 
         $rows = $this->scope($barbershop->id->value, fn (): array => DB::table('rent_installments')->get()->all());
         $this->assertCount(1, $rows);

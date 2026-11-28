@@ -37,7 +37,7 @@ final class ConcurrentRegistrationTest extends TestCase
             $admin->beginTransaction();
             $admin->table('barbershops')->insert(['name' => 'Barbería Pura Navaja', 'city' => 'San Carlos', 'phone' => '2460-0000', 'public_link' => 'pura-navaja']);
 
-            $process = $this->startWorker('Barbería Pura Navaja', $ownerId);
+            $process = $this->startWorker('Barbería Pura Navaja', 'concurrencia@barberhub.test', $ownerId);
 
             $this->waitUntilTheWorkerWaitsForTheLock($admin, $process['handle']);
             $admin->commit();
@@ -55,7 +55,8 @@ final class ConcurrentRegistrationTest extends TestCase
                 proc_close($process['handle']);
             }
 
-            // The two sessions committed for real, so the rows are removed by hand.
+            // The two sessions committed for real, so the rows are removed by hand. The technical record refuses DELETE, so it is emptied whole.
+            $admin->statement('TRUNCATE audit_log');
             $admin->table('barbershops')->delete();
             $admin->table('users')->where('id', $ownerId)->delete();
         }
@@ -70,10 +71,10 @@ final class ConcurrentRegistrationTest extends TestCase
      *
      * @return array{handle: resource, pipes: array<int, resource>}
      */
-    private function startWorker(string $name, string $ownerId): array
+    private function startWorker(string $name, string $ownerEmail, string $operatorId): array
     {
         $handle = proc_open(
-            [PHP_BINARY, base_path('tests/Support/Catalog/register_barbershop_worker.php'), $name, $ownerId],
+            [PHP_BINARY, base_path('tests/Support/Catalog/register_barbershop_worker.php'), $name, $ownerEmail, $operatorId],
             [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
             base_path(),

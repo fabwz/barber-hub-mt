@@ -12,8 +12,9 @@ use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\MyBarbershopControll
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PaymentPolicyController;
 use Src\Catalog\Barbershops\Infrastructure\Http\Controllers\PublicBarbershopController;
 
-Route::post('barberias', [BarbershopController::class, 'store'])
-    ->middleware('auth:sanctum')
+// The only way to register a barbershop: the platform operator, with no {barberia} because it does not exist yet (RF-01, PL-02).
+Route::post('plataforma/barberias', [BarbershopController::class, 'store'])
+    ->middleware(['auth:sanctum', 'platform.operator'])
     ->name('catalog.barbershops.store');
 
 // The barbershops of the person: no {barberia}, because none is in course yet (RD-18, UP-08).
