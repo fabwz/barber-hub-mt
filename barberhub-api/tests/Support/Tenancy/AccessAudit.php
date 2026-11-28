@@ -8,6 +8,7 @@ use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\RouteCollectionInterface;
 use Illuminate\Routing\Router;
+use Src\Identity\Users\Infrastructure\Http\Middleware\RequirePlatformOperator;
 use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
 use Src\Shared\Infrastructure\Tenancy\ScopeRequestToBarbershop;
 use Src\Shared\Monitoring\Infrastructure\Http\Middleware\RequireMonitoringCredentials;
@@ -98,6 +99,26 @@ final class AccessAudit
 
         if (! $authenticated) {
             $violations[] = "{$key}: is declared {$rule->kind} but has no session middleware (auth:sanctum)";
+        }
+
+        if ($rule->kind === RouteRule::OPERATOR) {
+            if (self::argumentsOf($middleware, RequirePlatformOperator::class) === null) {
+                $violations[] = "{$key}: is declared operator but does not pass through the platform operator middleware";
+            }
+
+            if ($scopeMode !== null || $roles !== null) {
+                $violations[] = "{$key}: is declared operator but has the barbershop or role middleware";
+            }
+
+            if (str_contains($key, '{barberia}') || ! str_contains($key, ' api/v1/plataforma/')) {
+                $violations[] = "{$key}: is declared operator but is not a route under plataforma without a barbershop";
+            }
+
+            if ($rule->note === '' || $rule->outcomes === null || ! isset(AccessMatrix::OUTCOMES[$rule->outcomes])) {
+                $violations[] = "{$key}: is operator without a reason or without a profile of outcomes for the role matrix test";
+            }
+
+            return $violations;
         }
 
         if ($rule->kind === RouteRule::AUTHENTICATED) {

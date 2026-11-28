@@ -97,6 +97,10 @@ trait BuildsAccessScenario
         $mauricioAccount = (string) DB::table('collaborators')->where('id', $this->mauricio)->value('user_id');
         $this->scopeQueriesTo(null);
 
+        // The platform operator is an account with the mark and no membership at all (PL-01).
+        $operator = $this->insertUser('Operadora de plataforma');
+        DB::table('users')->where('id', $operator)->update(['is_platform_operator' => true]);
+
         $this->accounts = [
             'customer' => $this->ana,
             'other_customer' => $this->luis,
@@ -105,6 +109,7 @@ trait BuildsAccessScenario
             'owner' => $this->owner,
             'foreign_owner' => $foreignOwner,
             'foreign_collaborator' => $mauricioAccount,
+            'platform_operator' => $operator,
         ];
         $this->tokens = array_map(fn (string $id): string => UserModel::query()->findOrFail($id)->createToken('prueba')->plainTextToken, $this->accounts);
     }

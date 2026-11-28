@@ -267,7 +267,7 @@ final class AdversarialAccessTest extends TestCase
         $before = $this->fingerprint();
 
         foreach (AccessMatrix::rules() as $key => $rule) {
-            if (in_array($rule->kind, [RouteRule::PUBLIC, RouteRule::AUTHENTICATED, RouteRule::FIRST_USE, RouteRule::PLATFORM], true)) {
+            if (in_array($rule->kind, [RouteRule::PUBLIC, RouteRule::AUTHENTICATED, RouteRule::FIRST_USE, RouteRule::PLATFORM, RouteRule::OPERATOR], true)) {
                 continue;
             }
 

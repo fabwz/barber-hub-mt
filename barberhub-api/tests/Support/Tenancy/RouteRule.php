@@ -32,6 +32,12 @@ final readonly class RouteRule
     public const string PLATFORM = 'platform';
 
     /**
+     * A route of the platform operator (RF-55, PL-01): under `plataforma`, with no `{barberia}`. It needs a session and the platform operator
+     * middleware; no role of a barbershop opens it. The operator has no membership, so the barbershop middleware must not be on it.
+     */
+    public const string OPERATOR = 'operator';
+
+    /**
      * @param  list<string>  $roles  The roles allowed; empty for public and authenticated routes.
      * @param  string  $note  Why it is public, or which resource must belong to whom.
      * @param  bool  $scoped  Public route that sets the barbershop of the URL ("barbershop:public").
@@ -56,6 +62,12 @@ final readonly class RouteRule
     public static function platform(string $note): self
     {
         return new self(self::PLATFORM, [], $note);
+    }
+
+    /** A route only the platform operator may call: any role of a barbershop gets 403. */
+    public static function operator(string $note): self
+    {
+        return new self(self::OPERATOR, [], $note, outcomes: AccessMatrix::OPERATOR_ONLY);
     }
 
     public static function authenticated(string $note): self

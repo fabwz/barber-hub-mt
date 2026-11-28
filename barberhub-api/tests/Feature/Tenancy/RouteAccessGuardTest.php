@@ -6,6 +6,7 @@ namespace Tests\Feature\Tenancy;
 
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Route;
+use Src\Identity\Users\Infrastructure\Http\Middleware\RequirePlatformOperator;
 use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
 use Src\Shared\Infrastructure\Tenancy\ScopeRequestToBarbershop;
 use Src\Shared\Monitoring\Infrastructure\Http\Middleware\RequireMonitoringCredentials;
@@ -90,7 +91,33 @@ final class RouteAccessGuardTest extends TestCase
         ], $violations);
     }
 
-    /** Every profile answers for the eight kinds of person, so the matrix test tries all of them. */
+    /** A route of the operator must have a session and the operator middleware, no barbershop and no role, and live under `plataforma`. */
+    public function test_an_operator_route_with_the_wrong_middleware_is_reported(): void
+    {
+        $operator = RequirePlatformOperator::class;
+        $routes = new RouteCollection;
+        $routes->add(Route::get('api/v1/plataforma/sin-operador', fn (): string => 'x')->middleware('auth:sanctum'));
+        $routes->add(Route::get('api/v1/plataforma/con-barberia/{barberia}', fn (): string => 'x')->middleware(['auth:sanctum', $operator, ScopeRequestToBarbershop::class]));
+        $routes->add(Route::get('api/v1/fuera', fn (): string => 'x')->middleware(['auth:sanctum', $operator]));
+        $routes->add(Route::get('api/v1/plataforma/bien', fn (): string => 'x')->middleware(['auth:sanctum', $operator]));
+
+        $note = 'Prueba.';
+        $violations = AccessAudit::violations($routes, [
+            'GET api/v1/plataforma/sin-operador' => RouteRule::operator($note),
+            'GET api/v1/plataforma/con-barberia/{barberia}' => RouteRule::operator($note),
+            'GET api/v1/fuera' => RouteRule::operator($note),
+            'GET api/v1/plataforma/bien' => RouteRule::operator($note),
+        ]);
+
+        $this->assertSame([
+            'GET api/v1/plataforma/sin-operador: is declared operator but does not pass through the platform operator middleware',
+            'GET api/v1/plataforma/con-barberia/{barberia}: is declared operator but has the barbershop or role middleware',
+            'GET api/v1/plataforma/con-barberia/{barberia}: is declared operator but is not a route under plataforma without a barbershop',
+            'GET api/v1/fuera: is declared operator but is not a route under plataforma without a barbershop',
+        ], $violations);
+    }
+
+    /** Every profile answers for the nine kinds of person, so the matrix test tries all of them. */
     public function test_every_profile_covers_every_actor(): void
     {
         foreach (AccessMatrix::OUTCOMES as $profile => $outcomes) {

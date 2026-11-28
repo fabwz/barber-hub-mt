@@ -116,7 +116,7 @@ final class AccessMatrixTest extends TestCase
      */
     private function notFoundFor(string $actor, string $method, string $template, array $payload): array
     {
-        $outsider = str_starts_with($actor, 'foreign_');
+        $outsider = str_starts_with($actor, 'foreign_') || $actor === 'platform_operator';
         $uri = $outsider
             ? $this->addressOf($template, (string) Str::uuid7(), $this->resources)
             : $this->addressOf($template, $this->puraNavaja, $this->missingResources());
