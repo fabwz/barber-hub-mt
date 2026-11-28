@@ -26,3 +26,4 @@ RF-57 pide que cada barbería tenga una cuota de alquiler por mes, con su vencim
 - La tarea declara su programación diaria en código; en producción solo corre con el planificador (#117). Hasta entonces se ejecuta a mano.
 - Una barbería con una cuota que falla no detiene a las demás; el comando termina con error y la lista de las que fallaron.
 - El listado del operador y el bloqueo reutilizan `CountPendingRentMonths`, con la barbería ya fijada.
+- El bloqueo (#296) guarda su estado en `barbershops.blocked_at`, no en las cuotas; ver [ADR 0016](0016-rent-block-state-and-system-author.md).

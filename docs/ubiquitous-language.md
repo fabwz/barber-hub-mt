@@ -174,7 +174,7 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 
 ### Alquiler y bloqueo (M19)
 
-La cuota (`RentInstallment`, tabla `rent_installments`, módulo `Catalog/RentInstallments`), su vencimiento, su estado y los meses pendientes se confirmaron en el #295; el resto, cuando su issue lo cree.
+La cuota (`RentInstallment`, tabla `rent_installments`, módulo `Catalog/RentInstallments`), su vencimiento, su estado y los meses pendientes se confirmaron en el #295; el estado de bloqueo y el autor «sistema», en el #296; el resto, cuando su issue lo cree.
 
 | Negocio | Código | Base de datos | API |
 | --- | --- | --- | --- |
@@ -183,6 +183,9 @@ La cuota (`RentInstallment`, tabla `rent_installments`, módulo `Catalog/RentIns
 | Vencimiento de la cuota | `dueOn` | `due_on` | `vence` |
 | Estado de la cuota (pendiente, pagada) | `InstallmentStatus` | `status` | `pendiente`, `pagada` |
 | Meses pendientes (se cuentan, no se guardan) | `pendingMonths()` | — (se calcula) | `meses_pendientes` |
+| Barbería bloqueada (la plataforma le retiró el acceso por falta de pago, PL-07) | `blocked` (`BarbershopBlockState`) | `barbershops.blocked_at` (nula = no bloqueada) | — (lo expone RF-59) |
+| Bloquear, desbloquear la barbería | `BlockBarbershopForOverdueRent`, `UnblockBarbershopWithoutPendingRent` | — | — |
+| Autor «sistema» del registro técnico | `AuditEntry::bySystem()` | `audit_log.actor_user_id` nulo | — |
 
 ### Mi cuenta y sus atajos (cliente web)
 
