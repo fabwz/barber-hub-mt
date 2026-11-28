@@ -52,7 +52,8 @@ Las rutas y los atributos JSON son parte de lo que ve quien consume la API, por 
 | Idioma de la cuenta | `Locale` | `locale` | `idioma` |
 | Recordatorios por correo | `remindersEnabled` | `reminders_enabled` | `recordatorios_correo` |
 | Token de acceso | `IssuedToken` | `personal_access_tokens` | `token` |
-| Operador de plataforma (condición de la cuenta, no un rol) | `User::$platformOperator`, `PlatformOperators`, `RegisterPlatformOperator` | `users.is_platform_operator` | rutas bajo `plataforma` |
+| Operador de plataforma (condición de la cuenta, no un rol) | `User::$platformOperator`, `PlatformOperators`, `RegisterPlatformOperator` | `users.is_platform_operator` | rutas bajo `plataforma`; en `GET /cuenta`, `operador_de_plataforma` |
+| Cuenta del dueño de una barbería nueva (la crea el operador con una contraseña temporal, o ya existía) | `OwnerAccounts`, `ProvideOwnerAccount`, `OwnerAccount`, `User::createOwner()` | `users.must_change_password` | `dueno` (`cuenta_creada`, `contrasena_temporal`) |
 | Barbería bloqueada (por falta de pago del alquiler; propuesta, se confirma en su issue) | `BarbershopStatus::Blocked` | por confirmar | `bloqueada` |
 
 Un **colaborador** es un barbero o barbera que atiende y tiene agenda propia. La palabra nombra dos cosas distintas: el **rol** (`Role::Collaborator`, el permiso que tiene en la barbería) y el **perfil con agenda** (`Collaborator`, la persona que atiende). Un dueño con agenda propia (CO-02) conserva el rol `owner` y además tiene un perfil `Collaborator`.
@@ -214,11 +215,11 @@ La lista de roles es cerrada y se asigna por barbería (UP-01). Una persona tien
 
 | Rol | Valor en la base | Cómo se obtiene |
 | --- | --- | --- |
-| Dueño | `owner` | Cuando el operador de plataforma registra la barbería y su cuenta (RF-01) |
+| Dueño | `owner` | Cuando el operador de plataforma registra la barbería (`POST /plataforma/barberias`, RF-01, #299); la cuenta es nueva o ya existía |
 | Colaborador | `collaborator` | Lo crea el dueño, con una contraseña temporal o por invitación (UP-04) |
 | Cliente | `customer` | Se crea sola al primer uso de una operación de cliente en la barbería (UP-09) |
 
-El **operador de plataforma** no es un rol: no tiene fila en `memberships` y su acceso lo fija PL-01. Es la marca `users.is_platform_operator`, que solo escribe el comando `platform:create-operator` (#293).
+El **operador de plataforma** no es un rol: no tiene fila en `memberships` y su acceso lo fija PL-01. Es la marca `users.is_platform_operator`, que solo escribe el comando `platform:create-operator` (#293). Una cuenta marcada nunca recibe un rol de barbería (PL-01): ni como dueño en el alta, ni al aceptar una invitación, ni como cliente (#299).
 
 Las abilities de los tokens de Sanctum y la matriz de permisos por rol se definen en #43 y se documentan en `docs/` en ese issue.
 
