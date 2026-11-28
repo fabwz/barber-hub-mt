@@ -101,7 +101,7 @@ final class BarbershopFeaturesTest extends TestCase
 
         $entries = $this->audit->entries();
         $this->assertCount(1, $entries);
-        $this->assertSame([AuditAction::FeaturesUpdated, self::OWNER, 'barbershop', self::BARBERSHOP], [$entries[0]->action, $entries[0]->actor->value, $entries[0]->subjectType, $entries[0]->subjectId]);
+        $this->assertSame([AuditAction::FeaturesUpdated, self::OWNER, 'barbershop', self::BARBERSHOP], [$entries[0]->action, $entries[0]->actor?->value, $entries[0]->subjectType, $entries[0]->subjectId]);
         $this->assertEquals(new DateTimeImmutable(self::NOW), $entries[0]->at);
         $this->assertSame(['vouchers_enabled' => ['previous' => false, 'new' => true]], $entries[0]->changes);
     }

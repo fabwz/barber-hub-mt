@@ -50,7 +50,7 @@ final class UpdatePaymentPolicyAuditTest extends TestCase
         $entries = $this->audit->entries();
         $this->assertCount(2, $entries);
         $this->assertSame([AuditAction::PaymentPolicyUpdated, AuditAction::PaymentGatewayUpdated], [$entries[0]->action, $entries[1]->action]);
-        $this->assertSame([self::OWNER, self::OWNER], [$entries[0]->actor->value, $entries[1]->actor->value]);
+        $this->assertSame([self::OWNER, self::OWNER], [$entries[0]->actor?->value, $entries[1]->actor?->value]);
         $this->assertEquals([$now, $now], [$entries[0]->at, $entries[1]->at]);
         $this->assertSame([
             'mode' => ['previous' => 'none', 'new' => 'deposit'],

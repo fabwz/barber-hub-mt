@@ -17,7 +17,7 @@ final readonly class AuditEntry
      * @param  array<string, array{previous: bool|int|string|null, new: bool|int|string|null}|array{changed: true}>  $changes
      */
     private function __construct(
-        public UserId $actor,
+        public ?UserId $actor,
         public AuditAction $action,
         public string $subjectType,
         public string $subjectId,
@@ -31,8 +31,9 @@ final readonly class AuditEntry
      *
      * @param  array<string, mixed>  $before
      * @param  array<string, mixed>  $after
+     * @param  ?UserId  $actor  The person who acted, or null when the system did (a task with no session).
      */
-    public static function of(UserId $actor, AuditAction $action, string $subjectType, string $subjectId, array $before, array $after, DateTimeImmutable $at): ?self
+    public static function of(?UserId $actor, AuditAction $action, string $subjectType, string $subjectId, array $before, array $after, DateTimeImmutable $at): ?self
     {
         $changes = [];
 
@@ -52,6 +53,17 @@ final readonly class AuditEntry
         }
 
         return $changes === [] ? null : new self($actor, $action, $subjectType, $subjectId, $changes, $at);
+    }
+
+    /**
+     * The same as `of()` for a change the system made on its own, with no person behind it (PL-12).
+     *
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     */
+    public static function bySystem(AuditAction $action, string $subjectType, string $subjectId, array $before, array $after, DateTimeImmutable $at): ?self
+    {
+        return self::of(null, $action, $subjectType, $subjectId, $before, $after, $at);
     }
 
     /** Keep a boolean, an integer or a string as it is and drop anything else. */
