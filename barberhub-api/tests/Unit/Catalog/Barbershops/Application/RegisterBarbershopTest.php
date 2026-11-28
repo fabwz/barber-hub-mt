@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Catalog\Barbershops\Application;
 
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Src\Catalog\Barbershops\Application\DTOs\RegisterBarbershopCommand;
@@ -14,6 +15,8 @@ use Src\Identity\Memberships\Domain\Exceptions\RoleAlreadyAssignedException;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Tests\Support\Catalog\InMemoryBarbershopRepository;
 use Tests\Support\Catalog\InMemoryOwnerMemberships;
+use Tests\Support\Catalog\InMemoryRentInstallments;
+use Tests\Support\Shared\MutableClock;
 use Tests\Support\Shared\RecordingTransactionRunner;
 
 final class RegisterBarbershopTest extends TestCase
@@ -26,6 +29,8 @@ final class RegisterBarbershopTest extends TestCase
 
     private RecordingTransactionRunner $transaction;
 
+    private InMemoryRentInstallments $rent;
+
     private RegisterBarbershop $registerBarbershop;
 
     /** Wire the use case to in-memory ports. */
@@ -34,7 +39,19 @@ final class RegisterBarbershopTest extends TestCase
         $this->barbershops = new InMemoryBarbershopRepository;
         $this->owners = new InMemoryOwnerMemberships;
         $this->transaction = new RecordingTransactionRunner;
-        $this->registerBarbershop = new RegisterBarbershop($this->barbershops, $this->owners, $this->transaction, new PublicLinkGenerator);
+        $this->rent = new InMemoryRentInstallments;
+        $this->registerBarbershop = new RegisterBarbershop($this->barbershops, $this->owners, $this->transaction, new PublicLinkGenerator, $this->rent, new MutableClock(new DateTimeImmutable('2026-11-10 09:00:00-06:00')));
+    }
+
+    /** The first rent installment is opened for the new barbershop at the instant of the registration, in the same transaction (RF-01, RF-57). */
+    public function test_the_first_rent_installment_is_opened_with_the_registration(): void
+    {
+        $barbershop = $this->registerBarbershop->execute($this->command());
+
+        $opened = $this->rent->opened();
+        $this->assertCount(1, $opened);
+        $this->assertSame($barbershop->id->value, $opened[0]['barbershopId']);
+        $this->assertSame('2026-11-10 09:00:00', $opened[0]['now']->format('Y-m-d H:i:s'));
     }
 
     /** The first barbershop of a name gets the link the name gives, without the initial word "Barbería" (RF-02). */

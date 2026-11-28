@@ -11,6 +11,7 @@ use Src\Catalog\Barbershops\Application\Contracts\CollaboratorProfiles;
 use Src\Catalog\Barbershops\Application\Contracts\OwnerMemberships;
 use Src\Catalog\Barbershops\Application\Contracts\PersonMemberships;
 use Src\Catalog\Barbershops\Application\Contracts\PublicBarbershopReader;
+use Src\Catalog\Barbershops\Application\Contracts\RentInstallments;
 use Src\Catalog\Barbershops\Domain\Contracts\BarbershopRepository;
 use Src\Catalog\Barbershops\Infrastructure\Collaborators\CollaboratorsCollaboratorProfiles;
 use Src\Catalog\Barbershops\Infrastructure\Identity\IdentityOwnerMemberships;
@@ -19,6 +20,7 @@ use Src\Catalog\Barbershops\Infrastructure\Persistence\Queries\EloquentBarbersho
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Queries\EloquentBarbershopSummaryReader;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Queries\EloquentPublicBarbershopReader;
 use Src\Catalog\Barbershops\Infrastructure\Persistence\Repositories\EloquentBarbershopRepository;
+use Src\Catalog\Barbershops\Infrastructure\Rent\RentModuleInstallments;
 
 final class BarbershopsServiceProvider extends ServiceProvider
 {
@@ -35,5 +37,6 @@ final class BarbershopsServiceProvider extends ServiceProvider
         BarbershopSummaryReader::class => EloquentBarbershopSummaryReader::class,
         BarbershopDirectoryReader::class => EloquentBarbershopDirectoryReader::class,
         CollaboratorProfiles::class => CollaboratorsCollaboratorProfiles::class,
+        RentInstallments::class => RentModuleInstallments::class,
     ];
 }

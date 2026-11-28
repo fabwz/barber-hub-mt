@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Src\Catalog\Barbershops\Application\UseCases;
 
 use Src\Catalog\Barbershops\Application\Contracts\OwnerMemberships;
+use Src\Catalog\Barbershops\Application\Contracts\RentInstallments;
 use Src\Catalog\Barbershops\Application\DTOs\RegisterBarbershopCommand;
 use Src\Catalog\Barbershops\Domain\Contracts\BarbershopRepository;
 use Src\Catalog\Barbershops\Domain\Entities\Barbershop;
@@ -13,6 +14,7 @@ use Src\Catalog\Barbershops\Domain\Exceptions\PublicLinkUnavailableException;
 use Src\Catalog\Barbershops\Domain\Services\PublicLinkGenerator;
 use Src\Catalog\Barbershops\Domain\ValueObjects\BarbershopName;
 use Src\Catalog\Barbershops\Domain\ValueObjects\City;
+use Src\Shared\Domain\Contracts\Clock;
 use Src\Shared\Domain\Contracts\TransactionRunner;
 use Src\Shared\Domain\ValueObjects\Phone;
 
@@ -27,9 +29,11 @@ final readonly class RegisterBarbershop
         private OwnerMemberships $owners,
         private TransactionRunner $transaction,
         private PublicLinkGenerator $links,
+        private RentInstallments $rent,
+        private Clock $clock,
     ) {}
 
-    /** Register a barbershop and its owner together, so neither exists without the other (RF-01, RF-02, UP-05). */
+    /** Register a barbershop, its owner and its first rent installment together, so none exists without the others (RF-01, RF-02, RF-57, UP-05). */
     public function execute(RegisterBarbershopCommand $command): Barbershop
     {
         $name = new BarbershopName($command->name);
@@ -39,6 +43,7 @@ final readonly class RegisterBarbershop
         return $this->transaction->run(function () use ($command, $name, $city, $phone): Barbershop {
             $barbershop = $this->saveWithFreeLink($name, $city, $phone);
             $this->owners->assignOwner($barbershop->id, $command->ownerId);
+            $this->rent->openFor($barbershop->id, $this->clock->now());
 
             return $barbershop;
         });

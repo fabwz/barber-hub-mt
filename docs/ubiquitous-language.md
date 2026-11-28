@@ -172,9 +172,9 @@ El **saldo pendiente** es lo que falta cobrar del servicio en el local (precio m
 | Mañana, tarde, noche | `Morning`, `Afternoon`, `Evening` | — | `manana`, `tarde`, `noche` |
 | Registro técnico | `AuditLog` | `audit_log` | — |
 
-### Alquiler y bloqueo (previsto, M19)
+### Alquiler y bloqueo (M19)
 
-Nombres propuestos; cada uno se confirma cuando su issue lo crea.
+La cuota (`RentInstallment`, tabla `rent_installments`, módulo `Catalog/RentInstallments`), su vencimiento, su estado y los meses pendientes se confirmaron en el #295; el resto, cuando su issue lo cree.
 
 | Negocio | Código | Base de datos | API |
 | --- | --- | --- | --- |
