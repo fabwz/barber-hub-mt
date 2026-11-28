@@ -11,7 +11,7 @@ namespace Tests\Support\Tenancy;
 final class AccessMatrix
 {
     /** The people that try every route, in the order of the outcomes below. */
-    public const array ACTORS = ['anonymous', 'customer', 'other_customer', 'collaborator', 'assigned_collaborator', 'owner', 'foreign_owner', 'foreign_collaborator'];
+    public const array ACTORS = ['anonymous', 'customer', 'other_customer', 'collaborator', 'assigned_collaborator', 'owner', 'foreign_owner', 'foreign_collaborator', 'platform_operator'];
 
     /** A request that gets through the authorization (it may still fail later on its body or the state of the resource). */
     public const string OK = 'ok';
@@ -40,26 +40,31 @@ final class AccessMatrix
 
     public const string FIRST_USE_LIST = 'first-use-list';
 
+    public const string OPERATOR_ONLY = 'operator-only';
+
     /**
      * What each actor gets in each profile. "customer" is the person that owns the resource (Ana), "other_customer" another
      * customer of the same barbershop, "collaborator" one that does not hold the reservation, "assigned_collaborator" the
-     * one that does, and the two "foreign" ones belong to another barbershop and have no role in this one (UP-06).
+     * one that does, and the two "foreign" ones belong to another barbershop and have no role in this one (UP-06). The "platform_operator"
+     * has no membership in any barbershop and never gets one (PL-01): in a route of a barbershop they get the 404 of anyone without a role.
      *
      * @var array<string, list<int|string>>
      */
     public const array OUTCOMES = [
-        //                           anon  cust  other  collab assigned owner  f.own  f.col
-        self::AUTHENTICATED => [401, self::OK, self::OK, self::OK, self::OK, self::OK, self::OK, self::OK],
-        self::OWNER_ONLY => [401, 403, 403, 403, 403, self::OK, 404, 404],
-        self::STAFF_AGENDA => [401, 403, 403, self::OK, self::OK, self::OK, 404, 404],
-        self::CUSTOMER_OWN => [401, self::OK, 404, 403, 403, 403, 404, 404],
-        self::OWNER_OR_CUSTOMER_OWN => [401, self::OK, 404, 403, 403, self::OK, 404, 404],
+        //                           anon  cust  other  collab assigned owner  f.own  f.col  oper
+        self::AUTHENTICATED => [401, self::OK, self::OK, self::OK, self::OK, self::OK, self::OK, self::OK, self::OK],
+        self::OWNER_ONLY => [401, 403, 403, 403, 403, self::OK, 404, 404, 404],
+        self::STAFF_AGENDA => [401, 403, 403, self::OK, self::OK, self::OK, 404, 404, 404],
+        self::CUSTOMER_OWN => [401, self::OK, 404, 403, 403, 403, 404, 404, 404],
+        self::OWNER_OR_CUSTOMER_OWN => [401, self::OK, 404, 403, 403, self::OK, 404, 404, 404],
         // The offer of the scenario is past its 15 minutes, so its owner reaches it and the business rule answers 409 `oferta-vencida`: the success is proved by the tests of the offers.
-        self::CUSTOMER_OWN_LOST => [401, 409, 404, 403, 403, 403, 404, 404],
-        self::RESERVATION_DETAIL => [401, self::OK, 404, 404, self::OK, self::OK, 404, 404],
-        self::OWNER_OR_ASSIGNED_COLLABORATOR => [401, 403, 403, 404, self::OK, self::OK, 404, 404],
-        self::FIRST_USE => [401, self::OK, self::OK, 403, 403, 403, self::OK, self::OK],
-        self::FIRST_USE_LIST => [401, self::OK, self::OK, 403, 403, 403, self::EMPTY, self::EMPTY],
+        self::CUSTOMER_OWN_LOST => [401, 409, 404, 403, 403, 403, 404, 404, 404],
+        self::RESERVATION_DETAIL => [401, self::OK, 404, 404, self::OK, self::OK, 404, 404, 404],
+        self::OWNER_OR_ASSIGNED_COLLABORATOR => [401, 403, 403, 404, self::OK, self::OK, 404, 404, 404],
+        self::FIRST_USE => [401, self::OK, self::OK, 403, 403, 403, self::OK, self::OK, 404],
+        self::FIRST_USE_LIST => [401, self::OK, self::OK, 403, 403, 403, self::EMPTY, self::EMPTY, 404],
+        // Only the platform operator gets in; every role of a barbershop is refused with 403 (RF-55).
+        self::OPERATOR_ONLY => [401, 403, 403, 403, 403, 403, 403, 403, self::OK],
     ];
 
     /** The three roles of a barbershop (UP-01). */
@@ -102,6 +107,7 @@ final class AccessMatrix
             'PUT storage/{path}' => RouteRule::public('Disco local del framework: solo recibe URL firmadas.', conditional: true),
 
             // Of the platform, not of a barbershop (ADR 0013).
+            'GET api/v1/plataforma/cuenta' => RouteRule::operator('Cuenta del operador de plataforma (RF-55, PL-01): solo la abre una cuenta marcada como operador; dueño, colaborador y cliente reciben 403 `prohibido`. No lleva barbería.'),
             'GET monitoreo' => RouteRule::platform('Panel de monitoreo (RNF-15, #118): solo lectura, con su propia autenticación básica de plataforma; un rol de barbería no abre nada y, sin el secreto configurado, responde 404.'),
 
             // A session and nothing more: the data are the person's own.

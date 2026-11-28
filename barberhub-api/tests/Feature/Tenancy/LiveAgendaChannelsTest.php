@@ -51,8 +51,8 @@ final class LiveAgendaChannelsTest extends TestCase
     public static function channelOutcomes(): array
     {
         return [
-            'agenda of the barbershop' => ['agenda', [401, 403, 403, 403, 403, 200, 404, 404]],
-            'agenda of Daniela' => ['collaborator', [401, 403, 403, 404, 200, 403, 404, 404]],
+            'agenda of the barbershop' => ['agenda', [401, 403, 403, 403, 403, 200, 404, 404, 404]],
+            'agenda of Daniela' => ['collaborator', [401, 403, 403, 404, 200, 403, 404, 404, 404]],
         ];
     }
 

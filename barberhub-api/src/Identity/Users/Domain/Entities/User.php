@@ -23,6 +23,7 @@ final readonly class User
         public ?DateTimeImmutable $termsAcceptedAt,
         public ?DateTimeImmutable $privacyAcceptedAt,
         public bool $mustChangePassword,
+        public bool $platformOperator = false,
     ) {}
 
     /** Register an active account whose owner accepted the terms and the privacy policy (CL-02). */
@@ -56,16 +57,25 @@ final readonly class User
         return new self($id, $name, $email, null, $passwordHash, true, null, null, false);
     }
 
+    /**
+     * Register an active account that is a platform operator (RF-55, PL-01) with a temporary password that must be changed at the first
+     * login (RF-40). It has no phone and no acceptances, and it never holds a role in a barbershop.
+     */
+    public static function createPlatformOperator(UserId $id, UserName $name, Email $email, string $passwordHash): self
+    {
+        return new self($id, $name, $email, null, $passwordHash, true, null, null, true, true);
+    }
+
     /** Replace the password with a new hash; the password is no longer temporary (UP-04). */
     public function changePassword(string $passwordHash): self
     {
-        return new self($this->id, $this->name, $this->email, $this->phone, $passwordHash, $this->active, $this->termsAcceptedAt, $this->privacyAcceptedAt, false);
+        return new self($this->id, $this->name, $this->email, $this->phone, $passwordHash, $this->active, $this->termsAcceptedAt, $this->privacyAcceptedAt, false, $this->platformOperator);
     }
 
     /** Correct the name, the phone and the email; the password, the acceptances and the temporary state stay as they are (RF-45). */
     public function updateProfile(UserName $name, Email $email, Phone $phone): self
     {
-        return new self($this->id, $name, $email, $phone, $this->passwordHash, $this->active, $this->termsAcceptedAt, $this->privacyAcceptedAt, $this->mustChangePassword);
+        return new self($this->id, $name, $email, $phone, $this->passwordHash, $this->active, $this->termsAcceptedAt, $this->privacyAcceptedAt, $this->mustChangePassword, $this->platformOperator);
     }
 
     /** Rebuild an account from its stored state. */
@@ -79,7 +89,8 @@ final readonly class User
         ?DateTimeImmutable $termsAcceptedAt,
         ?DateTimeImmutable $privacyAcceptedAt,
         bool $mustChangePassword,
+        bool $platformOperator = false,
     ): self {
-        return new self($id, $name, $email, $phone, $passwordHash, $active, $termsAcceptedAt, $privacyAcceptedAt, $mustChangePassword);
+        return new self($id, $name, $email, $phone, $passwordHash, $active, $termsAcceptedAt, $privacyAcceptedAt, $mustChangePassword, $platformOperator);
     }
 }

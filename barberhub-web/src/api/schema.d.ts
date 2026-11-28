@@ -1074,6 +1074,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plataforma/cuenta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver la cuenta del operador de plataforma
+         * @description Devuelve el `id`, el nombre y el correo del operador autenticado (RF-55). Solo la abre una cuenta marcada como operador de plataforma, que se crea únicamente por comando (PL-01): un dueño, un colaborador o un cliente reciben 403 `prohibido`. Una cuenta con contraseña temporal recibe 403 `contrasena-temporal` hasta que la cambia (RF-40). El operador no tiene barbería ni rol: en cualquier ruta de una barbería recibe 404, como quien no tiene rol.
+         */
+        get: operations["identity.platform.account.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/barberias/{barberia}/reservas": {
         parameters: {
             query?: never;
@@ -1856,6 +1876,12 @@ export interface components {
             telefono: string | null;
             acepta_terminos: string | null;
             acepta_privacidad: string | null;
+        };
+        /** CuentaOperador */
+        CuentaOperador: {
+            id: string;
+            nombre: string;
+            correo: string;
         };
         /** DatosDeBarberia */
         DatosDeBarberia: {
@@ -4410,6 +4436,29 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    "identity.platform.account.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `CuentaOperador` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CuentaOperador"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
         };
     };
     "reservations.reservations.index": {

@@ -27,6 +27,10 @@
             "description": "Ingreso con correo y contrase\u00f1a y cierre de sesi\u00f3n mediante tokens de acceso."
         },
         {
+            "name": "Plataforma",
+            "description": "Operaciones del operador de plataforma: no llevan barber\u00eda en la ruta y ning\u00fan rol de barber\u00eda las abre."
+        },
+        {
             "name": "Barber\u00edas",
             "description": "Alta de barber\u00edas y de su due\u00f1o."
         },
@@ -3486,6 +3490,39 @@
                 }
             }
         },
+        "/plataforma/cuenta": {
+            "get": {
+                "operationId": "identity.platform.account.show",
+                "description": "Devuelve el `id`, el nombre y el correo del operador autenticado (RF-55). Solo la abre una cuenta marcada como operador de plataforma, que se crea \u00fanicamente por comando (PL-01): un due\u00f1o, un colaborador o un cliente reciben 403 `prohibido`. Una cuenta con contrase\u00f1a temporal recibe 403 `contrasena-temporal` hasta que la cambia (RF-40). El operador no tiene barber\u00eda ni rol: en cualquier ruta de una barber\u00eda recibe 404, como quien no tiene rol.",
+                "summary": "Ver la cuenta del operador de plataforma",
+                "tags": [
+                    "Plataforma"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CuentaOperador`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CuentaOperador"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        },
         "/barberias/{barberia}/reservas": {
             "post": {
                 "operationId": "reservations.reservations.store",
@@ -6051,6 +6088,26 @@
                     "acepta_privacidad"
                 ],
                 "title": "Cuenta"
+            },
+            "CuentaOperador": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nombre": {
+                        "type": "string"
+                    },
+                    "correo": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "nombre",
+                    "correo"
+                ],
+                "title": "CuentaOperador"
             },
             "DatosDeBarberia": {
                 "type": "object",

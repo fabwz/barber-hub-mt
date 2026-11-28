@@ -111,4 +111,24 @@ final class UserTest extends TestCase
         $this->assertNull($user->termsAcceptedAt);
         $this->assertNull($user->privacyAcceptedAt);
     }
+
+    /** Only an operator is an operator: every other way to create an account leaves the mark off, and changing the account keeps it (PL-01). */
+    public function test_only_the_operator_factory_marks_the_account(): void
+    {
+        $id = new UserId(self::USER_ID);
+        $name = new UserName('Ana Mora');
+        $email = new Email('ana@barberhub.test');
+
+        $this->assertFalse(User::createStaff($id, $name, $email, 'hash')->platformOperator);
+        $this->assertFalse(User::createInvited($id, $name, $email, 'hash')->platformOperator);
+
+        $operator = User::createPlatformOperator($id, $name, $email, 'hash');
+
+        $this->assertTrue($operator->platformOperator);
+        $this->assertTrue($operator->mustChangePassword);
+        $this->assertTrue($operator->changePassword('other')->platformOperator);
+        $this->assertFalse($operator->changePassword('other')->mustChangePassword);
+        $this->assertTrue($operator->updateProfile($name, $email, new Phone('8888-0000'))->platformOperator);
+        $this->assertFalse(User::reconstitute($id, $name, $email, null, 'hash', true, null, null, false)->platformOperator);
+    }
 }

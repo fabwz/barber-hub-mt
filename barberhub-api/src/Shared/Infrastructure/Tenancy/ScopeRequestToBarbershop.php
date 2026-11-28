@@ -9,6 +9,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
 use Src\Shared\Domain\Contracts\BarbershopRoles;
+use Src\Shared\Domain\Contracts\PlatformOperators;
 use Src\Shared\Domain\Exceptions\InvalidValueException;
 use Src\Shared\Domain\ValueObjects\BarbershopId;
 use Src\Shared\Domain\ValueObjects\UserId;
@@ -24,8 +25,8 @@ final readonly class ScopeRequestToBarbershop
 
     public const string FOR_CUSTOMER = 'customer';
 
-    /** Receive the transaction that reaches the rows of one barbershop and the port that tells the role of a person in it. */
-    public function __construct(private BarbershopTransaction $transaction, private BarbershopRoles $roles) {}
+    /** Receive the transaction that reaches the rows of one barbershop, the port that tells the role of a person in it and the one that tells who is a platform operator. */
+    public function __construct(private BarbershopTransaction $transaction, private BarbershopRoles $roles, private PlatformOperators $operators) {}
 
     /**
      * Run the request in one transaction scoped to the barbershop of the URL (RD-18). By default ("member") the person
@@ -36,7 +37,8 @@ final readonly class ScopeRequestToBarbershop
      * the membership in its own transaction, UP-09), a customer too, and an owner or collaborator of the barbershop is
      * refused with 403 (UP-07). The reads of the person's own data (my reservations, #57) use the same mode: without a
      * role the page is empty because the use case finds no customer role, and nothing is created. The AI proposal (RF-37) uses it too: it
-     * creates nothing and the use case answers 404 itself when the barbershop does not exist.
+     * creates nothing and the use case answers 404 itself when the barbershop does not exist. The platform operator has no membership
+     * and never gets one (PL-01), so where a customer operation would create it they find nothing, like anyone without a role (404).
      */
     public function handle(Request $request, Closure $next, string $mode = self::FROM_MEMBERSHIP): Response
     {
@@ -78,7 +80,13 @@ final readonly class ScopeRequestToBarbershop
     private function roleOfCustomer(Request $request, BarbershopId $barbershopId): ?string
     {
         $user = $request->user() ?? throw new AuthenticationException;
-        $role = $this->roles->roleOf(new UserId((string) $user->getAuthIdentifier()), $barbershopId);
+        $userId = new UserId((string) $user->getAuthIdentifier());
+
+        if ($this->operators->isOperator($userId)) {
+            throw new NotFoundHttpException;
+        }
+
+        $role = $this->roles->roleOf($userId, $barbershopId);
 
         return match ($role) {
             null, 'customer' => $role,

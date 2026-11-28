@@ -6,6 +6,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Src\Identity\Users\Infrastructure\Http\Middleware\RequireChangedPassword;
+use Src\Identity\Users\Infrastructure\Http\Middleware\RequirePlatformOperator;
 use Src\Shared\Infrastructure\Http\Middleware\AssignRequestId;
 use Src\Shared\Infrastructure\Http\Middleware\EncodeJsonAsUnicode;
 use Src\Shared\Infrastructure\Http\Middleware\RequireRole;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'barbershop' => ScopeRequestToBarbershop::class,
             'role' => RequireRole::class,
+            'platform.operator' => RequirePlatformOperator::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -39,6 +39,7 @@ final readonly class EloquentUserRepository implements UserRepository
                     'phone' => $user->phone?->value,
                     'is_active' => $user->active,
                     'must_change_password' => $user->mustChangePassword,
+                    'is_platform_operator' => $user->platformOperator,
                     'terms_accepted_at' => $user->termsAcceptedAt,
                     'privacy_accepted_at' => $user->privacyAcceptedAt,
                 ],
@@ -101,6 +102,7 @@ final readonly class EloquentUserRepository implements UserRepository
             $this->instant($model->terms_accepted_at),
             $this->instant($model->privacy_accepted_at),
             $model->must_change_password,
+            $model->is_platform_operator,
         );
     }
 
