@@ -7,6 +7,7 @@ use Src\Identity\Users\Infrastructure\Http\Controllers\AccountController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\NoticePreferencesController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\PasswordController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\PasswordRecoveryController;
+use Src\Identity\Users\Infrastructure\Http\Controllers\PlatformAccountController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\ProfileController;
 use Src\Identity\Users\Infrastructure\Http\Controllers\TokenController;
 
@@ -40,3 +41,8 @@ Route::prefix('tokens')
             Route::delete('/', 'destroyAll')->name('destroy-all');
         });
     });
+
+// Routes of the platform (RF-55): no {barberia}, only for the platform operator.
+Route::middleware(['auth:sanctum', 'platform.operator'])->prefix('plataforma')->group(function (): void {
+    Route::get('cuenta', [PlatformAccountController::class, 'show'])->name('identity.platform.account.show');
+});
